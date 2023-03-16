@@ -5,8 +5,10 @@ import csv
 from math import pi
 
 
-def bisect(f, x_0, x_1, tol=1e-6, it=1000):
-    """bisection method to numerically solve for zero
+def bisect(f, x_0, x_1, tol=1e-9, it=1000):
+    """
+    bisection method to numerically solve for zero for a function
+    taking one variable
     two initial guesses must be of opposite sign.
     The root found is guaranteed to be within the range specified.
 
@@ -25,10 +27,8 @@ def bisect(f, x_0, x_1, tol=1e-6, it=1000):
 
     for _ in range(it):
         c = (a + b) / 2
-
         if abs(f(c)) < tol:
             return (c, f(c))
-
         if f(c) * f(a) > 0:
             a = c
         else:
@@ -38,21 +38,29 @@ def bisect(f, x_0, x_1, tol=1e-6, it=1000):
 
 
 def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9):
-    """Runge Kutta Fehlberg method, of the fourth and fifth order"""
+    """
+    Runge Kutta Fehlberg method, of the fourth and fifth order
+    Even though this involves a lot more computation per cycle,
+    in practice since the step size is adaptive with regard to
+    the tolerance specified, significant amount of extraneous
+    computation can be saved.
+    """
     y_this = iniValTuple
     x = x_0
     beta = 0.9  # "safety" factor
     h = x_1 - x_0  # initial step size
-
+    i = 0
     while (h > 0 and x < x_1) or (h < 0 and x > x_1):
+        i += 1
         K1 = dTupleFunc(x, *y_this)
         K1 = tuple(k * h for k in K1)
-
         if any(isinstance(v, complex) for v in K1):
             h *= 0.5
             continue
 
-        K2 = dTupleFunc(x + 0.2 * h, *(y + 0.2 * k1 for y, k1 in zip(y_this, K1)))
+        K2 = dTupleFunc(
+            x + 0.2 * h, *(y + 0.2 * k1 for y, k1 in zip(y_this, K1))
+        )
         K2 = tuple(k * h for k in K2)
 
         if any(isinstance(v, complex) for v in K2):
@@ -127,18 +135,24 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9):
         epsilon = (
             sum(abs(z - y) ** 2 for z, y in zip(z_next, y_next)) ** 0.5
         )  # error estimation
-
         if epsilon >= tol:  # error is greater than acceptable
             h *= beta * (tol / (2 * epsilon)) ** 0.2
+
         else:
             y_this = y_next
             x += h
             if epsilon != 0:  # sometimes the error can be estimated to be 0
-                h *= beta * (tol / (2 * epsilon)) ** 0.25  # apply the new best estimate
+                h *= (
+                    beta * (tol / (2 * epsilon)) ** 0.25
+                )  # apply the new best estimate
 
         if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
             h = x_1 - x
 
+    if abs(x - x_1) > tol:
+        raise ValueError(
+            "Premature Termination of Integration, after {} Cycles".format(i)
+        )
     return y_this
 
 
@@ -224,7 +238,10 @@ class GrainComp:
         composition = []
         with open(fileName, newline="") as csvfile:
             propReader = csv.reader(
-                csvfile, delimiter=",", quotechar="|", quoting=csv.QUOTE_NONNUMERIC
+                csvfile,
+                delimiter=",",
+                quotechar="|",
+                quoting=csv.QUOTE_NONNUMERIC,
             )
 
             skipFirstLine = True
@@ -264,13 +281,12 @@ class GrainComp:
 
 class Propellant:
     # assumed to be multi-holed propellants
-    def __init__(self, composition, propGeom, arcThick, holeDia, grainLength):
+    def __init__(self, composition, propGeom, arcThick, holeDia, grainLDR):
         self.composition = composition
         self.geometry = propGeom
 
         self.e1 = arcThick / 2
         self.d0 = holeDia
-        self.c = grainLength / 2
 
         if propGeom == Geometry.SEVEN_PERF_CYLINDER:
             self.D0 = 8 * self.e1 + 3 * self.d0  # enforce geometry constraints
@@ -297,7 +313,12 @@ class Propellant:
             b, a = self.d0 + 2 * self.e1, self.d0 + 2 * self.e1
 
         else:
-            raise ValueError("unhandled propellant geometry {}".format(propGeom))
+            raise ValueError(
+                "unhandled propellant geometry {}".format(propGeom)
+            )
+
+        grainLength = self.D0 * grainLDR
+        self.c = grainLength / 2
 
         A, B, C = propGeom.A, propGeom.B, propGeom.C
         self.rho = propGeom.rhoDiv * (self.e1 + self.d0 / 2)
@@ -319,7 +340,9 @@ class Propellant:
         )  # deliberate misspell to prevent issues with python lambda keyword
         self.mu = -(n - 1) / (Q1 + 2 * Pi1) * beta**2
 
-        self.Z_b = (self.e1 + self.rho) / self.e1  # second phase burning Z upper limit
+        self.Z_b = (
+            self.e1 + self.rho
+        ) / self.e1  # second phase burning Z upper limit
         Z = 1
         psi_s = self.chi * Z * (1 + self.labda * Z + self.mu * Z**2)
 
@@ -355,7 +378,9 @@ class Gun:
 
         self.Delta = self.omega / self.V0
         self.phi = 1 + self.omega / (3 * self.m)  # extra work factor
-        self.v_j = (2 * self.f * self.omega / (self.theta * self.phi * self.m)) ** 0.5
+        self.v_j = (
+            2 * self.f * self.omega / (self.theta * self.phi * self.m)
+        ) ** 0.5
         self.l0 = self.V0 / self.S
 
         self.B = (
@@ -364,6 +389,18 @@ class Gun:
             / (self.f * self.phi * self.omega * self.m * self.u1**2)
             * (self.f * self.Delta) ** (2 * (1 - self.n))
         )
+
+        if self.p0 == 0:
+            raise ValueError(
+                "p0 = 0 will cause starting issue for ODE solver in this"
+                + " implementation. If necessary, approximate result by"
+                + " finding the limit of p0->0"
+            )
+
+        else:
+            self.psi_0 = (1 / self.Delta - 1 / self.rho_p) / (
+                self.f / self.p0 + self.alpha - 1 / self.rho_p
+            )
 
     def fPsi(self, Z):
         if Z < 1.0:
@@ -380,6 +417,7 @@ class Gun:
             - self.Delta / self.rho_p
             - self.Delta * (self.alpha - 1 / self.rho_p) * psi
         )
+
         p_bar = (
             self.f * self.omega * psi
             - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
@@ -389,9 +427,10 @@ class Gun:
     def ode_t(self, t_bar, Z, l_bar, v_bar):
         """return d/dt_bar for the inputs in that order, first dummy variable"""
         p_bar = self.fp_bar(Z, l_bar, v_bar)
-
         if Z < self.Z_b:
-            dZ = (self.theta / (2 * self.B)) ** 0.5 * (p_bar) ** self.n  # over dt
+            dZ = (self.theta / (2 * self.B)) ** 0.5 * (
+                p_bar
+            ) ** self.n  # over dt
         else:
             dZ = 0
 
@@ -408,44 +447,84 @@ class Gun:
         p_bar = self.fp_bar(Z, l_bar, v_bar)
 
         if Z < self.Z_b:
-            dZ = (self.theta / (2 * self.B)) ** 0.5 * (p_bar) ** self.n / v_bar  #
+            dZ = (
+                (self.theta / (2 * self.B)) ** 0.5 * (p_bar) ** self.n / v_bar
+            )  #
         else:
             dZ = 0
 
         dv_bar = self.theta * 0.5 * p_bar / v_bar
         dt_bar = 1 / v_bar
-
         return (dZ, dt_bar, dv_bar)
 
-    def integrate(self, steps=100):
-        # ---------------------- initialize relevant parameters
-        if self.p0 == 0:
-            psi_0 = 0
-        else:
-            psi_0 = (1 / self.Delta - 1 / self.rho_p) / (
-                self.f / self.p0 + self.alpha - 1 / self.rho_p
-            )
-        Z_0 = bisect(lambda z: self.fPsi(z) - psi_0, 0, 1)[0]
-        # p_bar_0 = self.p0 / (self.f * self.Delta)
+    def integrate(self, steps=100, tol=1e-9):
+        """
+        this step is calculated to the square of the specified accuracy since
+        the result can be very close to 0 if the squeeze pressure is very low
+
+        It is imperative to calculate this to a high degree of accuracy since
+        if 0 is accepted as solution for Z0 the RKF45 integrator later will not
+        be able to self-start the integration.
+        """
+        Z_0 = bisect(lambda z: self.fPsi(z) - self.psi_0, 0, 1, tol**2)[0]
         l_g_bar = self.l_g / self.l0
 
-        # -------------- sparsely propagate over time domain until after shot exit
-        t_bar_i, Z_i, l_bar_i, v_bar_i = 0, Z_0, 0, 0
+        print("finding burnout")
+        """
+        Subscript b indicate burnout condition
+        Zi < Zb, Zj < Zb initially
+        Integration interval is incremented until Zb>Zj
+        at which point integration interval is cut by half
 
-        while l_bar_i < l_g_bar:
-            Z_i, l_bar_i, v_bar_i = RKF45OverTuple(
-                self.ode_t, (Z_i, l_bar_i, v_bar_i), t_bar_i, t_bar_i + 1
+        Search is concluded when Zb-Zi is less than tolerance specified.
+        Since Zi is only incremented when Zj < Zb, it is guaranteed that
+        subscript i indicate a point just before burnout.
+
+        sign of Zj-Zb is not guaranteed.
+
+        Since the length based ODE suffers from starting issue (divide by 0)
+        initially, time domain integration is used.
+        """
+        Z_i, l_bar_i, v_bar_i = Z_0, 0, 0
+        t_bar_i = 0
+        t_bar_j = 10
+        delta_t_bar = t_bar_j - t_bar_i  # initialize the search interval
+        burnoutFound = True
+        while self.Z_b - Z_i >= tol:
+            Z_j, l_bar_j, v_bar_j = RKF45OverTuple(
+                self.ode_t, (Z_i, l_bar_i, v_bar_i), t_bar_i, t_bar_j, tol
             )
-            t_bar_i += 1
+            if l_bar_j > l_g_bar:
+                burnoutFound = False
+                break
 
-        # -------------- integrate back to barrel length to find exit condition
+            if Z_j >= self.Z_b:  # burnout has already happened
+                delta_t_bar /= 2  # shrink the interval by half
+                t_bar_j = t_bar_i + delta_t_bar
+            else:  # burnout has not happened, search further
+                t_bar_i = t_bar_j  # increment the search interval
+                t_bar_j += delta_t_bar
+                Z_i, l_bar_i, v_bar_i = Z_j, l_bar_j, v_bar_j
 
+        if burnoutFound:
+            t_bar_b, l_bar_b, v_bar_b = t_bar_i, l_bar_i, v_bar_i
+
+        print("finding exit condition")
+        """
+        Subscript e indicate exit condition
+        integrate forth or backwards to the barrel exit condition, along
+        length. Instead of Zb, Zi < Zb ~ tol is used to allow for correct
+        handling of burning in the reverse direction. 
+        """
         Z_e, t_bar_e, v_bar_e = RKF45OverTuple(
-            self.ode_l, (Z_i, t_bar_i, v_bar_i), l_bar_i, l_g_bar
+            self.ode_l,
+            (Z_i, t_bar_i, v_bar_i),
+            l_bar_i,
+            l_g_bar,
+            tol,
         )  # e for exit condition
 
-        # -------------- calculate result in the time domain
-
+        print("populating")
         t_bar_data = []
 
         t_bar_i, Z_i, l_bar_i, v_bar_i = 0, Z_0, 0, 0
@@ -457,11 +536,17 @@ class Gun:
             t_bar_i = (t_bar_e - 0) / steps * i
             t_bar_i2 = (t_bar_e - 0) / steps * (i + 1)
             Z_i, l_bar_i, v_bar_i = RKF45OverTuple(
-                self.ode_t, (Z_i, l_bar_i, v_bar_i), t_bar_i, t_bar_i2
+                self.ode_t, (Z_i, l_bar_i, v_bar_i), t_bar_i, t_bar_i2, tol
             )
 
             t_bar_data.append(
-                (t_bar_i2, l_bar_i, Z_i, v_bar_i, self.fp_bar(Z_i, l_bar_i, v_bar_i))
+                (
+                    t_bar_i2,
+                    l_bar_i,
+                    Z_i,
+                    v_bar_i,
+                    self.fp_bar(Z_i, l_bar_i, v_bar_i),
+                )
             )
 
         t_data = tuple(
@@ -492,10 +577,26 @@ if __name__ == "__main__":
 
     compositions = GrainComp.readFile("propellants.csv")
     M17 = compositions["M17 JAN-PD-26"]
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 0.55e-3 * 2, 0.55e-3, 5e-3)
 
-    test = Gun(57e-3, 2.8, M17SHC, 1.16, 1.51e-3, 3e7, 3.624)
-    test.integrate()
+    M17SHC = Propellant(
+        M17, Geometry.SEVEN_PERF_ROSETTE, 5.5e-3 * 2, 5.5e-3, 2.25
+    )
+
+    test = Gun(
+        50e-3,
+        1,
+        M17SHC,
+        1,
+        1 / M17SHC.rho_p / M17SHC.maxLF / 0.999,
+        10,
+        3500e-3,
+    )
+
+    # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
+    # test = Gun(57e-3, 2.8, M17SHC, 1.16, 1.51e-3, 3e7, 3.624)
+
+    print(*test.integrate(100, 1e-9), sep="\n")
+
     # lbs/in^3 -> kg/m^3, multiply by 27680
     # in^3/lbs -> m^3/kg, divide by 27680
     # ft-lbs per lb ->J/kg multiply by 2.98907

@@ -17,12 +17,13 @@ def validate(inp):
 def formatInput(event):
     v = event.widget.get()
     if v == "":
-        event.widget.insert(0, "0.0")
+        event.widget.insert(0, event.widget.default)
     else:
         event.widget.delete(0, END)
         event.widget.insert(0, float(v))
 
 
+"""
 def popup(issue):
     popupWindow = Toplevel()
     popupWindow.wm_title("Issue")
@@ -30,6 +31,7 @@ def popup(issue):
     Label(popupWindow, text=issue).grid(row=0, column=0)
     # Button(popupWindow, text="Okay", command=popupWindow.destroy).grid(row=1, column=0)
     popupWindow.after(2000, lambda *args: popupWindow.destroy())
+"""
 
 
 class IB(Frame):
@@ -48,7 +50,13 @@ class IB(Frame):
         self.gun = None
         self.tableData = []
 
-        columnList = ["Time/s", "Travel/m", "Burnup/1", "Velocity/ms^-1", "Pressure/Pa"]
+        columnList = [
+            "Time/s",
+            "Travel/m",
+            "Burnup/1",
+            "Velocity/ms^-1",
+            "Pressure/Pa",
+        ]
 
         # ------------------------ initialize the GUI -------------------------------
 
@@ -94,8 +102,12 @@ class IB(Frame):
         tv["show"] = "headings"
 
         for column in columnList:  # foreach column
-            tv.heading(column, text=column)  # let the column heading = column name
-            tv.column(column, width=100)  # set the columns size to 50px
+            tv.heading(
+                column, text=column
+            )  # let the column heading = column name
+            tv.column(
+                column, width=100, stretch=1
+            )  # set the columns size to 50px
 
         # tv.place(relheight=1, relwidth=1)
         treescroll = Scrollbar(tblFrm, orient="vertical")  # create a scrollbar
@@ -115,26 +127,27 @@ class IB(Frame):
         # validation
         validation = parent.register(validate)
 
-        def addParInput(parent, rowIndex, labelText, unitText):
+        def addParInput(parent, rowIndex, labelText, unitText, default="0.0"):
             Label(parent, text=labelText).grid(row=rowIndex, column=0)
             e = StringVar(parent)
-            e.set("0.0")
+            e.set(default)
             en = Entry(
                 parent,
                 textvariable=e,
                 validate="key",
                 validatecommand=(validation, "%P"),
             )
+            en.default = default
             en.grid(row=rowIndex, column=1)
             en.bind("<FocusOut>", formatInput)
             Label(parent, text=unitText).grid(row=rowIndex, column=2)
-            return e, rowIndex + 1
+            return e, en, rowIndex + 1
 
         i = 0
-        calmm, i = addParInput(parFrm, i, "Caliber", "mm")
-        tblmm, i = addParInput(parFrm, i, "Tube Length", "mm")
-        shtkg, i = addParInput(parFrm, i, "Shot Mass", "kg")
-        chgkg, i = addParInput(parFrm, i, "Charge Mass", "kg")
+        calmm, _, i = addParInput(parFrm, i, "Caliber", "mm")
+        tblmm, _, i = addParInput(parFrm, i, "Tube Length", "mm")
+        shtkg, _, i = addParInput(parFrm, i, "Shot Mass", "kg")
+        chgkg, _, i = addParInput(parFrm, i, "Charge Mass", "kg")
 
         Label(parFrm, text="Propellant").grid(row=4, column=0)
         # Create Dropdown menu
@@ -148,16 +161,12 @@ class IB(Frame):
         )
         i += 2
 
-        permm, i = addParInput(parFrm, i, "Perf Diameter", "mm")
-        webmm, i = addParInput(parFrm, i, "Web Thickness", "mm")
-        grlmm, i = addParInput(parFrm, i, "Grain Length", "mm")
+        webmm, webw, i = addParInput(parFrm, i, "Web Thickness", "mm")
+        permm, perw, i = addParInput(parFrm, i, "Perf Diameter", "mm")
+        grlR, grlRw, i = addParInput(parFrm, i, "Grain L/D", "", "2.25")
 
-        ldf, i = addParInput(parFrm, i, "Load Factor", "%")
-        stpMPa, i = addParInput(parFrm, i, "Shot Start Pressure", "MPa")
-        """
-        def Load_data():
-            
-        """
+        ldf, _, i = addParInput(parFrm, i, "Load Factor", "%", "50.0")
+        stpMPa, _, i = addParInput(parFrm, i, "Shot Start Pressure", "MPa")
 
         def calculate(event=None):
             # force an immediate redraw after calculation
@@ -172,9 +181,10 @@ class IB(Frame):
                     geom,
                     float(webmm.get()) / 1000,
                     float(permm.get()) / 1000,
-                    float(grlmm.get()) / 1000,
+                    float(grlR.get()),
                 )
-            except:
+            except Exception as e:
+                print(e)
                 self.prop = None
 
             try:
@@ -185,7 +195,6 @@ class IB(Frame):
                     / float(ldf.get())
                     * 100
                 )
-
                 self.gun = Gun(
                     float(calmm.get()) / 1000,
                     float(shtkg.get()),
@@ -195,8 +204,9 @@ class IB(Frame):
                     float(stpMPa.get()) * 1e6,
                     float(tblmm.get()) / 1000,
                 )
-                self.tableData = gun.integrate()
-            except:
+                self.tableData = self.gun.integrate()
+            except Exception as e:
+                print(e)
                 self.gun = None
 
             errors = []
@@ -210,9 +220,21 @@ class IB(Frame):
 
             tv.delete(*tv.get_children())
 
+            def dot_align(v):
+                decimalLeft = 12
+                decimalRight = 6
+                dotIndex = "{:,}".format(v).find(".")
+                spacePad = max(decimalLeft - dotIndex, 0)
+                return (
+                    " " * spacePad
+                    + "{:,}".format(v)[: dotIndex + 4]
+                    + " "
+                    + format(v)[dotIndex + 4 : dotIndex + 7]
+                )
+
             # foreach row of pokemon data insert the row into the treeview.
             for row in self.tableData:
-                tv.insert("", "end", values=row)
+                tv.insert("", "end", values=tuple(dot_align(v) for v in row))
 
             propBanner.set("")
 
@@ -222,14 +244,77 @@ class IB(Frame):
         opFrm.grid(row=1, column=2, sticky="nsew")
 
         opFrm.columnconfigure(0, weight=1)
-        opFrm.rowconfigure(1, weight=1)
+        opFrm.rowconfigure(4, weight=1)
+
+        def addRatInput(parent, rowIndex, labelText, default="1.0"):
+            Label(parent, text=labelText).grid(row=rowIndex, column=0)
+            e = StringVar(parent)
+            e.set(default)
+            en = Entry(
+                parent,
+                textvariable=e,
+                validate="key",
+                validatecommand=(validation, "%P"),
+            )
+            en.default = default
+            en.grid(row=rowIndex, column=1)
+            en.bind("<FocusOut>", formatInput)
+            return e, en, rowIndex + 1
+
+        i = 1
+        webR, webRw, i = addRatInput(opFrm, i, "W.Th. ", "2.0")
+        perR, perRw, i = addRatInput(opFrm, i, "P.Dia. ", "1.0")
+
+        ratioEntrys = (webRw, perRw)
+        directEntrys = (perw,)
+
+        def configEntry():
+            if geoLocked.get() == 0:
+                for en in ratioEntrys:
+                    en.config(state="disabled")
+                for en in directEntrys:
+                    en.config(state="normal")
+            else:
+                for en in ratioEntrys:
+                    en.config(state="normal")
+                for en in directEntrys:
+                    en.config(state="disabled")
+
+        configEntry()
+
+        def webcallback(var, index, mode):
+            if any(
+                (
+                    webmm.get() == "",
+                    webR.get() == "",
+                    perR.get() == "",
+                )
+            ):
+                pass
+            else:
+                if geoLocked.get() == 1:
+                    permm.set(
+                        float(webmm.get())
+                        / float(webR.get())
+                        * float(perR.get())
+                    )
+
+        webmm.trace_add("write", webcallback)
+        webR.trace_add("write", webcallback)
+        perR.trace_add("write", webcallback)
+        grlR.trace_add("write", webcallback)
 
         Checkbutton(
-            opFrm, text="Lock Geometry", variable=geoLocked, onvalue=1, offvalue=0
-        ).grid(row=0, column=0, sticky="nsew")
+            opFrm,
+            text="Lock Geometry",
+            variable=geoLocked,
+            onvalue=1,
+            offvalue=0,
+            command=configEntry,
+        ).grid(row=0, column=0, columnspan=2, sticky="nsew")
 
         Button(opFrm, text="Calculate", command=calculate).grid(
-            row=1, column=0, sticky="nsew"
+            row=4, column=0, columnspan=2, sticky="nsew"
         )
 
         parent.bind("<space>", calculate)
