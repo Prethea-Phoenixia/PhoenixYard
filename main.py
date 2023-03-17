@@ -4,14 +4,23 @@ from tkinter import ttk
 from gun import *
 
 
-def validate(inp):
+def validateNN(inp):
+    """
+    validate an input if it results in:
+    - result >=0
+    - result is empty
+    in the latter case, the empty field will be handled by tracing
+    change in variable.
+    """
     if inp == "":
         return True
     try:
-        float(inp)
+        if float(inp) >= 0:
+            return True
+        else:
+            return False
     except ValueError:
         return False
-    return True
 
 
 def formatInput(event):
@@ -21,17 +30,6 @@ def formatInput(event):
     else:
         event.widget.delete(0, END)
         event.widget.insert(0, float(v))
-
-
-"""
-def popup(issue):
-    popupWindow = Toplevel()
-    popupWindow.wm_title("Issue")
-    popupWindow.overrideredirect(True)
-    Label(popupWindow, text=issue).grid(row=0, column=0)
-    # Button(popupWindow, text="Okay", command=popupWindow.destroy).grid(row=1, column=0)
-    popupWindow.after(2000, lambda *args: popupWindow.destroy())
-"""
 
 
 class IB(Frame):
@@ -49,6 +47,8 @@ class IB(Frame):
         self.prop = None
         self.gun = None
         self.tableData = []
+        self.errorLst = []
+        self.geomError = False
 
         columnList = [
             "Time/s",
@@ -67,12 +67,15 @@ class IB(Frame):
 
         clickedGeom = StringVar()
         clickedGeom.set(geoOptions[0])
-
         propBanner = StringVar()
-
         geoLocked = IntVar()
-
         errorBanner = StringVar()
+
+        def updateError():
+            if self.geomError:
+                self.errorLst.append("Invalid geometry")
+            errorBanner.set("\n".join(self.errorLst))
+            self.errorLst = []
 
         # ----------------------- specs panel ----------------------------------
 
@@ -125,7 +128,7 @@ class IB(Frame):
         parFrm.grid(row=0, column=2, sticky="nsew")
 
         # validation
-        validation = parent.register(validate)
+        validationNN = parent.register(validateNN)
 
         def addParInput(parent, rowIndex, labelText, unitText, default="0.0"):
             Label(parent, text=labelText).grid(row=rowIndex, column=0)
@@ -135,7 +138,7 @@ class IB(Frame):
                 parent,
                 textvariable=e,
                 validate="key",
-                validatecommand=(validation, "%P"),
+                validatecommand=(validationNN, "%P"),
             )
             en.default = default
             en.grid(row=rowIndex, column=1)
@@ -186,6 +189,9 @@ class IB(Frame):
             except Exception as e:
                 print(e)
                 self.prop = None
+                self.errorLst.append(
+                    "Exception when defining propellant:\n{:}".format(e)
+                )
 
             try:
                 chamberVolume = (
@@ -208,15 +214,9 @@ class IB(Frame):
             except Exception as e:
                 print(e)
                 self.gun = None
-
-            errors = []
-            if self.prop is None:
-                errors.append("Unable to define: Propellant")
-
-            if self.gun is None:
-                errors.append("Unable to define: Gun")
-
-            errorBanner.set("\n".join(errors))
+                self.errorLst.append(
+                    "Exception when defining guns:\n{:}".format(e)
+                )
 
             tv.delete(*tv.get_children())
 
@@ -238,6 +238,8 @@ class IB(Frame):
 
             propBanner.set("")
 
+            updateError()
+
         # ----------------------- operation panel -----------------------
 
         opFrm = LabelFrame(parent, text="Operation")
@@ -254,7 +256,7 @@ class IB(Frame):
                 parent,
                 textvariable=e,
                 validate="key",
-                validatecommand=(validation, "%P"),
+                validatecommand=(validationNN, "%P"),
             )
             en.default = default
             en.grid(row=rowIndex, column=1)
@@ -293,11 +295,15 @@ class IB(Frame):
                 pass
             else:
                 if geoLocked.get() == 1:
-                    permm.set(
-                        float(webmm.get())
-                        / float(webR.get())
-                        * float(perR.get())
-                    )
+                    try:
+                        self.geomError = False
+                        permm.set(
+                            float(webmm.get())
+                            / float(webR.get())
+                            * float(perR.get())
+                        )
+                    except ZeroDivisionError:
+                        self.geomError = True
 
         webmm.trace_add("write", webcallback)
         webR.trace_add("write", webcallback)

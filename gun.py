@@ -392,8 +392,8 @@ class Gun:
 
         if self.p0 == 0:
             raise ValueError(
-                "p0 = 0 will cause starting issue for ODE solver in this"
-                + " implementation. If necessary, approximate result by"
+                "p0 = 0 will cause starting issue for ODE solver in this\n"
+                + " implementation. If necessary, approximate result by\n"
                 + " finding the limit of p0->0"
             )
 
