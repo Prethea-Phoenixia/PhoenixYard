@@ -1,6 +1,6 @@
 from tkinter import *
 from tkinter import ttk
-
+from idlelib.tooltip import Hovertip
 from gun import *
 
 
@@ -32,17 +32,51 @@ def formatInput(event):
         event.widget.insert(0, float(v))
 
 
+"""
+
+def dot_align(v):
+    try:
+        float(v)
+    except ValueError:
+        return v
+    decimalLeft = 12
+    decimalRight = 6
+    dotIndex = "{:,}".format(v).find(".")
+    spacePad = max(decimalLeft - dotIndex, 0)
+    return (
+        "|"
+        + " " * spacePad
+        + "{:,}".format(v)[: dotIndex + 4]
+        + " "
+        + format(v)[dotIndex + 4 : dotIndex + 7]
+    )
+"""
+
+
+def dot_aligned(matrix):
+    transposed = []
+    # print(matrix)
+
+    for seq in zip(*matrix):
+        # print(seq)
+        snums = [str(n) for n in seq]
+        dots = [s.find(".") for s in snums]
+        m = max(dots)
+        transposed.append(tuple(" " * (m - d) + s for s, d in zip(snums, dots)))
+
+    return tuple(zip(*transposed))
+
+
 class IB(Frame):
     def __init__(self, parent):
         Frame.__init__(self, parent)
         parent.title("Phoenix's Internal Ballistics Solver")
-        # ------------------------ requisite file IO ---------------------------------
 
-        compositions = GrainComp.readFile("propellants.csv")
-        gemoetries = {i.desc: i for i in Geometry}
+        self.compositions = GrainComp.readFile("propellants.csv")
+        self.geometries = {i.desc: i for i in Geometry}
 
-        propOptions = tuple(compositions.keys())
-        geoOptions = tuple(gemoetries.keys())
+        self.propOptions = tuple(self.compositions.keys())
+        self.geoOptions = tuple(self.geometries.keys())
 
         self.prop = None
         self.gun = None
@@ -50,228 +84,194 @@ class IB(Frame):
         self.errorLst = []
         self.geomError = False
 
-        columnList = [
-            "Time/s",
-            "Travel/m",
-            "Burnup/1",
-            "Velocity/ms^-1",
-            "Pressure/Pa",
-        ]
-
-        # ------------------------ initialize the GUI -------------------------------
-
         # datatype of menu text
-        clickedProp = StringVar()
+        self.clickedProp = StringVar()
         # initial menu text
-        clickedProp.set(propOptions[0])
+        self.clickedProp.set(self.propOptions[0])
 
-        clickedGeom = StringVar()
-        clickedGeom.set(geoOptions[0])
-        propBanner = StringVar()
-        geoLocked = IntVar()
-        errorBanner = StringVar()
+        self.clickedGeom = StringVar()
+        self.clickedGeom.set(self.geoOptions[0])
+        self.propBanner = StringVar()
+        self.geoLocked = IntVar()
 
-        def updateError():
-            if self.geomError:
-                self.errorLst.append("Invalid geometry")
-            errorBanner.set("\n".join(self.errorLst))
-            self.errorLst = []
+        parent.columnconfigure(0, weight=1)
+        parent.columnconfigure(1, weight=3)
+        parent.columnconfigure(2, weight=1)
 
-        # ----------------------- specs panel ----------------------------------
+        parent.rowconfigure(0, weight=3)
+        parent.rowconfigure(1, weight=1)
 
+        self.addSpecFrm(parent)
+        self.addParFrm(parent)
+        self.addErrFrm(parent)
+        self.addTblFrm(parent)
+        self.addOpsFrm(parent)
+        parent.bind("<space>", self.calculate)
+
+    def calculate(self, event=None):
+        # force an immediate redraw after calculation
+        compo = self.compositions[self.clickedProp.get()]
+        geom = self.geometries[self.clickedGeom.get()]
+
+        self.tableData = []
+
+        try:
+            self.prop = Propellant(
+                compo,
+                geom,
+                float(self.webmm.get()) / 1000,
+                float(self.permm.get()) / 1000,
+                float(self.grlR.get()),
+            )
+        except Exception as e:
+            print(e)
+            self.prop = None
+            self.errorLst.append(
+                "Exception when defining propellant:{:}".format(e)
+            )
+
+        try:
+            chamberVolume = (
+                float(self.chgkg.get())
+                / self.prop.rho_p
+                / self.prop.maxLF
+                / float(self.ldf.get())
+                * 100
+            )
+            self.gun = Gun(
+                float(self.calmm.get()) / 1000,
+                float(self.shtkg.get()),
+                self.prop,
+                float(self.chgkg.get()),
+                chamberVolume,
+                float(self.stpMPa.get()) * 1e6,
+                float(self.tblmm.get()) / 1000,
+                float(self.clr.get()),
+            )
+
+        except Exception as e:
+            self.gun = None
+            self.errorLst.append("Exception when defining guns:\n{:}".format(e))
+
+        if self.gun is not None:
+            try:
+                self.tableData = self.gun.integrate()
+            except Exception as e:
+                self.errorLst.append("Exception integrating:\n{:}".format(e))
+
+        self.tv.delete(*self.tv.get_children())
+        self.tableData = dot_aligned(self.tableData)
+
+        for row in self.tableData:
+            self.tv.insert("", "end", values=row)
+
+        self.propBanner.set("")
+
+        self.updateError()
+
+    def updateError(self):
+        self.errorText.delete("1.0", "end")
+        if self.geomError:
+            self.errorLst.append("Invalid geometry")
+
+        for line in self.errorLst:
+            self.errorText.insert("end", line + "\n")
+        self.errorLst = []
+
+    def addSpecFrm(self, parent):
         specFrm = LabelFrame(parent, text="Design Summary")
-        specFrm.grid(row=0, column=0, sticky="nsew")
+        specFrm.grid(row=0, column=0, rowspan=2, sticky="nsew")
 
-        propSpec = Label(specFrm, textvariable=propBanner).grid(row=0, column=0)
+        propSpec = Label(specFrm, textvariable=self.propBanner).grid(
+            row=0, column=0
+        )
 
-        errorFrm = LabelFrame(parent, text="Errors")
-        errorFrm.grid(row=1, column=0, sticky="nsew")
-
-        errorLbl = Label(
-            errorFrm, textvariable=errorBanner, anchor="w", justify="left"
-        ).grid(row=0, column=0)
-
-        # ------------------------ initialize the table frame --------------------
-
-        tblFrm = LabelFrame(parent, text="Result Table")
-        tblFrm.grid(row=0, rowspan=2, column=1, sticky="nsew")
-        tblFrm.columnconfigure(0, weight=1)
-        tblFrm.rowconfigure(0, weight=1)
-
-        tv = ttk.Treeview(tblFrm, selectmode="browse")
-        tv.grid(row=0, column=0, sticky="nsew")
-
-        tv["columns"] = columnList
-        tv["show"] = "headings"
-
-        for column in columnList:  # foreach column
-            tv.heading(
-                column, text=column
-            )  # let the column heading = column name
-            tv.column(
-                column, width=100, stretch=1
-            )  # set the columns size to 50px
-
-        # tv.place(relheight=1, relwidth=1)
-        treescroll = Scrollbar(tblFrm, orient="vertical")  # create a scrollbar
-        treescroll.configure(command=tv.yview)  # make it vertical
-        tv.configure(
-            yscrollcommand=treescroll.set
-        )  # assign the scrollbar to the Treeview Widget
-
-        # ----------------------- input panel ------------------------------
-        treescroll.grid(row=0, column=1, sticky="nsew")
+    def addParFrm(self, parent):
         parFrm = LabelFrame(
             parent,
             text="Parameters",
         )
         parFrm.grid(row=0, column=2, sticky="nsew")
+        parFrm.columnconfigure(0, weight=1)
+        parFrm.columnconfigure(1, weight=4)
+        parFrm.columnconfigure(2, weight=1)
 
         # validation
         validationNN = parent.register(validateNN)
 
-        def addParInput(parent, rowIndex, labelText, unitText, default="0.0"):
-            Label(parent, text=labelText).grid(row=rowIndex, column=0)
-            e = StringVar(parent)
-            e.set(default)
-            en = Entry(
-                parent,
-                textvariable=e,
-                validate="key",
-                validatecommand=(validationNN, "%P"),
-            )
-            en.default = default
-            en.grid(row=rowIndex, column=1)
-            en.bind("<FocusOut>", formatInput)
-            Label(parent, text=unitText).grid(row=rowIndex, column=2)
-            return e, en, rowIndex + 1
-
         i = 0
-        calmm, _, i = addParInput(parFrm, i, "Caliber", "mm")
-        tblmm, _, i = addParInput(parFrm, i, "Tube Length", "mm")
-        shtkg, _, i = addParInput(parFrm, i, "Shot Mass", "kg")
-        chgkg, _, i = addParInput(parFrm, i, "Charge Mass", "kg")
+        self.calmm, _, i = self.add3Input(
+            parFrm, i, "Caliber", "mm", "0.0", validationNN
+        )
+        self.tblmm, _, i = self.add3Input(
+            parFrm, i, "Tube Length", "mm", "0.0", validationNN
+        )
+        self.shtkg, _, i = self.add3Input(
+            parFrm, i, "Shot Mass", "kg", "0.0", validationNN
+        )
+        self.chgkg, _, i = self.add3Input(
+            parFrm, i, "Charge Mass", "kg", "0.0", validationNN
+        )
 
         Label(parFrm, text="Propellant").grid(row=4, column=0)
         # Create Dropdown menu
-        dropProp = OptionMenu(parFrm, clickedProp, *propOptions).grid(
-            row=4, column=1, columnspan=2, sticky="nsew"
-        )
+        self.dropProp = OptionMenu(
+            parFrm, self.clickedProp, *self.propOptions
+        ).grid(row=4, column=1, columnspan=2, sticky="nsew")
         Label(parFrm, text="Grain Shape").grid(row=5, column=0)
         # Create Dropdown menu
-        dropGeom = OptionMenu(parFrm, clickedGeom, *gemoetries).grid(
-            row=5, column=1, columnspan=2, sticky="nsew"
-        )
+        self.dropGeom = OptionMenu(
+            parFrm, self.clickedGeom, *self.geometries
+        ).grid(row=5, column=1, columnspan=2, sticky="nsew")
         i += 2
 
-        webmm, webw, i = addParInput(parFrm, i, "Web Thickness", "mm")
-        permm, perw, i = addParInput(parFrm, i, "Perf Diameter", "mm")
-        grlR, grlRw, i = addParInput(parFrm, i, "Grain L/D", "", "2.25")
+        parFrm.rowconfigure(4, weight=1)
+        parFrm.rowconfigure(5, weight=1)
 
-        ldf, _, i = addParInput(parFrm, i, "Load Factor", "%", "50.0")
-        stpMPa, _, i = addParInput(parFrm, i, "Shot Start Pressure", "MPa")
+        self.webmm, _, i = self.add3Input(
+            parFrm, i, "Web Thickness", "mm", "0.0", validationNN
+        )
+        self.permm, self.perw, i = self.add3Input(
+            parFrm, i, "Perf Diameter", "mm", "0.0", validationNN
+        )
+        self.grlR, _, i = self.add3Input(
+            parFrm, i, "Grain L/D", "", "2.25", validationNN
+        )
 
-        def calculate(event=None):
-            # force an immediate redraw after calculation
-            compo = compositions[clickedProp.get()]
-            geom = gemoetries[clickedGeom.get()]
+        self.ldf, _, i = self.add3Input(
+            parFrm, i, "Load Factor", "%", "50.0", validationNN
+        )
+        self.clr, _, i = self.add3Input(
+            parFrm, i, "Chamber L. Ratio", "", "1.1", validationNN
+        )
+        self.stpMPa, _, i = self.add3Input(
+            parFrm, i, "Shot Start Pressure", "MPa", "30", validationNN
+        )
 
-            self.tableData = []
-
-            try:
-                self.prop = Propellant(
-                    compo,
-                    geom,
-                    float(webmm.get()) / 1000,
-                    float(permm.get()) / 1000,
-                    float(grlR.get()),
-                )
-            except Exception as e:
-                print(e)
-                self.prop = None
-                self.errorLst.append(
-                    "Exception when defining propellant:\n{:}".format(e)
-                )
-
-            try:
-                chamberVolume = (
-                    float(chgkg.get())
-                    / self.prop.rho_p
-                    / self.prop.maxLF
-                    / float(ldf.get())
-                    * 100
-                )
-                self.gun = Gun(
-                    float(calmm.get()) / 1000,
-                    float(shtkg.get()),
-                    self.prop,
-                    float(chgkg.get()),
-                    chamberVolume,
-                    float(stpMPa.get()) * 1e6,
-                    float(tblmm.get()) / 1000,
-                )
-                self.tableData = self.gun.integrate()
-            except Exception as e:
-                print(e)
-                self.gun = None
-                self.errorLst.append(
-                    "Exception when defining guns:\n{:}".format(e)
-                )
-
-            tv.delete(*tv.get_children())
-
-            def dot_align(v):
-                decimalLeft = 12
-                decimalRight = 6
-                dotIndex = "{:,}".format(v).find(".")
-                spacePad = max(decimalLeft - dotIndex, 0)
-                return (
-                    " " * spacePad
-                    + "{:,}".format(v)[: dotIndex + 4]
-                    + " "
-                    + format(v)[dotIndex + 4 : dotIndex + 7]
-                )
-
-            # foreach row of pokemon data insert the row into the treeview.
-            for row in self.tableData:
-                tv.insert("", "end", values=tuple(dot_align(v) for v in row))
-
-            propBanner.set("")
-
-            updateError()
-
-        # ----------------------- operation panel -----------------------
-
+    def addOpsFrm(self, parent):
         opFrm = LabelFrame(parent, text="Operation")
         opFrm.grid(row=1, column=2, sticky="nsew")
 
         opFrm.columnconfigure(0, weight=1)
-        opFrm.rowconfigure(4, weight=1)
+        opFrm.columnconfigure(1, weight=1)
+        opFrm.rowconfigure(0, weight=1)
+        opFrm.rowconfigure(3, weight=1)
 
-        def addRatInput(parent, rowIndex, labelText, default="1.0"):
-            Label(parent, text=labelText).grid(row=rowIndex, column=0)
-            e = StringVar(parent)
-            e.set(default)
-            en = Entry(
-                parent,
-                textvariable=e,
-                validate="key",
-                validatecommand=(validationNN, "%P"),
-            )
-            en.default = default
-            en.grid(row=rowIndex, column=1)
-            en.bind("<FocusOut>", formatInput)
-            return e, en, rowIndex + 1
+        validationNN = parent.register(validateNN)
 
         i = 1
-        webR, webRw, i = addRatInput(opFrm, i, "W.Th. ", "2.0")
-        perR, perRw, i = addRatInput(opFrm, i, "P.Dia. ", "1.0")
+        self.webR, webRw, i = self.add2Input(
+            opFrm, i, "W.Th. ", "2.0", validationNN
+        )
+        self.perR, perRw, i = self.add2Input(
+            opFrm, i, "P.Dia. ", "1.0", validationNN
+        )
 
         ratioEntrys = (webRw, perRw)
-        directEntrys = (perw,)
+        directEntrys = (self.perw,)
 
         def configEntry():
-            if geoLocked.get() == 0:
+            if self.geoLocked.get() == 0:
                 for en in ratioEntrys:
                     en.config(state="disabled")
                 for en in directEntrys:
@@ -284,53 +284,148 @@ class IB(Frame):
 
         configEntry()
 
-        def webcallback(var, index, mode):
-            if any(
-                (
-                    webmm.get() == "",
-                    webR.get() == "",
-                    perR.get() == "",
-                )
-            ):
-                pass
-            else:
-                if geoLocked.get() == 1:
-                    try:
-                        self.geomError = False
-                        permm.set(
-                            float(webmm.get())
-                            / float(webR.get())
-                            * float(perR.get())
-                        )
-                    except ZeroDivisionError:
-                        self.geomError = True
-
-        webmm.trace_add("write", webcallback)
-        webR.trace_add("write", webcallback)
-        perR.trace_add("write", webcallback)
-        grlR.trace_add("write", webcallback)
+        self.webmm.trace_add("write", self.webcallback)
+        self.webR.trace_add("write", self.webcallback)
+        self.perR.trace_add("write", self.webcallback)
 
         Checkbutton(
             opFrm,
             text="Lock Geometry",
-            variable=geoLocked,
+            variable=self.geoLocked,
             onvalue=1,
             offvalue=0,
             command=configEntry,
         ).grid(row=0, column=0, columnspan=2, sticky="nsew")
 
-        Button(opFrm, text="Calculate", command=calculate).grid(
-            row=4, column=0, columnspan=2, sticky="nsew"
+        Button(opFrm, text="Calculate", command=self.calculate).grid(
+            row=3, column=0, columnspan=2, sticky="nsew"
         )
 
-        parent.bind("<space>", calculate)
+    def addErrFrm(self, parent):
+        errorFrm = LabelFrame(parent, text="Errors")
+        errorFrm.grid(row=1, column=1, sticky="nsew")
+        errorFrm.columnconfigure(0, weight=1)
+        errorFrm.rowconfigure(0, weight=1)
+
+        errScroll = Scrollbar(errorFrm, orient="vertical")
+        errScroll.grid(row=0, column=1, sticky="nsew")
+        self.errorText = Text(
+            errorFrm, yscrollcommand=errScroll.set, height=1, wrap=WORD
+        )
+        self.errorText.grid(row=0, column=0, sticky="nsew")
+
+    def addTblFrm(self, parent):
+        columnList = [
+            "Event",
+            "Time/s",
+            "Travel/m",
+            "Burnup/1",
+            "Velocity/ms^-1",
+            "Pressure/Pa",
+        ]
+        tblFrm = LabelFrame(parent, text="Result Table")
+        tblFrm.grid(row=0, column=1, sticky="nsew")
+        tblFrm.columnconfigure(0, weight=1)
+        tblFrm.rowconfigure(0, weight=1)
+
+        self.tv = ttk.Treeview(tblFrm, selectmode="browse")
+        self.tv.grid(row=0, column=0, sticky="nsew")
+
+        self.tv["columns"] = columnList
+        self.tv["show"] = "headings"
+
+        for column in columnList:  # foreach column
+            self.tv.heading(
+                column, text=column
+            )  # let the column heading = column name
+            self.tv.column(column, stretch=1, width=10)
+
+        vertscroll = Scrollbar(tblFrm, orient="vertical")  # create a scrollbar
+        vertscroll.configure(command=self.tv.yview)  # make it vertical
+        vertscroll.grid(row=0, column=1, sticky="nsew")
+
+        horzscroll = Scrollbar(tblFrm, orient="horizontal")
+        horzscroll.configure(command=self.tv.xview)
+        horzscroll.grid(row=1, column=0, sticky="nsew")
+        self.tv.configure(
+            yscrollcommand=vertscroll.set, xscrollcommand=horzscroll.set
+        )  # assign the scrollbar to the Treeview Widget
+
+    def add2Input(
+        self, parent, rowIndex, labelText, default="1.0", validation=None
+    ):
+        Label(parent, text=labelText).grid(
+            row=rowIndex, column=0, sticky="nsew"
+        )
+        parent.rowconfigure(rowIndex, weight=1)
+        e = StringVar(parent)
+        e.set(default)
+        en = Entry(
+            parent,
+            textvariable=e,
+            validate="key",
+            validatecommand=(validation, "%P"),
+        )
+        en.default = default
+        en.grid(row=rowIndex, column=1, sticky="nsew")
+        en.bind("<FocusOut>", formatInput)
+        return e, en, rowIndex + 1
+
+    def add3Input(
+        self,
+        parent,
+        rowIndex,
+        labelText,
+        unitText,
+        default="0.0",
+        validation=None,
+    ):
+        Label(parent, text=labelText).grid(
+            row=rowIndex, column=0, sticky="nsew"
+        )
+        parent.rowconfigure(rowIndex, weight=1)
+        e = StringVar(parent)
+        e.set(default)
+        en = Entry(
+            parent,
+            textvariable=e,
+            validate="key",
+            validatecommand=(validation, "%P"),
+        )
+        en.default = default
+        en.grid(row=rowIndex, column=1, sticky="nsew")
+        en.bind("<FocusOut>", formatInput)
+        Label(parent, text=unitText).grid(row=rowIndex, column=2, sticky="nsew")
+        return e, en, rowIndex + 1
+
+    def webcallback(self, var, index, mode):
+        if any(
+            (
+                self.webmm.get() == "",
+                self.webR.get() == "",
+                self.perR.get() == "",
+            )
+        ):
+            pass
+        else:
+            if self.geoLocked.get() == 1:
+                try:
+                    self.geomError = False
+                    self.permm.set(
+                        float(self.webmm.get())
+                        / float(self.webR.get())
+                        * float(self.perR.get())
+                    )
+                except ZeroDivisionError:
+                    self.geomError = True
 
 
 if __name__ == "__main__":
     root = Tk()
     ibPanel = IB(root)
     # allow parent window resizing
-    root.columnconfigure(1, weight=1)
-    root.rowconfigure(1, weight=1)
+
+    # root.rowconfigure(0, weight=1)
+    # root.columnconfigure(1, weight=1)
 
     root.mainloop()

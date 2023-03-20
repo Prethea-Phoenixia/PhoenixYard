@@ -2,158 +2,8 @@ import enum
 
 import csv
 
-from math import pi
-
-
-def bisect(f, x_0, x_1, tol=1e-9, it=1000):
-    """
-    bisection method to numerically solve for zero for a function
-    taking one variable
-    two initial guesses must be of opposite sign.
-    The root found is guaranteed to be within the range specified.
-
-    tol: tolerance of f(x) if x is root
-    it: maximum iteration
-    """
-    a = x_0
-    b = x_1
-
-    if abs(f(a)) < tol:
-        return a, f(a)
-    elif abs(f(b)) < tol:
-        return b, f(b)
-    elif f(a) * f(b) > 0:
-        raise ValueError("Initial Guesses Must Be Of Opposite Sign")
-
-    for _ in range(it):
-        c = (a + b) / 2
-        if abs(f(c)) < tol:
-            return (c, f(c))
-        if f(c) * f(a) > 0:
-            a = c
-        else:
-            b = c
-
-    raise ValueError("Maximum iteration exceeded at ({},{})".format(c, f(c)))
-
-
-def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9):
-    """
-    Runge Kutta Fehlberg method, of the fourth and fifth order
-    Even though this involves a lot more computation per cycle,
-    in practice since the step size is adaptive with regard to
-    the tolerance specified, significant amount of extraneous
-    computation can be saved.
-    """
-    y_this = iniValTuple
-    x = x_0
-    beta = 0.9  # "safety" factor
-    h = x_1 - x_0  # initial step size
-    i = 0
-    while (h > 0 and x < x_1) or (h < 0 and x > x_1):
-        i += 1
-        K1 = dTupleFunc(x, *y_this)
-        K1 = tuple(k * h for k in K1)
-        if any(isinstance(v, complex) for v in K1):
-            h *= 0.5
-            continue
-
-        K2 = dTupleFunc(
-            x + 0.2 * h, *(y + 0.2 * k1 for y, k1 in zip(y_this, K1))
-        )
-        K2 = tuple(k * h for k in K2)
-
-        if any(isinstance(v, complex) for v in K2):
-            h *= 0.5
-            continue
-
-        K3 = dTupleFunc(
-            x + 0.375 * h,
-            *(y + (3 * k1 + 9 * k2) / 32 for y, k1, k2 in zip(y_this, K1, K2))
-        )
-        K3 = tuple(k * h for k in K3)
-
-        if any(isinstance(v, complex) for v in K3):
-            h *= 0.5
-            continue
-
-        K4 = dTupleFunc(
-            x + 12 / 13 * h,
-            *(
-                y + (1932 * k1 - 7200 * k2 + 7296 * k3) / 2197
-                for y, k1, k2, k3 in zip(y_this, K1, K2, K3)
-            )
-        )
-        K4 = tuple(k * h for k in K4)
-
-        if any(isinstance(v, complex) for v in K4):
-            h *= 0.5
-            continue
-
-        K5 = dTupleFunc(
-            x + h,
-            *(
-                y + 439 / 216 * k1 - 8 * k2 + 3680 / 513 * k3 - 845 / 4104 * k4
-                for y, k1, k2, k3, k4 in zip(y_this, K1, K2, K3, K4)
-            )
-        )
-        K5 = tuple(k * h for k in K5)
-
-        if any(isinstance(v, complex) for v in K5):
-            h *= 0.5
-            continue
-
-        # 20520
-        K6 = dTupleFunc(
-            x + 0.5 * h,
-            *(
-                y
-                + -8 / 27 * k1
-                + 2 * k2
-                - 3544 / 2565 * k3
-                + 1859 / 4104 * k4
-                - 11 / 40 * k5
-                for y, k1, k2, k3, k4, k5 in zip(y_this, K1, K2, K3, K4, K5)
-            )
-        )
-        K6 = tuple(k * h for k in K6)
-
-        y_next = tuple(
-            y + 25 / 216 * k1 + 1408 / 2565 * k3 + 2197 / 4104 * k4 - 1 / 5 * k5
-            for y, k1, k3, k4, k5 in zip(y_this, K1, K3, K4, K5)
-        )  # forth order estimation
-        z_next = tuple(
-            y
-            + 16 / 135 * k1
-            + 6656 / 12825 * k3
-            + 28561 / 56430 * k4
-            - 9 / 50 * k5
-            + 2 / 55 * k6
-            for y, k1, k3, k4, k5, k6 in zip(y_this, K1, K3, K4, K5, K6)
-        )  # fifth order estimation
-
-        epsilon = (
-            sum(abs(z - y) ** 2 for z, y in zip(z_next, y_next)) ** 0.5
-        )  # error estimation
-        if epsilon >= tol:  # error is greater than acceptable
-            h *= beta * (tol / (2 * epsilon)) ** 0.2
-
-        else:
-            y_this = y_next
-            x += h
-            if epsilon != 0:  # sometimes the error can be estimated to be 0
-                h *= (
-                    beta * (tol / (2 * epsilon)) ** 0.25
-                )  # apply the new best estimate
-
-        if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
-            h = x_1 - x
-
-    if abs(x - x_1) > tol:
-        raise ValueError(
-            "Premature Termination of Integration, after {} Cycles".format(i)
-        )
-    return y_this
+from math import pi, log
+from numerical import *
 
 
 class Geometry(enum.Enum):
@@ -343,8 +193,8 @@ class Propellant:
         self.Z_b = (
             self.e1 + self.rho
         ) / self.e1  # second phase burning Z upper limit
-        Z = 1
-        psi_s = self.chi * Z * (1 + self.labda * Z + self.mu * Z**2)
+
+        psi_s = self.chi * (1 + self.labda + self.mu)
 
         # second phase of burning rate parameters, Z from 1 to Z_b
         self.chi_s = (1 - psi_s * self.Z_b**2) / (self.Z_b - self.Z_b**2)
@@ -367,6 +217,7 @@ class Gun:
         chamberVolume,
         squeezePressure,
         lengthGun,
+        chamberExpansion,
     ):
         self.S = (caliber / 2) ** 2 * pi
         self.m = shotMass
@@ -375,14 +226,16 @@ class Gun:
         self.V0 = chamberVolume
         self.p0 = squeezePressure
         self.l_g = lengthGun
-
+        self.chi_k = chamberExpansion  # ration of l0 / l_chamber
         self.Delta = self.omega / self.V0
-        self.phi = 1 + self.omega / (3 * self.m)  # extra work factor
+        self.l0 = self.V0 / self.S
+        Labda = self.l_g / self.l0
+        self.phi = 1 + self.omega / (3 * self.m) * (
+            1 - (1 - 1 / self.chi_k) * 2.303 * log(Labda + 1) / Labda
+        )  # extra work factor, chamberage effect averaged over entire length
         self.v_j = (
             2 * self.f * self.omega / (self.theta * self.phi * self.m)
         ) ** 0.5
-        self.l0 = self.V0 / self.S
-
         self.B = (
             self.S**2
             * self.e1**2
@@ -392,8 +245,8 @@ class Gun:
 
         if self.p0 == 0:
             raise ValueError(
-                "p0 = 0 will cause starting issue for ODE solver in this\n"
-                + " implementation. If necessary, approximate result by\n"
+                "p0 = 0 will cause starting issue for ODE solver in this"
+                + " implementation. If necessary, approximate result by"
                 + " finding the limit of p0->0"
             )
 
@@ -402,16 +255,16 @@ class Gun:
                 self.f / self.p0 + self.alpha - 1 / self.rho_p
             )
 
-    def fPsi(self, Z):
+    def _fPsi(self, Z):
         if Z < 1.0:
             return self.chi * Z * (1 + self.labda * Z + self.mu * Z**2)
         elif Z < self.Z_b:
-            return self.chi_s * Z / self.Z_b * (1 + self.labda_s * Z / self.Z_b)
+            return self.chi_s * Z * (1 + self.labda_s * Z)
         else:
             return 1.0
 
-    def fp_bar(self, Z, l_bar, v_bar):
-        psi = self.fPsi(Z)
+    def _fp_bar(self, Z, l_bar, v_bar):
+        psi = self._fPsi(Z)
         l_psi_bar = (
             1
             - self.Delta / self.rho_p
@@ -424,9 +277,9 @@ class Gun:
         ) / (self.S * self.l0 * (l_bar + l_psi_bar) * self.f * self.Delta)
         return p_bar
 
-    def ode_t(self, t_bar, Z, l_bar, v_bar):
+    def _ode_t(self, t_bar, Z, l_bar, v_bar):
         """return d/dt_bar for the inputs in that order, first dummy variable"""
-        p_bar = self.fp_bar(Z, l_bar, v_bar)
+        p_bar = self._fp_bar(Z, l_bar, v_bar)
         if Z < self.Z_b:
             dZ = (self.theta / (2 * self.B)) ** 0.5 * (
                 p_bar
@@ -439,12 +292,12 @@ class Gun:
 
         return (dZ, dl_bar, dv_bar)
 
-    def ode_l(self, l_bar, Z, t_bar, v_bar):
+    def _ode_l(self, l_bar, Z, t_bar, v_bar):
         """return d/dl_bar for the inputs in that order, first dummy variable
         the 1/v_bar pose a starting problem that prevent us from using it from
         initial condition."""
 
-        p_bar = self.fp_bar(Z, l_bar, v_bar)
+        p_bar = self._fp_bar(Z, l_bar, v_bar)
 
         if Z < self.Z_b:
             dZ = (
@@ -457,7 +310,7 @@ class Gun:
         dt_bar = 1 / v_bar
         return (dZ, dt_bar, dv_bar)
 
-    def integrate(self, steps=100, tol=1e-9):
+    def integrate(self, steps=40, tol=1e-9):
         """
         this step is calculated to the square of the specified accuracy since
         the result can be very close to 0 if the squeeze pressure is very low
@@ -466,7 +319,7 @@ class Gun:
         if 0 is accepted as solution for Z0 the RKF45 integrator later will not
         be able to self-start the integration.
         """
-        Z_0 = bisect(lambda z: self.fPsi(z) - self.psi_0, 0, 1, tol**2)[0]
+        Z_0 = bisect(lambda z: self._fPsi(z) - self.psi_0, 0, 1, tol**1)[0]
         l_g_bar = self.l_g / self.l0
 
         print("finding burnout")
@@ -492,19 +345,19 @@ class Gun:
         burnoutFound = True
         while self.Z_b - Z_i >= tol:
             Z_j, l_bar_j, v_bar_j = RKF45OverTuple(
-                self.ode_t, (Z_i, l_bar_i, v_bar_i), t_bar_i, t_bar_j, tol
+                self._ode_t, (Z_i, l_bar_i, v_bar_i), t_bar_i, t_bar_j, tol
             )
-            if l_bar_j > l_g_bar:
-                burnoutFound = False
-                break
 
             if Z_j >= self.Z_b:  # burnout has already happened
                 delta_t_bar /= 2  # shrink the interval by half
                 t_bar_j = t_bar_i + delta_t_bar
-            else:  # burnout has not happened, search further
-                t_bar_i = t_bar_j  # increment the search interval
-                t_bar_j += delta_t_bar
-                Z_i, l_bar_i, v_bar_i = Z_j, l_bar_j, v_bar_j
+            else:
+                Z_i, l_bar_i, t_bar_i, v_bar_i = Z_j, l_bar_j, t_bar_j, v_bar_j
+                if l_bar_j > l_g_bar:  # barrel length has been exhausted
+                    burnoutFound = False
+                    break
+                else:  # burnout has not happened, search further
+                    t_bar_j += delta_t_bar  # increment search interval
 
         if burnoutFound:
             t_bar_b, l_bar_b, v_bar_b = t_bar_i, l_bar_i, v_bar_i
@@ -517,51 +370,62 @@ class Gun:
         handling of burning in the reverse direction. 
         """
         Z_e, t_bar_e, v_bar_e = RKF45OverTuple(
-            self.ode_l,
+            self._ode_l,
             (Z_i, t_bar_i, v_bar_i),
             l_bar_i,
             l_g_bar,
             tol,
         )  # e for exit condition
 
+        """
+        populate data for output purposes
+        """
+
         print("populating")
         t_bar_data = []
-
         t_bar_i, Z_i, l_bar_i, v_bar_i = 0, Z_0, 0, 0
 
         t_bar_data.append(
-            (t_bar_i, l_bar_i, Z_i, v_bar_i, self.p0 / (self.f * self.Delta))
+            (
+                "SHOT START",
+                t_bar_i,
+                l_bar_i,
+                Z_i,
+                v_bar_i,
+                self.p0 / (self.f * self.Delta),
+            )
         )
         for i in range(steps):
             t_bar_i = (t_bar_e - 0) / steps * i
             t_bar_i2 = (t_bar_e - 0) / steps * (i + 1)
             Z_i, l_bar_i, v_bar_i = RKF45OverTuple(
-                self.ode_t, (Z_i, l_bar_i, v_bar_i), t_bar_i, t_bar_i2, tol
+                self._ode_t, (Z_i, l_bar_i, v_bar_i), t_bar_i, t_bar_i2, tol
             )
 
             t_bar_data.append(
                 (
+                    "SHOT EXIT" if i == steps - 1 else "",
                     t_bar_i2,
                     l_bar_i,
                     Z_i,
                     v_bar_i,
-                    self.fp_bar(Z_i, l_bar_i, v_bar_i),
+                    self._fp_bar(Z_i, l_bar_i, v_bar_i),
                 )
             )
 
         t_data = tuple(
             (
+                tag,
                 t_bar * self.l0 / self.v_j,
                 l_bar * self.l0,
-                self.fPsi(Z),
+                self._fPsi(Z),
                 v_bar * self.v_j,
                 p_bar * self.f * self.Delta,
             )
-            for (t_bar, l_bar, Z, v_bar, p_bar) in t_bar_data
+            for (tag, t_bar, l_bar, Z, v_bar, p_bar) in t_bar_data
         )
 
         return t_data
-        # ---------------
 
     def __getattr__(self, attrName):
         try:
@@ -579,21 +443,11 @@ if __name__ == "__main__":
     M17 = compositions["M17 JAN-PD-26"]
 
     M17SHC = Propellant(
-        M17, Geometry.SEVEN_PERF_ROSETTE, 5.5e-3 * 2, 5.5e-3, 2.25
-    )
-
-    test = Gun(
-        50e-3,
-        1,
-        M17SHC,
-        1,
-        1 / M17SHC.rho_p / M17SHC.maxLF / 0.999,
-        10,
-        3500e-3,
+        M17, Geometry.SEVEN_PERF_ROSETTE, 0.55e-3 * 2, 0.55e-3, 2.25
     )
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
-    # test = Gun(57e-3, 2.8, M17SHC, 1.16, 1.51e-3, 3e7, 3.624)
+    test = Gun(57e-3, 2.8, M17SHC, 1.16, 1.51e-3, 3e7, 3.624, 1.2)
 
     print(*test.integrate(100, 1e-9), sep="\n")
 
