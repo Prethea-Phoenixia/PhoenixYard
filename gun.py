@@ -378,6 +378,25 @@ class Gun:
         )  # e for exit condition
 
         """
+        Subscript p indicate peak pressure
+        In theory the time-domain equations should be flatter around the
+        peak pressure point. As well as, not having starting issues.
+        """
+
+        def f(t_bar):
+            Z, l_bar, v_bar = RKF45OverTuple(self._ode_t, (Z_0, 0, 0), 0, t_bar)
+
+            return self._fp_bar(Z, l_bar, v_bar)
+
+        t_bar_p_1, t_bar_p_2 = gss(f, 0, t_bar_e, tol=tol, findMin=False)
+
+        t_bar_p = (t_bar_p_1 + t_bar_p_2) / 2
+
+        Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
+            self._ode_t, (Z_0, 0, 0), 0, t_bar_p
+        )
+
+        """
         populate data for output purposes
         """
 
@@ -398,6 +417,19 @@ class Gun:
         for i in range(steps):
             t_bar_i = (t_bar_e - 0) / steps * i
             t_bar_i2 = (t_bar_e - 0) / steps * (i + 1)
+
+            if t_bar_i <= t_bar_p <= t_bar_i2:
+                t_bar_data.append(
+                    (
+                        "PEAK PRESSURE",
+                        t_bar_p,
+                        l_bar_p,
+                        Z_p,
+                        v_bar_p,
+                        self._fp_bar(Z_p, l_bar_p, v_bar_p),
+                    )
+                )
+
             Z_i, l_bar_i, v_bar_i = RKF45OverTuple(
                 self._ode_t, (Z_i, l_bar_i, v_bar_i), t_bar_i, t_bar_i2, tol
             )

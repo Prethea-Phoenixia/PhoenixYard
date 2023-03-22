@@ -32,27 +32,6 @@ def formatInput(event):
         event.widget.insert(0, float(v))
 
 
-"""
-
-def dot_align(v):
-    try:
-        float(v)
-    except ValueError:
-        return v
-    decimalLeft = 12
-    decimalRight = 6
-    dotIndex = "{:,}".format(v).find(".")
-    spacePad = max(decimalLeft - dotIndex, 0)
-    return (
-        "|"
-        + " " * spacePad
-        + "{:,}".format(v)[: dotIndex + 4]
-        + " "
-        + format(v)[dotIndex + 4 : dotIndex + 7]
-    )
-"""
-
-
 def dot_aligned(matrix):
     transposed = []
     # print(matrix)
@@ -71,6 +50,7 @@ class IB(Frame):
     def __init__(self, parent):
         Frame.__init__(self, parent)
         parent.title("Phoenix's Internal Ballistics Solver")
+        # parent.geometry("600x400")
 
         self.compositions = GrainComp.readFile("propellants.csv")
         self.geometries = {i.desc: i for i in Geometry}
@@ -96,9 +76,9 @@ class IB(Frame):
 
         parent.columnconfigure(0, weight=1)
         parent.columnconfigure(1, weight=3)
-        parent.columnconfigure(2, weight=1)
+        parent.columnconfigure(2, weight=2)
 
-        parent.rowconfigure(0, weight=3)
+        parent.rowconfigure(0, weight=2)
         parent.rowconfigure(1, weight=1)
 
         self.addSpecFrm(parent)
@@ -126,9 +106,8 @@ class IB(Frame):
         except Exception as e:
             print(e)
             self.prop = None
-            self.errorLst.append(
-                "Exception when defining propellant:{:}".format(e)
-            )
+            self.errorLst.append("Exception when defining propellant:")
+            self.errorLst.append(str(e))
 
         try:
             chamberVolume = (
@@ -151,13 +130,15 @@ class IB(Frame):
 
         except Exception as e:
             self.gun = None
-            self.errorLst.append("Exception when defining guns:\n{:}".format(e))
+            self.errorLst.append("Exception when defining guns:")
+            self.errorLst.append(str(e))
 
         if self.gun is not None:
             try:
                 self.tableData = self.gun.integrate()
             except Exception as e:
-                self.errorLst.append("Exception integrating:\n{:}".format(e))
+                self.errorLst.append("Exception integrating:")
+                self.errorLst.append(str(e))
 
         self.tv.delete(*self.tv.get_children())
         self.tableData = dot_aligned(self.tableData)
@@ -187,13 +168,10 @@ class IB(Frame):
         )
 
     def addParFrm(self, parent):
-        parFrm = LabelFrame(
-            parent,
-            text="Parameters",
-        )
+        parFrm = LabelFrame(parent, text="Parameters")
         parFrm.grid(row=0, column=2, sticky="nsew")
-        parFrm.columnconfigure(0, weight=1)
-        parFrm.columnconfigure(1, weight=4)
+        parFrm.columnconfigure(0, weight=3)
+        parFrm.columnconfigure(1, weight=3)
         parFrm.columnconfigure(2, weight=1)
 
         # validation
@@ -215,14 +193,14 @@ class IB(Frame):
 
         Label(parFrm, text="Propellant").grid(row=4, column=0)
         # Create Dropdown menu
-        self.dropProp = OptionMenu(
-            parFrm, self.clickedProp, *self.propOptions
-        ).grid(row=4, column=1, columnspan=2, sticky="nsew")
+        self.dropProp = OptionMenu(parFrm, self.clickedProp, *self.propOptions)
+        self.dropProp.grid(row=4, column=1, columnspan=2, sticky="nsew")
+        self.dropProp.configure(width=25)
         Label(parFrm, text="Grain Shape").grid(row=5, column=0)
         # Create Dropdown menu
-        self.dropGeom = OptionMenu(
-            parFrm, self.clickedGeom, *self.geometries
-        ).grid(row=5, column=1, columnspan=2, sticky="nsew")
+        self.dropGeom = OptionMenu(parFrm, self.clickedGeom, *self.geometries)
+        self.dropGeom.grid(row=5, column=1, columnspan=2, sticky="nsew")
+        self.dropGeom.configure(width=25)
         i += 2
 
         parFrm.rowconfigure(4, weight=1)
@@ -258,8 +236,7 @@ class IB(Frame):
         opFrm.rowconfigure(3, weight=1)
 
         validationNN = parent.register(validateNN)
-
-        i = 1
+        i = 0
         self.webR, webRw, i = self.add2Input(
             opFrm, i, "W.Th. ", "2.0", validationNN
         )
@@ -295,7 +272,7 @@ class IB(Frame):
             onvalue=1,
             offvalue=0,
             command=configEntry,
-        ).grid(row=0, column=0, columnspan=2, sticky="nsew")
+        ).grid(row=2, column=0, columnspan=2, sticky="nsew")
 
         Button(opFrm, text="Calculate", command=self.calculate).grid(
             row=3, column=0, columnspan=2, sticky="nsew"
@@ -310,7 +287,11 @@ class IB(Frame):
         errScroll = Scrollbar(errorFrm, orient="vertical")
         errScroll.grid(row=0, column=1, sticky="nsew")
         self.errorText = Text(
-            errorFrm, yscrollcommand=errScroll.set, height=1, wrap=WORD
+            errorFrm,
+            yscrollcommand=errScroll.set,
+            wrap=WORD,
+            height=0,
+            width=60,
         )
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
@@ -338,7 +319,7 @@ class IB(Frame):
             self.tv.heading(
                 column, text=column
             )  # let the column heading = column name
-            self.tv.column(column, stretch=1, width=10)
+            self.tv.column(column, stretch=1, width=0)
 
         vertscroll = Scrollbar(tblFrm, orient="vertical")  # create a scrollbar
         vertscroll.configure(command=self.tv.yview)  # make it vertical
@@ -365,6 +346,7 @@ class IB(Frame):
             textvariable=e,
             validate="key",
             validatecommand=(validation, "%P"),
+            width=0,
         )
         en.default = default
         en.grid(row=rowIndex, column=1, sticky="nsew")
@@ -391,6 +373,7 @@ class IB(Frame):
             textvariable=e,
             validate="key",
             validatecommand=(validation, "%P"),
+            width=0,
         )
         en.default = default
         en.grid(row=rowIndex, column=1, sticky="nsew")
