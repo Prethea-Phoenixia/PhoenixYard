@@ -74,12 +74,12 @@ class IB(Frame):
         self.propBanner = StringVar()
         self.geoLocked = IntVar()
 
-        parent.columnconfigure(0, weight=1)
-        parent.columnconfigure(1, weight=3)
-        parent.columnconfigure(2, weight=2)
+        parent.columnconfigure(0, weight=0)
+        parent.columnconfigure(1, weight=1)
+        parent.columnconfigure(2, weight=0)
 
-        parent.rowconfigure(0, weight=2)
-        parent.rowconfigure(1, weight=1)
+        parent.rowconfigure(0, weight=1)
+        parent.rowconfigure(1, weight=0)
 
         self.addSpecFrm(parent)
         self.addParFrm(parent)
@@ -144,7 +144,8 @@ class IB(Frame):
         self.tableData = dot_aligned(self.tableData)
 
         for row in self.tableData:
-            self.tv.insert("", "end", values=row)
+            print(r"{}".format(row[0]))
+            self.tv.insert("", "end", values=row, tags=(row[0],))
 
         self.propBanner.set("")
 
@@ -203,8 +204,8 @@ class IB(Frame):
         self.dropGeom.configure(width=25)
         i += 2
 
-        parFrm.rowconfigure(4, weight=1)
-        parFrm.rowconfigure(5, weight=1)
+        parFrm.rowconfigure(4, weight=0)
+        parFrm.rowconfigure(5, weight=0)
 
         self.webmm, _, i = self.add3Input(
             parFrm, i, "Web Thickness", "mm", "0.0", validationNN
@@ -232,16 +233,16 @@ class IB(Frame):
 
         opFrm.columnconfigure(0, weight=1)
         opFrm.columnconfigure(1, weight=1)
-        opFrm.rowconfigure(0, weight=1)
-        opFrm.rowconfigure(3, weight=1)
+        opFrm.columnconfigure(1, weight=1)
+        opFrm.rowconfigure(2, weight=1)
 
         validationNN = parent.register(validateNN)
         i = 0
         self.webR, webRw, i = self.add2Input(
-            opFrm, i, "W.Th. ", "2.0", validationNN
+            opFrm, i, 1, "W.Th. ", "2.0", validationNN, 10
         )
         self.perR, perRw, i = self.add2Input(
-            opFrm, i, "P.Dia. ", "1.0", validationNN
+            opFrm, i, 1, "P.Dia. ", "1.0", validationNN, 10
         )
 
         ratioEntrys = (webRw, perRw)
@@ -259,6 +260,8 @@ class IB(Frame):
                 for en in directEntrys:
                     en.config(state="disabled")
 
+            self.webcallback(None, None, None)
+
         configEntry()
 
         self.webmm.trace_add("write", self.webcallback)
@@ -272,10 +275,10 @@ class IB(Frame):
             onvalue=1,
             offvalue=0,
             command=configEntry,
-        ).grid(row=2, column=0, columnspan=2, sticky="nsew")
+        ).grid(row=0, column=0, rowspan=2, sticky="nsew")
 
         Button(opFrm, text="Calculate", command=self.calculate).grid(
-            row=3, column=0, columnspan=2, sticky="nsew"
+            row=2, column=0, columnspan=3, sticky="nsew"
         )
 
     def addErrFrm(self, parent):
@@ -314,6 +317,7 @@ class IB(Frame):
 
         self.tv["columns"] = columnList
         self.tv["show"] = "headings"
+        self.tv.tag_configure("PEAK PRESSURE", foreground="orange")
 
         for column in columnList:  # foreach column
             self.tv.heading(
@@ -333,12 +337,19 @@ class IB(Frame):
         )  # assign the scrollbar to the Treeview Widget
 
     def add2Input(
-        self, parent, rowIndex, labelText, default="1.0", validation=None
+        self,
+        parent,
+        rowIndex,
+        colIndex,
+        labelText,
+        default="1.0",
+        validation=None,
+        entryWidth=0,
     ):
         Label(parent, text=labelText).grid(
-            row=rowIndex, column=0, sticky="nsew"
+            row=rowIndex, column=colIndex, sticky="nsew"
         )
-        parent.rowconfigure(rowIndex, weight=1)
+        parent.rowconfigure(rowIndex, weight=0)
         e = StringVar(parent)
         e.set(default)
         en = Entry(
@@ -346,10 +357,10 @@ class IB(Frame):
             textvariable=e,
             validate="key",
             validatecommand=(validation, "%P"),
-            width=0,
+            width=entryWidth,
         )
         en.default = default
-        en.grid(row=rowIndex, column=1, sticky="nsew")
+        en.grid(row=rowIndex, column=colIndex + 1, sticky="nsew")
         en.bind("<FocusOut>", formatInput)
         return e, en, rowIndex + 1
 
@@ -361,11 +372,12 @@ class IB(Frame):
         unitText,
         default="0.0",
         validation=None,
+        entryWidth=0,
     ):
         Label(parent, text=labelText).grid(
             row=rowIndex, column=0, sticky="nsew"
         )
-        parent.rowconfigure(rowIndex, weight=1)
+        parent.rowconfigure(rowIndex, weight=0)
         e = StringVar(parent)
         e.set(default)
         en = Entry(
@@ -373,7 +385,7 @@ class IB(Frame):
             textvariable=e,
             validate="key",
             validatecommand=(validation, "%P"),
-            width=0,
+            width=entryWidth,
         )
         en.default = default
         en.grid(row=rowIndex, column=1, sticky="nsew")

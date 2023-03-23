@@ -384,7 +384,9 @@ class Gun:
         """
 
         def f(t_bar):
-            Z, l_bar, v_bar = RKF45OverTuple(self._ode_t, (Z_0, 0, 0), 0, t_bar)
+            Z, l_bar, v_bar = RKF45OverTuple(
+                self._ode_t, (Z_0, 0, 0), 0, t_bar, tol
+            )
 
             return self._fp_bar(Z, l_bar, v_bar)
 
@@ -392,9 +394,12 @@ class Gun:
 
         t_bar_p = (t_bar_p_1 + t_bar_p_2) / 2
 
-        Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
-            self._ode_t, (Z_0, 0, 0), 0, t_bar_p
-        )
+        if abs(t_bar_p - t_bar_e) < 2 * tol:
+            t_bar_p, Z_p, l_bar_p, v_bar_p = t_bar_e, Z_e, l_g_bar, v_bar_e
+        else:
+            Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
+                self._ode_t, (Z_0, 0, 0), 0, t_bar_p
+            )
 
         """
         populate data for output purposes
