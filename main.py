@@ -144,7 +144,6 @@ class IB(Frame):
         self.tableData = dot_aligned(self.tableData)
 
         for row in self.tableData:
-            print(r"{}".format(row[0]))
             self.tv.insert("", "end", values=row, tags=(row[0],))
 
         self.propBanner.set("")
