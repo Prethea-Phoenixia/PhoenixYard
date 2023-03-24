@@ -24,10 +24,11 @@ _prefix = {
 }
 
 
-def toSI(v, dec=3):
+def toSI(v, dec=4):
     for prefix, magnitude in zip(_prefix.keys(), _prefix.values()):
-        if 1 <= (v / magnitude) <= 1e3:
-            return "{:#.{:}g}".format(v / magnitude, dec) + " " + prefix
+        if 1 <= (v / magnitude) < 1e3:
+            vstr = "{:#.{:}g}".format(v / magnitude, dec)
+            return vstr + " " * (dec + 1 - len(vstr) + vstr.find(".")) + prefix
     if v == 0:
         return "{:#.{:}g}".format(v, dec)
     else:
@@ -53,13 +54,34 @@ def validateNN(inp):
         return False
 
 
-def formatInput(event):
+def validatePI(inp):
+    """
+    validate an input such that the result is a positive integer"""
+
+    if inp == "":
+        return True  # we will catch this by filling the default value
+    try:
+        return float(inp).is_integer() and float(inp) > 0 and "." not in inp
+    except ValueError:
+        return False
+
+
+def formatFloatInput(event):
     v = event.widget.get()
     if v == "":
         event.widget.insert(0, event.widget.default)
     else:
         event.widget.delete(0, END)
         event.widget.insert(0, float(v))
+
+
+def formatIntInput(event):
+    v = event.widget.get()
+    if v == "":
+        event.widget.insert(0, event.widget.default)
+    else:
+        event.widget.delete(0, END)
+        event.widget.insert(0, int(v))
 
 
 def dot_aligned(matrix):
@@ -88,14 +110,15 @@ class IB(Frame):
         self.compositions = GrainComp.readFile("propellants.csv")
         self.geometries = {i.desc: i for i in Geometry}
 
-        self.propOptions = tuple(self.compositions.keys())
-        self.geoOptions = tuple(self.geometries.keys())
-
         self.prop = None
         self.gun = None
         self.tableData = []
         self.errorLst = []
         self.geomError = False
+
+        self.propOptions = tuple(self.compositions.keys())
+        self.geoOptions = tuple(self.geometries.keys())
+        self.domainOptions = ("time", "distance")
 
         # datatype of menu text
         self.clickedProp = StringVar()
@@ -104,6 +127,10 @@ class IB(Frame):
 
         self.clickedGeom = StringVar()
         self.clickedGeom.set(self.geoOptions[0])
+
+        self.clickedOptn = StringVar()
+        self.clickedOptn.set(self.domainOptions[0])
+
         self.propBanner = StringVar()
         self.geoLocked = IntVar()
 
@@ -168,7 +195,9 @@ class IB(Frame):
 
         if self.gun is not None:
             try:
-                self.tableData = self.gun.integrate()
+                self.tableData = self.gun.integrate(
+                    steps=int(self.steps.get()), dom=self.clickedOptn.get()
+                )
             except Exception as e:
                 self.errorLst.append("Exception integrating:")
                 self.errorLst.append(str(e))
@@ -260,21 +289,26 @@ class IB(Frame):
         )
 
     def addOpsFrm(self, parent):
-        opFrm = LabelFrame(parent, text="Operation")
+        opFrm = LabelFrame(parent, text="Options")
         opFrm.grid(row=1, column=2, sticky="nsew")
 
         opFrm.columnconfigure(0, weight=1)
         opFrm.columnconfigure(1, weight=1)
         opFrm.columnconfigure(1, weight=1)
-        opFrm.rowconfigure(2, weight=1)
 
         validationNN = parent.register(validateNN)
         i = 0
         self.webR, webRw, i = self.add2Input(
-            opFrm, i, 0, "W.Th. ", "2.0", validationNN
+            opFrm, i, 0, "W.Th. ", "2.0", validation=validationNN
         )
         self.perR, perRw, i = self.add2Input(
-            opFrm, i, 0, "P.Dia. ", "1.0", validationNN
+            opFrm,
+            i,
+            0,
+            "P.Dia. ",
+            "1.0",
+            validation=validationNN,
+            entryWidth=10,
         )
 
         ratioEntrys = (webRw, perRw)
@@ -309,9 +343,28 @@ class IB(Frame):
             command=configEntry,
         ).grid(row=0, column=2, rowspan=2, sticky="nsew")
 
-        Button(opFrm, text="Calculate", command=self.calculate).grid(
-            row=2, column=0, columnspan=3, sticky="nsew"
+        Label(opFrm, text="∫ Domain").grid(row=2, column=0, sticky="nsew")
+
+        self.dropOptn = OptionMenu(opFrm, self.clickedOptn, *self.domainOptions)
+        self.dropOptn.grid(row=2, column=1, columnspan=2, sticky="nsew")
+        # self.dropOptn.configure(width=0)
+
+        validationPI = parent.register(validatePI)
+
+        self.steps, _, _ = self.add3Input(
+            opFrm,
+            3,
+            "Show",
+            "Steps",
+            "50",
+            validation=validationPI,
+            formatter=formatIntInput,
         )
+
+        Button(opFrm, text="Calculate", command=self.calculate).grid(
+            row=4, column=0, columnspan=3, sticky="nsew"
+        )
+        opFrm.rowconfigure(4, weight=1)
 
     def addErrFrm(self, parent):
         errorFrm = LabelFrame(parent, text="Errors")
@@ -326,7 +379,7 @@ class IB(Frame):
             yscrollcommand=errScroll.set,
             wrap=WORD,
             height=0,
-            width=60,
+            width=75,
         )
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
@@ -350,6 +403,7 @@ class IB(Frame):
         self.tv["columns"] = columnList
         self.tv["show"] = "headings"
         self.tv.tag_configure("PEAK PRESSURE", foreground="orange")
+        self.tv.tag_configure("BURNOUT", foreground="brown")
         self.tv.tag_configure("monospace", font=("courier", 10))
 
         for column in columnList:  # foreach column
@@ -377,7 +431,8 @@ class IB(Frame):
         labelText,
         default="1.0",
         validation=None,
-        entryWidth=0,
+        entryWidth=5,
+        formatter=formatFloatInput,
     ):
         Label(parent, text=labelText).grid(
             row=rowIndex, column=colIndex, sticky="nsew"
@@ -394,7 +449,7 @@ class IB(Frame):
         )
         en.default = default
         en.grid(row=rowIndex, column=colIndex + 1, sticky="nsew")
-        en.bind("<FocusOut>", formatInput)
+        en.bind("<FocusOut>", formatter)
         return e, en, rowIndex + 1
 
     def add3Input(
@@ -405,7 +460,8 @@ class IB(Frame):
         unitText,
         default="0.0",
         validation=None,
-        entryWidth=0,
+        entryWidth=5,
+        formatter=formatFloatInput,
     ):
         Label(parent, text=labelText).grid(
             row=rowIndex, column=0, sticky="nsew"
@@ -422,7 +478,7 @@ class IB(Frame):
         )
         en.default = default
         en.grid(row=rowIndex, column=1, sticky="nsew")
-        en.bind("<FocusOut>", formatInput)
+        en.bind("<FocusOut>", formatter)
         Label(parent, text=unitText).grid(row=rowIndex, column=2, sticky="nsew")
         return e, en, rowIndex + 1
 

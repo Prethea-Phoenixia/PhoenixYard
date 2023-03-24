@@ -310,7 +310,7 @@ class Gun:
         dt_bar = 1 / v_bar
         return (dZ, dt_bar, dv_bar)
 
-    def integrate(self, steps=40, tol=1e-9):
+    def integrate(self, steps=100, tol=1e-9, dom="time"):
         """
         this step is calculated to the square of the specified accuracy since
         the result can be very close to 0 if the squeeze pressure is very low
@@ -383,11 +383,12 @@ class Gun:
         peak pressure point. As well as, not having starting issues.
         """
 
+        print("finding peak pressure condition")
+
         def f(t_bar):
             Z, l_bar, v_bar = RKF45OverTuple(
                 self._ode_t, (Z_0, 0, 0), 0, t_bar, tol
             )
-
             return self._fp_bar(Z, l_bar, v_bar)
 
         t_bar_p_1, t_bar_p_2 = gss(f, 0, t_bar_e, tol=tol, findMin=False)
@@ -398,7 +399,7 @@ class Gun:
             t_bar_p, Z_p, l_bar_p, v_bar_p = t_bar_e, Z_e, l_g_bar, v_bar_e
         else:
             Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
-                self._ode_t, (Z_0, 0, 0), 0, t_bar_p
+                self._ode_t, (Z_0, 0, 0), 0, t_bar_p, tol
             )
 
         """
@@ -406,51 +407,120 @@ class Gun:
         """
 
         print("populating")
-        t_bar_data = []
-        t_bar_i, Z_i, l_bar_i, v_bar_i = 0, Z_0, 0, 0
+        bar_data = []
 
-        t_bar_data.append(
+        bar_data.append(
             (
                 "SHOT START",
-                t_bar_i,
-                l_bar_i,
-                Z_i,
-                v_bar_i,
+                0,
+                0,
+                Z_0,
+                0,
                 self.p0 / (self.f * self.Delta),
             )
         )
-        for i in range(steps):
-            t_bar_i = t_bar_e / steps * i
-            t_bar_i2 = t_bar_e / steps * (i + 1)
 
-            if t_bar_i <= t_bar_p <= t_bar_i2:
-                t_bar_data.append(
+        if dom == "time":
+            t_bar_i, Z_i, l_bar_i, v_bar_i = 0, Z_0, 0, 0
+            for i in range(steps):
+                t_bar_i2 = t_bar_e / steps * (i + 1)
+
+                if t_bar_i <= t_bar_p <= t_bar_i2:
+                    bar_data.append(
+                        (
+                            "PEAK PRESSURE",
+                            t_bar_p,
+                            l_bar_p,
+                            Z_p,
+                            v_bar_p,
+                            self._fp_bar(Z_p, l_bar_p, v_bar_p),
+                        )
+                    )
+
+                if burnoutFound:
+                    if t_bar_i <= t_bar_b <= t_bar_i2:
+                        bar_data.append(
+                            (
+                                "BURNOUT",
+                                t_bar_b,
+                                l_bar_b,
+                                self.Z_b,
+                                v_bar_b,
+                                self._fp_bar(self.Z_b, l_bar_b, v_bar_b),
+                            )
+                        )
+
+                Z_i, l_bar_i, v_bar_i = RKF45OverTuple(
+                    self._ode_t,
+                    (Z_i, l_bar_i, v_bar_i),
+                    t_bar_i,
+                    t_bar_i2,
+                    tol,
+                )
+
+                bar_data.append(
                     (
-                        "PEAK PRESSURE",
-                        t_bar_p,
-                        l_bar_p,
-                        Z_p,
-                        v_bar_p,
-                        self._fp_bar(Z_p, l_bar_p, v_bar_p),
+                        "SHOT EXIT" if i == steps - 1 else "",
+                        t_bar_i2,
+                        l_bar_i,
+                        Z_i,
+                        v_bar_i,
+                        self._fp_bar(Z_i, l_bar_i, v_bar_i),
                     )
                 )
+                t_bar_i = t_bar_i2
 
-            Z_i, l_bar_i, v_bar_i = RKF45OverTuple(
-                self._ode_t, (Z_i, l_bar_i, v_bar_i), t_bar_i, t_bar_i2, tol
-            )
+        else:
+            t_bar_i, Z_i, l_bar_i, v_bar_i = t_bar_p, Z_p, l_bar_p, v_bar_p
 
-            t_bar_data.append(
-                (
-                    "SHOT EXIT" if i == steps - 1 else "",
-                    t_bar_i2,
+            for i in range(steps):
+                l_bar_i2 = l_g_bar / steps * (i + 1)
+
+                if l_bar_i <= l_bar_p <= l_bar_i2:
+                    bar_data.append(
+                        (
+                            "PEAK PRESSURE",
+                            t_bar_p,
+                            l_bar_p,
+                            Z_p,
+                            v_bar_p,
+                            self._fp_bar(Z_p, l_bar_p, v_bar_p),
+                        )
+                    )
+
+                if burnoutFound:
+                    if l_bar_i <= l_bar_b <= l_bar_i2:
+                        bar_data.append(
+                            (
+                                "BURNOUT",
+                                t_bar_b,
+                                l_bar_b,
+                                self.Z_b,
+                                v_bar_b,
+                                self._fp_bar(self.Z_b, l_bar_b, v_bar_b),
+                            )
+                        )
+
+                Z_i, t_bar_i, v_bar_i = RKF45OverTuple(
+                    self._ode_l,
+                    (Z_i, t_bar_i, v_bar_i),
                     l_bar_i,
-                    Z_i,
-                    v_bar_i,
-                    self._fp_bar(Z_i, l_bar_i, v_bar_i),
+                    l_bar_i2,
+                    tol,
                 )
-            )
+                bar_data.append(
+                    (
+                        "SHOT EXIT" if i == steps - 1 else "",
+                        t_bar_i,
+                        l_bar_i2,
+                        Z_i,
+                        v_bar_i,
+                        self._fp_bar(Z_i, l_bar_i2, v_bar_i),
+                    )
+                )
+                l_bar_i = l_bar_i2
 
-        t_data = tuple(
+        data = tuple(
             (
                 tag,
                 t_bar * self.l0 / self.v_j,
@@ -459,10 +529,10 @@ class Gun:
                 v_bar * self.v_j,
                 p_bar * self.f * self.Delta,
             )
-            for (tag, t_bar, l_bar, Z, v_bar, p_bar) in t_bar_data
+            for (tag, t_bar, l_bar, Z, v_bar, p_bar) in bar_data
         )
 
-        return t_data
+        return data
 
     def __getattr__(self, attrName):
         try:
@@ -485,8 +555,8 @@ if __name__ == "__main__":
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
     test = Gun(57e-3, 2.8, M17SHC, 1.16, 1.51e-3, 3e7, 3.624, 1.2)
-
-    print(*test.integrate(100, 1e-9), sep="\n")
+    print(*test.integrate(100, 1e-9, dom="time"), sep="\n")
+    print(*test.integrate(100, 1e-9, dom="distance"), sep="\n")
 
     # lbs/in^3 -> kg/m^3, multiply by 27680
     # in^3/lbs -> m^3/kg, divide by 27680
