@@ -3,6 +3,36 @@ from tkinter import ttk
 from idlelib.tooltip import Hovertip
 from gun import *
 
+_prefix = {
+    "y": 1e-24,  # yocto
+    "z": 1e-21,  # zepto
+    "a": 1e-18,  # atto
+    "f": 1e-15,  # femto
+    "p": 1e-12,  # pico
+    "n": 1e-9,  # nano
+    "u": 1e-6,  # micro
+    "m": 1e-3,  # mili
+    "": 1,  # unit
+    "k": 1e3,  # kilo
+    "M": 1e6,  # mega
+    "G": 1e9,  # giga
+    "T": 1e12,  # tera
+    "P": 1e15,  # peta
+    "E": 1e18,  # exa
+    "Z": 1e21,  # zetta
+    "Y": 1e24,  # yotta
+}
+
+
+def toSI(v, dec=3):
+    for prefix, magnitude in zip(_prefix.keys(), _prefix.values()):
+        if 1 <= (v / magnitude) <= 1e3:
+            return "{:#.{:}g}".format(v / magnitude, dec) + " " + prefix
+    if v == 0:
+        return "{:#.{:}g}".format(v, dec)
+    else:
+        raise ValueError(v + " not possible to assign a SI prefix")
+
 
 def validateNN(inp):
     """
@@ -34,11 +64,14 @@ def formatInput(event):
 
 def dot_aligned(matrix):
     transposed = []
-    # print(matrix)
 
     for seq in zip(*matrix):
-        # print(seq)
-        snums = [str(n) for n in seq]
+        snums = []
+        for n in seq:
+            try:
+                snums.append(toSI(float(n)))
+            except ValueError:
+                snums.append(n)
         dots = [s.find(".") for s in snums]
         m = max(dots)
         transposed.append(tuple(" " * (m - d) + s for s, d in zip(snums, dots)))
@@ -144,7 +177,7 @@ class IB(Frame):
         self.tableData = dot_aligned(self.tableData)
 
         for row in self.tableData:
-            self.tv.insert("", "end", values=row, tags=(row[0],))
+            self.tv.insert("", "end", values=row, tags=(row[0], "monospace"))
 
         self.propBanner.set("")
 
@@ -238,10 +271,10 @@ class IB(Frame):
         validationNN = parent.register(validateNN)
         i = 0
         self.webR, webRw, i = self.add2Input(
-            opFrm, i, 1, "W.Th. ", "2.0", validationNN, 10
+            opFrm, i, 0, "W.Th. ", "2.0", validationNN
         )
         self.perR, perRw, i = self.add2Input(
-            opFrm, i, 1, "P.Dia. ", "1.0", validationNN, 10
+            opFrm, i, 0, "P.Dia. ", "1.0", validationNN
         )
 
         ratioEntrys = (webRw, perRw)
@@ -274,7 +307,7 @@ class IB(Frame):
             onvalue=1,
             offvalue=0,
             command=configEntry,
-        ).grid(row=0, column=0, rowspan=2, sticky="nsew")
+        ).grid(row=0, column=2, rowspan=2, sticky="nsew")
 
         Button(opFrm, text="Calculate", command=self.calculate).grid(
             row=2, column=0, columnspan=3, sticky="nsew"
@@ -317,12 +350,13 @@ class IB(Frame):
         self.tv["columns"] = columnList
         self.tv["show"] = "headings"
         self.tv.tag_configure("PEAK PRESSURE", foreground="orange")
+        self.tv.tag_configure("monospace", font=("courier", 10))
 
         for column in columnList:  # foreach column
             self.tv.heading(
                 column, text=column
             )  # let the column heading = column name
-            self.tv.column(column, stretch=1, width=0)
+            self.tv.column(column, stretch=1, width=0, anchor="w")
 
         vertscroll = Scrollbar(tblFrm, orient="vertical")  # create a scrollbar
         vertscroll.configure(command=self.tv.yview)  # make it vertical

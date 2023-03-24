@@ -420,8 +420,8 @@ class Gun:
             )
         )
         for i in range(steps):
-            t_bar_i = (t_bar_e - 0) / steps * i
-            t_bar_i2 = (t_bar_e - 0) / steps * (i + 1)
+            t_bar_i = t_bar_e / steps * i
+            t_bar_i2 = t_bar_e / steps * (i + 1)
 
             if t_bar_i <= t_bar_p <= t_bar_i2:
                 t_bar_data.append(
