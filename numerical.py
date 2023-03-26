@@ -178,7 +178,7 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9):
     y_this = iniValTuple
     x = x_0
     beta = 0.9  # "safety" factor
-    h = x_1 - x_0  # initial step size
+    h = (x_1 - x_0) / 10  # initial step size
     i = 0
     while (h > 0 and x < x_1) or (h < 0 and x > x_1):
         i += 1
@@ -192,7 +192,6 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9):
             x + 0.2 * h, *(y + 0.2 * k1 for y, k1 in zip(y_this, K1))
         )
         K2 = tuple(k * h for k in K2)
-
         if any(isinstance(v, complex) for v in K2):
             h *= 0.5
             continue
@@ -202,7 +201,6 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9):
             *(y + (3 * k1 + 9 * k2) / 32 for y, k1, k2 in zip(y_this, K1, K2))
         )
         K3 = tuple(k * h for k in K3)
-
         if any(isinstance(v, complex) for v in K3):
             h *= 0.5
             continue
@@ -215,7 +213,6 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9):
             )
         )
         K4 = tuple(k * h for k in K4)
-
         if any(isinstance(v, complex) for v in K4):
             h *= 0.5
             continue
@@ -228,7 +225,6 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9):
             )
         )
         K5 = tuple(k * h for k in K5)
-
         if any(isinstance(v, complex) for v in K5):
             h *= 0.5
             continue
@@ -247,6 +243,9 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9):
             )
         )
         K6 = tuple(k * h for k in K6)
+        if any(isinstance(v, complex) for v in K6):
+            h *= 0.5
+            continue
 
         y_next = tuple(
             y + 25 / 216 * k1 + 1408 / 2565 * k3 + 2197 / 4104 * k4 - 1 / 5 * k5
@@ -265,9 +264,9 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9):
         epsilon = (
             sum(abs(z - y) ** 2 for z, y in zip(z_next, y_next)) ** 0.5
         )  # error estimation
+
         if epsilon >= tol:  # error is greater than acceptable
             h *= beta * (tol / (2 * epsilon)) ** 0.2
-
         else:
             y_this = y_next
             x += h
@@ -281,6 +280,8 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9):
 
     if abs(x - x_1) > tol:
         raise ValueError(
-            "Premature Termination of Integration, after {} Cycles".format(i)
+            "Premature Termination of Integration, after {} Cycles. x at {}, h at {}.".format(
+                i, x, h
+            )
         )
     return y_this

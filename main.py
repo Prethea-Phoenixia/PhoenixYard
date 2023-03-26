@@ -1,7 +1,12 @@
 from tkinter import *
 from tkinter import ttk
-from idlelib.tooltip import Hovertip
+import tkinter.font as font
+
+import tksvg
+
 from gun import *
+import ctypes
+import os
 
 _prefix = {
     "y": 1e-24,  # yocto
@@ -105,7 +110,6 @@ class IB(Frame):
     def __init__(self, parent):
         Frame.__init__(self, parent)
         parent.title("Phoenix's Internal Ballistics Solver")
-        # parent.geometry("600x400")
 
         self.compositions = GrainComp.readFile("propellants.csv")
         self.geometries = {i.desc: i for i in Geometry}
@@ -118,20 +122,8 @@ class IB(Frame):
 
         self.propOptions = tuple(self.compositions.keys())
         self.geoOptions = tuple(self.geometries.keys())
-        self.domainOptions = ("time", "distance")
+        self.domainOptions = ("time", "length")
 
-        # datatype of menu text
-        self.clickedProp = StringVar()
-        # initial menu text
-        self.clickedProp.set(self.propOptions[0])
-
-        self.clickedGeom = StringVar()
-        self.clickedGeom.set(self.geoOptions[0])
-
-        self.clickedOptn = StringVar()
-        self.clickedOptn.set(self.domainOptions[0])
-
-        self.propBanner = StringVar()
         self.geoLocked = IntVar()
 
         parent.columnconfigure(0, weight=0)
@@ -150,10 +142,12 @@ class IB(Frame):
 
     def calculate(self, event=None):
         # force an immediate redraw after calculation
-        compo = self.compositions[self.clickedProp.get()]
-        geom = self.geometries[self.clickedGeom.get()]
+        compo = self.compositions[self.dropProp.get()]
+        geom = self.geometries[self.dropGeom.get()]
 
         self.tableData = []
+
+        # self.updateSpec(compo)
 
         try:
             self.prop = Propellant(
@@ -163,6 +157,7 @@ class IB(Frame):
                 float(self.permm.get()) / 1000,
                 float(self.grlR.get()),
             )
+
         except Exception as e:
             print(e)
             self.prop = None
@@ -196,7 +191,9 @@ class IB(Frame):
         if self.gun is not None:
             try:
                 self.tableData = self.gun.integrate(
-                    steps=int(self.steps.get()), dom=self.clickedOptn.get()
+                    steps=int(self.steps.get()),
+                    dom=self.dropOptn.get(),
+                    tol=10 ** -(int(self.accExp.get())),
                 )
             except Exception as e:
                 self.errorLst.append("Exception integrating:")
@@ -207,8 +204,6 @@ class IB(Frame):
 
         for row in self.tableData:
             self.tv.insert("", "end", values=row, tags=(row[0], "monospace"))
-
-        self.propBanner.set("")
 
         self.updateError()
 
@@ -222,15 +217,21 @@ class IB(Frame):
         self.errorLst = []
 
     def addSpecFrm(self, parent):
-        specFrm = LabelFrame(parent, text="Design Summary")
+        specFrm = ttk.LabelFrame(parent, text="Design Summary")
         specFrm.grid(row=0, column=0, rowspan=2, sticky="nsew")
 
-        propSpec = Label(specFrm, textvariable=self.propBanner).grid(
-            row=0, column=0
-        )
+    def updateSpec(self, *inp):
+        self.specs.config(state="normal")
+        compo = self.compositions[self.dropProp.get()]
+        self.specs.delete("1.0", "end")
+        for line in compo.desc.split(","):
+            self.specs.insert("end", line + "\n")
+        self.specs.config(state="disabled")
+
+        return True
 
     def addParFrm(self, parent):
-        parFrm = LabelFrame(parent, text="Parameters")
+        parFrm = ttk.LabelFrame(parent, text="Parameters")
         parFrm.grid(row=0, column=2, sticky="nsew")
         parFrm.columnconfigure(0, weight=3)
         parFrm.columnconfigure(1, weight=3)
@@ -253,20 +254,54 @@ class IB(Frame):
             parFrm, i, "Charge Mass", "kg", "0.0", validationNN
         )
 
-        Label(parFrm, text="Propellant").grid(row=4, column=0)
+        ttk.Label(parFrm, text="Propellant").grid(
+            row=4, column=0, padx=2, pady=2, sticky="nsew"
+        )
+
+        specVal = parent.register(self.updateSpec)
         # Create Dropdown menu
-        self.dropProp = OptionMenu(parFrm, self.clickedProp, *self.propOptions)
-        self.dropProp.grid(row=4, column=1, columnspan=2, sticky="nsew")
-        self.dropProp.configure(width=25)
-        Label(parFrm, text="Grain Shape").grid(row=5, column=0)
+        # dp = StringVar()
+        self.dropProp = ttk.Combobox(
+            parFrm,
+            values=self.propOptions,
+            # textvariable=dp,
+            state="readonly",
+            validate="focusin",
+            validatecommand=(specVal, "%P"),
+        )
+        self.dropProp.current(0)
+        self.dropProp.grid(
+            row=4, column=1, columnspan=2, sticky="nsew", padx=2, pady=2
+        )
+        self.dropProp.configure(width=22)
+
+        self.specs = Text(parFrm, wrap=WORD, height=5, width=20)
+        self.specs.grid(
+            row=5, column=1, columnspan=2, sticky="nsew", padx=2, pady=2
+        )
+        self.updateSpec()
+
+        ttk.Label(parFrm, text="Grain Shape").grid(
+            row=6,
+            column=0,
+            sticky="nsew",
+            padx=2,
+            pady=2,
+        )
         # Create Dropdown menu
-        self.dropGeom = OptionMenu(parFrm, self.clickedGeom, *self.geometries)
-        self.dropGeom.grid(row=5, column=1, columnspan=2, sticky="nsew")
-        self.dropGeom.configure(width=25)
-        i += 2
+        self.dropGeom = ttk.Combobox(
+            parFrm, values=self.geoOptions, state="readonly"
+        )
+        self.dropGeom.current(0)
+        self.dropGeom.grid(
+            row=6, column=1, columnspan=2, sticky="nsew", padx=2, pady=2
+        )
+        self.dropGeom.configure(width=22)
 
         parFrm.rowconfigure(4, weight=0)
         parFrm.rowconfigure(5, weight=0)
+        parFrm.rowconfigure(6, weight=0)
+        i += 3
 
         self.webmm, _, i = self.add3Input(
             parFrm, i, "Web Thickness", "mm", "0.0", validationNN
@@ -289,7 +324,7 @@ class IB(Frame):
         )
 
     def addOpsFrm(self, parent):
-        opFrm = LabelFrame(parent, text="Options")
+        opFrm = ttk.LabelFrame(parent, text="Options")
         opFrm.grid(row=1, column=2, sticky="nsew")
 
         opFrm.columnconfigure(0, weight=1)
@@ -334,20 +369,31 @@ class IB(Frame):
         self.webR.trace_add("write", self.webcallback)
         self.perR.trace_add("write", self.webcallback)
 
-        Checkbutton(
+        ttk.Checkbutton(
             opFrm,
             text="Lock Geometry",
             variable=self.geoLocked,
             onvalue=1,
             offvalue=0,
             command=configEntry,
-        ).grid(row=0, column=2, rowspan=2, sticky="nsew")
+        ).grid(row=0, column=2, rowspan=2, sticky="nsew", padx=2, pady=2)
 
-        Label(opFrm, text="∫ Domain").grid(row=2, column=0, sticky="nsew")
+        ttk.Label(opFrm, text="∫ in").grid(
+            row=2, column=0, sticky="nsew", padx=2, pady=2
+        )
 
-        self.dropOptn = OptionMenu(opFrm, self.clickedOptn, *self.domainOptions)
-        self.dropOptn.grid(row=2, column=1, columnspan=2, sticky="nsew")
-        # self.dropOptn.configure(width=0)
+        self.dropOptn = ttk.Combobox(
+            opFrm, values=self.domainOptions, state="readonly"
+        )
+        self.dropOptn.current(0)
+        self.dropOptn.grid(
+            row=2, column=1, columnspan=1, sticky="nsew", padx=2, pady=2
+        )
+        self.dropOptn.configure(width=5)
+
+        ttk.Label(opFrm, text="domain").grid(
+            row=2, column=2, sticky="nsew", padx=2, pady=2
+        )
 
         validationPI = parent.register(validatePI)
 
@@ -355,24 +401,36 @@ class IB(Frame):
             opFrm,
             3,
             "Show",
-            "Steps",
+            "steps",
             "50",
             validation=validationPI,
             formatter=formatIntInput,
         )
 
-        Button(opFrm, text="Calculate", command=self.calculate).grid(
-            row=4, column=0, columnspan=3, sticky="nsew"
+        self.accExp, _, _ = self.add2Input(
+            opFrm,
+            4,
+            0,
+            "-log10(ε) =",
+            default="5",
+            validation=validationPI,
+            formatter=formatIntInput,
+            color="red",
         )
-        opFrm.rowconfigure(4, weight=1)
+
+        ttk.Button(opFrm, text="Calculate", command=self.calculate).grid(
+            row=5, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+        )
+
+        opFrm.rowconfigure(5, weight=0)
 
     def addErrFrm(self, parent):
-        errorFrm = LabelFrame(parent, text="Errors")
+        errorFrm = ttk.LabelFrame(parent, text="Errors")
         errorFrm.grid(row=1, column=1, sticky="nsew")
         errorFrm.columnconfigure(0, weight=1)
         errorFrm.rowconfigure(0, weight=1)
 
-        errScroll = Scrollbar(errorFrm, orient="vertical")
+        errScroll = ttk.Scrollbar(errorFrm, orient="vertical")
         errScroll.grid(row=0, column=1, sticky="nsew")
         self.errorText = Text(
             errorFrm,
@@ -392,7 +450,7 @@ class IB(Frame):
             "Velocity/ms^-1",
             "Pressure/Pa",
         ]
-        tblFrm = LabelFrame(parent, text="Result Table")
+        tblFrm = ttk.LabelFrame(parent, text="Result Table")
         tblFrm.grid(row=0, column=1, sticky="nsew")
         tblFrm.columnconfigure(0, weight=1)
         tblFrm.rowconfigure(0, weight=1)
@@ -404,7 +462,7 @@ class IB(Frame):
         self.tv["show"] = "headings"
         self.tv.tag_configure("PEAK PRESSURE", foreground="orange")
         self.tv.tag_configure("BURNOUT", foreground="brown")
-        self.tv.tag_configure("monospace", font=("courier", 10))
+        self.tv.tag_configure("monospace", font=("TkFixedFont", 9))
 
         for column in columnList:  # foreach column
             self.tv.heading(
@@ -412,11 +470,13 @@ class IB(Frame):
             )  # let the column heading = column name
             self.tv.column(column, stretch=1, width=0, anchor="w")
 
-        vertscroll = Scrollbar(tblFrm, orient="vertical")  # create a scrollbar
+        vertscroll = ttk.Scrollbar(
+            tblFrm, orient="vertical"
+        )  # create a scrollbar
         vertscroll.configure(command=self.tv.yview)  # make it vertical
         vertscroll.grid(row=0, column=1, sticky="nsew")
 
-        horzscroll = Scrollbar(tblFrm, orient="horizontal")
+        horzscroll = ttk.Scrollbar(tblFrm, orient="horizontal")
         horzscroll.configure(command=self.tv.xview)
         horzscroll.grid(row=1, column=0, sticky="nsew")
         self.tv.configure(
@@ -433,22 +493,26 @@ class IB(Frame):
         validation=None,
         entryWidth=5,
         formatter=formatFloatInput,
+        color=None,
     ):
-        Label(parent, text=labelText).grid(
-            row=rowIndex, column=colIndex, sticky="nsew"
+        ttk.Label(parent, text=labelText).grid(
+            row=rowIndex, column=colIndex, sticky="nsew", padx=2, pady=2
         )
         parent.rowconfigure(rowIndex, weight=0)
         e = StringVar(parent)
         e.set(default)
-        en = Entry(
+        en = ttk.Entry(
             parent,
             textvariable=e,
             validate="key",
             validatecommand=(validation, "%P"),
             width=entryWidth,
+            foreground=color,
         )
         en.default = default
-        en.grid(row=rowIndex, column=colIndex + 1, sticky="nsew")
+        en.grid(
+            row=rowIndex, column=colIndex + 1, sticky="nsew", padx=2, pady=2
+        )
         en.bind("<FocusOut>", formatter)
         return e, en, rowIndex + 1
 
@@ -463,13 +527,13 @@ class IB(Frame):
         entryWidth=5,
         formatter=formatFloatInput,
     ):
-        Label(parent, text=labelText).grid(
-            row=rowIndex, column=0, sticky="nsew"
+        ttk.Label(parent, text=labelText).grid(
+            row=rowIndex, column=0, sticky="nsew", padx=2, pady=2
         )
         parent.rowconfigure(rowIndex, weight=0)
         e = StringVar(parent)
         e.set(default)
-        en = Entry(
+        en = ttk.Entry(
             parent,
             textvariable=e,
             validate="key",
@@ -477,9 +541,11 @@ class IB(Frame):
             width=entryWidth,
         )
         en.default = default
-        en.grid(row=rowIndex, column=1, sticky="nsew")
+        en.grid(row=rowIndex, column=1, sticky="nsew", padx=2, pady=2)
         en.bind("<FocusOut>", formatter)
-        Label(parent, text=unitText).grid(row=rowIndex, column=2, sticky="nsew")
+        ttk.Label(parent, text=unitText).grid(
+            row=rowIndex, column=2, sticky="nsew", padx=2, pady=2
+        )
         return e, en, rowIndex + 1
 
     def webcallback(self, var, index, mode):
@@ -505,11 +571,41 @@ class IB(Frame):
 
 
 if __name__ == "__main__":
+    ctypes.windll.shcore.SetProcessDpiAwareness(1)
     root = Tk()
-    ibPanel = IB(root)
-    # allow parent window resizing
+    tksvg.load(root)
+    dpi = root.winfo_fpixels("1i")
+    """
+    your_font = font.nametofont(
+        "TkDefaultFont"
+    )  # Get default font value into Font object
+    print(your_font)
+    print(your_font.actual())
+    """
+    """
+    # this code will mess around with global scaling...
+    root.tk.call("tk", "scaling", round(dpi / 72, 2))
+    """
 
-    # root.rowconfigure(0, weight=1)
-    # root.columnconfigure(1, weight=1)
+    # Import the tcl file
+    # root.tk.call("source", "forest-light.tcl")
+    # root.tk.call("source", "forest-dark.tcl")
+    # ttk.Style().theme_use("forest-light")
+
+    # root.tk.call("lappend", "auto_path", os.getcwd() + "/awthemes-10.4.0")
+    # root.tk.call("lappend", "auto_path", os.getcwd() + "/tksvg0.12")
+    # root.tk.call("package", "require", "awdark")
+    # root.tk.call("package", "require", "awlight")
+    # root.tk.call("source", os.getcwd() + "\sun-valley.tcl")
+    # root.tk.call("set_theme", "light")
+
+    style = ttk.Style(root)
+    # style.theme_use("forest-dark")
+    # style.theme_use("awdark")
+    # ensure that the treeview rows are roughly the same height
+    # regardless of dpi. on Windows, default is Segoe UI at 9 points
+    style.configure("Treeview", rowheight=round(12 * dpi / 96))
+
+    ibPanel = IB(root)
 
     root.mainloop()

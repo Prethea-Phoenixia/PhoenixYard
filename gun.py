@@ -275,6 +275,7 @@ class Gun:
             self.f * self.omega * psi
             - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
         ) / (self.S * self.l0 * (l_bar + l_psi_bar) * self.f * self.Delta)
+
         return p_bar
 
     def _ode_t(self, t_bar, Z, l_bar, v_bar):
@@ -310,7 +311,7 @@ class Gun:
         dt_bar = 1 / v_bar
         return (dZ, dt_bar, dv_bar)
 
-    def integrate(self, steps=100, tol=1e-9, dom="time"):
+    def integrate(self, steps=10, tol=1e-5, dom="time"):
         """
         this step is calculated to the square of the specified accuracy since
         the result can be very close to 0 if the squeeze pressure is very low
@@ -319,9 +320,13 @@ class Gun:
         if 0 is accepted as solution for Z0 the RKF45 integrator later will not
         be able to self-start the integration.
         """
-        Z_0 = bisect(lambda z: self._fPsi(z) - self.psi_0, 0, 1, tol**1)[0]
+        Z_0 = bisect(lambda z: self._fPsi(z) - self.psi_0, 0, 1, tol)[0]
         l_g_bar = self.l_g / self.l0
-
+        if Z_0 == 0:
+            raise ValueError(
+                "Initial burnup solved to 0, impossible to initialize ODE."
+                + " Suggest reducing tolerance."
+            )
         print("finding burnout")
         """
         Subscript b indicate burnout condition
@@ -555,8 +560,8 @@ if __name__ == "__main__":
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
     test = Gun(57e-3, 2.8, M17SHC, 1.16, 1.51e-3, 3e7, 3.624, 1.2)
-    print(*test.integrate(100, 1e-9, dom="time"), sep="\n")
-    print(*test.integrate(100, 1e-9, dom="distance"), sep="\n")
+    print(*test.integrate(100, 1e-1, dom="time"), sep="\n")
+    print(*test.integrate(100, 1e-9, dom="length"), sep="\n")
 
     # lbs/in^3 -> kg/m^3, multiply by 27680
     # in^3/lbs -> m^3/kg, divide by 27680
