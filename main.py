@@ -274,11 +274,16 @@ class IB(Frame):
             row=4, column=1, columnspan=2, sticky="nsew", padx=2, pady=2
         )
         self.dropProp.configure(width=22)
-
-        self.specs = Text(parFrm, wrap=WORD, height=5, width=20)
-        self.specs.grid(
-            row=5, column=1, columnspan=2, sticky="nsew", padx=2, pady=2
+        specScroll = ttk.Scrollbar(parFrm, orient="vertical")
+        specScroll.grid(row=5, column=2, sticky="nsew", padx=2, pady=2)
+        self.specs = Text(
+            parFrm, wrap=WORD, height=4, width=20, yscrollcommand=specScroll
         )
+
+        self.specs.grid(
+            row=5, column=1, columnspan=1, sticky="nsew", padx=2, pady=2
+        )
+
         self.updateSpec()
 
         ttk.Label(parFrm, text="Grain Shape").grid(
@@ -597,7 +602,7 @@ if __name__ == "__main__":
     # root.tk.call("package", "require", "awdark")
     # root.tk.call("package", "require", "awlight")
     # root.tk.call("source", os.getcwd() + "\sun-valley.tcl")
-    # root.tk.call("set_theme", "light")
+    # root.tk.call("set_theme", "dark")
 
     style = ttk.Style(root)
     # style.theme_use("forest-dark")
