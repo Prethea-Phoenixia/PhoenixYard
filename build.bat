@@ -1,2 +1,2 @@
-pyinstaller app.spec
+pyinstaller app.spec --clean
 pause

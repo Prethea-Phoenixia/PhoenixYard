@@ -27,21 +27,19 @@ _prefix = {
 
 from ctypes import windll, byref, create_unicode_buffer, create_string_buffer
 
+
 FR_PRIVATE = 0x10
 FR_NOT_ENUM = 0x20
 
 
 def loadfont(fontpath, private=True, enumerable=False):
-    """
-    Makes fonts located in file `fontpath` available to the font system.
+    # Makes fonts located in file `fontpath` available to the font system.
+    # `private`     if True, other processes cannot see this font, and this
+    #               font will be unloaded when the process dies
+    # `enumerable`  if True, this font will appear when enumerating fonts
+    #
+    # See https://msdn.microsoft.com/en-us/library/dd183327(VS.85).aspx
 
-    `private`     if True, other processes cannot see this font, and this
-                  font will be unloaded when the process dies
-    `enumerable`  if True, this font will appear when enumerating fonts
-
-    See https://msdn.microsoft.com/en-us/library/dd183327(VS.85).aspx
-
-    """
     # This function was taken from
     # https://github.com/ifwe/digsby/blob/f5fe00244744aa131e07f09348d10563f3d8fa99/digsby/src/gui/native/win/winfonts.py#L15
     # This function is written for Python 2.x. For 3.x, you
@@ -523,7 +521,7 @@ class IB(Frame):
         self.tv.tag_configure("BURNOUT", foreground="red")
         self.tv.tag_configure("FRACTURE", foreground="brown")
         # self.tv.tag_configure("monospace", font=("TkFixedFont", 9))
-        self.tv.tag_configure("monospace", font=("hack", 8))
+        self.tv.tag_configure("monospace", font=("Hack", 8))
 
         for column in columnList:  # foreach column
             self.tv.heading(
@@ -659,9 +657,12 @@ class IB(Frame):
 
 
 if __name__ == "__main__":
-    loadfont("/ui/Hack-Regular.ttf")
+    # high dpi scaling
     windll.shcore.SetProcessDpiAwareness(1)
     root = Tk()
+    # one must supply the entire path
+    loadfont(os.getcwd() + "/ui/Hack-Regular.ttf")
+    fonts = list(font.families())
     # tksvg.load(root)
     dpi = root.winfo_fpixels("1i")
     root.tk.call("lappend", "auto_path", os.getcwd() + "/ui/awthemes-10.4.0")
@@ -672,9 +673,9 @@ if __name__ == "__main__":
     # ensure that the treeview rows are roughly the same height
     # regardless of dpi. on Windows, default is Segoe UI at 9 points
     style.configure("Treeview", rowheight=round(12 * dpi / 72))
-    style.configure("Treeview.Heading", font=("hack", 9))
-    style.configure("TButton", font=("hack", 9))
-    style.configure("TLabelframe.Label", font=("hack", 10))
-    root.option_add("*Font", "hack 9")
+    style.configure("Treeview.Heading", font=("Hack", 9))
+    style.configure("TButton", font=("Hack", 9))
+    style.configure("TLabelframe.Label", font=("Hack", 10))
+    root.option_add("*Font", "Hack 9")
     ibPanel = IB(root)
     root.mainloop()
