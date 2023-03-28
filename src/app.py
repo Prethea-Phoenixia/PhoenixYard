@@ -662,7 +662,6 @@ if __name__ == "__main__":
     root = Tk()
     # one must supply the entire path
     loadfont(os.getcwd() + "/ui/Hack-Regular.ttf")
-    fonts = list(font.families())
     # tksvg.load(root)
     dpi = root.winfo_fpixels("1i")
     root.tk.call("lappend", "auto_path", os.getcwd() + "/ui/awthemes-10.4.0")
