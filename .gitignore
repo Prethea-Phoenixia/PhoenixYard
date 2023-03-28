@@ -153,12 +153,3 @@ cython_debug/
 
 
 
-# Tkinter themes
-/awthemes-10.4.0
-/forest-dark
-/forest-light
-/theme
-/tksvg0.12
-forest-dark.tcl
-forest-light.tcl
-sun-valley.tcl
