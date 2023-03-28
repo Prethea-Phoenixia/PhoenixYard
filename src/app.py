@@ -1,9 +1,8 @@
 from tkinter import *
 from tkinter import ttk
-import tkinter.font as font
-from tkinter.scrolledtext import ScrolledText
 from gun import *
 import os
+import sys
 
 _prefix = {
     "y": 1e-24,  # yocto
@@ -30,6 +29,17 @@ from ctypes import windll, byref, create_unicode_buffer, create_string_buffer
 
 FR_PRIVATE = 0x10
 FR_NOT_ENUM = 0x20
+
+
+def resolvepath(path):
+    if getattr(sys, "frozen", False):
+        # If the 'frozen' flag is set, we are in bundled-app mode!
+        resolved_path = os.path.abspath(os.path.join(sys._MEIPASS, path))
+    else:
+        # Normal development mode. Use os.getcwd() or __file__ as appropriate in your case...
+        resolved_path = os.path.abspath(os.path.join(os.getcwd(), path))
+
+    return resolved_path
 
 
 def loadfont(fontpath, private=True, enumerable=False):
@@ -143,9 +153,11 @@ def dot_aligned(matrix):
 class IB(Frame):
     def __init__(self, parent):
         Frame.__init__(self, parent)
-        parent.title("Phoenix's Internal Ballistics Solver")
+        parent.title("Phoenix's Internal Ballistics Solver v0.1.1")
 
-        self.compositions = GrainComp.readFile("data/propellants.csv")
+        self.compositions = GrainComp.readFile(
+            resolvepath("data/propellants.csv")
+        )
         self.geometries = {i.desc: i for i in Geometry}
 
         self.prop = None
@@ -661,11 +673,12 @@ if __name__ == "__main__":
     windll.shcore.SetProcessDpiAwareness(1)
     root = Tk()
     # one must supply the entire path
-    loadfont(os.getcwd() + "/ui/Hack-Regular.ttf")
+    loadfont(resolvepath("ui/Hack-Regular.ttf"))
     # tksvg.load(root)
     dpi = root.winfo_fpixels("1i")
-    root.tk.call("lappend", "auto_path", os.getcwd() + "/ui/awthemes-10.4.0")
-    root.tk.call("lappend", "auto_path", os.getcwd() + "/ui/tksvg0.12")
+
+    root.tk.call("lappend", "auto_path", resolvepath("ui/awthemes-10.4.0"))
+    root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
     root.tk.call("package", "require", "awdark")
     style = ttk.Style(root)
     style.theme_use("awdark")
