@@ -184,7 +184,7 @@ class IB(Frame):
         self.addErrFrm(parent)
         self.addTblFrm(parent)
         self.addOpsFrm(parent)
-        parent.bind("<space>", self.calculate)
+        parent.bind("<Return>", self.calculate)
 
     def calculate(self, event=None):
         # force an immediate redraw after calculation
@@ -231,7 +231,19 @@ class IB(Frame):
                 float(self.tblmm.get()) / 1000,
                 float(self.clr.get()),
             )
-
+            print(
+                *(
+                    float(self.calmm.get()) / 1000,
+                    float(self.shtkg.get()),
+                    self.prop,
+                    float(self.chgkg.get()),
+                    chamberVolume,
+                    float(self.stpMPa.get()) * 1e6,
+                    float(self.tblmm.get()) / 1000,
+                    float(self.clr.get()),
+                ),
+                sep=","
+            )
             self.va.set(round(self.gun.v_j, 1))
 
         except Exception as e:
@@ -247,7 +259,8 @@ class IB(Frame):
                     tol=10 ** -(int(self.accExp.get())),
                 )
                 i = tuple(i[0] for i in self.tableData).index("SHOT EXIT")
-                te = (self.tableData[i][4] / self.gun.v_j) ** 2
+                vg = self.tableData[i][4]
+                te, be = self.gun.getEff(vg)
                 self.te.set(round(te * 100, 1))
                 self.be.set(round(te / self.gun.phi * 100, 1))
             except Exception as e:
@@ -378,7 +391,7 @@ class IB(Frame):
             parFrm, i, "Perf Diameter", "mm", "0.0", validationNN
         )
         self.grlR, _, i = self.add3Input(
-            parFrm, i, "Grain L/D", "", "2.25", validationNN
+            parFrm, i, "Grain L/D", "", "3.0", validationNN
         )
 
         self.ldf, _, i = self.add3Input(
@@ -471,7 +484,7 @@ class IB(Frame):
             3,
             "Show",
             "steps",
-            "50",
+            "15",
             validation=validationPI,
             formatter=formatIntInput,
         )

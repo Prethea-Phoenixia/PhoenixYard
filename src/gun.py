@@ -21,7 +21,7 @@ class Geometry(enum.Enum):
         self.B = B
         self.C = C
 
-        self.rhoDiv = rhoDiv  # rho divided by (e1+d0/2)
+        self.rhoDiv = rhoDiv  # rho divided by (e_1+d_0/2)
         self.nHole = nHole
 
     SEVEN_PERF_CYLINDER = "7 Perf Cylinder", 1, 7, 0, 0.2956, 7
@@ -57,7 +57,7 @@ class GrainComp:
     """
     detonation velocity and pressure exponent are related to:
 
-    r_dot = u1 * p^n
+    r_dot = u_1 * p^n
 
     tested velocity for n=1 roughly equals
     Nitrocellulose, 6e-7 - 9e-7 m/(MPa*s)
@@ -74,6 +74,7 @@ class GrainComp:
         redAdbIndex,
         detVel,
         pressureExp,
+        linBurnCoe,
     ):
         self.name = name
         self.desc = desc
@@ -81,8 +82,9 @@ class GrainComp:
         self.alpha = covolume
         self.rho_p = density
         self.theta = redAdbIndex
-        self.u1 = detVel
+        self.u_1 = detVel
         self.n = pressureExp
+        self.u_0 = linBurnCoe
 
     def readFile(fileName):
         composition = []
@@ -110,6 +112,7 @@ class GrainComp:
                     covolume,
                     pressureExp,
                     burnRateCoe,
+                    linBurnCoe,
                 ) = prop
 
                 redAdbIndex = adb - 1
@@ -122,6 +125,7 @@ class GrainComp:
                     redAdbIndex,
                     burnRateCoe,
                     pressureExp,
+                    linBurnCoe,
                 )
 
                 composition.append(newComp)
@@ -135,64 +139,66 @@ class Propellant:
         self.composition = composition
         self.geometry = propGeom
 
-        self.e1 = arcThick / 2
-        self.d0 = holeDia
+        self.e_1 = arcThick / 2
+        self.d_0 = holeDia
 
         if propGeom == Geometry.SEVEN_PERF_CYLINDER:
-            self.D0 = 8 * self.e1 + 3 * self.d0  # enforce geometry constraints
-            b, a = self.D0, 0
+            self.D_0 = (
+                8 * self.e_1 + 3 * self.d_0
+            )  # enforce geometry constraints
+            b, a = self.D_0, 0
 
         elif propGeom == Geometry.SEVEN_PERF_ROSETTE:
-            self.D0 = 8 * self.e1 + 3 * self.d0
-            b, a = self.d0 + 4 * self.e1, self.d0 + 2 * self.e1
+            self.D_0 = 8 * self.e_1 + 3 * self.d_0
+            b, a = self.d_0 + 4 * self.e_1, self.d_0 + 2 * self.e_1
 
         elif propGeom == Geometry.NINETEEN_PERF_ROSETTE:
-            self.D0 = 12 * self.e1 + 5 * self.d0
-            b, a = self.d0 + 4 * self.e1, self.d0 + 2 * self.e1
+            self.D_0 = 12 * self.e_1 + 5 * self.d_0
+            b, a = self.d_0 + 4 * self.e_1, self.d_0 + 2 * self.e_1
 
         elif propGeom == Geometry.NINETEEN_PERF_CYLINDER:
-            self.D0 = 12 * self.e1 + 5 * self.d0
-            b, a = self.D0, 0
+            self.D_0 = 12 * self.e_1 + 5 * self.d_0
+            b, a = self.D_0, 0
 
         elif propGeom == Geometry.NINETEEN_PERF_HEXAGON:
-            self.D0 = 12 * self.e1 + 5 * self.d0
-            b, a = self.d0 + 2 * self.e1, self.d0 + 2 * self.e1
+            self.D_0 = 12 * self.e_1 + 5 * self.d_0
+            b, a = self.d_0 + 2 * self.e_1, self.d_0 + 2 * self.e_1
 
         elif propGeom == Geometry.NINETEEN_PERF_ROUNDED_HEXAGON:
-            self.D0 = 12 * self.e1 + 5 * self.d0
-            b, a = self.d0 + 2 * self.e1, self.d0 + 2 * self.e1
+            self.D_0 = 12 * self.e_1 + 5 * self.d_0
+            b, a = self.d_0 + 2 * self.e_1, self.d_0 + 2 * self.e_1
 
         else:
             raise ValueError(
                 "unhandled propellant geometry {}".format(propGeom)
             )
 
-        grainLength = self.D0 * grainLDR
+        grainLength = self.D_0 * grainLDR
         self.c = grainLength / 2
 
         A, B, C = propGeom.A, propGeom.B, propGeom.C
-        self.rho = propGeom.rhoDiv * (self.e1 + self.d0 / 2)
+        self.rho = propGeom.rhoDiv * (self.e_1 + self.d_0 / 2)
 
-        Pi1 = (A * b + B * self.d0) / (2 * self.c)
-        Q1 = (C * a**2 + A * b**2 - B * self.d0**2) / (2 * self.c) ** 2
+        Pi_1 = (A * b + B * self.d_0) / (2 * self.c)
+        Q_1 = (C * a**2 + A * b**2 - B * self.d_0**2) / (2 * self.c) ** 2
 
-        S_T = Q1 * pi * self.c**2
+        S_T = Q_1 * pi * self.c**2
         n = propGeom.nHole
 
-        self.maxLF = 1 - n * pi * self.d0**2 / (4 * S_T)
+        self.maxLF = 1 - n * pi * self.d_0**2 / (4 * S_T)
 
-        beta = self.e1 / self.c
+        beta = self.e_1 / self.c
 
         # first phase of burning rate parameters, Z from 0 to 1
-        self.chi = (Q1 + 2 * Pi1) / Q1 * beta
+        self.chi = (Q_1 + 2 * Pi_1) / Q_1 * beta
         self.labda = (
-            (n - 1 - 2 * Pi1) / (Q1 + 2 * Pi1) * beta
+            (n - 1 - 2 * Pi_1) / (Q_1 + 2 * Pi_1) * beta
         )  # deliberate misspell to prevent issues with python lambda keyword
-        self.mu = -(n - 1) / (Q1 + 2 * Pi1) * beta**2
+        self.mu = -(n - 1) / (Q_1 + 2 * Pi_1) * beta**2
 
         self.Z_b = (
-            self.e1 + self.rho
-        ) / self.e1  # second phase burning Z upper limit
+            self.e_1 + self.rho
+        ) / self.e_1  # second phase burning Z upper limit
 
         psi_s = self.chi * (1 + self.labda + self.mu)
 
@@ -223,114 +229,121 @@ class Gun:
         self.m = shotMass
         self.propellant = propellant
         self.omega = chargeMass
-        self.V0 = chamberVolume
-        self.p0 = squeezePressure
+        self.V_0 = chamberVolume
+        self.p_0 = squeezePressure
         self.l_g = lengthGun
-        self.chi_k = chamberExpansion  # ration of l0 / l_chamber
-        self.Delta = self.omega / self.V0
-        self.l0 = self.V0 / self.S
-        Labda = self.l_g / self.l0
+        self.chi_k = chamberExpansion  # ration of l_0 / l_chamber
+        self.Delta = self.omega / self.V_0
+        self.l_0 = self.V_0 / self.S
+        Labda = self.l_g / self.l_0
         self.phi = 1 + self.omega / (3 * self.m) * (
             1 - (1 - 1 / self.chi_k) * 2.303 * log(Labda + 1) / Labda
         )  # extra work factor, chamberage effect averaged over entire length
         self.v_j = (
             2 * self.f * self.omega / (self.theta * self.phi * self.m)
         ) ** 0.5
-        self.B = (
-            self.S**2
-            * self.e1**2
-            / (self.f * self.phi * self.omega * self.m * self.u1**2)
-            * (self.f * self.Delta) ** (2 * (1 - self.n))
-        )
 
-        if self.p0 == 0:
+        if self.p_0 == 0:
             raise ValueError(
-                "p0 = 0 will cause starting issue for ODE solver in this"
-                + " implementation. If necessary, approximate result by"
-                + " finding the limit of p0->0"
+                "Currently solving for the case with 0 starting pressure"
+                + " is not implemented."
             )
-
         else:
             self.psi_0 = (1 / self.Delta - 1 / self.rho_p) / (
-                self.f / self.p0 + self.alpha - 1 / self.rho_p
+                self.f / self.p_0 + self.alpha - 1 / self.rho_p
             )
-
-    def _fPsi(self, Z):
-        if Z < 1.0:
-            return self.chi * Z * (1 + self.labda * Z + self.mu * Z**2)
-        elif Z < self.Z_b:
-            return self.chi_s * Z * (1 + self.labda_s * Z)
-        else:
-            return 1.0
-
-    def _fp_bar(self, Z, l_bar, v_bar):
-        psi = self._fPsi(Z)
-        l_psi_bar = (
-            1
-            - self.Delta / self.rho_p
-            - self.Delta * (self.alpha - 1 / self.rho_p) * psi
-        )
-
-        p_bar = (
-            self.f * self.omega * psi
-            - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
-        ) / (self.S * self.l0 * (l_bar + l_psi_bar) * self.f * self.Delta)
-
-        return p_bar
-
-    def _ode_t(self, t_bar, Z, l_bar, v_bar):
-        """time domain ode of internal ballistics"""
-        p_bar = self._fp_bar(Z, l_bar, v_bar)
-        if Z < self.Z_b:
-            dZ = (self.theta / (2 * self.B)) ** 0.5 * p_bar**self.n  # dt_bar
-        else:
-            dZ = 0
-        dl_bar = v_bar  # over dt_bar
-        dv_bar = self.theta * 0.5 * p_bar  # over dt_bar
-
-        return (dZ, dl_bar, dv_bar)
-
-    def _ode_l(self, l_bar, t_bar, Z, v_bar):
-        """length domain ode of internal ballistics
-        the 1/v_bar pose a starting problem that prevent us from using it from
-        initial condition."""
-        p_bar = self._fp_bar(Z, l_bar, v_bar)
-        if Z < self.Z_b:
-            dZ = (self.theta / (2 * self.B)) ** 0.5 * p_bar**self.n / v_bar
-        else:
-            dZ = 0
-        dv_bar = self.theta * 0.5 * p_bar / v_bar
-        dt_bar = 1 / v_bar
-        return (dt_bar, dZ, dv_bar)
-
-    def _ode_Z(self, Z, t_bar, l_bar, v_bar):
-        """burnout domain ode of internal ballistics"""
-        p_bar = self._fp_bar(Z, l_bar, v_bar)
-        if Z < self.Z_b:
-            dt_bar = ((2 * self.B) / self.theta) ** 0.5 * p_bar**-self.n
-            dl_bar = (
-                v_bar * ((2 * self.B) / self.theta) ** 0.5 * p_bar**-self.n
-            )
-            dv_bar = (self.B * self.theta / 2) ** 0.5 * p_bar ** (1 - self.n)
-        else:
-            # technically speaking it is undefined in this area
-            dt_bar = 0
-            dl_bar = 0
-            dv_bar = 0
-
-        return (dt_bar, dl_bar, dv_bar)
 
     def integrate(self, steps=10, tol=1e-5, dom="time"):
         """
-        this step is calculated to the square of the specified accuracy since
-        the result can be very close to 0 if the squeeze pressure is very low
+        Runs a full numerical solution for the gun in the specified domain sampled
+        evenly at specified number of steps, using a scaled numerical tolerance as
+        specified.
+        """
+        B = (
+            self.S**2
+            * self.e_1**2
+            / (self.f * self.phi * self.omega * self.m * self.u_1**2)
+            * (self.f * self.Delta) ** (2 * (1 - self.n))
+        )
 
+        def _fPsi(Z):
+            if Z < 1.0:
+                return self.chi * Z * (1 + self.labda * Z + self.mu * Z**2)
+            elif Z < self.Z_b:
+                return self.chi_s * Z * (1 + self.labda_s * Z)
+            else:
+                return 1.0
+
+        def _fp_bar(Z, l_bar, v_bar):
+            psi = _fPsi(Z)
+            l_psi_bar = (
+                1
+                - self.Delta / self.rho_p
+                - self.Delta * (self.alpha - 1 / self.rho_p) * psi
+            )
+
+            p_bar = (
+                self.f * self.omega * psi
+                - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
+            ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
+
+            return p_bar
+
+        def _ode_t(t_bar, Z, l_bar, v_bar):
+            """time domain ode of internal ballistics"""
+            p_bar = _fp_bar(Z, l_bar, v_bar)
+            if Z < self.Z_b:
+                dZ = (self.theta / (2 * B)) ** 0.5 * p_bar**self.n  # dt_bar
+            else:
+                dZ = 0
+            dl_bar = v_bar  # over dt_bar
+            dv_bar = self.theta * 0.5 * p_bar  # over dt_bar
+
+            return (dZ, dl_bar, dv_bar)
+
+        def _ode_l(l_bar, t_bar, Z, v_bar):
+            """length domain ode of internal ballistics
+            the 1/v_bar pose a starting problem that prevent us from using it from
+            initial condition."""
+            p_bar = _fp_bar(Z, l_bar, v_bar)
+            if Z < self.Z_b:
+                dZ = (self.theta / (2 * B)) ** 0.5 * p_bar**self.n / v_bar
+            else:
+                dZ = 0
+            dv_bar = self.theta * 0.5 * p_bar / v_bar
+            dt_bar = 1 / v_bar
+            return (dt_bar, dZ, dv_bar)
+
+        def _ode_Z(Z, t_bar, l_bar, v_bar):
+            """burnout domain ode of internal ballistics"""
+            p_bar = _fp_bar(Z, l_bar, v_bar)
+            if Z < self.Z_b:
+                dt_bar = ((2 * B) / self.theta) ** 0.5 * p_bar**-self.n
+                dl_bar = (
+                    v_bar * ((2 * B) / self.theta) ** 0.5 * p_bar**-self.n
+                )
+                dv_bar = (B * self.theta / 2) ** 0.5 * p_bar ** (1 - self.n)
+            else:
+                # technically speaking it is undefined in this area
+                dt_bar = 0
+                dl_bar = 0
+                dv_bar = 0
+
+            return (dt_bar, dl_bar, dv_bar)
+
+        if self.psi_0 < 0:
+            raise ValueError(
+                "Initial burnup fraction is solved to be negative."
+                + " This may indicate an excessive charge load fraction."
+            )
+
+        Z_0 = bisect(lambda z: _fPsi(z) - self.psi_0, 0, 1, tol)[0]
+        """
         It is imperative to calculate this to a high degree of accuracy since
         if 0 is accepted as solution for Z0 the RKF45 integrator later will not
-        be able to self-start the integration.
+        be able to self-start the system.
         """
-        Z_0 = bisect(lambda z: self._fPsi(z) - self.psi_0, 0, 1, tol)[0]
-        l_g_bar = self.l_g / self.l0
+        l_g_bar = self.l_g / self.l_0
         if Z_0 == 0:
             raise ValueError(
                 "Initial burnup solved to 0, impossible to initialize ODE."
@@ -341,9 +354,19 @@ class Gun:
         ODE w.r.t Z is integrated from Z_0 to 1, from onset of projectile
         movement to charge fracture
         """
-        t_bar_f, l_bar_f, v_bar_f = RKF45OverTuple(
-            self._ode_Z, (0, 0, 0), Z_0, 1, tol
-        )
+        try:
+            t_bar_f, l_bar_f, v_bar_f = RKF45OverTuple(
+                _ode_Z, (0, 0, 0), Z_0, 1, tol
+            )
+        except ValueError:
+            raise ValueError(
+                "Unable to integrate to propellant fracture within"
+                + " reasonable cycles."
+                + " Propellant size might be excessive."
+                + " Suggest reducing web thickness or specifying faster"
+                + " burning propellant."
+            )
+
         """
         Subscript b indicated burnout condition
         ODE w.r.t Z is integrated from 1 to Z_b, from onset of projectile
@@ -351,7 +374,7 @@ class Gun:
         calculation from before to reduce computational burden
         """
         t_bar_b, l_bar_b, v_bar_b = RKF45OverTuple(
-            self._ode_Z, (t_bar_f, l_bar_f, v_bar_f), 1, self.Z_b, tol
+            _ode_Z, (t_bar_f, l_bar_f, v_bar_f), 1, self.Z_b, tol
         )
         """
         Subscript e indicate exit condition
@@ -360,7 +383,7 @@ class Gun:
         handling of burning in the reverse direction. 
         """
         t_bar_e, Z_e, v_bar_e = RKF45OverTuple(
-            self._ode_l, (t_bar_f, 1, v_bar_f), l_bar_f, l_g_bar, tol
+            _ode_l, (t_bar_f, 1, v_bar_f), l_bar_f, l_g_bar, tol
         )
         """
         Subscript p indicate peak pressure
@@ -369,10 +392,8 @@ class Gun:
         """
 
         def f(t_bar):
-            Z, l_bar, v_bar = RKF45OverTuple(
-                self._ode_t, (Z_0, 0, 0), 0, t_bar, tol
-            )
-            return self._fp_bar(Z, l_bar, v_bar)
+            Z, l_bar, v_bar = RKF45OverTuple(_ode_t, (Z_0, 0, 0), 0, t_bar, tol)
+            return _fp_bar(Z, l_bar, v_bar)
 
         t_bar_p_1, t_bar_p_2 = gss(f, 0, t_bar_e, tol=tol, findMin=False)
         t_bar_p = (t_bar_p_1 + t_bar_p_2) / 2
@@ -380,7 +401,7 @@ class Gun:
             t_bar_p, Z_p, l_bar_p, v_bar_p = t_bar_e, Z_e, l_g_bar, v_bar_e
         else:
             Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
-                self._ode_t, (Z_0, 0, 0), 0, t_bar_p, tol
+                _ode_t, (Z_0, 0, 0), 0, t_bar_p, tol
             )
         """
         populate data for output purposes
@@ -394,7 +415,7 @@ class Gun:
                 0,
                 Z_0,
                 0,
-                self.p0,
+                self.p_0,
             )
         )
 
@@ -404,7 +425,7 @@ class Gun:
                 t_bar_i2 = t_bar_e / steps * i
 
                 Z_i, l_bar_i, v_bar_i = RKF45OverTuple(
-                    self._ode_t,
+                    _ode_t,
                     (Z_i, l_bar_i, v_bar_i),
                     t_bar_i,
                     t_bar_i2,
@@ -418,7 +439,7 @@ class Gun:
                         l_bar_i,
                         Z_i,
                         v_bar_i,
-                        self._fp_bar(Z_i, l_bar_i, v_bar_i),
+                        _fp_bar(Z_i, l_bar_i, v_bar_i),
                     )
                 )
                 t_bar_i = t_bar_i2
@@ -429,7 +450,7 @@ class Gun:
                 l_bar_i2 = l_g_bar / steps * i
 
                 t_bar_i, Z_i, v_bar_i = RKF45OverTuple(
-                    self._ode_l,
+                    _ode_l,
                     (t_bar_i, Z_i, v_bar_i),
                     l_bar_i,
                     l_bar_i2,
@@ -442,7 +463,7 @@ class Gun:
                         l_bar_i2,
                         Z_i,
                         v_bar_i,
-                        self._fp_bar(Z_i, l_bar_i2, v_bar_i),
+                        _fp_bar(Z_i, l_bar_i2, v_bar_i),
                     )
                 )
                 l_bar_i = l_bar_i2
@@ -454,7 +475,7 @@ class Gun:
                 l_bar_b,
                 self.Z_b,
                 v_bar_b,
-                self._fp_bar(self.Z_b, l_bar_b, v_bar_b),
+                _fp_bar(self.Z_b, l_bar_b, v_bar_b),
             )
         )
         bar_data.append(
@@ -464,7 +485,7 @@ class Gun:
                 l_bar_f,
                 1,
                 v_bar_f,
-                self._fp_bar(1, l_bar_f, v_bar_f),
+                _fp_bar(1, l_bar_f, v_bar_f),
             )
         )
         bar_data.append(
@@ -474,7 +495,7 @@ class Gun:
                 l_bar_p,
                 Z_p,
                 v_bar_p,
-                self._fp_bar(Z_p, l_bar_p, v_bar_p),
+                _fp_bar(Z_p, l_bar_p, v_bar_p),
             )
         )
         bar_data.append(
@@ -484,16 +505,16 @@ class Gun:
                 l_g_bar,
                 Z_e,
                 v_bar_e,
-                self._fp_bar(Z_e, l_g_bar, v_bar_e),
+                _fp_bar(Z_e, l_g_bar, v_bar_e),
             )
         )
         bar_data.sort(key=lambda x: x[1])  # sort by scaled time
         data = tuple(
             (
                 tag,
-                t_bar * self.l0 / self.v_j,
-                l_bar * self.l0,
-                self._fPsi(Z),
+                t_bar * self.l_0 / self.v_j,
+                l_bar * self.l_0,
+                _fPsi(Z),
                 v_bar * self.v_j,
                 p_bar * self.f * self.Delta,
             )
@@ -501,6 +522,109 @@ class Gun:
         )
 
         return data
+
+    def getEff(self, vg):
+        te = (vg / self.v_j) ** 2
+        be = te / self.phi
+        return te, be
+
+    def analyze(
+        self,
+    ):
+        """run the psi-bar analytical solution on the defined weapon
+
+        key assumptions:
+            >burn rate scales linearlly with pressure
+            >propellant volume fraction (ψ, psi) is a polynomial
+             function of linear burn fraction (Z),
+             (this involves discarding the 3rd order term entire-
+             ly, which is not exactly rigorous, but is necessary
+             for analytically solving the SOE.)
+            >l_psi does not vary much for the entire burn duration
+             (since with current propellant the increase in free
+             chamber volume as a consequence of burning is out-
+             weighed by the effect of covolume, this is approxima-
+             tely true for moderate chamber loading fractions.)
+
+        when u_1 refers to the linear burn rate model, it is substituted
+        for u_0, deviating from the source's use.
+
+
+        """
+        # the equivalent of B used for linear burn rates.
+        self.B_0 = (
+            self.S**2
+            * self.e_1**2
+            / (self.f * self.phi * self.omega * self.m * self.u_0**2)
+        )
+        epsilon_0 = (1 + 4 * self.labda / self.chi * self.psi_0) ** 0.5
+        Z_0 = (epsilon_0 - 1) / (2 * self.labda)
+        K_1 = self.chi * epsilon_0
+        B_1 = self.B_0 * self.theta * 0.5 - self.chi * self.labda
+        v_k = self.S * self.e_1 / (self.u_0 * self.phi * self.m)
+        gamma = B_1 * self.psi_0 / K_1**2
+
+        # x = Z - Z_0
+        def _v(x):
+            return v_k * x
+
+        def _psi(x):
+            return self.psi_0 + K_1 * x + self.labda * self.chi * x**2
+
+        def _l_psi_avg(x_i, x_j):
+            psi_i, psi_j = _psi(x_i), _psi(x_j)
+            psi_avg = (psi_i + psi_j) / 2
+            return self.l_0 * (
+                1
+                - self.Delta / self.rho_p
+                - self.Delta * (self.alpha - 1 / self.rho_p) * psi_avg
+            )
+
+        def _Z_x(
+            x,
+        ):  # distinct from Z which should be straightforwardly related to x
+            beta = B_1 / K_1 * x
+            b = (1 + 4 * gamma) ** 0.5
+            return (1 - 2 * beta / (b + 1)) ** (0.5 * (b + 1) / b) * (
+                1 + 2 * beta / (b - 1)
+            ) ** (0.5 * (b - 1) / b)
+
+        B_1_prime = -B_1
+        gamma_prime = B_1_prime * self.psi_0 / K_1**2
+
+        def _Z_prime_x(x):
+            beta_prime = B_1_prime / K_1 * x
+            b_prime = (1 - 4 * gamma_prime) ** 0.5
+            return (1 + 2 * beta_prime / (b_prime + 1)) ** (
+                0.5 * (b_prime + 1) / b_prime
+            ) * (1 - 2 * beta_prime / (b_prime - 1)) ** (
+                0.5 * (b_prime - 1) / b_prime
+            )
+
+        def _l(x, l_psi_avg):
+            if self.chi * self.labda < 0.5 * self.B_0 * self.theta:
+                return l_psi_avg * (_Z_x(x) ** (-self.B_0 / B_1) - 1)
+            elif self.chi * self.labda == 0.5 * self.B_0 * self.theta:
+                x_prime = K_1 / self.psi_0 * x
+                return (
+                    self.B_0
+                    * self.psi_0
+                    / K_1**2
+                    * (x_prime - log(1 + x_prime))
+                )
+            else:
+                return l_psi_avg * (_Z_prime_x(x) ** (self.B_0 / B_1) - 1)
+
+        delta_1 = 1 / (self.alpha - 1 / self.rho_p)
+        p_m = 281e6
+        x_m = K_1 / (
+            self.B_0 * (1 + self.theta) / (1 + p_m / (self.f * delta_1))
+            - 2 * self.chi * self.labda
+        )
+
+        print(x_m)
+        print(v_k)
+        print(_v(x_m))
 
     def __getattr__(self, attrName):
         try:
@@ -510,21 +634,22 @@ class Gun:
 
 
 if __name__ == "__main__":
-    """standard 7 hole cylinder has d0=e1, hole dia = 0.5 * arc width
-    D0 = 4*2e1+3*d0 = 11 * e1
+    """standard 7 hole cylinder has d_0=e_1, hole dia = 0.5 * arc width
+    d_0 = 4*2e_1+3*d_0 = 11 * e_1
     """
 
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17 JAN-PD-26"]
 
-    M17SHC = Propellant(
-        M17, Geometry.SEVEN_PERF_ROSETTE, 0.55e-3 * 2, 0.55e-3, 2.25
-    )
+    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 3e-3, 1.5e-3, 3)
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
-    test = Gun(57e-3, 2.8, M17SHC, 1.16, 1.51e-3, 3e7, 3.624, 1.2)
-    print(*test.integrate(100, 1e-9, dom="time"), sep="\n")
-    print(*test.integrate(100, 1e-9, dom="length"), sep="\n")
+    test = Gun(
+        0.2, 50.0, M17SHC, 40.0, 0.05194182390081051, 30000000.0, 12.5, 1.1
+    )
+    print(*test.integrate(10, 1e-5, dom="time"), sep="\n")
+    # print(*test.integrate(10, 1e-5, dom="length"), sep="\n")
+    test.analyze()
 
     # lbs/in^3 -> kg/m^3, multiply by 27680
     # in^3/lbs -> m^3/kg, divide by 27680

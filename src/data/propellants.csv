@@ -1,6 +1,6 @@
-|type|,|description|,|adiabatic index|,|density kg/m^3|,|force J/kg|,|covolume m^3/kg|,|pressure exponent|,|burnrate coefficient m/s/Pa^-n|
-|M1 JAN-P-309|,|85% Nitrocellulose,10% Dinitrotloluene,5% Dibutyl Phthalate,1% Diphenylamine|,1.2593,1569,911700,1.104e-3,0.951,1.078e-9
-|M2 JAN-P-328|,|77% Nitrocellulose,20% Nitroglycerin|,1.2238,1652,1076000,1.008e-3,0.933,3.540e-9
-|M5 JAN-P-323|,|82% Nitrocellulose,15% Nitroglycerin|,1.2258,1650,1061000,9.942e-4,0.948,2.504e-9
-|M6 JAN-P-309|,|87% Nitrocellulose,10% Dinitrotoluene,1% Diphenylamine|,1.2543,1581,947500,1.081e-3,0.949,1.272e-9
-|M17 JAN-PD-26|,|55% Nitroguanidine,22% Nitrocellulose,22% Nitroglycerin,2% Ethyl Centralite|,1.2402,1669,1088000,1.066e-3,0.836,1.477e-8
+|type|,|description|,|adiabatic index|,|density kg/m^3|,|force J/kg|,|covolume m^3/kg|,|pressure exponent|,|burnrate coefficient m/s/Pa^-n|,|linear burnrate m/s/Pa|
+|M1 JAN-P-309|,|85% Nitrocellulose,10% Dinitrotloluene,5% Dibutyl Phthalate,1% Diphenylamine|,1.2593,1569,911700,1.104e-3,0.951,1.078e-9,0.422e-9
+|M2 JAN-P-328|,|77% Nitrocellulose,20% Nitroglycerin|,1.2238,1652,1076000,1.008e-3,0.933,3.540e-9,0.987e-9
+|M5 JAN-P-323|,|82% Nitrocellulose,15% Nitroglycerin|,1.2258,1650,1061000,9.942e-4,0.948,2.504e-9,0.975e-9
+|M6 JAN-P-309|,|87% Nitrocellulose,10% Dinitrotoluene,1% Diphenylamine|,1.2543,1581,947500,1.081e-3,0.949,1.272e-9,0.471e-9
+|M17 JAN-PD-26|,|55% Nitroguanidine,22% Nitrocellulose,22% Nitroglycerin,2% Ethyl Centralite|,1.2402,1669,1088000,1.066e-3,0.836,1.477e-8,0.632e-9
