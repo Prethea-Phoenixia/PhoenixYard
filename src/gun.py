@@ -252,6 +252,11 @@ class Gun:
             self.psi_0 = (1 / self.Delta - 1 / self.rho_p) / (
                 self.f / self.p_0 + self.alpha - 1 / self.rho_p
             )
+            if self.psi_0 < 0:
+                raise ValueError(
+                    "Initial burnup fraction is solved to be negative."
+                    + " Suggest reducing load fraction."
+                )
 
     def integrate(self, steps=10, tol=1e-5, dom="time"):
         """
@@ -330,12 +335,6 @@ class Gun:
                 dv_bar = 0
 
             return (dt_bar, dl_bar, dv_bar)
-
-        if self.psi_0 < 0:
-            raise ValueError(
-                "Initial burnup fraction is solved to be negative."
-                + " This may indicate an excessive charge load fraction."
-            )
 
         Z_0 = bisect(lambda z: _fPsi(z) - self.psi_0, 0, 1, tol)[0]
         """
@@ -528,9 +527,7 @@ class Gun:
         be = te / self.phi
         return te, be
 
-    def analyze(
-        self,
-    ):
+    def analyze(self, tol=1e-5):
         """run the psi-bar analytical solution on the defined weapon
 
         key assumptions:
@@ -552,7 +549,7 @@ class Gun:
 
         """
         # the equivalent of B used for linear burn rates.
-        self.B_0 = (
+        B_0 = (
             self.S**2
             * self.e_1**2
             / (self.f * self.phi * self.omega * self.m * self.u_0**2)
@@ -560,7 +557,7 @@ class Gun:
         epsilon_0 = (1 + 4 * self.labda / self.chi * self.psi_0) ** 0.5
         Z_0 = (epsilon_0 - 1) / (2 * self.labda)
         K_1 = self.chi * epsilon_0
-        B_1 = self.B_0 * self.theta * 0.5 - self.chi * self.labda
+        B_1 = B_0 * self.theta * 0.5 - self.chi * self.labda
         v_k = self.S * self.e_1 / (self.u_0 * self.phi * self.m)
         gamma = B_1 * self.psi_0 / K_1**2
 
@@ -602,29 +599,94 @@ class Gun:
             )
 
         def _l(x, l_psi_avg):
-            if self.chi * self.labda < 0.5 * self.B_0 * self.theta:
-                return l_psi_avg * (_Z_x(x) ** (-self.B_0 / B_1) - 1)
-            elif self.chi * self.labda == 0.5 * self.B_0 * self.theta:
+            if self.chi * self.labda < 0.5 * B_0 * self.theta:
+                return l_psi_avg * (_Z_x(x) ** (-B_0 / B_1) - 1)
+            elif self.chi * self.labda == 0.5 * B_0 * self.theta:
                 x_prime = K_1 / self.psi_0 * x
                 return (
-                    self.B_0
-                    * self.psi_0
-                    / K_1**2
-                    * (x_prime - log(1 + x_prime))
+                    B_0 * self.psi_0 / K_1**2 * (x_prime - log(1 + x_prime))
                 )
             else:
-                return l_psi_avg * (_Z_prime_x(x) ** (self.B_0 / B_1) - 1)
+                return l_psi_avg * (_Z_prime_x(x) ** (B_0 / B_1) - 1)
+
+        def propagate(x, tol):
+            """propagate l from 0 to x using global adaptive step control"""
+            l = 0
+            for i in range(10):  # 1024 steps limit is quite excessive
+                step = x / 2**i
+                x_i = 0
+                l_i = 0
+                for j in range(2**i):
+                    x_j = step * (j + 1)
+                    l_psi_avg = _l_psi_avg(x_i, x_j)
+                    l_i += _l(x_j, l_psi_avg) - _l(x_i, l_psi_avg)
+                    x_i = x_j
+                if abs(l_i - l) > tol:  # change in iteration
+                    l = l_i
+                    continue
+                else:
+                    return l_i
+            raise ValueError(
+                "Unable to propagate system to required accuracy "
+                + "in reasonable cycles."
+            )
+
+        def _p(x, l):
+            l_psi = _l_psi_avg(x, x)
+            return (
+                self.f
+                * self.omega
+                * (self.psi_0 + K_1 * x + B_1 * x**2)
+                / (self.S * (l + l_psi))
+            )
 
         delta_1 = 1 / (self.alpha - 1 / self.rho_p)
-        p_m = 281e6
-        x_m = K_1 / (
-            self.B_0 * (1 + self.theta) / (1 + p_m / (self.f * delta_1))
-            - 2 * self.chi * self.labda
-        )
+        x_k = 1 - Z_0  # upper limit of x_m
 
-        print(x_m)
-        print(v_k)
-        print(_v(x_m))
+        def _x_m(p_m):
+            """
+            x_m being a function of p_m, therefore must be solved iteratively
+            """
+            return K_1 / (
+                B_0 * (1 + self.theta) / (1 + p_m / (self.f * delta_1))
+                - 2 * self.chi * self.labda
+            )
+
+        """
+        iteratively solve x_m in the range of (0,x_k)
+        x_k signifies end of progressive burn
+        
+        Since it is known that this converge extremely vigorously,
+        propagation will be done using reduced accuracy
+
+        tolerance is specified against the unitless scaled value
+        for each parameter.
+        """
+        p_m_i = 100e6  # initial guess, 100MPa
+        for i in range(10):
+            x_m_i = _x_m(p_m_i)
+
+            if x_m_i > x_k:
+                x_m_i = x_k
+            elif x_m_i < 0:
+                x_m_i = 0
+
+            l_m_i = propagate(x_m_i, tol=self.l_0 * tol**0.5)  # see above
+
+            p_m_j = _p(x_m_i, l_m_i)
+
+            if abs(p_m_i - p_m_j) > self.f * self.Delta * tol:
+                p_m_i = p_m_j
+            else:
+                break
+        if i == 10:
+            raise ValueError(
+                "Unable to iteratively solve for peak pressure"
+                + " within reasonable cycles"
+            )
+
+        p_m = p_m_j  # peak pressure has been found!
+        x_m = x_m_i
 
     def __getattr__(self, attrName):
         try:
@@ -649,7 +711,7 @@ if __name__ == "__main__":
     )
     print(*test.integrate(10, 1e-5, dom="time"), sep="\n")
     # print(*test.integrate(10, 1e-5, dom="length"), sep="\n")
-    test.analyze()
+    test.analyze(1e-9)
 
     # lbs/in^3 -> kg/m^3, multiply by 27680
     # in^3/lbs -> m^3/kg, divide by 27680
