@@ -414,7 +414,7 @@ class Gun:
                 0,
                 Z_0,
                 0,
-                self.p_0,
+                self.p_0 / (self.f * self.Delta),
             )
         )
 
@@ -554,9 +554,9 @@ class Gun:
             * self.e_1**2
             / (self.f * self.phi * self.omega * self.m * self.u_0**2)
         )
-        epsilon_0 = (1 + 4 * self.labda / self.chi * self.psi_0) ** 0.5
-        Z_0 = (epsilon_0 - 1) / (2 * self.labda)
-        K_1 = self.chi * epsilon_0
+        sigma_0 = (1 + 4 * self.labda / self.chi * self.psi_0) ** 0.5
+        Z_0 = (sigma_0 - 1) / (2 * self.labda)
+        K_1 = self.chi * sigma_0
         B_1 = B_0 * self.theta * 0.5 - self.chi * self.labda
         v_k = self.S * self.e_1 / (self.u_0 * self.phi * self.m)
         gamma = B_1 * self.psi_0 / K_1**2
@@ -612,7 +612,7 @@ class Gun:
         def propagate(x, tol):
             """propagate l from 0 to x using global adaptive step control"""
             l = 0
-            for i in range(10):  # 1024 steps limit is quite excessive
+            for i in range(20):  # 1024 steps limit is quite excessive
                 step = x / 2**i
                 x_i = 0
                 l_i = 0
@@ -633,15 +633,25 @@ class Gun:
 
         def _p(x, l):
             l_psi = _l_psi_avg(x, x)
+
+            """ equivalent
+            psi = _psi(x)
             return (
                 self.f
                 * self.omega
-                * (self.psi_0 + K_1 * x + B_1 * x**2)
+                * (psi - 0.5 * B_0 * self.theta * x**2)
+                / (self.S * (l + l_psi))
+            )
+            """
+            return (
+                self.f
+                * self.omega
+                * (self.psi_0 + K_1 * x - B_1 * x**2)
                 / (self.S * (l + l_psi))
             )
 
         delta_1 = 1 / (self.alpha - 1 / self.rho_p)
-        x_k = 1 - Z_0  # upper limit of x_m
+        x_k = 1 - Z_0  # upper limit of x_m, also known as x_s
 
         def _x_m(p_m):
             """
@@ -685,8 +695,108 @@ class Gun:
                 + " within reasonable cycles"
             )
 
-        p_m = p_m_j  # peak pressure has been found!
+        # value reflecting peak pressure point
+        p_m = p_m_j
         x_m = x_m_i
+        l_m = l_m_i
+        v_m = _v(x_m)
+        print(v_m, l_m, p_m)
+        # values reflceting fracture point
+        l_k = propagate(x_k, tol=self.l_0 * tol)
+        p_k = _p(x_k, l_k)
+        v_k = _v(x_k)
+
+        print(v_k, l_k, p_k)
+
+        """post fracture burn
+        the fracture point is variously referred to with subscript k or s
+        x = Z-Z_0
+        xi = Z/Z_b
+
+        x = xi * Z_b - Z_0
+
+        xi valid range  (0,1)
+        psi valid range (0,1)
+        Z valid range (0,Z_b)
+        """
+        psi_k = _psi(x_k)
+        xi_k = 1 / self.Z_b
+        """
+        In the reference, the following terms are chi_s and labda_s.
+        Issue is, this definition IS NOT the same as the definition
+        self.chi_s and self.labda_s.from the previous chapter.
+        """
+        chi_k = (psi_k / xi_k - xi_k) / (1 - xi_k)
+        labda_k = 1 - 1 / chi_k
+
+        def _psi_fracture(xi):  # as in greek letter ξ
+            return chi_k * xi * (1 - labda_k * xi)
+
+        I_s = (self.e_1 + self.rho) / (self.u_0)
+        xi_0 = Z_0 / self.Z_b
+        v_k_1 = self.S * I_s * (xi_k - xi_0) / (self.m * self.phi)
+
+        def _v_fracture(xi):
+            return v_k_1 * (xi - xi_0) / (xi_k - xi_0)
+
+        """
+        around here, we drop l_psi's xi or Z dependence and treat it as a constant
+        since post fracture the burning is minimal
+        """
+        l_1 = self.l_0 * (1 - self.alpha * self.Delta)
+        Labda_1 = (
+            l_k / self.l_0
+        )  # reference is wrong, this is the implied definition
+
+        B_2 = self.S**2 * I_s**2 / (self.f * self.omega * self.phi * self.m)
+        B_2_bar = B_2 / (chi_k * labda_k)
+        xi_k_bar = labda_k * xi_k
+
+        def _Labda(xi):  # Labda = l / l_0
+            xi_bar = labda_k * xi
+
+            r = (
+                (1 - (1 + 0.5 * B_2_bar * self.theta) * xi_bar)
+                / (1 - (1 + 0.5 * B_2_bar * self.theta) * xi_k_bar)
+            ) ** (-B_2_bar / (1 + 0.5 * B_2_bar * self.theta))
+
+            Labda = (
+                r * (Labda_1 + 1 - self.alpha * self.Delta)
+                + self.alpha * self.Delta
+                - 1
+            )
+            return Labda
+
+        def _p_fracture(xi):
+            """
+            Equation is wrong for reference work
+            """
+            psi = _psi_fracture(xi)
+            Labda = _Labda(xi)
+
+            v = _v_fracture(xi)
+
+            return (
+                self.f
+                * self.omega
+                / self.S
+                * (
+                    psi
+                    - self.theta
+                    * self.phi
+                    * self.m
+                    / (2 * self.f * self.omega)
+                    * v**2
+                )
+                / (Labda * self.l_0 + l_1)
+            )
+
+        print(_v_fracture(xi_k), _Labda(xi_k) * self.l_0, _p_fracture(xi_k))
+        print(
+            _v_fracture(1),
+            _Labda(1) * self.l_0,
+            _p_fracture(1),
+        )
 
     def __getattr__(self, attrName):
         try:
@@ -711,7 +821,7 @@ if __name__ == "__main__":
     )
     print(*test.integrate(10, 1e-5, dom="time"), sep="\n")
     # print(*test.integrate(10, 1e-5, dom="length"), sep="\n")
-    test.analyze(1e-9)
+    test.analyze(1e-5)
 
     # lbs/in^3 -> kg/m^3, multiply by 27680
     # in^3/lbs -> m^3/kg, divide by 27680
