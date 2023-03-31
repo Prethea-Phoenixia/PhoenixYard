@@ -259,6 +259,11 @@ class IB(Frame):
                     tol=10 ** -(int(self.accExp.get())),
                 )
                 i = tuple(i[0] for i in self.tableData).index("SHOT EXIT")
+                """
+                self.tableData.extend(
+                    self.gun.analyze(tol=10 ** -(int(self.accExp.get())))
+                )
+                """
                 vg = self.tableData[i][4]
                 te, be = self.gun.getEff(vg)
                 self.te.set(round(te * 100, 1))

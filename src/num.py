@@ -182,6 +182,12 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9, imax=10000):
     i = 0
     while (h > 0 and x < x_1) or (h < 0 and x > x_1):
         i += 1
+        if i > imax:
+            raise ValueError(
+                "Integration Cycle Limit ({}) Exceeded at x={}, h={}\n y={}".format(
+                    i, x, h, y_this
+                )
+            )
         try:
             K1 = dTupleFunc(x, *y_this)
             K1 = tuple(k * h for k in K1)
@@ -237,6 +243,9 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9, imax=10000):
             )
             K6 = tuple(k * h for k in K6)
 
+            if any(isinstance(i, complex) for i in K1 + K2 + K3 + K4 + K5 + K6):
+                raise TypeError
+
         except (
             TypeError
         ):  # complex value has been encountered during calculation
@@ -273,13 +282,6 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9, imax=10000):
 
         if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
             h = x_1 - x
-
-        if i > imax:
-            raise ValueError(
-                "Integration Cycle Limit ({}) Exceeded at x={}, h={}\n y={}".format(
-                    i, x, h, y_this
-                )
-            )
 
     if abs(x - x_1) > tol:
         raise ValueError(

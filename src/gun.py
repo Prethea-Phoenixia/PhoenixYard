@@ -2,7 +2,7 @@ import enum
 
 import csv
 
-from math import pi, log
+from math import pi, log, exp
 from num import *
 
 
@@ -264,6 +264,7 @@ class Gun:
         evenly at specified number of steps, using a scaled numerical tolerance as
         specified.
         """
+
         B = (
             self.S**2
             * self.e_1**2
@@ -508,7 +509,7 @@ class Gun:
             )
         )
         bar_data.sort(key=lambda x: x[1])  # sort by scaled time
-        data = tuple(
+        data = list(
             (
                 tag,
                 t_bar * self.l_0 / self.v_j,
@@ -555,7 +556,12 @@ class Gun:
             / (self.f * self.phi * self.omega * self.m * self.u_0**2)
         )
         sigma_0 = (1 + 4 * self.labda / self.chi * self.psi_0) ** 0.5
-        Z_0 = (sigma_0 - 1) / (2 * self.labda)
+
+        if self.labda == 0:
+            Z_0 = self.psi_0 / self.chi
+        else:
+            Z_0 = (sigma_0 - 1) / (2 * self.labda)
+
         K_1 = self.chi * sigma_0
         B_1 = B_0 * self.theta * 0.5 - self.chi * self.labda
         v_k = self.S * self.e_1 / (self.u_0 * self.phi * self.m)
@@ -599,15 +605,23 @@ class Gun:
             )
 
         def _l(x, l_psi_avg):
-            if self.chi * self.labda < 0.5 * B_0 * self.theta:
+            if B_1 > 0:
                 return l_psi_avg * (_Z_x(x) ** (-B_0 / B_1) - 1)
-            elif self.chi * self.labda == 0.5 * B_0 * self.theta:
+            elif B_1 == 0:
+                """this case is extremely rare and has not been rigorously
+                tested."""
                 x_prime = K_1 / self.psi_0 * x
                 return (
-                    B_0 * self.psi_0 / K_1**2 * (x_prime - log(1 + x_prime))
-                )
-            else:
-                return l_psi_avg * (_Z_prime_x(x) ** (B_0 / B_1) - 1)
+                    exp(
+                        B_0
+                        * self.psi_0
+                        / K_1**2
+                        * (x_prime - log(1 + x_prime))
+                    )
+                    - 1
+                ) * l_psi_avg
+            else:  # this negation was corrected from the original work
+                return l_psi_avg * (_Z_prime_x(x) ** (-B_0 / B_1) - 1)
 
         def propagate(x, tol):
             """propagate l from 0 to x using global adaptive step control"""
@@ -633,16 +647,6 @@ class Gun:
 
         def _p(x, l):
             l_psi = _l_psi_avg(x, x)
-
-            """ equivalent
-            psi = _psi(x)
-            return (
-                self.f
-                * self.omega
-                * (psi - 0.5 * B_0 * self.theta * x**2)
-                / (self.S * (l + l_psi))
-            )
-            """
             return (
                 self.f
                 * self.omega
@@ -665,10 +669,7 @@ class Gun:
         """
         iteratively solve x_m in the range of (0,x_k)
         x_k signifies end of progressive burn
-        
-        Since it is known that this converge extremely vigorously,
-        propagation will be done using reduced accuracy
-
+    
         tolerance is specified against the unitless scaled value
         for each parameter.
         """
@@ -681,7 +682,7 @@ class Gun:
             elif x_m_i < 0:
                 x_m_i = 0
 
-            l_m_i = propagate(x_m_i, tol=self.l_0 * tol**0.5)  # see above
+            l_m_i = propagate(x_m_i, tol=self.l_0 * tol)  # see above
 
             p_m_j = _p(x_m_i, l_m_i)
 
@@ -700,15 +701,13 @@ class Gun:
         x_m = x_m_i
         l_m = l_m_i
         v_m = _v(x_m)
-        print(v_m, l_m, p_m)
+        psi_m = _psi(x_m)
+
         # values reflceting fracture point
         l_k = propagate(x_k, tol=self.l_0 * tol)
         p_k = _p(x_k, l_k)
-        v_k = _v(x_k)
 
-        print(v_k, l_k, p_k)
-
-        """post fracture burn
+        """post fracture, degressive burn
         the fracture point is variously referred to with subscript k or s
         x = Z-Z_0
         xi = Z/Z_b
@@ -734,6 +733,7 @@ class Gun:
 
         I_s = (self.e_1 + self.rho) / (self.u_0)
         xi_0 = Z_0 / self.Z_b
+
         v_k_1 = self.S * I_s * (xi_k - xi_0) / (self.m * self.phi)
 
         def _v_fracture(xi):
@@ -743,7 +743,8 @@ class Gun:
         around here, we drop l_psi's xi or Z dependence and treat it as a constant
         since post fracture the burning is minimal
         """
-        l_1 = self.l_0 * (1 - self.alpha * self.Delta)
+        # l_1 = self.l_0 * (1 - self.alpha * self.Delta)
+        l_1 = _l_psi_avg(x_k, x_k)  # use this to prevent value jump
         Labda_1 = (
             l_k / self.l_0
         )  # reference is wrong, this is the implied definition
@@ -779,24 +780,75 @@ class Gun:
             return (
                 self.f
                 * self.omega
-                / self.S
                 * (
                     psi
                     - self.theta
                     * self.phi
                     * self.m
-                    / (2 * self.f * self.omega)
                     * v**2
+                    / (2 * self.f * self.omega)
                 )
-                / (Labda * self.l_0 + l_1)
+                / (self.S * (Labda * self.l_0 + l_1))
             )
 
-        print(_v_fracture(xi_k), _Labda(xi_k) * self.l_0, _p_fracture(xi_k))
-        print(
-            _v_fracture(1),
-            _Labda(1) * self.l_0,
-            _p_fracture(1),
-        )
+        # values reflecting end of burn
+        Labda_2 = _Labda(1)
+        l_k_2 = Labda_2 * self.l_0
+        p_k_2 = _p_fracture(1)
+        v_k_2 = _v_fracture(1)
+
+        """
+        Second phase, adiabatic expansion.
+        """
+
+        def _p_adb(Labda):
+            return p_k_2 * ((Labda_1 + Labda_2) / (Labda_1 + Labda)) ** (
+                self.theta + 1
+            )
+
+        def _v_adb(Labda):
+            return (
+                self.v_j
+                * (
+                    1
+                    - ((Labda_1 + Labda_2) / (Labda_1 + Labda)) ** self.theta
+                    * (1 - (v_k_2 / self.v_j) ** 2)
+                )
+                ** 0.5
+            )
+
+        l_e = self.l_g
+        Labda_e = l_e / self.l_0
+
+        data = []
+        if l_e >= l_k_2:  # shot exit happened after burnout
+            v_e = _v_adb(Labda_e)
+            p_e = _p_adb(Labda_e)
+            psi_e = 1
+
+        elif l_e >= l_k:  # shot exit happened after fracture
+            xi_e = bisect(lambda xi: _Labda(xi) - Labda_e, xi_k, 1, tol=tol)[0]
+            v_e = _v_fracture(xi_e)
+            p_e = _p_fracture(xi_e)
+            psi_e = _psi_fracture(xi_e)
+
+        else:  # shot exit happend before fracture
+            x_e = bisect(
+                lambda x: propagate(x, tol=tol) - l_e, 0, x_k, tol=tol
+            )[0]
+            v_e = _v(x_e)
+            p_e = _p(x_e, l_e)
+            psi_e = _psi(x_e)
+
+        data.append(("SHOT EXIT", 0, l_e, psi_e, v_e, p_e))
+        data.append(("SHOT START", 0, 0, self.psi_0, 0, self.p_0))
+        data.append(("PEAK PRESSURE", 0, l_m, psi_m, v_m, p_m))
+        data.append(("FRACTURE", 0, l_k, psi_k, v_k, p_k))
+        data.append(("BURNOUT", 0, l_k_2, 1.0, v_k_2, p_k_2))
+        data.sort(key=lambda x: x[2])
+        return data
+
+        # values
 
     def __getattr__(self, attrName):
         try:
@@ -813,15 +865,17 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17 JAN-PD-26"]
 
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 3e-3, 1.5e-3, 3)
+    M17SHC = Propellant(
+        M17, Geometry.SEVEN_PERF_ROSETTE, 0.05e-3, 0.05e-3, 2.25
+    )
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
     test = Gun(
-        0.2, 50.0, M17SHC, 40.0, 0.05194182390081051, 30000000.0, 12.5, 1.1
+        0.04, 1.0, M17SHC, 1.0, 0.0015614372025091754, 30000000.0, 3.5, 1.1
     )
-    print(*test.integrate(10, 1e-5, dom="time"), sep="\n")
+    print(*test.analyze(1e-5), sep="\n")
+    print(*test.integrate(0, 1e-5, dom="time"), sep="\n")
     # print(*test.integrate(10, 1e-5, dom="length"), sep="\n")
-    test.analyze(1e-5)
 
     # lbs/in^3 -> kg/m^3, multiply by 27680
     # in^3/lbs -> m^3/kg, divide by 27680
