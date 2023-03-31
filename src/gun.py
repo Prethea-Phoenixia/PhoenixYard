@@ -583,9 +583,8 @@ class Gun:
                 - self.Delta * (self.alpha - 1 / self.rho_p) * psi_avg
             )
 
-        def _Z_x(
-            x,
-        ):  # distinct from Z which should be straightforwardly related to x
+        def _Z_x(x):
+            # distinct from Z which should be straightforwardly related to x
             beta = B_1 / K_1 * x
             b = (1 + 4 * gamma) ** 0.5
             return (1 - 2 * beta / (b + 1)) ** (0.5 * (b + 1) / b) * (
@@ -623,10 +622,12 @@ class Gun:
             else:  # this negation was corrected from the original work
                 return l_psi_avg * (_Z_prime_x(x) ** (-B_0 / B_1) - 1)
 
+        """
+
         def propagate(x, tol):
-            """propagate l from 0 to x using global adaptive step control"""
+            #propagate l from x= 0 to x_k (1-Z_0) using global adaptive step control
             l = 0
-            for i in range(20):  # 1024 steps limit is quite excessive
+            for i in range(10):
                 step = x / 2**i
                 x_i = 0
                 l_i = 0
@@ -634,16 +635,22 @@ class Gun:
                     x_j = step * (j + 1)
                     l_psi_avg = _l_psi_avg(x_i, x_j)
                     l_i += _l(x_j, l_psi_avg) - _l(x_i, l_psi_avg)
+                    if isinstance(l_i, complex):
+                        # complex result! abort now and use a finer step
+                        continue
                     x_i = x_j
+
                 if abs(l_i - l) > tol:  # change in iteration
                     l = l_i
                     continue
                 else:
+                    print(2**i)
                     return l_i
             raise ValueError(
                 "Unable to propagate system to required accuracy "
                 + "in reasonable cycles."
             )
+        """
 
         def _p(x, l):
             l_psi = _l_psi_avg(x, x)
@@ -682,7 +689,8 @@ class Gun:
             elif x_m_i < 0:
                 x_m_i = 0
 
-            l_m_i = propagate(x_m_i, tol=self.l_0 * tol)  # see above
+            # l_m_i = propagate(x_m_i, tol=self.l_0 * tol)  # see above
+            l_m_i = _l(x_m_i, _l_psi_avg(x_m_i, 0))
 
             p_m_j = _p(x_m_i, l_m_i)
 
@@ -704,22 +712,20 @@ class Gun:
         psi_m = _psi(x_m)
 
         # values reflceting fracture point
-        l_k = propagate(x_k, tol=self.l_0 * tol)
+        # l_k = propagate(x_k, tol=self.l_0 * tol)
+        l_k = _l(x_k, _l_psi_avg(x_k, 0))
         p_k = _p(x_k, l_k)
+        v_k_1 = _v(x_k)
 
-        """post fracture, degressive burn
-        the fracture point is variously referred to with subscript k or s
-        x = Z-Z_0
-        xi = Z/Z_b
-
-        x = xi * Z_b - Z_0
-
+        """
         xi valid range  (0,1)
         psi valid range (0,1)
         Z valid range (0,Z_b)
         """
+
         psi_k = _psi(x_k)
         xi_k = 1 / self.Z_b
+
         """
         In the reference, the following terms are chi_s and labda_s.
         Issue is, this definition IS NOT the same as the definition
@@ -734,17 +740,11 @@ class Gun:
         I_s = (self.e_1 + self.rho) / (self.u_0)
         xi_0 = Z_0 / self.Z_b
 
-        v_k_1 = self.S * I_s * (xi_k - xi_0) / (self.m * self.phi)
+        v_kk = self.S * I_s * (xi_k - xi_0) / (self.m * self.phi)
 
         def _v_fracture(xi):
-            return v_k_1 * (xi - xi_0) / (xi_k - xi_0)
+            return v_kk * (xi - xi_0) / (xi_k - xi_0)
 
-        """
-        around here, we drop l_psi's xi or Z dependence and treat it as a constant
-        since post fracture the burning is minimal
-        """
-        # l_1 = self.l_0 * (1 - self.alpha * self.Delta)
-        l_1 = _l_psi_avg(x_k, x_k)  # use this to prevent value jump
         Labda_1 = (
             l_k / self.l_0
         )  # reference is wrong, this is the implied definition
@@ -753,7 +753,7 @@ class Gun:
         B_2_bar = B_2 / (chi_k * labda_k)
         xi_k_bar = labda_k * xi_k
 
-        def _Labda(xi):  # Labda = l / l_0
+        def _Labda(xi, Labda_psi_avg):  # Labda = l / l_0
             xi_bar = labda_k * xi
 
             r = (
@@ -761,25 +761,30 @@ class Gun:
                 / (1 - (1 + 0.5 * B_2_bar * self.theta) * xi_k_bar)
             ) ** (-B_2_bar / (1 + 0.5 * B_2_bar * self.theta))
 
-            Labda = (
-                r * (Labda_1 + 1 - self.alpha * self.Delta)
-                + self.alpha * self.Delta
-                - 1
-            )
+            Labda = r * (Labda_1 + Labda_psi_avg) - Labda_psi_avg
             return Labda
 
-        def _p_fracture(xi):
+        def _Labda_psi_avg(xi_i, xi_j):
+            psi_i, psi_j = _psi_fracture(xi_i), _psi_fracture(xi_j)
+            psi_avg = (psi_i + psi_j) / 2
+
+            return (
+                1
+                - self.Delta / self.rho_p
+                - self.Delta * (self.alpha - 1 / self.rho_p) * psi_avg
+            )
+
+        def _p_fracture(xi, Labda):
             """
             Equation is wrong for reference work
             """
             psi = _psi_fracture(xi)
-            Labda = _Labda(xi)
-
             v = _v_fracture(xi)
+            Labda_psi = _Labda_psi_avg(xi, xi)
 
             return (
                 self.f
-                * self.omega
+                * self.Delta
                 * (
                     psi
                     - self.theta
@@ -788,30 +793,61 @@ class Gun:
                     * v**2
                     / (2 * self.f * self.omega)
                 )
-                / (self.S * (Labda * self.l_0 + l_1))
+                / (Labda + Labda_psi)
             )
 
+        """
+
+        def propagate_fracture(xi, tol):
+            #propagate Labda in the fracture regime using global adaptive step control
+            Labda = Labda_1
+            for i in range(10):
+                step = (xi - xi_k) / 2**i
+                xi_i = xi_k
+                Labda_i = Labda_1
+                for j in range(2**i):
+                    xi_j = xi_i + step
+                    Labda_psi_avg = _Labda_psi_avg(xi_i, xi_j)
+                    Labda_i += _Labda(xi_j, Labda_psi_avg) - _Labda(
+                        xi_i, Labda_psi_avg
+                    )
+                    xi_i = xi_j
+                if isinstance(Labda_i, complex):
+                    continue
+                if abs(Labda_i - Labda) > tol:  # change in iteration
+                    Labda = Labda_i
+                    continue
+                else:
+                    print(2**i)
+                    return Labda_i
+            raise ValueError(
+                "Unable to propagate system to required accuracy "
+                + "in reasonable cycles."
+            )
+        """
+
         # values reflecting end of burn
-        Labda_2 = _Labda(1)
+        # Labda_2 = propagate_fracture(1, tol=tol)
+        Labda_2 = _Labda(1, _Labda_psi_avg(1, xi_k))
         l_k_2 = Labda_2 * self.l_0
-        p_k_2 = _p_fracture(1)
+        p_k_2 = _p_fracture(1, Labda_2)
         v_k_2 = _v_fracture(1)
 
         """
-        Second phase, adiabatic expansion.
+        Post burnout adiabatic expansion.
         """
+        # l_1 is the the limit for l_psi_avg as psi -> 0
+        l_1 = self.l_0 * (1 - self.alpha * self.Delta)
 
-        def _p_adb(Labda):
-            return p_k_2 * ((Labda_1 + Labda_2) / (Labda_1 + Labda)) ** (
-                self.theta + 1
-            )
+        def _p_adb(l):
+            return p_k_2 * ((l_1 + l_k) / (l_1 + l)) ** (self.theta + 1)
 
-        def _v_adb(Labda):
+        def _v_adb(l):
             return (
                 self.v_j
                 * (
                     1
-                    - ((Labda_1 + Labda_2) / (Labda_1 + Labda)) ** self.theta
+                    - ((l_1 + l_k) / (l_1 + l)) ** self.theta
                     * (1 - (v_k_2 / self.v_j) ** 2)
                 )
                 ** 0.5
@@ -822,30 +858,40 @@ class Gun:
 
         data = []
         if l_e >= l_k_2:  # shot exit happened after burnout
-            v_e = _v_adb(Labda_e)
-            p_e = _p_adb(Labda_e)
+            v_e = _v_adb(l_e)
+            p_e = _p_adb(l_e)
             psi_e = 1
 
         elif l_e >= l_k:  # shot exit happened after fracture
-            xi_e = bisect(lambda xi: _Labda(xi) - Labda_e, xi_k, 1, tol=tol)[0]
+            xi_e = bisect(
+                # lambda xi: propagate_fracture(xi, tol=tol) - Labda_e,
+                lambda xi: _Labda(xi, _Labda_psi_avg(xi, xi_k)) - Labda_e,
+                xi_k,
+                1,
+                tol=tol,
+            )[0]
             v_e = _v_fracture(xi_e)
-            p_e = _p_fracture(xi_e)
+            p_e = _p_fracture(xi_e, Labda_e)
             psi_e = _psi_fracture(xi_e)
 
         else:  # shot exit happend before fracture
             x_e = bisect(
-                lambda x: propagate(x, tol=tol) - l_e, 0, x_k, tol=tol
+                # lambda x: propagate(x, tol=tol) - l_e,
+                lambda x: _l(x, _l_psi_avg(x, 0)) - l_e,
+                0,
+                x_k,
+                tol=tol,
             )[0]
             v_e = _v(x_e)
             p_e = _p(x_e, l_e)
             psi_e = _psi(x_e)
 
-        data.append(("SHOT EXIT", 0, l_e, psi_e, v_e, p_e))
-        data.append(("SHOT START", 0, 0, self.psi_0, 0, self.p_0))
-        data.append(("PEAK PRESSURE", 0, l_m, psi_m, v_m, p_m))
-        data.append(("FRACTURE", 0, l_k, psi_k, v_k, p_k))
-        data.append(("BURNOUT", 0, l_k_2, 1.0, v_k_2, p_k_2))
-        data.sort(key=lambda x: x[2])
+        data.append(("SHOT EXIT", l_e, psi_e, v_e, p_e))
+        data.append(("SHOT START", 0.0, self.psi_0, 0, self.p_0))
+        data.append(("PEAK PRESSURE", l_m, psi_m, v_m, p_m))
+        data.append(("FRACTURE", l_k, psi_k, v_k_1, p_k))
+        data.append(("BURNOUT", l_k_2, 1.0, v_k_2, p_k_2))
+        data.sort(key=lambda x: x[1])
         return data
 
         # values
@@ -861,20 +907,29 @@ if __name__ == "__main__":
     """standard 7 hole cylinder has d_0=e_1, hole dia = 0.5 * arc width
     d_0 = 4*2e_1+3*d_0 = 11 * e_1
     """
+    from tabulate import tabulate
 
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17 JAN-PD-26"]
 
-    M17SHC = Propellant(
-        M17, Geometry.SEVEN_PERF_ROSETTE, 0.05e-3, 0.05e-3, 2.25
-    )
+    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1e-3, 0.5e-3, 2.25)
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
-    test = Gun(
-        0.04, 1.0, M17SHC, 1.0, 0.0015614372025091754, 30000000.0, 3.5, 1.1
+    test = Gun(0.05, 1.0, M17SHC, 0.8, 0.0010, 30000000.0, 3.5, 1.1)
+    print("numerical")
+    print(
+        tabulate(
+            test.integrate(0, 1e-5, dom="time"),
+            headers=("tag", "t", "l", "phi", "v", "p"),
+        )
     )
-    print(*test.analyze(1e-5), sep="\n")
-    print(*test.integrate(0, 1e-5, dom="time"), sep="\n")
+    print("analytical")
+    print(
+        tabulate(
+            test.analyze(1e-4),
+            headers=("tag", "l", "phi", "v", "p"),
+        )
+    )
     # print(*test.integrate(10, 1e-5, dom="length"), sep="\n")
 
     # lbs/in^3 -> kg/m^3, multiply by 27680
