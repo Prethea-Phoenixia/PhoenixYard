@@ -151,6 +151,60 @@ def dot_aligned(matrix):
     return tuple(zip(*transposed))
 
 
+class ToolTip(object):
+    """solution found in
+    https://stackoverflow.com/questions/20399243/display-message-when-hovering-over-something-with-mouse-cursor-in-python
+    """
+
+    def __init__(self, widget):
+        self.widget = widget
+        self.tipwindow = None
+        self.id = None
+        self.x = self.y = 0
+
+    def showtip(self, text):
+        """Display text in tooltip window"""
+        self.text = text
+        if self.tipwindow or not self.text:
+            return
+        x, y, cx, cy = self.widget.bbox("insert")
+        x = x + self.widget.winfo_rootx()  # + self.widget.winfo_width()
+        y = y + cy + self.widget.winfo_rooty() + self.widget.winfo_height()
+        """ initalize the tooltip window to the lower right corner of the widget"""
+        self.tipwindow = tw = Toplevel(self.widget)
+        tw.wm_overrideredirect(1)
+        tw.wm_geometry("+%d+%d" % (x, y))
+        label = Label(
+            tw,
+            text=self.text,
+            justify=LEFT,
+            background="#ffffe0",
+            relief=SOLID,
+            borderwidth=1,
+            font=("tahoma", "8", "normal"),
+        )
+        label.pack(ipadx=1)
+
+    def hidetip(self):
+        tw = self.tipwindow
+        self.tipwindow = None
+        if tw:
+            tw.destroy()
+
+
+def CreateToolTip(widget, text):
+    toolTip = ToolTip(widget)
+
+    def enter(event):
+        toolTip.showtip(text)
+
+    def leave(event):
+        toolTip.hidetip()
+
+    widget.bind("<Enter>", enter)
+    widget.bind("<Leave>", leave)
+
+
 class IB(Frame):
     def __init__(self, parent):
         Frame.__init__(self, parent)
@@ -353,17 +407,16 @@ class IB(Frame):
             parFrm, i, "Charge Mass", "kg", "0.0", validationNN
         )
 
-        ttk.Label(parFrm, text="Propellant").grid(
-            row=i, column=0, padx=2, pady=2, sticky="nsew"
-        )
-
-        i += 1
-
         specVal = parent.register(self.updateSpec)
-        # Create Dropdown menu
-        # dp = StringVar()
+
+        parFrm.rowconfigure(i, weight=1)
+
+        propFrm = ttk.LabelFrame(parFrm, text="Propellant")
+        propFrm.grid(
+            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+        )
         self.dropProp = ttk.Combobox(
-            parFrm,
+            propFrm,
             values=self.propOptions,
             # textvariable=dp,
             state="readonly",
@@ -373,27 +426,35 @@ class IB(Frame):
         )
         self.dropProp.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropProp.current(0)
-        self.dropProp.grid(
-            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
-        )
-        parFrm.rowconfigure(i, weight=0)
-        i += 1
+        self.dropProp.grid(row=0, column=0, columnspan=3, sticky="nsew", pady=2)
         self.dropProp.configure(width=10)
         self.specs = Text(
-            parFrm,
+            propFrm,
             wrap=WORD,
             height=4,
             width=10,  # yscrollcommand=specScroll
         )
-        self.specs.grid(
-            row=i, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
-        )
+        self.specs.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=2)
+        # self.dropProp.configure(width=10)
 
-        specScroll = ttk.Scrollbar(parFrm, orient="vertical")
-        specScroll.grid(row=i, column=2, padx=2, pady=2)
+        specScroll = ttk.Scrollbar(propFrm, orient="vertical")
+        specScroll.grid(row=1, column=1, padx=2, pady=2, sticky="nsew")
+
+        propFrm.rowconfigure(1, weight=1)
+        propFrm.columnconfigure(0, weight=1)
+
+        self.specs = Text(
+            propFrm,
+            wrap=WORD,
+            height=2,
+            width=30,
+            yscrollcommand=specScroll.set,
+        )
+        self.specs.grid(row=1, column=0, pady=2, sticky="nsew")
+        specScroll.config(command=self.specs.yview)
 
         self.updateSpec()
-        parFrm.rowconfigure(i, weight=0)
+
         i += 1
 
         ttk.Label(parFrm, text="Grain Shape").grid(
@@ -403,7 +464,7 @@ class IB(Frame):
             padx=2,
             pady=2,
         )
-        parFrm.rowconfigure(i, weight=0)
+
         i += 1
 
         # Create Dropdown menu
@@ -416,7 +477,7 @@ class IB(Frame):
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
         self.dropGeom.configure(width=10)
-        parFrm.rowconfigure(i, weight=0)
+
         i += 1
 
         self.webmm, _, i = self.add3Input(
@@ -425,27 +486,76 @@ class IB(Frame):
         self.permm, self.perw, i = self.add3Input(
             parFrm, i, "Perf Diameter", "mm", "0.0", validationNN
         )
+
+        grlRtext = "\n".join(
+            ("Length to diameter ratio of the", "propellant grain.")
+        )
+
         self.grlR, _, i = self.add3Input(
-            parFrm, i, "Grain L/D", "", "3.0", validationNN
+            parFrm, i, "Grain L/D", "", "3.0", validationNN, infotext=grlRtext
+        )
+
+        ldftext = "\n".join(
+            (
+                "Percentage of chamber volume filled by",
+                "the outlines of the grain.",
+            )
         )
 
         self.ldf, _, i = self.add3Input(
-            parFrm, i, "Load Factor", "%", "50.0", validationNN
+            parFrm,
+            i,
+            "Load Factor",
+            "%",
+            "50.0",
+            validationNN,
+            infotext=ldftext,
         )
+
+        clrtext = "\n".join(
+            (
+                "Chamber length ratio is the ratio between",
+                "the length of reduced chamber (dividing",
+                "the chamber volume with barrel cross",
+                "section) and the actual chamber.",
+            )
+        )
+
         self.clr, _, i = self.add3Input(
-            parFrm, i, "Chamber L. Ratio", "", "1.1", validationNN
+            parFrm, i, "Chamber L.R.", "", "1.1", validationNN, infotext=clrtext
         )
+
+        stpText = "\n".join(
+            (
+                "Peak pressure that initially resists",
+                "the movement of shot. For rifled weapons",
+                "this is predominantely caused by the",
+                "shot or band being squeezed in to contact",
+                "with the rifling. For large caliber guns",
+                "25-30MPa is common. For rifles, 35-45MPa",
+                "is common.",
+                "For smoothbore weapons, this is instead",
+                "caused by cartridge holding on to the",
+                "projectile, greatly varying depending",
+                "on desired rate of fire and shot weight.",
+            )
+        )
+
         self.stpMPa, _, i = self.add3Input(
-            parFrm, i, "Start Pressure", "MPa", "30", validationNN
+            parFrm,
+            i,
+            "Start Pressure",
+            "MPa",
+            "10",
+            validationNN,
+            infotext=stpText,
         )
 
     def addOpsFrm(self, parent):
         opFrm = ttk.LabelFrame(parent, text="Options")
         opFrm.grid(row=1, column=2, sticky="nsew")
 
-        opFrm.columnconfigure(0, weight=0)
         opFrm.columnconfigure(1, weight=1)
-        opFrm.columnconfigure(2, weight=0)
 
         validationNN = parent.register(validateNN)
         i = 0
@@ -648,10 +758,10 @@ class IB(Frame):
         validation=None,
         entryWidth=10,
         formatter=formatFloatInput,
+        infotext=None,
     ):
-        ttk.Label(parent, text=labelText).grid(
-            row=rowIndex, column=0, sticky="nsew", padx=2, pady=2
-        )
+        lb = ttk.Label(parent, text=labelText)
+        lb.grid(row=rowIndex, column=0, sticky="nsew", padx=2, pady=2)
         parent.rowconfigure(rowIndex, weight=0)
         e = StringVar(parent)
         e.set(default)
@@ -669,6 +779,8 @@ class IB(Frame):
         ttk.Label(parent, text=unitText).grid(
             row=rowIndex, column=2, sticky="nsew", padx=2, pady=2
         )
+        if infotext is not None:
+            CreateToolTip(lb, infotext)
         return e, en, rowIndex + 1
 
     def add12Disp(
@@ -758,8 +870,6 @@ if __name__ == "__main__":
     tabControl.add(tabIB, text="Forward Calculation", underline=0)
     tabControl.add(tabCD, text="Constrained Design", underline=0)
     tabControl.grid(row=0, column=0, sticky="nsew")
-
-    
     """
     ibPanel = IB(root)
     root.mainloop()
