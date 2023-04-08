@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter import ttk
 import traceback
+import tksvg
 from gun import *
 import os
 import sys
@@ -426,32 +427,28 @@ class IB(Frame):
         )
         self.dropProp.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropProp.current(0)
-        self.dropProp.grid(row=0, column=0, columnspan=3, sticky="nsew", pady=2)
+        self.dropProp.grid(row=0, column=0, columnspan=2, sticky="nsew", pady=2)
         self.dropProp.configure(width=10)
+
+        specScroll = ttk.Scrollbar(propFrm, orient="vertical")
+        specScroll.grid(
+            row=1,
+            column=1,
+            sticky="nsew",
+            pady=2,
+        )
         self.specs = Text(
             propFrm,
             wrap=WORD,
             height=4,
-            width=10,  # yscrollcommand=specScroll
+            width=10,
+            yscrollcommand=specScroll.set,
         )
-        self.specs.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=2)
-        # self.dropProp.configure(width=10)
-
-        specScroll = ttk.Scrollbar(propFrm, orient="vertical")
-        specScroll.grid(row=1, column=1, padx=2, pady=2, sticky="nsew")
+        self.specs.grid(row=1, column=0, sticky="nsew", pady=2)
+        specScroll.config(command=self.specs.yview)
 
         propFrm.rowconfigure(1, weight=1)
         propFrm.columnconfigure(0, weight=1)
-
-        self.specs = Text(
-            propFrm,
-            wrap=WORD,
-            height=2,
-            width=30,
-            yscrollcommand=specScroll.set,
-        )
-        self.specs.grid(row=1, column=0, pady=2, sticky="nsew")
-        specScroll.config(command=self.specs.yview)
 
         self.updateSpec()
 
@@ -841,14 +838,15 @@ if __name__ == "__main__":
     root = Tk()
     # one must supply the entire path
     loadfont(resolvepath("ui/Hack-Regular.ttf"))
-    # tksvg.load(root)
+    tksvg.load(root)
     dpi = root.winfo_fpixels("1i")
 
     root.tk.call("lappend", "auto_path", resolvepath("ui/awthemes-10.4.0"))
-    root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
-    root.tk.call("package", "require", "awdark")
+    # root.tk.call("package", "require", "awdark")
+
     style = ttk.Style(root)
     style.theme_use("awdark")
+
     # ensure that the treeview rows are roughly the same height
     # regardless of dpi. on Windows, default is Segoe UI at 9 points
     style.configure("Treeview", rowheight=round(12 * dpi / 72))
@@ -857,6 +855,7 @@ if __name__ == "__main__":
     style.configure("TLabelframe.Label", font=("Hack", 9, "bold"))
     style.configure("TNotebook.Tab", font=("Hack", 8))
     root.option_add("*Font", "Hack 8")
+    # root.option_add("*TCombobox*Listbox*Font", "Hack 8")
 
     root.title("Phoenix's Internal Ballistics Solver v0.2")
     """
