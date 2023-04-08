@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import ttk
+import traceback
 from gun import *
 import os
 import sys
@@ -153,7 +154,6 @@ def dot_aligned(matrix):
 class IB(Frame):
     def __init__(self, parent):
         Frame.__init__(self, parent)
-        parent.title("Phoenix's Internal Ballistics Solver v0.1.1")
 
         self.compositions = GrainComp.readFile(
             resolvepath("data/propellants.csv")
@@ -162,7 +162,6 @@ class IB(Frame):
 
         self.prop = None
         self.gun = None
-        self.tableData = []
         self.errorLst = []
         self.geomError = False
 
@@ -181,9 +180,10 @@ class IB(Frame):
 
         self.addSpecFrm(parent)
         self.addParFrm(parent)
-        self.addErrFrm(parent)
+        self.addExcFrm(parent)
         self.addTblFrm(parent)
         self.addOpsFrm(parent)
+
         parent.bind("<Return>", self.calculate)
 
     def calculate(self, event=None):
@@ -193,11 +193,7 @@ class IB(Frame):
 
         self.tableData = []
 
-        # self.updateSpec(compo)
-
-        self.va.set(self.va.default)
-        self.be.set(self.be.default)
-        self.te.set(self.te.default)
+        self.resetSpec()
 
         try:
             self.prop = Propellant(
@@ -211,7 +207,7 @@ class IB(Frame):
         except Exception as e:
             self.prop = None
             self.errorLst.append("Exception when defining propellant:")
-            self.errorLst.append(str(e))
+            self.errorLst.append("".join(traceback.format_exception(e)))
 
         try:
             chamberVolume = (
@@ -231,25 +227,22 @@ class IB(Frame):
                 float(self.tblmm.get()) / 1000,
                 float(self.clr.get()),
             )
-            print(
-                *(
-                    float(self.calmm.get()) / 1000,
-                    float(self.shtkg.get()),
-                    self.prop,
-                    float(self.chgkg.get()),
-                    chamberVolume,
-                    float(self.stpMPa.get()) * 1e6,
-                    float(self.tblmm.get()) / 1000,
-                    float(self.clr.get()),
-                ),
-                sep=","
-            )
+
             self.va.set(round(self.gun.v_j, 1))
+
+            t_err, l_err, v_err, p_err = self.gun.getErr(
+                10 ** -(int(self.accExp.get()))
+            )
+
+            self.terr.set(toSI(t_err))
+            self.lerr.set(toSI(l_err))
+            self.verr.set(toSI(v_err))
+            self.perr.set(toSI(p_err))
 
         except Exception as e:
             self.gun = None
             self.errorLst.append("Exception when defining guns:")
-            self.errorLst.append(str(e))
+            self.errorLst.append("".join(traceback.format_exception(e)))
 
         if self.gun is not None:
             try:
@@ -259,18 +252,13 @@ class IB(Frame):
                     tol=10 ** -(int(self.accExp.get())),
                 )
                 i = tuple(i[0] for i in self.tableData).index("SHOT EXIT")
-                """
-                self.tableData.extend(
-                    self.gun.analyze(tol=10 ** -(int(self.accExp.get())))
-                )
-                """
                 vg = self.tableData[i][4]
                 te, be = self.gun.getEff(vg)
                 self.te.set(round(te * 100, 1))
                 self.be.set(round(te / self.gun.phi * 100, 1))
             except Exception as e:
-                self.errorLst.append("Exception while solving:")
-                self.errorLst.append(str(e))
+                self.errorLst.append("Exception while solving numerically:")
+                self.errorLst.append("".join(traceback.format_exception(e)))
 
         self.tv.delete(*self.tv.get_children())
         self.tableData = dot_aligned(self.tableData)
@@ -292,10 +280,44 @@ class IB(Frame):
     def addSpecFrm(self, parent):
         specFrm = ttk.LabelFrame(parent, text="Design Summary")
         specFrm.grid(row=0, column=0, rowspan=2, sticky="nsew")
+        specFrm.columnconfigure(0, weight=1)
         i = 0
-        self.va, _, i = self.add12Disp(specFrm, i, "Asymptotic Velocity", "m/s")
-        self.te, _, i = self.add12Disp(specFrm, i, "Thermal Efficiency", "%")
-        self.be, _, i = self.add12Disp(specFrm, i, "Ballistic Efficiency", "%")
+        self.va, _, i = self.add12Disp(specFrm, i, "Asymptotic Vel.", "m/s")
+        self.te, _, i = self.add12Disp(specFrm, i, "Thermal Eff.", "%")
+        self.be, _, i = self.add12Disp(specFrm, i, "Ballistic Eff.", "%")
+
+        specFrm.rowconfigure(i, weight=1)
+        errFrm = ttk.LabelFrame(specFrm, text="Maximum Error")
+        errFrm.grid(row=i, column=0, columnspan=2, sticky="sew")
+        errFrm.columnconfigure(0, weight=1)
+
+        j = 0
+        self.terr, _, j = self.add12Disp(
+            errFrm, j, "Time", "s", justify="right"
+        )
+        self.lerr, _, j = self.add12Disp(
+            errFrm, j, "Travel", "m", justify="right"
+        )
+        self.verr, _, j = self.add12Disp(
+            errFrm, j, "Velocity", "m/s", justify="right"
+        )
+        self.perr, _, j = self.add12Disp(
+            errFrm, j, "Pressure", "Pa", justify="right"
+        )
+
+        self.specFrmDisps = (
+            self.va,
+            self.te,
+            self.be,
+            self.terr,
+            self.lerr,
+            self.verr,
+            self.perr,
+        )
+
+    def resetSpec(self):
+        for specDisp in self.specFrmDisps:
+            specDisp.set(specDisp.default)
 
     def updateSpec(self, *inp):
         self.specs.config(state="normal")
@@ -332,8 +354,10 @@ class IB(Frame):
         )
 
         ttk.Label(parFrm, text="Propellant").grid(
-            row=4, column=0, padx=5, pady=5, sticky="nsew"
+            row=i, column=0, padx=5, pady=5, sticky="nsew"
         )
+
+        i += 1
 
         specVal = parent.register(self.updateSpec)
         # Create Dropdown menu
@@ -350,29 +374,38 @@ class IB(Frame):
         self.dropProp.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropProp.current(0)
         self.dropProp.grid(
-            row=4, column=1, columnspan=2, sticky="nsew", padx=5, pady=5
+            row=i, column=0, columnspan=3, sticky="nsew", padx=5, pady=5
         )
-
-        self.dropProp.configure(width=20)
-
-        specScroll = ttk.Scrollbar(parFrm, orient="vertical")
-        specScroll.grid(row=5, column=2, sticky="nsew", padx=5, pady=5)
+        parFrm.rowconfigure(i, weight=0)
+        i += 1
+        self.dropProp.configure(width=10)
         self.specs = Text(
             parFrm,
             wrap=WORD,
             height=4,
-            width=20,  # yscrollcommand=specScroll
+            width=10,  # yscrollcommand=specScroll
         )
-        self.specs.grid(row=5, column=1, sticky="nsew", padx=5, pady=5)
+        self.specs.grid(
+            row=i, column=0, columnspan=2, sticky="nsew", padx=5, pady=5
+        )
+
+        specScroll = ttk.Scrollbar(parFrm, orient="vertical")
+        specScroll.grid(row=i, column=2, padx=5, pady=5)
+
         self.updateSpec()
+        parFrm.rowconfigure(i, weight=0)
+        i += 1
 
         ttk.Label(parFrm, text="Grain Shape").grid(
-            row=6,
+            row=i,
             column=0,
             sticky="nsew",
             padx=5,
             pady=5,
         )
+        parFrm.rowconfigure(i, weight=0)
+        i += 1
+
         # Create Dropdown menu
         self.dropGeom = ttk.Combobox(
             parFrm, values=self.geoOptions, state="readonly", justify="center"
@@ -380,14 +413,11 @@ class IB(Frame):
         self.dropGeom.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropGeom.current(0)
         self.dropGeom.grid(
-            row=6, column=1, columnspan=2, sticky="nsew", padx=5, pady=5
+            row=i, column=0, columnspan=3, sticky="nsew", padx=5, pady=5
         )
-        self.dropGeom.configure(width=20)
-
-        parFrm.rowconfigure(4, weight=0)
-        parFrm.rowconfigure(5, weight=0)
-        parFrm.rowconfigure(6, weight=0)
-        i += 3
+        self.dropGeom.configure(width=10)
+        parFrm.rowconfigure(i, weight=0)
+        i += 1
 
         self.webmm, _, i = self.add3Input(
             parFrm, i, "Web Thickness", "mm", "0.0", validationNN
@@ -413,9 +443,9 @@ class IB(Frame):
         opFrm = ttk.LabelFrame(parent, text="Options")
         opFrm.grid(row=1, column=2, sticky="nsew")
 
-        opFrm.columnconfigure(0, weight=1)
+        opFrm.columnconfigure(0, weight=0)
         opFrm.columnconfigure(1, weight=1)
-        opFrm.columnconfigure(1, weight=1)
+        opFrm.columnconfigure(2, weight=0)
 
         validationNN = parent.register(validateNN)
         i = 0
@@ -456,7 +486,7 @@ class IB(Frame):
 
         ttk.Checkbutton(
             opFrm,
-            text="Lock Geometry",
+            text="Lock\nGeom",
             variable=self.geoLocked,
             onvalue=1,
             offvalue=0,
@@ -475,7 +505,6 @@ class IB(Frame):
         self.dropOptn.grid(
             row=2, column=1, columnspan=1, sticky="nsew", padx=5, pady=5
         )
-
         self.dropOptn.configure(width=5)
 
         ttk.Label(opFrm, text="domain").grid(
@@ -498,21 +527,21 @@ class IB(Frame):
             opFrm,
             4,
             0,
-            "-log10(ε) =",
+            "-log10(ε) ",
             default="5",
             validation=validationPI,
             formatter=formatIntInput,
             color="red",
         )
 
-        ttk.Button(opFrm, text="Calculate", command=self.calculate).grid(
-            row=5, column=0, columnspan=3, sticky="nsew", padx=5, pady=5
-        )
+        ttk.Button(
+            opFrm, text="Calculate", command=self.calculate, underline=0
+        ).grid(row=5, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
 
         opFrm.rowconfigure(5, weight=0)
 
-    def addErrFrm(self, parent):
-        errorFrm = ttk.LabelFrame(parent, text="Errors")
+    def addExcFrm(self, parent):
+        errorFrm = ttk.LabelFrame(parent, text="Exceptions")
         errorFrm.grid(row=1, column=1, sticky="nsew")
         errorFrm.columnconfigure(0, weight=1)
         errorFrm.rowconfigure(0, weight=1)
@@ -539,11 +568,14 @@ class IB(Frame):
         ]
         tblFrm = ttk.LabelFrame(parent, text="Result Table")
         tblFrm.grid(row=0, column=1, sticky="nsew")
+
         tblFrm.columnconfigure(0, weight=1)
-        tblFrm.rowconfigure(0, weight=1)
+        tblFrm.rowconfigure(1, weight=1)
+
+        # configure the numerical
 
         self.tv = ttk.Treeview(tblFrm, selectmode="browse")
-        self.tv.grid(row=0, column=0, sticky="nsew")
+        self.tv.grid(row=1, column=0, sticky="nsew")
 
         self.tv["columns"] = columnList
         self.tv["show"] = "headings"
@@ -563,11 +595,11 @@ class IB(Frame):
             tblFrm, orient="vertical"
         )  # create a scrollbar
         vertscroll.configure(command=self.tv.yview)  # make it vertical
-        vertscroll.grid(row=0, column=1, sticky="nsew")
+        vertscroll.grid(row=1, column=1, sticky="nsew")
 
         horzscroll = ttk.Scrollbar(tblFrm, orient="horizontal")
         horzscroll.configure(command=self.tv.xview)
-        horzscroll.grid(row=1, column=0, sticky="nsew")
+        horzscroll.grid(row=2, column=0, sticky="nsew")
         self.tv.configure(
             yscrollcommand=vertscroll.set, xscrollcommand=horzscroll.set
         )  # assign the scrollbar to the Treeview Widget
@@ -614,7 +646,7 @@ class IB(Frame):
         unitText,
         default="0.0",
         validation=None,
-        entryWidth=5,
+        entryWidth=10,
         formatter=formatFloatInput,
     ):
         ttk.Label(parent, text=labelText).grid(
@@ -646,7 +678,8 @@ class IB(Frame):
         labelText,
         unitText,
         default="0.0",
-        entryWidth=10,
+        entryWidth=5,
+        justify="center",
     ):
         ttk.Label(parent, text=labelText).grid(
             row=rowIndex, column=0, columnspan=2, sticky="nsew", padx=5, pady=5
@@ -656,7 +689,11 @@ class IB(Frame):
         e.set(default)
         parent.rowconfigure(rowIndex, weight=0)
         en = ttk.Entry(
-            parent, textvariable=e, width=entryWidth, state="disabled"
+            parent,
+            textvariable=e,
+            width=entryWidth,
+            state="disabled",
+            justify=justify,
         )
         en.grid(row=rowIndex + 1, column=0, sticky="nsew", padx=5, pady=5)
         ttk.Label(parent, text=unitText).grid(
@@ -703,9 +740,26 @@ if __name__ == "__main__":
     # ensure that the treeview rows are roughly the same height
     # regardless of dpi. on Windows, default is Segoe UI at 9 points
     style.configure("Treeview", rowheight=round(12 * dpi / 72))
-    style.configure("Treeview.Heading", font=("Hack", 9))
-    style.configure("TButton", font=("Hack", 9))
-    style.configure("TLabelframe.Label", font=("Hack", 10))
-    root.option_add("*Font", "Hack 9")
+    style.configure("Treeview.Heading", font=("Hack", 8))
+    style.configure("TButton", font=("Hack", 9, "bold"))
+    style.configure("TLabelframe.Label", font=("Hack", 9, "bold"))
+    style.configure("TNotebook.Tab", font=("Hack", 8))
+    root.option_add("*Font", "Hack 8")
+
+    root.title("Phoenix's Internal Ballistics Solver v0.2")
+    """
+    root.rowconfigure(0, weight=1)
+    root.columnconfigure(0, weight=1)
+
+    tabControl = ttk.Notebook(root)
+    tabControl.enable_traversal()
+    tabIB = ttk.Frame(tabControl)
+    tabCD = ttk.Frame(tabControl)
+    tabControl.add(tabIB, text="Forward Calculation", underline=0)
+    tabControl.add(tabCD, text="Constrained Design", underline=0)
+    tabControl.grid(row=0, column=0, sticky="nsew")
+
+    
+    """
     ibPanel = IB(root)
     root.mainloop()
