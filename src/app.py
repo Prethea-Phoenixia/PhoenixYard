@@ -354,7 +354,7 @@ class IB(Frame):
         )
 
         ttk.Label(parFrm, text="Propellant").grid(
-            row=i, column=0, padx=5, pady=5, sticky="nsew"
+            row=i, column=0, padx=2, pady=2, sticky="nsew"
         )
 
         i += 1
@@ -374,7 +374,7 @@ class IB(Frame):
         self.dropProp.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropProp.current(0)
         self.dropProp.grid(
-            row=i, column=0, columnspan=3, sticky="nsew", padx=5, pady=5
+            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
         parFrm.rowconfigure(i, weight=0)
         i += 1
@@ -386,11 +386,11 @@ class IB(Frame):
             width=10,  # yscrollcommand=specScroll
         )
         self.specs.grid(
-            row=i, column=0, columnspan=2, sticky="nsew", padx=5, pady=5
+            row=i, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
 
         specScroll = ttk.Scrollbar(parFrm, orient="vertical")
-        specScroll.grid(row=i, column=2, padx=5, pady=5)
+        specScroll.grid(row=i, column=2, padx=2, pady=2)
 
         self.updateSpec()
         parFrm.rowconfigure(i, weight=0)
@@ -400,8 +400,8 @@ class IB(Frame):
             row=i,
             column=0,
             sticky="nsew",
-            padx=5,
-            pady=5,
+            padx=2,
+            pady=2,
         )
         parFrm.rowconfigure(i, weight=0)
         i += 1
@@ -413,7 +413,7 @@ class IB(Frame):
         self.dropGeom.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropGeom.current(0)
         self.dropGeom.grid(
-            row=i, column=0, columnspan=3, sticky="nsew", padx=5, pady=5
+            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
         self.dropGeom.configure(width=10)
         parFrm.rowconfigure(i, weight=0)
@@ -491,10 +491,10 @@ class IB(Frame):
             onvalue=1,
             offvalue=0,
             command=configEntry,
-        ).grid(row=0, column=2, rowspan=2, sticky="nsew", padx=5, pady=5)
+        ).grid(row=0, column=2, rowspan=2, sticky="nsew", padx=2, pady=2)
 
         ttk.Label(opFrm, text="∫ in").grid(
-            row=2, column=0, sticky="nsew", padx=5, pady=5
+            row=2, column=0, sticky="nsew", padx=2, pady=2
         )
 
         self.dropOptn = ttk.Combobox(
@@ -503,12 +503,12 @@ class IB(Frame):
         self.dropOptn.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropOptn.current(0)
         self.dropOptn.grid(
-            row=2, column=1, columnspan=1, sticky="nsew", padx=5, pady=5
+            row=2, column=1, columnspan=1, sticky="nsew", padx=2, pady=2
         )
         self.dropOptn.configure(width=5)
 
         ttk.Label(opFrm, text="domain").grid(
-            row=2, column=2, sticky="nsew", padx=5, pady=5
+            row=2, column=2, sticky="nsew", padx=2, pady=2
         )
 
         validationPI = parent.register(validatePI)
@@ -536,7 +536,7 @@ class IB(Frame):
 
         ttk.Button(
             opFrm, text="Calculate", command=self.calculate, underline=0
-        ).grid(row=5, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
+        ).grid(row=5, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
 
         opFrm.rowconfigure(5, weight=0)
 
@@ -617,7 +617,7 @@ class IB(Frame):
         color=None,
     ):
         ttk.Label(parent, text=labelText).grid(
-            row=rowIndex, column=colIndex, sticky="nsew", padx=5, pady=5
+            row=rowIndex, column=colIndex, sticky="nsew", padx=2, pady=2
         )
         parent.rowconfigure(rowIndex, weight=0)
         e = StringVar(parent)
@@ -633,7 +633,7 @@ class IB(Frame):
         )
         en.default = default
         en.grid(
-            row=rowIndex, column=colIndex + 1, sticky="nsew", padx=5, pady=5
+            row=rowIndex, column=colIndex + 1, sticky="nsew", padx=2, pady=2
         )
         en.bind("<FocusOut>", formatter)
         return e, en, rowIndex + 1
@@ -650,7 +650,7 @@ class IB(Frame):
         formatter=formatFloatInput,
     ):
         ttk.Label(parent, text=labelText).grid(
-            row=rowIndex, column=0, sticky="nsew", padx=5, pady=5
+            row=rowIndex, column=0, sticky="nsew", padx=2, pady=2
         )
         parent.rowconfigure(rowIndex, weight=0)
         e = StringVar(parent)
@@ -664,10 +664,10 @@ class IB(Frame):
             justify="center",
         )
         en.default = default
-        en.grid(row=rowIndex, column=1, sticky="nsew", padx=5, pady=5)
+        en.grid(row=rowIndex, column=1, sticky="nsew", padx=2, pady=2)
         en.bind("<FocusOut>", formatter)
         ttk.Label(parent, text=unitText).grid(
-            row=rowIndex, column=2, sticky="nsew", padx=5, pady=5
+            row=rowIndex, column=2, sticky="nsew", padx=2, pady=2
         )
         return e, en, rowIndex + 1
 
@@ -682,7 +682,7 @@ class IB(Frame):
         justify="center",
     ):
         ttk.Label(parent, text=labelText).grid(
-            row=rowIndex, column=0, columnspan=2, sticky="nsew", padx=5, pady=5
+            row=rowIndex, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
         e = StringVar(parent)
         e.default = default
@@ -695,9 +695,9 @@ class IB(Frame):
             state="disabled",
             justify=justify,
         )
-        en.grid(row=rowIndex + 1, column=0, sticky="nsew", padx=5, pady=5)
+        en.grid(row=rowIndex + 1, column=0, sticky="nsew", padx=2, pady=2)
         ttk.Label(parent, text=unitText).grid(
-            row=rowIndex + 1, column=1, sticky="nsew", padx=5, pady=5
+            row=rowIndex + 1, column=1, sticky="nsew", padx=2, pady=2
         )
         return e, en, rowIndex + 2
 
