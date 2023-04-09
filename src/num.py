@@ -1,4 +1,5 @@
 import math
+import cmath
 
 
 def intg(f, l, u, tol=1e-3):
@@ -167,7 +168,7 @@ def gss(f, a, b, tol=1e-9, findMin=True):
         return (c, b)
 
 
-def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9, imax=10000):
+def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9, imax=1000):
     """
     Runge Kutta Fehlberg method, of the fourth and fifth order
     Even though this involves a lot more computation per cycle,
@@ -290,3 +291,73 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9, imax=10000):
             )
         )
     return y_this
+
+
+def cubic(a, b, c, d):
+    """
+    returns the 3 roots of
+    ax^3 + bx^2 + cx + d = 0
+    assuming **real** coefficients.
+    """
+    if any(isinstance(i, complex) for i in (a, b, c, d)):
+        raise ValueError("coefficients must be real")
+
+    Delta = (
+        18 * a * b * c * d
+        - 4 * b**3 * d
+        + b**2 * c**2
+        - 4 * a * c**3
+        - 27 * a**2 * d**2
+    )
+    """
+    Δ>0: distinct real roots.
+    Δ=0: repeating real roots.
+    Δ<0: one real and 2 imaginary roots.
+    """
+    Delta_0 = b**2 - 3 * a * c
+    Delta_1 = 2 * b**3 - 9 * a * b * c + 27 * a**2 * d
+
+    C_1 = (0.5 * (Delta_1 + (Delta_1**2 - 4 * Delta_0**3) ** 0.5)) ** (
+        1 / 3
+    )
+    C_2 = (0.5 * (Delta_1 - (Delta_1**2 - 4 * Delta_0**3) ** 0.5)) ** (
+        1 / 3
+    )
+
+    xs = []
+    if any(C != 0 for C in (C_1, C_2)):
+        C = C_1 if C_1 != 0 else C_2
+        epsilons = (
+            1,
+            complex(-0.5, 3**0.5 / 2),
+            complex(-0.5, -(3**0.5) / 2),
+        )
+        for epsilon in epsilons:
+            x = -1 / (3 * a) * (b + C * epsilon + Delta_0 / (C * epsilon))
+            xs.append(x)
+    else:
+        for _ in range(3):
+            xs.append(-b / (3 * a))
+
+    if Delta >= 0:
+        xs = list(z.real for z in xs)
+    else:
+        # one real and 2 imaginary roots.
+        xs = list(
+            z.real if abs(z.imag) == min(abs(z.imag) for z in xs) else z
+            for z in xs
+        )
+    # put the first real solution at first.
+    xs.sort(key=lambda z: 1 if isinstance(z, complex) else 0)
+    return tuple(xs)
+
+
+if __name__ == "__main__":
+    from random import uniform
+
+    for _ in range(10):
+        print(
+            cubic(
+                uniform(-1, 1), uniform(-1, 1), uniform(-1, 1), uniform(-1, 1)
+            )
+        )

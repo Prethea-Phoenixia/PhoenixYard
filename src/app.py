@@ -6,6 +6,8 @@ from gun import *
 import os
 import sys
 
+DEBUG = True
+
 _prefix = {
     "y": 1e-24,  # yocto
     "z": 1e-21,  # zepto
@@ -13,9 +15,9 @@ _prefix = {
     "f": 1e-15,  # femto
     "p": 1e-12,  # pico
     "n": 1e-9,  # nano
-    "u": 1e-6,  # micro
+    "μ": 1e-6,  # micro
     "m": 1e-3,  # mili
-    "": 1,  # unit
+    " ": 1,  # unit
     "k": 1e3,  # kilo
     "M": 1e6,  # mega
     "G": 1e9,  # giga
@@ -75,13 +77,22 @@ def loadfont(fontpath, private=True, enumerable=False):
     return bool(numFontsAdded)
 
 
-def toSI(v, dec=4):
+def toSI(v, dec=4, unit=None):
     for prefix, magnitude in zip(_prefix.keys(), _prefix.values()):
         if 1 <= (v / magnitude) < 1e3:
             vstr = "{:#.{:}g}".format(v / magnitude, dec)
-            return vstr + " " * (dec + 1 - len(vstr) + vstr.find(".")) + prefix
+            return (
+                vstr
+                + " " * (dec + 1 - len(vstr) + vstr.find("."))
+                + prefix
+                + (unit if unit is not None else "")
+            )
     if v == 0:
-        return "{:#.{:}g}".format(v, dec)
+        return (
+            "{:#.{:}g}".format(v, dec)
+            + " "
+            + (unit if unit is not None else "")
+        )
     else:
         raise ValueError(v + " not possible to assign a SI prefix")
 
@@ -135,14 +146,14 @@ def formatIntInput(event):
         event.widget.insert(0, int(v))
 
 
-def dot_aligned(matrix):
+def dot_aligned(matrix, units):
     transposed = []
 
-    for seq in zip(*matrix):
+    for seq, unit in zip(zip(*matrix), units):
         snums = []
         for n in seq:
             try:
-                snums.append(toSI(float(n)))
+                snums.append(toSI(float(n), unit=unit))
             except ValueError:
                 snums.append(n)
         dots = [s.find(".") for s in snums]
@@ -262,7 +273,10 @@ class IB(Frame):
         except Exception as e:
             self.prop = None
             self.errorLst.append("Exception when defining propellant:")
-            self.errorLst.append("".join(traceback.format_exception(e)))
+            if DEBUG:
+                self.errorLst.append("".join(traceback.format_exception(e)))
+            else:
+                self.errorLst.append(str(e))
 
         try:
             chamberVolume = (
@@ -285,19 +299,23 @@ class IB(Frame):
 
             self.va.set(round(self.gun.v_j, 1))
 
-            t_err, l_err, v_err, p_err = self.gun.getErr(
+            t_err, l_err, psi_e, v_err, p_err = self.gun.getErr(
                 10 ** -(int(self.accExp.get()))
             )
 
             self.terr.set(toSI(t_err))
             self.lerr.set(toSI(l_err))
+            self.psierr.set(toSI(psi_e))
             self.verr.set(toSI(v_err))
             self.perr.set(toSI(p_err))
 
         except Exception as e:
             self.gun = None
             self.errorLst.append("Exception when defining guns:")
-            self.errorLst.append("".join(traceback.format_exception(e)))
+            if DEBUG:
+                self.errorLst.append("".join(traceback.format_exception(e)))
+            else:
+                self.errorLst.append(str(e))
 
         if self.gun is not None:
             try:
@@ -313,10 +331,15 @@ class IB(Frame):
                 self.be.set(round(te / self.gun.phi * 100, 1))
             except Exception as e:
                 self.errorLst.append("Exception while solving numerically:")
-                self.errorLst.append("".join(traceback.format_exception(e)))
+                if DEBUG:
+                    self.errorLst.append("".join(traceback.format_exception(e)))
+                else:
+                    self.errorLst.append(str(e))
 
         self.tv.delete(*self.tv.get_children())
-        self.tableData = dot_aligned(self.tableData)
+        self.tableData = dot_aligned(
+            self.tableData, units=(None, "s", "m", None, "m/s", "Pa")
+        )
 
         for row in self.tableData:
             self.tv.insert("", "end", values=row, tags=(row[0], "monospace"))
@@ -353,6 +376,9 @@ class IB(Frame):
         self.lerr, _, j = self.add12Disp(
             errFrm, j, "Travel", "m", justify="right"
         )
+        self.psierr, _, j = self.add12Disp(
+            errFrm, j, "Burnup", "", justify="right"
+        )
         self.verr, _, j = self.add12Disp(
             errFrm, j, "Velocity", "m/s", justify="right"
         )
@@ -366,6 +392,7 @@ class IB(Frame):
             self.be,
             self.terr,
             self.lerr,
+            self.psierr,
             self.verr,
             self.perr,
         )
@@ -495,7 +522,17 @@ class IB(Frame):
         ldftext = "\n".join(
             (
                 "Percentage of chamber volume filled by",
-                "the outlines of the grain.",
+                "the outlines of the grain. Value of",
+                "0-100 % (not inclusive) are supported,",
+                "although it is highly unlikely that",
+                "values greater than 60% could be",
+                "achieved in practice, due to packing",
+                "behaviour when loading the cartridge,",
+                "with realistic grain sizes and geometry.",
+                "A high value is also undesirable for",
+                "causing excessive peak pressure as well",
+                "as moving the pressure spike closer to",
+                "the breech.",
             )
         )
 
@@ -557,13 +594,13 @@ class IB(Frame):
         validationNN = parent.register(validateNN)
         i = 0
         self.webR, webRw, i = self.add2Input(
-            opFrm, i, 0, "W.Th. ", "2.0", validation=validationNN
+            opFrm, i, 0, "W.Th.", "2.0", validation=validationNN
         )
         self.perR, perRw, i = self.add2Input(
             opFrm,
             i,
             0,
-            "P.Dia. ",
+            "P.Dia.",
             "1.0",
             validation=validationNN,
         )
@@ -625,7 +662,7 @@ class IB(Frame):
             3,
             "Show",
             "steps",
-            "15",
+            "10",
             validation=validationPI,
             formatter=formatIntInput,
         )
@@ -635,7 +672,7 @@ class IB(Frame):
             4,
             0,
             "-log10(ε) ",
-            default="5",
+            default="3",
             validation=validationPI,
             formatter=formatIntInput,
             color="red",
@@ -667,11 +704,11 @@ class IB(Frame):
     def addTblFrm(self, parent):
         columnList = [
             "Event",
-            "Time/s",
-            "Travel/m",
-            "Burnup/1",
-            "Velocity/ms^-1",
-            "Pressure/Pa",
+            "Time",
+            "Travel",
+            "Burnup",
+            "Velocity",
+            "Pressure",
         ]
         tblFrm = ttk.LabelFrame(parent, text="Result Table")
         tblFrm.grid(row=0, column=1, sticky="nsew")

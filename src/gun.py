@@ -274,9 +274,11 @@ class Gun:
             self.psi_0 = (1 / self.Delta - 1 / self.rho_p) / (
                 self.f / self.p_0 + self.alpha - 1 / self.rho_p
             )
-            if self.psi_0 < 0:
+            if self.psi_0 <= 0:
                 raise ValueError(
                     "Initial burnup fraction is solved to be negative."
+                    + " In practice this implies a detonation of the gun breech"
+                    + " will likely occur."
                     + " Suggest reducing load fraction."
                 )
 
@@ -288,21 +290,16 @@ class Gun:
 
         tolerance is interpreted as, the sum of all error in the unitless result
         is allowed to lie specified tol distance away from the real solution.
-        """
 
-        tol *= 0.5
-
-        """
-        tolerance specification is halved due to the following simplistic 
+        tolerance specification is halved due to the following simplistic
         error analysis:
-            |-numerically solving Z_0 (bisection): 1
-                |--integrating in Z to fracture: 1+0.5
-                |--integrating in Z to burnout: 1+1
-                |--integrating in l to exit: 1+0.5+0.5
-                |--numerically solving peak pressure point in time: (1+0.5)+0.5
-                |--populating in tiem: 1+1
-                |--populating in distance: 1+0.5+0.5
-        worst case: 2
+            |--integrating in Z to fracture: 0.5
+            |--integrating in Z to burnout: 1
+            |--integrating in l to exit: 0.5+0.5
+            |--numerically solving peak pressure point in time: (0.5)+0.5
+            |--populating in tiem: 1
+            |--populating in distance: 0.5+0.5
+        worst case: 1
         """
 
         B = (
@@ -379,83 +376,22 @@ class Gun:
 
             return (dt_bar, dl_bar, dv_bar)
 
-        Z_0 = bisect(lambda z: _fpsi(z) - self.psi_0, 0, 1, tol)[0]
-        """
-        It is imperative to calculate this to a high degree of accuracy since
-        if 0 is accepted as solution for Z0 the RKF45 integrator later will not
-        be able to self-start the system.
-        """
+        Zs = cubic(
+            self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0
+        )
+        # pick a valid solution between 0 and 1
+        Zs = tuple(Z for Z in Zs if (Z > 0 and Z < 1))
+        if len(Zs) < 1:
+            raise ValueError(
+                "Propellant has burnt to fracture before start"
+                + " of shot movement. Suggest reducing starting"
+                + " pressure or specifying higher load fraction."
+            )
+
+        Z_0 = Zs[0]
+
         l_g_bar = self.l_g / self.l_0
-        if Z_0 == 0:
-            raise ValueError(
-                "Initial burnup solved to 0, impossible to initialize ODE."
-                + " Suggest reducing tolerance."
-            )
-        """
-        Subscript f indicate fracture condition
-        ODE w.r.t Z is integrated from Z_0 to 1, from onset of projectile
-        movement to charge fracture
-        """
-        try:
-            t_bar_f, l_bar_f, v_bar_f = RKF45OverTuple(
-                _ode_Z, (0, 0, 0), Z_0, 1, tol / 2
-            )
-        except ValueError:
-            raise ValueError(
-                "Unable to integrate to propellant fracture within"
-                + " reasonable cycles."
-                + " Propellant size might be excessive."
-                + " Suggest reducing web thickness or specifying faster"
-                + " burning propellant."
-            )
 
-        """
-        Subscript b indicated burnout condition
-        ODE w.r.t Z is integrated from Z_0 to Z_b, from onset of projectile
-        movement to charge burnout. THe idea here is to reuse some 
-        calculation from before to reduce computational burden
-        """
-        t_bar_b, l_bar_b, v_bar_b = RKF45OverTuple(
-            _ode_Z, (0, 0, 0), Z_0, self.Z_b, tol
-        )
-        """
-        Subscript e indicate exit condition
-        integrate forth or backwards to the barrel exit condition, along
-        length. Instead of Zb, Zf < Zb is used to allow for correct
-        handling of burning in the reverse direction. 
-        """
-        t_bar_e, Z_e, v_bar_e = RKF45OverTuple(
-            _ode_l, (t_bar_f, 1, v_bar_f), l_bar_f, l_g_bar, tol / 2
-        )
-        """
-        Subscript p indicate peak pressure
-        In theory the time-domain equations should be flatter around the
-        peak pressure point. As well as, not having starting issues.
-        """
-
-        def f(t_bar):
-            Z, l_bar, v_bar = RKF45OverTuple(
-                _ode_t, (Z_0, 0, 0), 0, t_bar, tol / 2
-            )
-            return _fp_bar(Z, l_bar, v_bar)
-
-        # tolerance is specified a bit differently for gold section search
-        t_bar_p_1, t_bar_p_2 = gss(f, 0, t_bar_b, tol=tol, findMin=False)
-        t_bar_p = (t_bar_p_1 + t_bar_p_2) / 2
-        """
-        so the worst case scenario for the error is basically:
-                t_bar_p_1               t_bar_p_1
-                   RKF                     RKF
-        +--(tol/2)--|--(tol/2)--+--(tol/2)--|--(tol/2)--+
-                    +-------gss|(tol)-------+
-                            t_bar_p
-        """
-        Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
-            _ode_t, (Z_0, 0, 0), 0, t_bar_p, tol
-        )
-        """
-        populate data for output purposes
-        """
         bar_data = []
 
         bar_data.append(
@@ -468,6 +404,133 @@ class Gun:
                 self.p_0 / (self.f * self.Delta),
             )
         )
+
+        Z_i = 1
+        t_bar_i = None
+        try:
+            """
+            Subscript f indicate fracture condition
+            ODE w.r.t Z is integrated from Z_0 to 1, from onset of projectile
+            movement to charge fracture
+            """
+            t_bar_f, l_bar_f, v_bar_f = RKF45OverTuple(
+                _ode_Z, (0, 0, 0), Z_0, 1, 0.5 * tol
+            )
+
+            bar_data.append(
+                (
+                    "FRACTURE",
+                    t_bar_f,
+                    l_bar_f,
+                    1,
+                    v_bar_f,
+                    _fp_bar(1, l_bar_f, v_bar_f),
+                )
+            )
+            Z_i, t_bar_i, l_bar_i, v_bar_i = 1, t_bar_f, l_bar_f, v_bar_f
+
+            """
+            Subscript b indicated burnout condition
+            ODE w.r.t Z is integrated from Z_0 to Z_b, from onset of projectile
+            movement to charge burnout.
+
+            This is only calculated when fracture has happened inside the barrel
+            """
+            if l_bar_f < l_g_bar:
+                t_bar_b, l_bar_b, v_bar_b = RKF45OverTuple(
+                    _ode_Z, (0, 0, 0), Z_0, self.Z_b, tol
+                )
+                bar_data.append(
+                    (
+                        "BURNOUT",
+                        t_bar_b,
+                        l_bar_b,
+                        self.Z_b,
+                        v_bar_b,
+                        _fp_bar(self.Z_b, l_bar_b, v_bar_b),
+                    )
+                )
+
+        except ValueError:
+            """
+            If program execution has branched here, this indicate that
+            the fracture happens so far out that the RKF integrator has
+            reached its cycle count limit.
+
+            In this case, we try to salvage the calculation by repeatedly
+            golden section searching the interval, until a valid position
+            has been found.
+            """
+            while t_bar_i is None:
+                Z_i = (Z_i - Z_0) * 0.618 + Z_0
+                try:
+                    t_bar_i, l_bar_i, v_bar_i = RKF45OverTuple(
+                        _ode_Z, (0, 0, 0), Z_0, Z_i, 0.5 * tol
+                    )
+                except ValueError:
+                    pass
+
+        """
+        Subscript e indicate exit condition
+        integrate forth or backwards to the barrel exit condition, along
+        length. Instead of Zb, Zf < Zb is used to allow for correct
+        handling of burning in the reverse direction. 
+        """
+        t_bar_e, Z_e, v_bar_e = RKF45OverTuple(
+            _ode_l, (t_bar_i, Z_i, v_bar_i), l_bar_i, l_g_bar, 0.5 * tol
+        )
+
+        bar_data.append(
+            (
+                "SHOT EXIT",
+                t_bar_e,
+                l_g_bar,
+                Z_e,
+                v_bar_e,
+                _fp_bar(Z_e, l_g_bar, v_bar_e),
+            )
+        )
+
+        """
+        Subscript p indicate peak pressure
+        In theory the time-domain equations should be flatter around the
+        peak pressure point. As well as, not having starting issues.
+        """
+
+        def f(t_bar):
+            Z, l_bar, v_bar = RKF45OverTuple(
+                _ode_t, (Z_0, 0, 0), 0, t_bar, 0.5 * tol
+            )
+            return _fp_bar(Z, l_bar, v_bar)
+
+        # tolerance is specified a bit differently for gold section search
+        t_bar_p_1, t_bar_p_2 = gss(f, 0, t_bar_e, tol=tol, findMin=False)
+        t_bar_p = (t_bar_p_1 + t_bar_p_2) / 2
+        """
+        so the worst case scenario for the error is basically:
+                t_bar_p_1               t_bar_p_1
+                   RKF                     RKF
+        +--(tol/2)--|--(tol/2)--+--(tol/2)--|--(tol/2)--+
+                    +-------gss|(tol)-------+
+                            t_bar_p
+        """
+        Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
+            _ode_t, (Z_0, 0, 0), 0, t_bar_p, tol
+        )
+
+        bar_data.append(
+            (
+                "PEAK PRESSURE",
+                t_bar_p,
+                l_bar_p,
+                Z_p,
+                v_bar_p,
+                _fp_bar(Z_p, l_bar_p, v_bar_p),
+            )
+        )
+        """
+        populate data for output purposes
+        """
 
         if dom == "time":
             for i in range(1, steps):
@@ -505,7 +568,7 @@ class Gun:
                     (t_bar_f, 1, v_bar_f),
                     l_bar_f,
                     l_bar_i,
-                    tol / 2,
+                    0.5 * tol,
                 )
                 bar_data.append(
                     (
@@ -518,46 +581,6 @@ class Gun:
                     )
                 )
 
-        bar_data.append(
-            (
-                "BURNOUT",
-                t_bar_b,
-                l_bar_b,
-                self.Z_b,
-                v_bar_b,
-                _fp_bar(self.Z_b, l_bar_b, v_bar_b),
-            )
-        )
-        bar_data.append(
-            (
-                "FRACTURE",
-                t_bar_f,
-                l_bar_f,
-                1,
-                v_bar_f,
-                _fp_bar(1, l_bar_f, v_bar_f),
-            )
-        )
-        bar_data.append(
-            (
-                "PEAK PRESSURE",
-                t_bar_p,
-                l_bar_p,
-                Z_p,
-                v_bar_p,
-                _fp_bar(Z_p, l_bar_p, v_bar_p),
-            )
-        )
-        bar_data.append(
-            (
-                "SHOT EXIT",
-                t_bar_e,
-                l_g_bar,
-                Z_e,
-                v_bar_e,
-                _fp_bar(Z_e, l_g_bar, v_bar_e),
-            )
-        )
         bar_data.sort(key=lambda x: x[1])  # sort by scaled time
         data = list(
             (
@@ -574,6 +597,10 @@ class Gun:
         return data
 
     def getEff(self, vg):
+        """
+        te: thermal efficiency
+        be: ballistic efficiency
+        """
         te = (vg / self.v_j) ** 2
         be = te / self.phi
         return te, be
@@ -582,14 +609,35 @@ class Gun:
         """
         returns the worst case maximum deviation given specified tolerance
         in domain of:
-        time, length, volume ratio, velocity, pressure.
+        time, length, charge burnt volume ratio, velocity, pressure.
         """
         t_err = (self.l_0 / self.v_j) * tol
         l_err = self.l_0 * tol
         v_err = self.v_j * tol
         p_err = self.f * self.Delta * tol
 
-        return t_err, l_err, v_err, p_err
+        """
+        technically speaking we should use Z_0 here, but that must be solved
+
+        """
+        Zs = (0, -self.labda / (3 * self.mu), 1, self.Z_b)
+
+        def dPsi(Z):
+            """
+            returns dPsi/dZ
+            """
+            if Z < 1:
+                return (
+                    self.chi
+                    + 2 * self.labda * self.chi * Z
+                    + 3 * self.mu * self.chi * Z**2
+                )
+            else:
+                return self.chi_s + 2 * Z * self.labda_s * self.chi_s
+
+        psi_err = max(abs(dPsi(Z) * tol) for Z in Zs)
+
+        return (t_err, l_err, psi_err, v_err, p_err)
 
     def __getattr__(self, attrName):
         try:
@@ -628,11 +676,11 @@ if __name__ == "__main__":
         )
     )
 
-    print("\nMayer Hart")
+    print("\nErrors")
     print(
         tabulate(
-            test.analyze(),
-            headers=("tag", "t", "l", "phi", "v", "p"),
+            [test.getErr(1e-5)],
+            headers=("t", "l", "phi", "v", "p"),
         )
     )
 
