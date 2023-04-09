@@ -207,7 +207,21 @@ class Propellant:
         S_T = Q_1 * pi * self.c**2
         n = propGeom.nHole
 
-        self.maxLF = 1 - n * pi * self.d_0**2 / (4 * S_T)
+        """ 
+        condition for progressive burning:
+        (n-1) > (D_0 + n*d_0)/c
+        """
+
+        self.maxLF = S_T / (S_T + n * pi * 0.25 * self.d_0**2)
+
+        """
+        maximum load factor, the volume fraction of propellant 
+        within the geometry of the grain defined. In reality 
+        this will be a lot lower for any real weapons since 
+        this both cause undesirably high pressure spike at start
+        of shot, and in addition is physically impossible given
+        realistic grain packing behaviours
+        """
 
         beta = self.e_1 / self.c
 
@@ -427,6 +441,7 @@ class Gun:
                     _fp_bar(1, l_bar_f, v_bar_f),
                 )
             )
+
             Z_i, t_bar_i, l_bar_i, v_bar_i = 1, t_bar_f, l_bar_f, v_bar_f
 
             """
@@ -434,7 +449,7 @@ class Gun:
             ODE w.r.t Z is integrated from Z_0 to Z_b, from onset of projectile
             movement to charge burnout.
 
-            This is only calculated when fracture has happened inside the barrel
+            This is only done when fracture has happened inside the barrel.
             """
             if l_bar_f < l_g_bar:
                 t_bar_b, l_bar_b, v_bar_b = RKF45OverTuple(
@@ -655,7 +670,7 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17 JAN-PD-26"]
 
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 0.75e-3, 0.05e-3, 2.5)
+    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 0.1e-3, 0.5e-3, 3)
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
     test = Gun(

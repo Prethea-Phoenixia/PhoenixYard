@@ -286,6 +286,20 @@ class IB(Frame):
                 / float(self.ldf.get())
                 * 100
             )
+            if DEBUG:
+                print(
+                    *(
+                        float(self.calmm.get()) / 1000,
+                        float(self.shtkg.get()),
+                        self.prop,
+                        float(self.chgkg.get()),
+                        chamberVolume,
+                        float(self.stpMPa.get()) * 1e6,
+                        float(self.tblmm.get()) / 1000,
+                        float(self.clr.get()),
+                    ),
+                    sep=","
+                )
             self.gun = Gun(
                 float(self.calmm.get()) / 1000,
                 float(self.shtkg.get()),
@@ -672,7 +686,7 @@ class IB(Frame):
             4,
             0,
             "-log10(ε) ",
-            default="3",
+            default="5",
             validation=validationPI,
             formatter=formatIntInput,
             color="red",
