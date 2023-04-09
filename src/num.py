@@ -77,7 +77,7 @@ def intg(f, l, u, tol=1e-3):
     return I, d
 
 
-def bisect(f, x_0, x_1, tol=1e-9, it=10000):
+def bisect(f, x_0, x_1, tol=1e-9, it=1000):
     """
     bisection method to numerically solve for zero for a function
     taking one variable
