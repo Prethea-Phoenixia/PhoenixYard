@@ -524,11 +524,35 @@ class IB(Frame):
 
         i += 1
 
+        geoDimText = "\n".join(
+            (
+                "Specify the geometry of propellant grain",
+                "using dimensions. Generally speaking for",
+                "multi-perforated grains, the perf diameter",
+                "measures around half of the web thickness",
+                "and a length to diameter ratio of between",
+                "2~2.5. With manual processes, 0.01mm seems",
+                "to be a representative achievable accuracy.",
+            )
+        )
+
         self.webmm, _, i = self.add3Input(
-            parFrm, i, "Web Thickness", "mm", "0.0", validationNN
+            parFrm,
+            i,
+            "Web Thickness",
+            "mm",
+            "0.0",
+            validationNN,
+            infotext=geoDimText,
         )
         self.permm, self.perw, i = self.add3Input(
-            parFrm, i, "Perf Diameter", "mm", "0.0", validationNN
+            parFrm,
+            i,
+            "Perf Diameter",
+            "mm",
+            "0.0",
+            validationNN,
+            infotext=geoDimText,
         )
 
         grlRtext = "\n".join(
@@ -536,7 +560,7 @@ class IB(Frame):
         )
 
         self.grlR, _, i = self.add3Input(
-            parFrm, i, "Grain L/D", "", "3.0", validationNN, infotext=grlRtext
+            parFrm, i, "Grain L/D", "", "2.5", validationNN, infotext=grlRtext
         )
 
         ldftext = "\n".join(
@@ -613,8 +637,23 @@ class IB(Frame):
 
         validationNN = parent.register(validateNN)
         i = 0
+
+        ratioEntryText = "\n".join(
+            (
+                "Specify the geometry of propellant using",
+                "ratios, scaled by web thickness. These",
+                "entrys are in use when Lock Geometry is",
+                "enabled",
+            )
+        )
         self.webR, webRw, i = self.add2Input(
-            opFrm, i, 0, "W.Th.", "2.0", validation=validationNN
+            opFrm,
+            i,
+            0,
+            "W.Th.",
+            "2.0",
+            validation=validationNN,
+            infotext=ratioEntryText,
         )
         self.perR, perRw, i = self.add2Input(
             opFrm,
@@ -623,6 +662,7 @@ class IB(Frame):
             "P.Dia.",
             "1.0",
             validation=validationNN,
+            infotext=ratioEntryText,
         )
 
         ratioEntrys = (webRw, perRw)
@@ -779,10 +819,12 @@ class IB(Frame):
         entryWidth=5,
         formatter=formatFloatInput,
         color=None,
+        infotext=None,
     ):
-        ttk.Label(parent, text=labelText).grid(
-            row=rowIndex, column=colIndex, sticky="nsew", padx=2, pady=2
-        )
+        lb = ttk.Label(parent, text=labelText)
+        lb.grid(row=rowIndex, column=colIndex, sticky="nsew", padx=2, pady=2)
+        if infotext is not None:
+            CreateToolTip(lb, infotext)
         parent.rowconfigure(rowIndex, weight=0)
         e = StringVar(parent)
         e.set(default)
