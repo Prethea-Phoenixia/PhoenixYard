@@ -30,7 +30,6 @@ _prefix = {
 
 from ctypes import windll, byref, create_unicode_buffer, create_string_buffer
 
-
 FR_PRIVATE = 0x10
 FR_NOT_ENUM = 0x20
 
@@ -90,7 +89,7 @@ def toSI(v, dec=4, unit=None):
     if v == 0:
         return (
             "{:#.{:}g}".format(v, dec)
-            + " "
+            + "  "
             + (unit if unit is not None else "")
         )
     else:
@@ -286,6 +285,7 @@ class IB(Frame):
                 / float(self.ldf.get())
                 * 100
             )
+            self.cv.set(toSI(chamberVolume))
             if DEBUG:
                 print(
                     *(
@@ -311,7 +311,7 @@ class IB(Frame):
                 float(self.clr.get()),
             )
 
-            self.va.set(round(self.gun.v_j, 1))
+            self.va.set(toSI(self.gun.v_j))
 
             t_err, l_err, psi_e, v_err, p_err = self.gun.getErr(
                 10 ** -(int(self.accExp.get()))
@@ -374,9 +374,14 @@ class IB(Frame):
         specFrm.grid(row=0, column=0, rowspan=2, sticky="nsew")
         specFrm.columnconfigure(0, weight=1)
         i = 0
-        self.va, _, i = self.add12Disp(specFrm, i, "Asymptotic Vel.", "m/s")
+        self.va, _, i = self.add12Disp(
+            specFrm, i, "Asymptotic Vel.", "m/s", justify="right"
+        )
         self.te, _, i = self.add12Disp(specFrm, i, "Thermal Eff.", "%")
         self.be, _, i = self.add12Disp(specFrm, i, "Ballistic Eff.", "%")
+        self.cv, _, i = self.add12Disp(
+            specFrm, i, "Chamber Volume", "m^3", justify="right"
+        )
 
         specFrm.rowconfigure(i, weight=1)
         errFrm = ttk.LabelFrame(specFrm, text="Maximum Error")
@@ -404,6 +409,7 @@ class IB(Frame):
             self.va,
             self.te,
             self.be,
+            self.cv,
             self.terr,
             self.lerr,
             self.psierr,
@@ -909,17 +915,6 @@ if __name__ == "__main__":
     # root.option_add("*TCombobox*Listbox*Font", "Hack 8")
 
     root.title("Phoenix's Internal Ballistics Solver v0.2")
-    """
-    root.rowconfigure(0, weight=1)
-    root.columnconfigure(0, weight=1)
 
-    tabControl = ttk.Notebook(root)
-    tabControl.enable_traversal()
-    tabIB = ttk.Frame(tabControl)
-    tabCD = ttk.Frame(tabControl)
-    tabControl.add(tabIB, text="Forward Calculation", underline=0)
-    tabControl.add(tabCD, text="Constrained Design", underline=0)
-    tabControl.grid(row=0, column=0, sticky="nsew")
-    """
     ibPanel = IB(root)
     root.mainloop()
