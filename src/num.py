@@ -77,38 +77,6 @@ def intg(f, l, u, tol=1e-3):
     return I, d
 
 
-def bisect(f, x_0, x_1, tol=1e-9, it=1000):
-    """
-    bisection method to numerically solve for zero for a function
-    taking one variable
-    two initial guesses must be of opposite sign.
-    The root found is guaranteed to be within the range specified.
-
-    tol: tolerance of f(x) if x is root
-    it: maximum iteration
-    """
-    a = x_0
-    b = x_1
-
-    if abs(f(a)) < tol:
-        return a, f(a)
-    elif abs(f(b)) < tol:
-        return b, f(b)
-    elif f(a) * f(b) > 0:
-        raise ValueError("Initial Guesses Must Be Of Opposite Sign")
-
-    for _ in range(it):
-        c = (a + b) / 2
-        if abs(f(c)) < tol:
-            return (c, f(c))
-        if f(c) * f(a) > 0:
-            a = c
-        else:
-            b = c
-
-    raise ValueError("Maximum iteration exceeded at ({},{})".format(c, f(c)))
-
-
 invphi = (math.sqrt(5) - 1) / 2  # 1 / phi
 invphi2 = (3 - math.sqrt(5)) / 2  # 1 / phi^2
 
@@ -168,7 +136,7 @@ def gss(f, a, b, tol=1e-9, findMin=True):
         return (c, b)
 
 
-def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9, imax=1000):
+def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9, imax=100):
     """
     Runge Kutta Fehlberg method, of the fourth and fifth order
     Even though this involves a lot more computation per cycle,
@@ -182,7 +150,6 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9, imax=1000):
     h = (x_1 - x_0) / 10  # initial step size
     i = 0
     while (h > 0 and x < x_1) or (h < 0 and x > x_1):
-        i += 1
         if i > imax:
             raise ValueError(
                 "Integration Cycle Limit ({}) Exceeded at x={}, h={}\n y={}".format(
@@ -280,6 +247,7 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9, imax=1000):
                 h *= (
                     beta * (tol / (2 * epsilon)) ** 0.25
                 )  # apply the new best estimate
+            i += 1
 
         if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
             h = x_1 - x
