@@ -113,8 +113,8 @@ class GrainComp:
             propReader = csv.reader(
                 csvfile,
                 delimiter=",",
-                quotechar="|",
-                quoting=csv.QUOTE_NONNUMERIC,
+                quotechar='"',
+                quoting=csv.QUOTE_MINIMAL,
             )
 
             skipFirstLine = True
@@ -123,7 +123,6 @@ class GrainComp:
                 if skipFirstLine:
                     skipFirstLine = False
                     continue
-
                 (
                     name,
                     desc,
@@ -136,18 +135,18 @@ class GrainComp:
                     linBurnCoe,
                 ) = prop
 
-                redAdbIndex = adb - 1
+                redAdbIndex = float(adb) - 1
 
                 newComp = GrainComp(
                     name,
                     desc,
-                    propellantForce,
-                    covolume,
-                    density,
-                    redAdbIndex,
-                    burnRateCoe,
-                    pressureExp,
-                    linBurnCoe,
+                    float(propellantForce),
+                    float(covolume),
+                    float(density),
+                    float(redAdbIndex),
+                    float(burnRateCoe),
+                    float(pressureExp),
+                    float(linBurnCoe),
                 )
 
                 composition.append(newComp)
@@ -700,6 +699,8 @@ if __name__ == "__main__":
     )
 
     # print(*test.integrate(10, 1e-5, dom="length"), sep="\n")
-    # lbs/in^3 -> kg/m^3, multiply by 27680
-    # in^3/lbs -> m^3/kg, divide by 27680
-    # ft-lbs per lb ->J/kg multiply by 2.98907
+    # density:  lbs/in^3 -> kg/m^3, multiply by 27680
+    # covolume: in^3/lbs -> m^3/kg, divide by 27680
+    # force:    ft-lbs per lb ->J/kg multiply by 2.98907
+    # burn rate coefficient:
+    # mm/s/(MPa)**exponent -> m/s/Pa**exponent * 1e-3 /(1e6)**exponent

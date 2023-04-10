@@ -180,7 +180,7 @@ class ToolTip(object):
             return
         x, y, cx, cy = self.widget.bbox("insert")
         x = x + self.widget.winfo_rootx()  # + self.widget.winfo_width()
-        y = y + cy + self.widget.winfo_rooty() + self.widget.winfo_height()
+        y = y + self.widget.winfo_rooty() + self.widget.winfo_height()
         """ initalize the tooltip window to the lower right corner of the widget"""
         self.tipwindow = tw = Toplevel(self.widget)
         tw.wm_overrideredirect(1)
@@ -494,6 +494,18 @@ class IB(Frame):
         self.specs.grid(row=1, column=0, sticky="nsew", pady=2)
         specScroll.config(command=self.specs.yview)
 
+        specsText = "\n".join(
+            (
+                "In general, mono or double based propellants",
+                "are much stronger mechanically than triple",
+                "base propellants. ",
+                "Nitration used for Nitrocellulose is between",
+                "13.15%-13.25% for all preset propellants.",
+            )
+        )
+
+        CreateToolTip(propFrm, specsText)
+
         propFrm.rowconfigure(1, weight=1)
         propFrm.columnconfigure(0, weight=1)
 
@@ -531,8 +543,12 @@ class IB(Frame):
                 "multi-perforated grains, the perf diameter",
                 "measures around half of the web thickness",
                 "and a length to diameter ratio of between",
-                "2~2.5. With manual processes, 0.01mm seems",
-                "to be a representative achievable accuracy.",
+                "2~2.5. In theory micrometer level precision",
+                "is possible. In practice, tolerance for",
+                "industrial bulk production is in the range",
+                "of 1mm-0.25mm. Web thickness depends",
+                "largely on use case, although its generally",
+                "found close to 1mm.",
             )
         )
 
