@@ -380,7 +380,7 @@ class IB(Frame):
         self.te, _, i = self.add12Disp(specFrm, i, "Thermal Eff.", "%")
         self.be, _, i = self.add12Disp(specFrm, i, "Ballistic Eff.", "%")
         self.cv, _, i = self.add12Disp(
-            specFrm, i, "Chamber Volume", "m^3", justify="right"
+            specFrm, i, "Chamber Volume", "m³", justify="right"
         )
 
         specFrm.rowconfigure(i, weight=1)
@@ -717,7 +717,7 @@ class IB(Frame):
             yscrollcommand=errScroll.set,
             wrap=WORD,
             height=0,
-            width=75,
+            width=80,
         )
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
@@ -753,7 +753,7 @@ class IB(Frame):
             self.tv.heading(
                 column, text=column
             )  # let the column heading = column name
-            self.tv.column(column, stretch=1, width=0, anchor="w")
+            self.tv.column(column, stretch=1, width=0, anchor="e")
 
         vertscroll = ttk.Scrollbar(
             tblFrm, orient="vertical"
