@@ -294,6 +294,94 @@ class Gun:
                     + " will likely occur."
                     + " Suggest reducing load fraction."
                 )
+        # this will overwrite the definition of Geometry.B
+        self.B = (
+            self.S**2
+            * self.e_1**2
+            / (self.f * self.phi * self.omega * self.m * self.u_1**2)
+            * (self.f * self.Delta) ** (2 * (1 - self.n))
+        )
+
+        Zs = cubic(
+            self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0
+        )
+        # pick a valid solution between 0 and 1
+        Zs = tuple(Z for Z in Zs if (Z > 0 and Z < 1))
+        if len(Zs) < 1:
+            raise ValueError(
+                "Propellant has burnt to fracture before start"
+                + " of shot movement. Suggest reducing starting"
+                + " pressure or specifying higher load fraction."
+            )
+
+        self.Z_0 = Zs[0]
+
+    def _fpsi(self, Z):
+        if Z < 0:
+            return 0
+        elif Z < 1.0:
+            return self.chi * Z * (1 + self.labda * Z + self.mu * Z**2)
+        elif Z < self.Z_b:
+            return self.chi_s * Z * (1 + self.labda_s * Z)
+        else:
+            return 1.0
+
+    def _fp_bar(self, Z, l_bar, v_bar):
+        psi = self._fpsi(Z)
+        l_psi_bar = (
+            1
+            - self.Delta / self.rho_p
+            - self.Delta * (self.alpha - 1 / self.rho_p) * psi
+        )
+
+        p_bar = (
+            self.f * self.omega * psi
+            - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
+        ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
+
+        return p_bar
+
+    def _ode_t(self, t_bar, Z, l_bar, v_bar):
+        """time domain ode of internal ballistics"""
+        p_bar = self._fp_bar(Z, l_bar, v_bar)
+        if Z < self.Z_b:
+            dZ = (self.theta / (2 * self.B)) ** 0.5 * p_bar**self.n  # dt_bar
+        else:
+            dZ = 0
+        dl_bar = v_bar  # over dt_bar
+        dv_bar = self.theta * 0.5 * p_bar  # over dt_bar
+
+        return (dZ, dl_bar, dv_bar)
+
+    def _ode_l(self, l_bar, t_bar, Z, v_bar):
+        """length domain ode of internal ballistics
+        the 1/v_bar pose a starting problem that prevent us from using it from
+        initial condition."""
+        p_bar = self._fp_bar(Z, l_bar, v_bar)
+        if Z < self.Z_b:
+            dZ = (self.theta / (2 * self.B)) ** 0.5 * p_bar**self.n / v_bar
+        else:
+            dZ = 0
+        dv_bar = self.theta * 0.5 * p_bar / v_bar
+        dt_bar = 1 / v_bar
+        return (dt_bar, dZ, dv_bar)
+
+    def _ode_Z(self, Z, t_bar, l_bar, v_bar):
+        """burnout domain ode of internal ballistics"""
+        p_bar = self._fp_bar(Z, l_bar, v_bar)
+        if Z < self.Z_b:
+            dt_bar = ((2 * self.B) / self.theta) ** 0.5 * p_bar**-self.n
+            dl_bar = (
+                v_bar * ((2 * self.B) / self.theta) ** 0.5 * p_bar**-self.n
+            )
+            dv_bar = (self.B * self.theta / 2) ** 0.5 * p_bar ** (1 - self.n)
+        else:
+            # technically speaking it is undefined in this area
+            dt_bar = 0
+            dl_bar = 0
+            dv_bar = 0
+
+        return (dt_bar, dl_bar, dv_bar)
 
     def integrate(self, steps=10, tol=1e-5, maxiter=100, dom="time"):
         """
@@ -310,98 +398,10 @@ class Gun:
             |--integrating in Z to burnout: 1
             |--integrating in l to exit: 0.5+0.5
             |--numerically solving peak pressure point in time: (0.5)+0.5
-            |--populating in tiem: 1
+            |--populating in item: 1
             |--populating in distance: 0.5+0.5
         worst case: 1
         """
-
-        B = (
-            self.S**2
-            * self.e_1**2
-            / (self.f * self.phi * self.omega * self.m * self.u_1**2)
-            * (self.f * self.Delta) ** (2 * (1 - self.n))
-        )
-
-        def _fpsi(Z):
-            if Z < 0:
-                return 0
-            elif Z < 1.0:
-                return self.chi * Z * (1 + self.labda * Z + self.mu * Z**2)
-            elif Z < self.Z_b:
-                return self.chi_s * Z * (1 + self.labda_s * Z)
-            else:
-                return 1.0
-
-        def _fp_bar(Z, l_bar, v_bar):
-            psi = _fpsi(Z)
-            l_psi_bar = (
-                1
-                - self.Delta / self.rho_p
-                - self.Delta * (self.alpha - 1 / self.rho_p) * psi
-            )
-
-            p_bar = (
-                self.f * self.omega * psi
-                - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
-            ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
-
-            return p_bar
-
-        def _ode_t(t_bar, Z, l_bar, v_bar):
-            """time domain ode of internal ballistics"""
-            p_bar = _fp_bar(Z, l_bar, v_bar)
-            if Z < self.Z_b:
-                dZ = (self.theta / (2 * B)) ** 0.5 * p_bar**self.n  # dt_bar
-            else:
-                dZ = 0
-            dl_bar = v_bar  # over dt_bar
-            dv_bar = self.theta * 0.5 * p_bar  # over dt_bar
-
-            return (dZ, dl_bar, dv_bar)
-
-        def _ode_l(l_bar, t_bar, Z, v_bar):
-            """length domain ode of internal ballistics
-            the 1/v_bar pose a starting problem that prevent us from using it from
-            initial condition."""
-            p_bar = _fp_bar(Z, l_bar, v_bar)
-            if Z < self.Z_b:
-                dZ = (self.theta / (2 * B)) ** 0.5 * p_bar**self.n / v_bar
-            else:
-                dZ = 0
-            dv_bar = self.theta * 0.5 * p_bar / v_bar
-            dt_bar = 1 / v_bar
-            return (dt_bar, dZ, dv_bar)
-
-        def _ode_Z(Z, t_bar, l_bar, v_bar):
-            """burnout domain ode of internal ballistics"""
-            p_bar = _fp_bar(Z, l_bar, v_bar)
-            if Z < self.Z_b:
-                dt_bar = ((2 * B) / self.theta) ** 0.5 * p_bar**-self.n
-                dl_bar = (
-                    v_bar * ((2 * B) / self.theta) ** 0.5 * p_bar**-self.n
-                )
-                dv_bar = (B * self.theta / 2) ** 0.5 * p_bar ** (1 - self.n)
-            else:
-                # technically speaking it is undefined in this area
-                dt_bar = 0
-                dl_bar = 0
-                dv_bar = 0
-
-            return (dt_bar, dl_bar, dv_bar)
-
-        Zs = cubic(
-            self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0
-        )
-        # pick a valid solution between 0 and 1
-        Zs = tuple(Z for Z in Zs if (Z > 0 and Z < 1))
-        if len(Zs) < 1:
-            raise ValueError(
-                "Propellant has burnt to fracture before start"
-                + " of shot movement. Suggest reducing starting"
-                + " pressure or specifying higher load fraction."
-            )
-
-        Z_0 = Zs[0]
 
         l_g_bar = self.l_g / self.l_0
 
@@ -412,7 +412,7 @@ class Gun:
                 "SHOT START",
                 0,
                 0,
-                Z_0,
+                self.Z_0,
                 0,
                 self.p_0 / (self.f * self.Delta),
             )
@@ -423,11 +423,11 @@ class Gun:
         try:
             """
             Subscript f indicate fracture condition
-            ODE w.r.t Z is integrated from Z_0 to 1, from onset of projectile
+            ODE w.r.t Z is integrated from self.Z_0 to 1, from onset of projectile
             movement to charge fracture
             """
             t_bar_f, l_bar_f, v_bar_f = RKF45OverTuple(
-                _ode_Z, (0, 0, 0), Z_0, 1, tol=0.5 * tol, imax=maxiter
+                self._ode_Z, (0, 0, 0), self.Z_0, 1, tol=0.5 * tol, imax=maxiter
             )
 
             bar_data.append(
@@ -437,22 +437,27 @@ class Gun:
                     l_bar_f,
                     1,
                     v_bar_f,
-                    _fp_bar(1, l_bar_f, v_bar_f),
+                    self._fp_bar(1, l_bar_f, v_bar_f),
                 )
             )
 
             Z_i, t_bar_i, l_bar_i, v_bar_i = 1, t_bar_f, l_bar_f, v_bar_f
 
             """
-            Subscript b indicated burnout condition
-            ODE w.r.t Z is integrated from Z_0 to Z_b, from onset of projectile
+            Subscript self.B indicated burnout condition
+            ODE w.r.t Z is integrated from self.Z_0 to Z_b, from onset of projectile
             movement to charge burnout.
 
             This is only done when fracture has happened inside the barrel.
             """
             if l_bar_f < l_g_bar:
                 t_bar_b, l_bar_b, v_bar_b = RKF45OverTuple(
-                    _ode_Z, (0, 0, 0), Z_0, self.Z_b, tol=tol, imax=maxiter
+                    self._ode_Z,
+                    (0, 0, 0),
+                    self.Z_0,
+                    self.Z_b,
+                    tol=tol,
+                    imax=maxiter,
                 )
                 bar_data.append(
                     (
@@ -461,7 +466,7 @@ class Gun:
                         l_bar_b,
                         self.Z_b,
                         v_bar_b,
-                        _fp_bar(self.Z_b, l_bar_b, v_bar_b),
+                        self._fp_bar(self.Z_b, l_bar_b, v_bar_b),
                     )
                 )
 
@@ -476,10 +481,15 @@ class Gun:
             has been found.
             """
             while t_bar_i is None:
-                Z_i = (Z_i - Z_0) * 0.618 + Z_0
+                Z_i = (Z_i - self.Z_0) * 0.618 + self.Z_0
                 try:
                     t_bar_i, l_bar_i, v_bar_i = RKF45OverTuple(
-                        _ode_Z, (0, 0, 0), Z_0, Z_i, tol=0.5 * tol, imax=maxiter
+                        self._ode_Z,
+                        (0, 0, 0),
+                        self.Z_0,
+                        Z_i,
+                        tol=0.5 * tol,
+                        imax=maxiter,
                     )
                 except ValueError:
                     pass
@@ -491,7 +501,7 @@ class Gun:
         handling of burning in the reverse direction. 
         """
         t_bar_e, Z_e, v_bar_e = RKF45OverTuple(
-            _ode_l,
+            self._ode_l,
             (t_bar_i, Z_i, v_bar_i),
             l_bar_i,
             l_g_bar,
@@ -506,7 +516,7 @@ class Gun:
                 l_g_bar,
                 Z_e,
                 v_bar_e,
-                _fp_bar(Z_e, l_g_bar, v_bar_e),
+                self._fp_bar(Z_e, l_g_bar, v_bar_e),
             )
         )
 
@@ -518,9 +528,14 @@ class Gun:
 
         def f(t_bar):
             Z, l_bar, v_bar = RKF45OverTuple(
-                _ode_t, (Z_0, 0, 0), 0, t_bar, tol=0.5 * tol, imax=maxiter
+                self._ode_t,
+                (self.Z_0, 0, 0),
+                0,
+                t_bar,
+                tol=0.5 * tol,
+                imax=maxiter,
             )
-            return _fp_bar(Z, l_bar, v_bar)
+            return self._fp_bar(Z, l_bar, v_bar)
 
         # tolerance is specified a bit differently for gold section search
         t_bar_p_1, t_bar_p_2 = gss(f, 0, t_bar_e, tol=tol, findMin=False)
@@ -534,7 +549,7 @@ class Gun:
                             t_bar_p
         """
         Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
-            _ode_t, (Z_0, 0, 0), 0, t_bar_p, tol=tol, imax=maxiter
+            self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol, imax=maxiter
         )
 
         bar_data.append(
@@ -544,7 +559,7 @@ class Gun:
                 l_bar_p,
                 Z_p,
                 v_bar_p,
-                _fp_bar(Z_p, l_bar_p, v_bar_p),
+                self._fp_bar(Z_p, l_bar_p, v_bar_p),
             )
         )
         """
@@ -556,7 +571,12 @@ class Gun:
                 t_bar_i = t_bar_e / steps * i
 
                 Z_i, l_bar_i, v_bar_i = RKF45OverTuple(
-                    _ode_t, (Z_0, 0, 0), 0, t_bar_i, tol=tol, imax=maxiter
+                    self._ode_t,
+                    (self.Z_0, 0, 0),
+                    0,
+                    t_bar_i,
+                    tol=tol,
+                    imax=maxiter,
                 )
 
                 bar_data.append(
@@ -566,7 +586,7 @@ class Gun:
                         l_bar_i,
                         Z_i,
                         v_bar_i,
-                        _fp_bar(Z_i, l_bar_i, v_bar_i),
+                        self._fp_bar(Z_i, l_bar_i, v_bar_i),
                     )
                 )
         else:
@@ -579,7 +599,7 @@ class Gun:
                 l_bar_i = l_g_bar / steps * i
 
                 t_bar_i, Z_i, v_bar_i = RKF45OverTuple(
-                    _ode_l,
+                    self._ode_l,
                     (t_bar_f, 1, v_bar_f),
                     l_bar_f,
                     l_bar_i,
@@ -593,7 +613,7 @@ class Gun:
                         l_bar_i,
                         Z_i,
                         v_bar_i,
-                        _fp_bar(Z_i, l_bar_i, v_bar_i),
+                        self._fp_bar(Z_i, l_bar_i, v_bar_i),
                     )
                 )
 
@@ -603,7 +623,7 @@ class Gun:
                 tag,
                 t_bar * self.l_0 / self.v_j,
                 l_bar * self.l_0,
-                _fpsi(Z),
+                self._fpsi(Z),
                 v_bar * self.v_j,
                 p_bar * self.f * self.Delta,
             )
@@ -611,6 +631,45 @@ class Gun:
         )
 
         return data
+
+    def propagate(self, l_g=None, tol=1e-5, maxiter=100):
+        """
+        this is a stripped down version used in numerical optimization
+
+        returns peak pressure and velocity at peak pressure.
+        """
+
+        def f(Z):
+            t_bar, l_bar, v_bar = RKF45OverTuple(
+                self._ode_Z, (0, 0, 0), self.Z_0, Z, tol=0.5 * tol, imax=maxiter
+            )
+            return self._fp_bar(Z, l_bar, v_bar)
+
+        # tolerance is specified a bit differently for gold section search
+        Z_p_1, Z_p_2 = gss(f, self.Z_0, self.Z_b, tol=tol, findMin=False)
+        Z_p = (Z_p_1 + Z_p_2) / 2
+        """
+        error analysis is the same as previous, no more elaboration.
+        """
+        t_bar_p, l_bar_p, v_bar_p = RKF45OverTuple(
+            self._ode_Z, (0, 0, 0), self.Z_0, Z_p, tol=0.5 * tol, imax=maxiter
+        )  # since we are using this to propagate exit condition
+
+        if l_g is not None:
+            t_bar_e, Z_bar_e, v_bar_e = RKF45OverTuple(
+                self._ode_l,
+                (t_bar_p, Z_p, v_bar_p),
+                l_bar_p,
+                l_g,
+                tol=0.5 * tol,
+            )
+            return v_bar_e * self.v_j
+        else:
+            return (
+                self._fp_bar(Z_p, l_bar_p, v_bar_p) * self.f * self.Delta,
+                v_bar_p * self.v_j,
+                l_bar_p * self.l_0,
+            )
 
     def getEff(self, vg):
         """
@@ -633,7 +692,7 @@ class Gun:
         p_err = self.f * self.Delta * tol
 
         """
-        technically speaking we should use Z_0 here, but that must be solved
+        technically speaking we should use self.Z_0 here, but that must be solved
 
         """
         Zs = (0, -self.labda / (3 * self.mu), 1, self.Z_b)
