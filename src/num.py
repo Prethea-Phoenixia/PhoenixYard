@@ -215,8 +215,10 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol, imax=100):
                 raise TypeError
 
         except (
-            TypeError
+            TypeError,
+            ZeroDivisionError,
         ):  # complex value has been encountered during calculation
+            # or that through unfortuante chance we got a divide by zero
             h *= beta
             continue
 
@@ -337,7 +339,7 @@ def bisect(f, x_0, x_1, tol, it=100):
     elif abs(f(b)) < tol:
         return b, f(b)
     elif sign(f(a)) * sign(f(b)) > 0:
-        raise ValueError("Initial Guesses Must Be Of Opposite Sign")
+        raise ValueError("Initial guesses must be of opposite sign")
 
     for _ in range(it):
         c = (a + b) / 2
@@ -353,7 +355,7 @@ def bisect(f, x_0, x_1, tol, it=100):
     raise ValueError("Maximum iteration exceeded at ({},{})".format(c, f(c)))
 
 
-def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
+def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=100):
     """secant method that solves f(x) = 0 subjected to x in [x_min,x_max]"""
     if x_min is not None:
         if x_0 < x_min:
@@ -368,6 +370,10 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
 
     fx_0 = f(x_0)
     fx_1 = f(x_1)
+
+    if x_0 == x_1 or fx_0 == fx_1:
+        raise ValueError("Initial guess must evaluate to different values")
+
     for _ in range(it):
         x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
         if x_min is not None and x_2 < x_min:
@@ -375,7 +381,7 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
         if x_max is not None and x_2 > x_max:
             x_2 = x_max
         x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, f(x_2)
-        if abs(fx_1) < tol:
+        if abs(fx_1) < tol or (fx_0 == fx_1):
             return x_1, fx_1
 
     raise ValueError("Maximum iteration exceeded at ({},{})".format(x_1, fx_1))

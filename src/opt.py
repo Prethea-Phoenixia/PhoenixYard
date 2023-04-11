@@ -20,6 +20,7 @@ def guideMap(
     """
 
     def f(wTom, lf):
+        print(wTom, lf)
         """
         w (charge weight) and lf (load fraction) are supplied
         lg (length of gun) and a (arc thickness) should be solved
@@ -36,9 +37,19 @@ def guideMap(
             gun = Gun(cal, shotMass, prop, w, cv, startPress, 1, expRatio)
             return gun.propagate(tol=tolerance, maxiter=maxiter)
 
-        a = secant(lambda a: fa(a)[0] - peakPres, 0.1e-3, 2e-3)[0]
-        _, vp, lp = fa(a)
+        a = secant(
+            lambda a: fa(a)[0] - peakPres,
+            tolerance * 2,
+            tolerance * 3,
+            x_min=tolerance,
+        )[0]
 
+        print(a)
+        if a == tolerance:
+            raise ValueError(
+                "Impossible to achieve the specified design pressure"
+            )
+        _, vp, lp = fa(a)
         if vp > shotVel:
             raise ValueError(
                 "Velocity at peak pressure exceeds specified gun vel"
@@ -46,7 +57,6 @@ def guideMap(
             )
 
         def flg(lg):
-            print(lg / lp)
             prop = Propellant(composition, geometry, a, a / arcToPerf, lenToDia)
             cv = w / prop.rho_p / (prop.maxLF * lf)  # chamber volume
             gun = Gun(cal, shotMass, prop, w, cv, startPress, 1, expRatio)
@@ -54,19 +64,30 @@ def guideMap(
 
         lg = secant(lambda lg: flg(lg) - shotVel, lp * 2, lp * 3, x_min=lp)[0]
 
-        print(a, lg)
+        return (a, lg)
 
-        """
-        # tag, t, l, psi, v, p
-        _, _, _, _, _, pb = data[
-            tuple(d[0] for d in data).index("PEAK PRESSURE")
-        ]
-        _, _, _, _, ve, _ = data[tuple(d[0] for d in data).index("SHOT EXIT")]
+    aLst = []
+    lgLst = []
 
-        return (pb - peakPres) ** 2 + (ve - shotVel) ** 2
-        """
+    wToms = [round((i + 1) / 3, 2) for i in range(6)]
+    lfs = [round((i + 1) / 3, 2) for i in range(3)]
+    for wTom in wToms:
+        aLine, lgLine = [], []
+        for lf in lfs:
+            try:
+                a, lg = f(wTom, lf)
+                aLine.append(a)
+                lgLine.append(lg)
+            except ValueError as e:
+                aLine.append(0)
+                lgLine.append(0)
+        aLst.append(aLine)
+        lgLst.append(lgLine)
 
-    print(f(1, 0.5))
+    from tabulate import tabulate
+
+    print(tabulate(aLst, headers=lfs))
+    print(tabulate(lgLst, headers=lfs))
 
 
 if __name__ == "__main__":
