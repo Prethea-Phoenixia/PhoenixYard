@@ -353,6 +353,34 @@ def bisect(f, x_0, x_1, tol, it=100):
     raise ValueError("Maximum iteration exceeded at ({},{})".format(c, f(c)))
 
 
+def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
+    """secant method that solves f(x) = 0 subjected to x in [x_min,x_max]"""
+    if x_min is not None:
+        if x_0 < x_min:
+            x_0 = x_min
+        if x_1 < x_min:
+            x_1 = x_min
+    if x_max is not None:
+        if x_0 > x_max:
+            x_0 = x_max
+        if x_1 > x_max:
+            x_1 = x_max
+
+    fx_0 = f(x_0)
+    fx_1 = f(x_1)
+    for _ in range(it):
+        x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
+        if x_min is not None and x_2 < x_min:
+            x_2 = x_min
+        if x_max is not None and x_2 > x_max:
+            x_2 = x_max
+        x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, f(x_2)
+        if abs(fx_1) < tol:
+            return x_1, fx_1
+
+    raise ValueError("Maximum iteration exceeded at ({},{})".format(x_1, fx_1))
+
+
 if __name__ == "__main__":
     from random import uniform
 
