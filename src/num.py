@@ -136,7 +136,7 @@ def gss(f, a, b, tol=1e-9, findMin=True):
         return (c, b)
 
 
-def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol=1e-9, imax=100):
+def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol, imax=100):
     """
     Runge Kutta Fehlberg method, of the fourth and fifth order
     Even though this involves a lot more computation per cycle,
@@ -319,6 +319,38 @@ def cubic(a, b, c, d):
     # put the first real solution at first.
     xs.sort(key=lambda z: 1 if isinstance(z, complex) else 0)
     return tuple(xs)
+
+
+def bisect(f, x_0, x_1, tol, it=100):
+    """bisection method to numerically solve for zero
+    two initial guesses must be of opposite sign.
+    The root found is guaranteed to be within the range specified.
+
+    tol: tolerance of f(x) if x is root
+    it: maximum iteration
+    """
+    a = x_0
+    b = x_1
+
+    if abs(f(a)) < tol:
+        return a, f(a)
+    elif abs(f(b)) < tol:
+        return b, f(b)
+    elif sign(f(a)) * sign(f(b)) > 0:
+        raise ValueError("Initial Guesses Must Be Of Opposite Sign")
+
+    for _ in range(it):
+        c = (a + b) / 2
+
+        if abs(f(c)) < tol:
+            return (c, f(c))
+
+        if sign(f(c)) == sign(f(a)):
+            a = c
+        else:
+            b = c
+
+    raise ValueError("Maximum iteration exceeded at ({},{})".format(c, f(c)))
 
 
 if __name__ == "__main__":

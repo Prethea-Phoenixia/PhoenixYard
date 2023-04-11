@@ -264,7 +264,7 @@ class IB(Frame):
             self.prop = Propellant(
                 compo,
                 geom,
-                float(self.webmm.get()) / 1000,
+                float(self.arcmm.get()) / 1000,
                 float(self.permm.get()) / 1000,
                 float(self.grlR.get()),
             )
@@ -337,6 +337,7 @@ class IB(Frame):
                     steps=int(self.steps.get()),
                     dom=self.dropOptn.get(),
                     tol=10 ** -(int(self.accExp.get())),
+                    maxiter=int(self.maxIt.get()),
                 )
                 i = tuple(i[0] for i in self.tableData).index("SHOT EXIT")
                 vg = self.tableData[i][4]
@@ -496,11 +497,21 @@ class IB(Frame):
 
         specsText = "\n".join(
             (
-                "In general, mono or double based propellants",
-                "are much stronger mechanically than triple",
-                "base propellants. ",
                 "Nitration used for Nitrocellulose is between",
                 "13.15%-13.25% for all preset propellants.",
+                "Up to 14.14% is possible but has not been",
+                "adopted by the industry due to cost.",
+                "Pure Nitrocellulose is plasticized and stabi-",
+                "lized with Dinitrotoluene to form single",
+                "based propellants.",
+                "Double based propellant is formed when",
+                "Nitroglycerin is used as gelatinizer instead.",
+                "While more energetic, it also burns hotter",
+                "and erodes barrel more.",
+                "Triple base propellants contains Nitro-",
+                "guanidine, with higher energy content",
+                "while keeping flame temperature low.",
+                "However, it is mechanically the weakest.",
             )
         )
 
@@ -541,21 +552,21 @@ class IB(Frame):
                 "Specify the geometry of propellant grain",
                 "using dimensions. Generally speaking for",
                 "multi-perforated grains, the perf diameter",
-                "measures around half of the web thickness",
+                "measures around half of the arc thickness",
                 "and a length to diameter ratio of between",
                 "2~2.5. In theory micrometer level precision",
                 "is possible. In practice, tolerance for",
                 "industrial bulk production is in the range",
-                "of 1mm-0.25mm. Web thickness depends",
-                "largely on use case, although its generally",
-                "found close to 1mm.",
+                "of 0.15mm to 1mm depending on caliber",
+                "arc thickness is generally found close",
+                "to 1mm for small to intermediate calibers.",
             )
         )
 
-        self.webmm, _, i = self.add3Input(
+        self.arcmm, _, i = self.add3Input(
             parFrm,
             i,
-            "Web Thickness",
+            "Arc Thickness",
             "mm",
             "0.0",
             validationNN,
@@ -657,16 +668,16 @@ class IB(Frame):
         ratioEntryText = "\n".join(
             (
                 "Specify the geometry of propellant using",
-                "ratios, scaled by web thickness. These",
+                "ratios, scaled by arc thickness. These",
                 "entrys are in use when Lock Geometry is",
                 "enabled",
             )
         )
-        self.webR, webRw, i = self.add2Input(
+        self.arcR, arcRw, i = self.add2Input(
             opFrm,
             i,
             0,
-            "W.Th.",
+            "A.Th.",
             "2.0",
             validation=validationNN,
             infotext=ratioEntryText,
@@ -681,7 +692,7 @@ class IB(Frame):
             infotext=ratioEntryText,
         )
 
-        ratioEntrys = (webRw, perRw)
+        ratioEntrys = (arcRw, perRw)
         directEntrys = (self.perw,)
 
         def configEntry():
@@ -696,13 +707,13 @@ class IB(Frame):
                 for en in directEntrys:
                     en.config(state="disabled")
 
-            self.webcallback(None, None, None)
+            self.arccallback(None, None, None)
 
         configEntry()
 
-        self.webmm.trace_add("write", self.webcallback)
-        self.webR.trace_add("write", self.webcallback)
-        self.perR.trace_add("write", self.webcallback)
+        self.arcmm.trace_add("write", self.arccallback)
+        self.arcR.trace_add("write", self.arccallback)
+        self.perR.trace_add("write", self.arccallback)
 
         ttk.Checkbutton(
             opFrm,
@@ -713,7 +724,7 @@ class IB(Frame):
             command=configEntry,
         ).grid(row=0, column=2, rowspan=2, sticky="nsew", padx=2, pady=2)
 
-        ttk.Label(opFrm, text="∫ in").grid(
+        ttk.Label(opFrm, text="Sample").grid(
             row=2, column=0, sticky="nsew", padx=2, pady=2
         )
 
@@ -733,9 +744,11 @@ class IB(Frame):
 
         validationPI = parent.register(validatePI)
 
-        self.steps, _, _ = self.add3Input(
+        i = 3
+
+        self.steps, _, i = self.add3Input(
             opFrm,
-            3,
+            i,
             "Show",
             "steps",
             "10",
@@ -743,22 +756,41 @@ class IB(Frame):
             formatter=formatIntInput,
         )
 
-        self.accExp, _, _ = self.add2Input(
+        itText = "\n".join(
+            (
+                "Maximum iterations the numerical ",
+                "integrator is allowed to run to",
+                "before giving up.",
+            )
+        )
+
+        self.maxIt, _, i = self.add3Input(
             opFrm,
-            4,
+            i,
+            "Max Iter.",
+            "cycles",
+            default="100",
+            validation=validationPI,
+            formatter=formatIntInput,
+            color="red",
+            infotext=itText,
+        )
+
+        self.accExp, _, i = self.add2Input(
+            opFrm,
+            i,
             0,
-            "-log10(ε) ",
+            "-log10(ε)",
             default="5",
             validation=validationPI,
             formatter=formatIntInput,
             color="red",
+            infotext="Unitless tolerance specification.",
         )
 
         ttk.Button(
             opFrm, text="Calculate", command=self.calculate, underline=0
-        ).grid(row=5, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
-
-        opFrm.rowconfigure(5, weight=0)
+        ).grid(row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
 
     def addExcFrm(self, parent):
         errorFrm = ttk.LabelFrame(parent, text="Exceptions")
@@ -870,6 +902,7 @@ class IB(Frame):
         validation=None,
         entryWidth=10,
         formatter=formatFloatInput,
+        color=None,
         infotext=None,
     ):
         lb = ttk.Label(parent, text=labelText)
@@ -882,6 +915,7 @@ class IB(Frame):
             textvariable=e,
             validate="key",
             validatecommand=(validation, "%P"),
+            foreground=color,
             width=entryWidth,
             justify="center",
         )
@@ -925,11 +959,11 @@ class IB(Frame):
         )
         return e, en, rowIndex + 2
 
-    def webcallback(self, var, index, mode):
+    def arccallback(self, var, index, mode):
         if any(
             (
-                self.webmm.get() == "",
-                self.webR.get() == "",
+                self.arcmm.get() == "",
+                self.arcR.get() == "",
                 self.perR.get() == "",
             )
         ):
@@ -939,8 +973,8 @@ class IB(Frame):
                 try:
                     self.geomError = False
                     self.permm.set(
-                        float(self.webmm.get())
-                        / float(self.webR.get())
+                        float(self.arcmm.get())
+                        / float(self.arcR.get())
                         * float(self.perR.get())
                     )
                 except ZeroDivisionError:

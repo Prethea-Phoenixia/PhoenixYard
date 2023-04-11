@@ -256,7 +256,7 @@ class Gun:
         propellant,
         chargeMass,
         chamberVolume,
-        squeezePressure,
+        startPressure,
         lengthGun,
         chamberExpansion,
     ):
@@ -265,7 +265,7 @@ class Gun:
         self.propellant = propellant
         self.omega = chargeMass
         self.V_0 = chamberVolume
-        self.p_0 = squeezePressure
+        self.p_0 = startPressure
         self.l_g = lengthGun
         self.chi_k = chamberExpansion  # ration of l_0 / l_chamber
         self.Delta = self.omega / self.V_0
@@ -295,7 +295,7 @@ class Gun:
                     + " Suggest reducing load fraction."
                 )
 
-    def integrate(self, steps=10, tol=1e-5, dom="time"):
+    def integrate(self, steps=10, tol=1e-5, maxiter=100, dom="time"):
         """
         Runs a full numerical solution for the gun in the specified domain sampled
         evenly at specified number of steps, using a scaled numerical tolerance as
@@ -427,7 +427,7 @@ class Gun:
             movement to charge fracture
             """
             t_bar_f, l_bar_f, v_bar_f = RKF45OverTuple(
-                _ode_Z, (0, 0, 0), Z_0, 1, 0.5 * tol
+                _ode_Z, (0, 0, 0), Z_0, 1, tol=0.5 * tol, imax=maxiter
             )
 
             bar_data.append(
@@ -452,7 +452,7 @@ class Gun:
             """
             if l_bar_f < l_g_bar:
                 t_bar_b, l_bar_b, v_bar_b = RKF45OverTuple(
-                    _ode_Z, (0, 0, 0), Z_0, self.Z_b, tol
+                    _ode_Z, (0, 0, 0), Z_0, self.Z_b, tol=tol, imax=maxiter
                 )
                 bar_data.append(
                     (
@@ -479,7 +479,7 @@ class Gun:
                 Z_i = (Z_i - Z_0) * 0.618 + Z_0
                 try:
                     t_bar_i, l_bar_i, v_bar_i = RKF45OverTuple(
-                        _ode_Z, (0, 0, 0), Z_0, Z_i, 0.5 * tol
+                        _ode_Z, (0, 0, 0), Z_0, Z_i, tol=0.5 * tol, imax=maxiter
                     )
                 except ValueError:
                     pass
@@ -491,7 +491,12 @@ class Gun:
         handling of burning in the reverse direction. 
         """
         t_bar_e, Z_e, v_bar_e = RKF45OverTuple(
-            _ode_l, (t_bar_i, Z_i, v_bar_i), l_bar_i, l_g_bar, 0.5 * tol
+            _ode_l,
+            (t_bar_i, Z_i, v_bar_i),
+            l_bar_i,
+            l_g_bar,
+            tol=0.5 * tol,
+            imax=maxiter,
         )
 
         bar_data.append(
@@ -513,7 +518,7 @@ class Gun:
 
         def f(t_bar):
             Z, l_bar, v_bar = RKF45OverTuple(
-                _ode_t, (Z_0, 0, 0), 0, t_bar, 0.5 * tol
+                _ode_t, (Z_0, 0, 0), 0, t_bar, tol=0.5 * tol, imax=maxiter
             )
             return _fp_bar(Z, l_bar, v_bar)
 
@@ -529,7 +534,7 @@ class Gun:
                             t_bar_p
         """
         Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
-            _ode_t, (Z_0, 0, 0), 0, t_bar_p, tol
+            _ode_t, (Z_0, 0, 0), 0, t_bar_p, tol=tol, imax=maxiter
         )
 
         bar_data.append(
@@ -551,11 +556,7 @@ class Gun:
                 t_bar_i = t_bar_e / steps * i
 
                 Z_i, l_bar_i, v_bar_i = RKF45OverTuple(
-                    _ode_t,
-                    (Z_0, 0, 0),
-                    0,
-                    t_bar_i,
-                    tol,
+                    _ode_t, (Z_0, 0, 0), 0, t_bar_i, tol=tol, imax=maxiter
                 )
 
                 bar_data.append(
@@ -582,7 +583,8 @@ class Gun:
                     (t_bar_f, 1, v_bar_f),
                     l_bar_f,
                     l_bar_i,
-                    0.5 * tol,
+                    tol=0.5 * tol,
+                    imax=maxiter,
                 )
                 bar_data.append(
                     (
@@ -667,7 +669,7 @@ if __name__ == "__main__":
     from tabulate import tabulate
 
     compositions = GrainComp.readFile("data/propellants.csv")
-    M17 = compositions["M17 JAN-PD-26"]
+    M17 = compositions["M17"]
 
     M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 0.1e-3, 0.5e-3, 3)
 
