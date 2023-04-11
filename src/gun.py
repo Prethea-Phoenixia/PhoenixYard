@@ -422,7 +422,7 @@ class Gun:
         Instead of letting the integrator handle the heavy lifting, we 
         partition Z and integrate upwards until either barrel exit or
         burnout has been achieved. This seek-and-validate inspired
-        from bisection puts the group of value with denote by subscript
+        from bisection puts the group of value denoted by subscript
         i within or on the muzzle, with the propellant either still
         burning or right on the burnout point..
         """
@@ -437,7 +437,7 @@ class Gun:
                     imax=maxiter * N**0.5,
                 )
                 if l_bar_j > l_g_bar:
-                    if abs(l_bar_i - l_g_bar) > tol:
+                    if abs(l_bar_i - l_g_bar) > tol or l_bar_i == 0:
                         N *= 2
                         print("sharpening due to bisection")
                         Z_j = Z_i + Delta_Z / N
@@ -571,14 +571,7 @@ class Gun:
         # tolerance is specified a bit differently for gold section search
         t_bar_p_1, t_bar_p_2 = gss(f, 0, t_bar_e, tol=tol, findMin=False)
         t_bar_p = (t_bar_p_1 + t_bar_p_2) / 2
-        """
-        so the worst case scenario for the error is basically:
-                t_bar_p_1               t_bar_p_1
-                   RKF                     RKF
-        +--(tol/2)--|--(tol/2)--+--(tol/2)--|--(tol/2)--+
-                    +-------gss|(tol)-------+
-                            t_bar_p
-        """
+
         Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
             self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol, imax=maxiter
         )
@@ -781,7 +774,7 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17"]
 
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 100e-3, 0.05e-3, 3)
+    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1000e-3, 0.05e-3, 3)
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
     test = Gun(
