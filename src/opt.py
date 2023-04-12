@@ -37,19 +37,16 @@ def guideMap(
             gun = Gun(cal, shotMass, prop, w, cv, startPress, 1, expRatio)
             return gun.propagate(tol=tolerance, maxiter=maxiter)
 
-        a = secant(
-            lambda a: fa(a)[0] - peakPres,
-            tolerance * 2,
-            tolerance * 3,
-            x_min=tolerance,
-        )[0]
+        a = bisect(lambda a: fa(a)[0] - peakPres, 1e-4, 1e-2, tol=tolerance)[
+            0
+        ]  # 0.1mm to 10mm
 
-        print(a)
-        if a == tolerance:
+        pp, vp, lp = fa(a)
+        if (pp - peakPres) / (peakPres) > tolerance:
             raise ValueError(
                 "Impossible to achieve the specified design pressure"
             )
-        _, vp, lp = fa(a)
+
         if vp > shotVel:
             raise ValueError(
                 "Velocity at peak pressure exceeds specified gun vel"
@@ -63,6 +60,7 @@ def guideMap(
             return gun.propagate(tol=tolerance, maxiter=maxiter, l_g=lg)
 
         lg = secant(lambda lg: flg(lg) - shotVel, lp * 2, lp * 3, x_min=lp)[0]
+        print(lg)
 
         return (a, lg)
 

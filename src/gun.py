@@ -439,7 +439,6 @@ class Gun:
                 if l_bar_j > l_g_bar:
                     if abs(l_bar_i - l_g_bar) > tol or l_bar_i == 0:
                         N *= 2
-                        print("sharpening due to bisection")
                         Z_j = Z_i + Delta_Z / N
                     else:
                         break  # l_bar_i is solved to within a tol of l_bar_g
@@ -455,26 +454,29 @@ class Gun:
                         Z_j = self.Z_b
             except ValueError:
                 N *= 2
-                print("sharpening due to error")
                 Z_j = Z_i + Delta_Z / N
-            """
-            if N >= 2**10:
-                if t_bar_i != 0:
-                    break
-                else:
-                    raise ValueError("Excessive cycles required to integrate.")
-            """
 
         if t_bar_i == 0:
             raise ValueError(
                 "No valid point along the barrel could be found such that"
                 + " burnout is contained down to 1 tolerance as specfied."
             )
+        """
+        Uncomment the following code block to allows for verifying that the 
+        error as a result of compounding is significantly less than the tolerance
+        specified
+        """
 
-        print(
-            t_bar_i * self.l_0 / self.v_j,
-            self._fp_bar(Z_i, l_bar_i, v_bar_i) * self.f * self.Delta,
-        )
+        # print(N)
+        # t_bar_v, l_bar_v, v_bar_v = RKF45OverTuple(
+        #    self._ode_Z, (0, 0, 0), self.Z_0, Z_i, tol=tol, imax=maxiter
+        # )
+        # print(
+        #    (t_bar_v - t_bar_i) * self.l_0 / self.v_j,
+        #    (l_bar_v - l_bar_i) * self.l_0,
+        #    (v_bar_v - v_bar_i) * self.v_j,
+        # )
+
         """
         Subscript e indicate exit condition. 
         At this point, since its guaranteed that point i will be further
@@ -672,47 +674,102 @@ class Gun:
     def propagate(self, l_g=None, tol=1e-5, maxiter=100):
         """
         this is a stripped down version used in numerical optimization
+        where the length of gun is considerd as undefined, and instead
+        the general burning characteristic is sought after.
 
-        returns peak pressure and velocity at peak pressure.
+        returns peak pressure and velocity & shot travel if not supplied
+        with a gun length.
         """
 
-        def f(Z):
-            t_bar, l_bar, v_bar = RKF45OverTuple(
-                self._ode_Z, (0, 0, 0), self.Z_0, Z, tol=0.5 * tol, imax=maxiter
+        N = 1
+        Delta_Z = self.Z_b - self.Z_0
+        Z_i = self.Z_0
+
+        Z_j = Z_i + Delta_Z / N
+        t_bar_i, l_bar_i, v_bar_i = 0, 0, 0
+        p_bar_i = self.p_0 / (self.f * self.Delta)
+
+        """
+        Same as before, although here the terminating condition is
+        set as a decline in pressure
+        """
+        while Z_i < self.Z_b:  # terminates if burnout is achieved
+            try:
+                t_bar_j, l_bar_j, v_bar_j = RKF45OverTuple(
+                    self._ode_Z,
+                    (t_bar_i, l_bar_i, v_bar_i),
+                    Z_i,
+                    Z_j,
+                    tol=tol,
+                    imax=maxiter * N**0.5,
+                )
+                p_bar_j = self._fp_bar(Z_j, l_bar_j, v_bar_j)
+                print(Z_i, p_bar_i)
+                print(Z_j, p_bar_j)
+
+                if p_bar_i > p_bar_j:
+                    if p_bar_i - p_bar_j > tol or l_bar_i == 0:
+                        N *= 2
+                        Z_j = Z_i + Delta_Z / N
+                    else:
+                        break  # l_bar_i is solved to within a tol of l_bar_g
+                else:
+                    t_bar_i, l_bar_i, v_bar_i, p_bar_i = (
+                        t_bar_j,
+                        l_bar_j,
+                        v_bar_j,
+                        p_bar_j,
+                    )
+                    Z_i = Z_j
+                    """
+                    this way the group of values denoted by _i is always updated
+                    as a group.
+                    """
+                    Z_j += Delta_Z / N
+                    if Z_j > self.Z_b:
+                        Z_j = self.Z_b
+            except ValueError:
+                N *= 2
+                Z_j = Z_i + Delta_Z / N
+
+        def f(t_bar):
+            Z, l_bar, v_bar = RKF45OverTuple(
+                self._ode_t,
+                (self.Z_0, 0, 0),
+                0,
+                t_bar,
+                tol=tol,
+                imax=maxiter,
             )
             return self._fp_bar(Z, l_bar, v_bar)
 
-        # tolerance is specified a bit differently for gold section search
-        Z_p_1 = None
-        Z_1 = self.Z_b
-        while Z_p_1 is None:
-            try:
-                Z_p_1, Z_p_2 = gss(f, self.Z_0, Z_1, tol=tol, findMin=False)
-            except ValueError:
-                Z_1 = (Z_1 - self.Z_0) * 0.618 + self.Z_0
+        """
 
-        Z_p = (Z_p_1 + Z_p_2) / 2
+        # tolerance is specified a bit differently for gold section search
+        t_bar_p_1, t_bar_p_2 = gss(
+            f, t_bar_i, t_bar_i + tol, tol=tol, findMin=False
+        )
+        t_bar_p = (t_bar_p_1 + t_bar_p_2) / 2
+
+        Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
+            self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol, imax=maxiter
+        )
         """
-        error analysis is the same as previous, no more elaboration.
-        """
-        t_bar_p, l_bar_p, v_bar_p = RKF45OverTuple(
-            self._ode_Z, (0, 0, 0), self.Z_0, Z_p, tol=0.5 * tol, imax=maxiter
-        )  # since we are using this to propagate exit condition
 
         if l_g is not None:
             t_bar_e, Z_bar_e, v_bar_e = RKF45OverTuple(
                 self._ode_l,
-                (t_bar_p, Z_p, v_bar_p),
-                l_bar_p,
+                (t_bar_i, Z_i, v_bar_i),
+                l_bar_i,
                 l_g,
-                tol=0.5 * tol,
+                tol=tol,
             )
             return v_bar_e * self.v_j
         else:
             return (
-                self._fp_bar(Z_p, l_bar_p, v_bar_p) * self.f * self.Delta,
-                v_bar_p * self.v_j,
-                l_bar_p * self.l_0,
+                p_bar_i * (self.f * self.Delta),
+                v_bar_i * self.v_j,
+                l_bar_i * self.l_0,
             )
 
     def getEff(self, vg):
@@ -774,11 +831,11 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17"]
 
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1000e-3, 0.05e-3, 3)
+    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1e-3, 0.5e-3, 3)
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
     test = Gun(
-        0.035, 1.0, M17SHC, 0.8, 0.001086470935115527, 30000000.0, 0.1e-3, 1.1
+        0.035, 1.0, M17SHC, 0.8, 0.001086470935115527, 30000000.0, 0.01e-3, 1.1
     )
     print("\nnumerical: time")
     print(
