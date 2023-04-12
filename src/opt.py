@@ -20,7 +20,6 @@ def guideMap(
     """
 
     def f(wTom, lf):
-        print(wTom, lf)
         """
         w (charge weight) and lf (load fraction) are supplied
         lg (length of gun) and a (arc thickness) should be solved
@@ -59,8 +58,7 @@ def guideMap(
             gun = Gun(cal, shotMass, prop, w, cv, startPress, 1, expRatio)
             return gun.propagate(tol=tolerance, maxiter=maxiter, l_g=lg)
 
-        lg = secant(lambda lg: flg(lg) - shotVel, lp * 2, lp * 3, x_min=lp)[0]
-        print(lg)
+        lg = bisect(lambda lg: flg(lg) - shotVel, lp, lp * 10, tol=tolerance)[0]
 
         return (a, lg)
 
@@ -68,9 +66,9 @@ def guideMap(
     lgLst = []
 
     wToms = [round((i + 1) / 3, 2) for i in range(6)]
-    lfs = [round((i + 1) / 3, 2) for i in range(3)]
+    lfs = [round((i + 1) / 3, 2) for i in range(2)]
     for wTom in wToms:
-        aLine, lgLine = [], []
+        aLine, lgLine = [wTom], [wTom]
         for lf in lfs:
             try:
                 a, lg = f(wTom, lf)
@@ -84,8 +82,8 @@ def guideMap(
 
     from tabulate import tabulate
 
-    print(tabulate(aLst, headers=lfs))
-    print(tabulate(lgLst, headers=lfs))
+    print(tabulate(aLst, headers=("", *lfs)))
+    print(tabulate(lgLst, headers=("", *lfs)))
 
 
 if __name__ == "__main__":

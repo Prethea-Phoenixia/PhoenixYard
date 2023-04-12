@@ -2,6 +2,15 @@ import math
 import cmath
 
 
+def sign(x):
+    if x > 0:
+        return 1
+    elif x == 0:
+        return 0
+    elif x < 0:
+        return -1
+
+
 def intg(f, l, u, tol=1e-3):
     """
     To apply the quadrature procedure, first the problem is transformed on interval to:

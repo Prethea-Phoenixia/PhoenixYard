@@ -434,10 +434,13 @@ class Gun:
                     Z_i,
                     Z_j,
                     tol=tol,
-                    imax=maxiter * N**0.5,
+                    imax=maxiter * N**0.25,
                 )
                 if l_bar_j > l_g_bar:
-                    if abs(l_bar_i - l_g_bar) > tol or l_bar_i == 0:
+                    # reduce the tolerance requirement here to speed up
+                    # calculation and allow the use of a terminating condition
+                    # to catch excessive division on the integrator
+                    if abs(l_bar_i - l_g_bar) > tol**0.5 or l_bar_i == 0:
                         N *= 2
                         Z_j = Z_i + Delta_Z / N
                     else:
@@ -456,11 +459,15 @@ class Gun:
                 N *= 2
                 Z_j = Z_i + Delta_Z / N
 
+            if N > 1 / tol:
+                raise ValueError("Excessive division", N)
+
         if t_bar_i == 0:
             raise ValueError(
                 "No valid point along the barrel could be found such that"
                 + " burnout is contained down to 1 tolerance as specfied."
             )
+
         """
         Uncomment the following code block to allows for verifying that the 
         error as a result of compounding is significantly less than the tolerance
@@ -624,7 +631,7 @@ class Gun:
             we do another Z domain integration to seed the initial values
             to a point where ongoing burning is guaranteed.
             """
-            t_bar_s = 0.5 * t_bar_e
+            t_bar_s = 0.5 * t_bar_i
             Z_s, l_bar_s, v_bar_s = RKF45OverTuple(
                 self._ode_t,
                 (self.Z_0, 0, 0),
@@ -650,7 +657,7 @@ class Gun:
                         "",
                         t_bar_j,
                         l_bar_j,
-                        Z_i,
+                        Z_j,
                         v_bar_j,
                         self._fp_bar(Z_j, l_bar_j, v_bar_j),
                     )
@@ -671,107 +678,412 @@ class Gun:
 
         return data
 
-    def propagate(self, l_g=None, tol=1e-5, maxiter=100):
+    def analyze(self, it=100, tol=1e-5):
+        """run the psi-bar analytical solution on the defined weapon
+
+        key assumptions:
+            >burn rate scales linearlly with pressure
+            >propellant volume fraction (ψ, psi) is a polynomial
+             function of linear burn fraction (Z),
+             (this involves rewriting the psi-z polynomial to
+             match the starting and end points of the cubic equation,
+             which is not exactly rigorous, but is necessary
+             for analytically solving the SOE.)
+            >l_psi does not vary much for the entire burn duration
+             (since with current propellant the increase in free
+             chamber volume as a consequence of burning is out-
+             weighed by the effect of covolume, this is approxima-
+             tely true for moderate chamber loading fractions.)
+
+        when u_1 refers to the linear burn rate model, it is substituted
+        for u_0, deviating from the source's use.
+
+        alternate chi, labda for quadratic form equation we use here
+        to approximate the more rigorous cubic polynomial form equations.
+        values are chosen such that the shot start and fracture points
+        match exactly.
+
+        Since this is an approximation, we do not specify an accuracy and
+        instead supplies an iteration number. This allows it to be used
+        where the calculation finishing and returning is required, such
+        as say numerial optimisation routines
         """
-        this is a stripped down version used in numerical optimization
-        where the length of gun is considerd as undefined, and instead
-        the general burning characteristic is sought after.
+        Z_0 = self.Z_0
+        psi_s = self.chi * (1 + self.labda + self.mu)
 
-        returns peak pressure and velocity & shot travel if not supplied
-        with a gun length.
-        """
-
-        N = 1
-        Delta_Z = self.Z_b - self.Z_0
-        Z_i = self.Z_0
-
-        Z_j = Z_i + Delta_Z / N
-        t_bar_i, l_bar_i, v_bar_i = 0, 0, 0
-        p_bar_i = self.p_0 / (self.f * self.Delta)
-
-        """
-        Same as before, although here the terminating condition is
-        set as a decline in pressure
-        """
-        while Z_i < self.Z_b:  # terminates if burnout is achieved
-            try:
-                t_bar_j, l_bar_j, v_bar_j = RKF45OverTuple(
-                    self._ode_Z,
-                    (t_bar_i, l_bar_i, v_bar_i),
-                    Z_i,
-                    Z_j,
-                    tol=tol,
-                    imax=maxiter * N**0.5,
-                )
-                p_bar_j = self._fp_bar(Z_j, l_bar_j, v_bar_j)
-                print(Z_i, p_bar_i)
-                print(Z_j, p_bar_j)
-
-                if p_bar_i > p_bar_j:
-                    if p_bar_i - p_bar_j > tol or l_bar_i == 0:
-                        N *= 2
-                        Z_j = Z_i + Delta_Z / N
-                    else:
-                        break  # l_bar_i is solved to within a tol of l_bar_g
-                else:
-                    t_bar_i, l_bar_i, v_bar_i, p_bar_i = (
-                        t_bar_j,
-                        l_bar_j,
-                        v_bar_j,
-                        p_bar_j,
-                    )
-                    Z_i = Z_j
-                    """
-                    this way the group of values denoted by _i is always updated
-                    as a group.
-                    """
-                    Z_j += Delta_Z / N
-                    if Z_j > self.Z_b:
-                        Z_j = self.Z_b
-            except ValueError:
-                N *= 2
-                Z_j = Z_i + Delta_Z / N
-
-        def f(t_bar):
-            Z, l_bar, v_bar = RKF45OverTuple(
-                self._ode_t,
-                (self.Z_0, 0, 0),
-                0,
-                t_bar,
-                tol=tol,
-                imax=maxiter,
-            )
-            return self._fp_bar(Z, l_bar, v_bar)
-
-        """
-
-        # tolerance is specified a bit differently for gold section search
-        t_bar_p_1, t_bar_p_2 = gss(
-            f, t_bar_i, t_bar_i + tol, tol=tol, findMin=False
+        labda_prime = (psi_s * Z_0 - self.psi_0) / (
+            self.psi_0 - Z_0**2 * psi_s
         )
-        t_bar_p = (t_bar_p_1 + t_bar_p_2) / 2
+        chi_prime = psi_s / (1 + labda_prime)
 
-        Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
-            self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol, imax=maxiter
+        # the equivalent of B used for linear burn rates.
+        B_0 = (
+            self.S**2
+            * self.e_1**2
+            / (self.f * self.phi * self.omega * self.m * self.u_0**2)
         )
-        """
 
-        if l_g is not None:
-            t_bar_e, Z_bar_e, v_bar_e = RKF45OverTuple(
-                self._ode_l,
-                (t_bar_i, Z_i, v_bar_i),
-                l_bar_i,
-                l_g,
-                tol=tol,
-            )
-            return v_bar_e * self.v_j
+        # labda_prime = self.labda
+        # chi_prime = self.chi
+        sigma_0 = (1 + 4 * labda_prime / chi_prime * self.psi_0) ** 0.5
+
+        """
+        # only applicable in the quadratic form case
+        if labda_prime == 0:
+            Z_0 = self.psi_0 / chi_prime
         else:
-            return (
-                p_bar_i * (self.f * self.Delta),
-                v_bar_i * self.v_j,
-                l_bar_i * self.l_0,
+            Z_0 = (sigma_0 - 1) / (2 * labda_prime)
+        """
+        K_1 = chi_prime * sigma_0
+        B_1 = B_0 * self.theta * 0.5 - chi_prime * labda_prime
+
+        v_k = self.S * self.e_1 / (self.u_0 * self.phi * self.m)
+        gamma = B_1 * self.psi_0 / K_1**2
+
+        # x = Z - Z_0
+        def _v(x):
+            return v_k * x
+
+        def _psi(x):
+            """
+            In effect:
+            ψ(x) = ψ_0 + χ * σ_0 * x + λ * χ * x**2
+            ψ(x) = ψ_0 + K_1 * x + λ * χ * x**2
+            """
+            return self.psi_0 + K_1 * x + labda_prime * chi_prime * x**2
+
+        def _l_psi_avg(x_i, x_j):
+            psi_i, psi_j = _psi(x_i), _psi(x_j)
+            psi_avg = (psi_i + psi_j) / 2
+            return self.l_0 * (
+                1
+                - self.Delta / self.rho_p
+                - self.Delta * (self.alpha - 1 / self.rho_p) * psi_avg
             )
 
+        def _Z_x(x):
+            # distinct from Z which should be straightforwardly related to x
+            beta = B_1 / K_1 * x
+            b = (1 + 4 * gamma) ** 0.5
+            return (1 - 2 * beta / (b + 1)) ** (0.5 * (b + 1) / b) * (
+                1 + 2 * beta / (b - 1)
+            ) ** (0.5 * (b - 1) / b)
+
+        B_1_prime = -B_1
+        gamma_prime = B_1_prime * self.psi_0 / K_1**2
+
+        def _Z_prime_x(x):
+            beta_prime = B_1_prime / K_1 * x
+            b_prime = (1 - 4 * gamma_prime) ** 0.5
+            return (1 + 2 * beta_prime / (b_prime + 1)) ** (
+                0.5 * (b_prime + 1) / b_prime
+            ) * (1 - 2 * beta_prime / (b_prime - 1)) ** (
+                0.5 * (b_prime - 1) / b_prime
+            )
+
+        def _l(x, l_psi_avg):
+            if B_1 > 0:
+                return l_psi_avg * (_Z_x(x) ** (-B_0 / B_1) - 1)
+            elif B_1 == 0:
+                """this case is extremely rare and has not been rigorously
+                tested."""
+                x_prime = K_1 / self.psi_0 * x
+                return (
+                    exp(
+                        B_0
+                        * self.psi_0
+                        / K_1**2
+                        * (x_prime - log(1 + x_prime))
+                    )
+                    - 1
+                ) * l_psi_avg
+            else:  # this negation was corrected from the original work
+                return l_psi_avg * (_Z_prime_x(x) ** (-B_0 / B_1) - 1)
+
+        def propagate(x, it):
+            # propagate l from x= 0 to x_k (1-Z_0)
+            # simulatneousely, also propagate a time.
+            if x == 0:
+                return 0, 0
+            l = 0
+            t = 0
+            step = x / it
+            x_i = 0
+            for i in range(it):  # 8192
+                x_j = x_i + step
+                l_psi_avg = _l_psi_avg(x_i, x_j)
+                Delta_l = _l(x_j, l_psi_avg) - _l(x_i, l_psi_avg)
+                l += Delta_l
+                t += 2 * Delta_l / (_v(x_i) + _v(x_j))
+                x_i = x_j
+            return l, t
+
+        def _p(x, l):
+            l_psi = _l_psi_avg(x, x)
+            return (
+                self.f
+                * self.omega
+                * (self.psi_0 + K_1 * x - B_1 * x**2)
+                / (self.S * (l + l_psi))
+            )
+
+        delta_1 = 1 / (self.alpha - 1 / self.rho_p)
+        x_k = 1 - Z_0  # upper limit of x_m, also known as x_s
+
+        """
+            Solving for peak pressure
+            """
+
+        def _x_m(p_m):
+            """
+            x_m being a function of p_m, therefore must be solved iteratively
+            apparently the equation "- self.chi * self.labda" is correct
+            """
+            return K_1 / (
+                B_0 * (1 + self.theta) / (1 + p_m / (self.f * delta_1))
+                - chi_prime * labda_prime
+            )
+
+        """
+            iteratively solve x_m in the range of (0,x_k)
+            x_k signifies end of progressive burn
+        
+            tolerance is specified against the unitless scaled value
+            for each parameter.
+            """
+        p_m_i = self.p_0 * 2  # initial guess, 100MPa
+
+        for i in range(it):  # 8192
+            x_m_i = _x_m(p_m_i)
+
+            if x_m_i > x_k:
+                x_m_i = x_k
+            elif x_m_i < 0:
+                x_m_i = 0
+
+            l_m_i, t_m_i = propagate(x_m_i, it=it)  # see above
+            p_m_j = _p(x_m_i, l_m_i)
+
+            if abs(p_m_i - p_m_j) > self.f * self.Delta * tol:
+                p_m_i = p_m_j
+            else:
+                break
+
+        # value reflecting peak pressure point
+        p_m = p_m_j
+        x_m = x_m_i
+        l_m = l_m_i
+        t_m = t_m_i
+        v_m = _v(x_m)
+        psi_m = _psi(x_m)
+
+        # values reflceting fracture point
+        l_k, t_k = propagate(x_k, it=it)
+        # l_k = _l(x_k, _l_psi_avg(x_k, 0))
+
+        p_k = _p(x_k, l_k)
+        v_k_1 = _v(x_k)
+
+        """
+            xi valid range  (0,1)
+            psi valid range (0,1)
+            Z valid range (0,Z_b)
+            """
+
+        psi_k = _psi(x_k)
+        xi_k = 1 / self.Z_b
+
+        """
+            In the reference, the following terms are chi_s and labda_s.
+            Issue is, this definition IS NOT the same as the definition
+            self.chi_s and self.labda_s.from the previous chapter.
+            """
+
+        chi_k = (psi_k / xi_k - xi_k) / (1 - xi_k)
+        labda_k = 1 - 1 / chi_k
+
+        def _psi_fracture(xi):
+            """xi as in greek letter ξ
+            ψ(ξ) = χ_K * ξ - λ_k * χ_K * ξ^2
+            """
+            return chi_k * xi * (1 - labda_k * xi)
+
+        I_s = (self.e_1 + self.rho) / (self.u_0)
+        xi_0 = Z_0 / self.Z_b
+
+        v_kk = self.S * I_s * (xi_k - xi_0) / (self.m * self.phi)
+
+        def _v_fracture(xi):
+            return v_kk * (xi - xi_0) / (xi_k - xi_0)
+
+        Labda_1 = (
+            l_k / self.l_0
+        )  # reference is wrong, this is the implied definition
+
+        B_2 = self.S**2 * I_s**2 / (self.f * self.omega * self.phi * self.m)
+        B_2_bar = B_2 / (chi_k * labda_k)
+        xi_k_bar = labda_k * xi_k
+
+        def _Labda(xi, Labda_psi_avg):  # Labda = l / l_0
+            xi_bar = labda_k * xi
+
+            r = (
+                (1 - (1 + 0.5 * B_2_bar * self.theta) * xi_bar)
+                / (1 - (1 + 0.5 * B_2_bar * self.theta) * xi_k_bar)
+            ) ** (-B_2_bar / (1 + 0.5 * B_2_bar * self.theta))
+
+            Labda = r * (Labda_1 + Labda_psi_avg) - Labda_psi_avg
+            return Labda
+
+        def _Labda_psi_avg(xi_i, xi_j):
+            psi_i, psi_j = _psi_fracture(xi_i), _psi_fracture(xi_j)
+            psi_avg = (psi_i + psi_j) / 2
+
+            return (
+                1
+                - self.Delta / self.rho_p
+                - self.Delta * (self.alpha - 1 / self.rho_p) * psi_avg
+            )
+
+        def _p_fracture(xi, Labda):
+            """
+            Equation is wrong for reference work
+            """
+            psi = _psi_fracture(xi)
+            v = _v_fracture(xi)
+            Labda_psi = _Labda_psi_avg(xi, xi)
+
+            return (
+                self.f
+                * self.Delta
+                * (
+                    psi
+                    - self.theta
+                    * self.phi
+                    * self.m
+                    * v**2
+                    / (2 * self.f * self.omega)
+                )
+                / (Labda + Labda_psi)
+            )
+
+        def propagate_fracture(xi, it):
+            # propagate Labda in the fracture regime
+            Labda = Labda_1
+            t = t_k
+            step = (xi - xi_k) / it
+            xi_i = xi_k
+            for i in range(it):
+                xi_j = xi_i + step
+                Labda_psi_avg = _Labda_psi_avg(xi_i, xi_j)
+                Delta_Labda = _Labda(xi_j, Labda_psi_avg) - _Labda(
+                    xi_i, Labda_psi_avg
+                )
+                Labda += Delta_Labda
+                xi_i = xi_j
+                t += (
+                    2
+                    * Delta_Labda
+                    * self.l_0
+                    / (_v_fracture(xi_i) + _v_fracture(xi_j))
+                )
+            return Labda, t
+
+        # values reflecting end of burn
+        Labda_2, t_k_2 = propagate_fracture(1, it=it)
+        # Labda_2 = _Labda(1, _Labda_psi_avg(1, xi_k))
+        l_k_2 = Labda_2 * self.l_0
+        p_k_2 = _p_fracture(1, Labda_2)
+        v_k_2 = _v_fracture(1)
+        psi_k_2 = _psi_fracture(1)
+
+        """
+            Defining equations for post burnout, adiabatic
+            expansion phase.
+            """
+        # l_1 is the the limit for l_psi_avg as psi -> 0
+        l_1 = self.l_0 * (1 - self.alpha * self.Delta)
+
+        def _p_adb(l):
+            return p_k_2 * ((l_1 + l_k) / (l_1 + l)) ** (self.theta + 1)
+
+        def _v_adb(l):
+            return (
+                self.v_j
+                * (
+                    1
+                    - ((l_1 + l_k) / (l_1 + l)) ** self.theta
+                    * (1 - (v_k_2 / self.v_j) ** 2)
+                )
+                ** 0.5
+            )
+
+        def _t_adb(l, it):
+            t = t_k_2
+            step = (l - l_k_2) / it
+            l_i = l_k_2
+            t = t_k_2
+            for i in range(it):  # 8192
+                l_j = l_i + step
+                t += 2 * step / (_v_adb(l_i) + _v_adb(l_j))
+                if isinstance(l_i, complex):
+                    # complex result! abort now and use a finer step
+                    raise ValueError("Analytical model diverged.")
+                l_i = l_j
+            return t
+
+        """
+            Solving for muzzle exit condition
+            """
+
+        l_e = self.l_g
+        Labda_e = l_e / self.l_0
+
+        data = []
+        if l_e >= l_k_2:  # shot exit happened after burnout
+            v_e = _v_adb(l_e)
+            p_e = _p_adb(l_e)
+            psi_e = 1
+            t_e = _t_adb(l_e, it=it)
+
+        elif l_e >= l_k:  # shot exit happened after fracture
+            xi_e = bisect(
+                lambda xi: propagate_fracture(xi, it=it)[0] - Labda_e,
+                # lambda xi: _Labda(xi, _Labda_psi_avg(xi, xi_k)) - Labda_e,
+                xi_k,
+                1,
+                tol=tol,
+            )[0]
+
+            _, t_e = propagate_fracture(xi_e, it=it)
+            v_e = _v_fracture(xi_e)
+            p_e = _p_fracture(xi_e, Labda_e)
+            psi_e = _psi_fracture(xi_e)
+
+        else:  # shot exit happend before fracture
+            x_e = bisect(
+                lambda x: propagate(x, it=it)[0] - l_e,
+                # lambda x: _l(x, _l_psi_avg(x, 0)) - l_e,
+                0,
+                x_k,
+                tol=tol,
+            )[0]
+            _, t_e = propagate(x_e, it=it)
+            v_e = _v(x_e)
+            p_e = _p(x_e, l_e)
+            psi_e = _psi(x_e)
+
+        data.append(("SHOT EXIT", t_e, l_e, psi_e, v_e, p_e))
+        data.append(("SHOT START", 0.0, 0.0, self.psi_0, 0, self.p_0))
+        data.append(("PEAK PRESSURE", t_m, l_m, psi_m, v_m, p_m))
+        data.append(("FRACTURE", t_k, l_k, psi_k, v_k_1, p_k))
+        data.append(("BURNOUT", t_k_2, l_k_2, psi_k_2, v_k_2, p_k_2))
+
+        data.sort(key=lambda x: x[1])
+
+        return data
+
+    # values
     def getEff(self, vg):
         """
         te: thermal efficiency
@@ -831,32 +1143,51 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17"]
 
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1e-3, 0.5e-3, 3)
+    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1e-3, 0.5e-3, 2.5)
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
+    lf = 0.65
     test = Gun(
-        0.035, 1.0, M17SHC, 0.8, 0.001086470935115527, 30000000.0, 0.01e-3, 1.1
+        0.035,
+        1.0,
+        M17SHC,
+        0.8,
+        0.8 / M17SHC.rho_p / M17SHC.maxLF / lf,
+        30000000.0,
+        3,
+        1.1,
     )
-    print("\nnumerical: time")
-    print(
-        tabulate(
-            test.integrate(5, 1e-5, dom="time"),
-            headers=("tag", "t", "l", "phi", "v", "p"),
+    try:
+        print("\nnumerical: time")
+        print(
+            tabulate(
+                test.integrate(0, 1e-5, dom="time"),
+                headers=("tag", "t", "l", "phi", "v", "p"),
+            )
         )
-    )
-    print("\nnumerical: length")
-    print(
-        tabulate(
-            test.integrate(5, 1e-3, dom="length"),
-            headers=("tag", "t", "l", "phi", "v", "p"),
+        print("\nnumerical: length")
+        print(
+            tabulate(
+                test.integrate(0, 1e-5, dom="length"),
+                headers=("tag", "t", "l", "phi", "v", "p"),
+            )
         )
-    )
 
+    except ValueError:
+        pass
     print("\nErrors")
     print(
         tabulate(
-            [test.getErr(1e-3)],
+            [test.getErr(1e-5)],
             headers=("t", "l", "phi", "v", "p"),
+        )
+    )
+
+    print("\nanalytical:")
+    print(
+        tabulate(
+            test.analyze(it=100, tol=1e-5),
+            headers=("tag", "t", "l", "phi", "v", "p"),
         )
     )
 
