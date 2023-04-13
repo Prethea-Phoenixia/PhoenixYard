@@ -584,7 +584,10 @@ class Gun:
         Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
             self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol, imax=maxiter
         )
-
+        """
+        for i in range(20):
+            print(self.Z_b / 20 * i, self._fpsi(self.Z_b / 20 * i))
+        """
         bar_data.append(
             (
                 "PEAK PRESSURE",
@@ -781,32 +784,11 @@ class Gun:
                 0.5 * (b_prime - 1) / b_prime
             )
 
-        """
-        def _l(x, l_psi_avg):
-            if B_1 > 0:
-                return l_psi_avg * (_Z_x(x) ** (-B_0 / B_1) - 1)
-            elif B_1 == 0:
-               
-                x_prime = K_1 / self.psi_0 * x
-                return (
-                    exp(
-                        B_0
-                        * self.psi_0
-                        / K_1**2
-                        * (x_prime - log(1 + x_prime))
-                    )
-                    - 1
-                ) * l_psi_avg
-            else:  # this negation was corrected from the original work
-                return l_psi_avg * (_Z_prime_x(x) ** (-B_0 / B_1) - 1)
-        """
-        print(B_1)
-
-        def _l(x_i, x_j, l_i, l_psi_avg):
+        def _l(x_i, x_j, l_i):
             """
             given a bunch of parameters, calculate l_j
-
             """
+            l_psi_avg = _l_psi_avg(x_i, x_j)
             if B_1 > 0:
                 Z_x_i = _Z_x(x_i)
                 Z_x_j = _Z_x(x_j)
@@ -842,19 +824,10 @@ class Gun:
             x_i = 0
             for i in range(it):  # 8192
                 x_j = x_i + step
-                l_psi_avg = _l_psi_avg(x_i, x_j)
-
-                l_j = _l(x_i, x_j, l_i, l_psi_avg)
+                l_j = _l(x_i, x_j, l_i)
                 Delta_l = l_j - l_i
-                # Delta_l = _l(x_j, l_psi_avg) - _l(x_i, l_psi_avg)
-                # l += Delta_l
                 t += 2 * Delta_l / (_v(x_i) + _v(x_j))
                 l_i = l_j
-                # print(x_i, x_j)
-                # print(l_psi_avg)
-                # print(Delta_l)
-                # print(l, t)
-                # print("")
                 x_i = x_j
 
             return l_i, t
@@ -871,56 +844,8 @@ class Gun:
         delta_1 = 1 / (self.alpha - 1 / self.rho_p)
         x_k = 1 - Z_0  # upper limit of x_m, also known as x_s
 
-        """
-            Solving for peak pressure
-            """
-
-        def _x_m(p_m):
-            """
-            x_m being a function of p_m, therefore must be solved iteratively
-            apparently the equation "- self.chi * self.labda" is correct
-            """
-            return K_1 / (
-                B_0 * (1 + self.theta) / (1 + p_m / (self.f * delta_1))
-                - chi_prime * labda_prime
-            )
-
-        """
-            iteratively solve x_m in the range of (0,x_k)
-            x_k signifies end of progressive burn
-        
-            tolerance is specified against the unitless scaled value
-            for each parameter.
-            """
-        p_m_i = self.p_0 * 2  # initial guess, 100MPa
-
-        for i in range(it):  # 8192
-            x_m_i = _x_m(p_m_i)
-
-            if x_m_i > x_k:
-                x_m_i = x_k
-            elif x_m_i < 0:
-                x_m_i = 0
-
-            l_m_i, t_m_i = propagate(x_m_i, it=it)  # see above
-            p_m_j = _p(x_m_i, l_m_i)
-
-            if abs(p_m_i - p_m_j) > self.f * self.Delta * tol:
-                p_m_i = p_m_j
-            else:
-                break
-
-        # value reflecting peak pressure point
-        p_m = p_m_j
-        x_m = x_m_i
-        l_m = l_m_i
-        t_m = t_m_i
-        v_m = _v(x_m)
-        psi_m = _psi(x_m)
-
         # values reflceting fracture point
         l_k, t_k = propagate(x_k, it=it)
-
         # l_k = _l(x_k, _l_psi_avg(x_k, 0))
 
         p_k = _p(x_k, l_k)
@@ -959,25 +884,29 @@ class Gun:
 
         def _v_fracture(xi):
             return v_kk * (xi - xi_0) / (xi_k - xi_0)
+            # return self.S * I_s / (self.phi * self.m) * (xi - xi_k) + v_kk
 
         Labda_1 = (
             l_k / self.l_0
         )  # reference is wrong, this is the implied definition
-
+        # print(l_k)
         B_2 = self.S**2 * I_s**2 / (self.f * self.omega * self.phi * self.m)
         B_2_bar = B_2 / (chi_k * labda_k)
         xi_k_bar = labda_k * xi_k
 
-        def _Labda(xi, Labda_psi_avg):  # Labda = l / l_0
-            xi_bar = labda_k * xi
+        def _Labda(xi_i, xi_j, Labda_i):  # Labda = l / l_0
+            xi_i_bar = labda_k * xi_i
+            xi_j_bar = labda_k * xi_j
+
+            Labda_psi_avg = _Labda_psi_avg(xi_i, xi_j)
 
             r = (
-                (1 - (1 + 0.5 * B_2_bar * self.theta) * xi_bar)
-                / (1 - (1 + 0.5 * B_2_bar * self.theta) * xi_k_bar)
+                (1 - (1 + 0.5 * B_2_bar * self.theta) * xi_j_bar)
+                / (1 - (1 + 0.5 * B_2_bar * self.theta) * xi_i_bar)
             ) ** (-B_2_bar / (1 + 0.5 * B_2_bar * self.theta))
 
-            Labda = r * (Labda_1 + Labda_psi_avg) - Labda_psi_avg
-            return Labda
+            Labda_j = r * (Labda_i + Labda_psi_avg) - Labda_psi_avg
+            return Labda_j
 
         def _Labda_psi_avg(xi_i, xi_j):
             psi_i, psi_j = _psi_fracture(xi_i), _psi_fracture(xi_j)
@@ -994,36 +923,32 @@ class Gun:
             Equation is wrong for reference work
             """
             psi = _psi_fracture(xi)
-            v = _v_fracture(xi)
+            # v = _v_fracture(xi)
             Labda_psi = _Labda_psi_avg(xi, xi)
 
             return (
                 self.f
                 * self.Delta
-                * (
-                    psi
-                    - self.theta
-                    * self.phi
-                    * self.m
-                    * v**2
-                    / (2 * self.f * self.omega)
-                )
+                * (psi - 0.5 * B_2 * self.theta * (xi - xi_0) ** 2)
                 / (Labda + Labda_psi)
             )
+            """
+            return (
+                self.f * self.omega * psi
+                - self.theta * self.phi * self.m * v**2 * 0.5
+            ) / (self.S * (Labda_psi + Labda) * self.l_0)
+            """
 
         def propagate_fracture(xi, it):
             # propagate Labda in the fracture regime
-            Labda = Labda_1
+            Labda_i = Labda_1
             t = t_k
             step = (xi - xi_k) / it
             xi_i = xi_k
             for i in range(it):
                 xi_j = xi_i + step
-                Labda_psi_avg = _Labda_psi_avg(xi_i, xi_j)
-                Delta_Labda = _Labda(xi_j, Labda_psi_avg) - _Labda(
-                    xi_i, Labda_psi_avg
-                )
-                Labda += Delta_Labda
+                Labda_j = _Labda(xi_i, xi_j, Labda_i)
+                Delta_Labda = Labda_j - Labda_i
                 xi_i = xi_j
                 t += (
                     2
@@ -1031,7 +956,8 @@ class Gun:
                     * self.l_0
                     / (_v_fracture(xi_i) + _v_fracture(xi_j))
                 )
-            return Labda, t
+
+            return Labda_j, t
 
         # values reflecting end of burn
         Labda_2, t_k_2 = propagate_fracture(1, it=it)
@@ -1044,7 +970,7 @@ class Gun:
         """
             Defining equations for post burnout, adiabatic
             expansion phase.
-            """
+        """
         # l_1 is the the limit for l_psi_avg as psi -> 0
         l_1 = self.l_0 * (1 - self.alpha * self.Delta)
 
@@ -1070,9 +996,6 @@ class Gun:
             for i in range(it):  # 8192
                 l_j = l_i + step
                 t += 2 * step / (_v_adb(l_i) + _v_adb(l_j))
-                if isinstance(l_i, complex):
-                    # complex result! abort now and use a finer step
-                    raise ValueError("Analytical model diverged.")
                 l_i = l_j
             return t
 
@@ -1116,6 +1039,33 @@ class Gun:
             v_e = _v(x_e)
             p_e = _p(x_e, l_e)
             psi_e = _psi(x_e)
+
+        def findPeak(x):
+            if x < x_k:  # pre burnout
+                l, t = propagate(x, it=it)
+                p = _p(x, l)
+                psi = _psi(x)
+                v = _v(x)
+            else:
+                xi = x / self.Z_b
+                Labda, t = propagate_fracture(xi, it=it)
+                l = Labda * self.l_0
+                p = _p_fracture(xi, Labda)
+                psi = _psi_fracture(xi)
+                v = _v_fracture(xi)
+
+            return (t, l, psi, v, p)
+
+        """
+        This should be the only non-deterministic part of this routine.
+        """
+        x_p_1, x_p_2 = gss(
+            lambda x: findPeak(x)[4], 0, self.Z_b - Z_0, tol=tol, findMin=False
+        )
+        if x_p_2 == self.Z_b - Z_0:  # peak @ burnout
+            t_m, l_m, psi_m, v_m, p_m = t_k_2, l_k_2, psi_k_2, v_k_2, p_k_2
+        else:
+            t_m, l_m, psi_m, v_m, p_m = findPeak((x_p_1 + x_p_2) * 0.5)
 
         data.append(("SHOT EXIT", t_e, l_e, psi_e, v_e, p_e))
         data.append(("SHOT START", 0.0, 0.0, self.psi_0, 0, self.p_0))
@@ -1187,11 +1137,11 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17"]
 
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 3e-3, 0.5e-3, 2.5)
+    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 0.2e-3, 0.1e-3, 2.5)
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
-    lf = 0.65
-    print(lf * M17SHC.maxLF)
+    lf = 0.6
+    print("DELTA:", lf * M17SHC.maxLF)
     test = Gun(
         0.035,
         1.0,
@@ -1218,7 +1168,8 @@ if __name__ == "__main__":
             )
         )
 
-    except ValueError:
+    except ValueError as e:
+        print(e)
         pass
     print("\nErrors")
     print(

@@ -260,3 +260,51 @@ print(tabulate(test.analyze(1e-3), headers=("tag", "t", "l", "phi", "v", "p")))
         data.append(("SHOT EXIT", 0, self.l_g, psi_e, v_e, p_e))
         data.sort(key=lambda x: x[1])
         return data
+
+
+
+ """
+            Solving for peak pressure
+        """
+
+        def _x_m(p_m):
+            """
+            x_m being a function of p_m, therefore must be solved iteratively
+            apparently the equation "- self.chi * self.labda" is correct
+            """
+            return K_1 / (
+                B_0 * (1 + self.theta) / (1 + p_m / (self.f * delta_1))
+                - chi_prime * labda_prime
+            )
+
+        """
+            iteratively solve x_m in the range of (0,x_k)
+            x_k signifies end of progressive burn
+        
+            tolerance is specified against the unitless scaled value
+            for each parameter.
+            """
+        p_m_i = self.p_0 * 2  # initial guess, 100MPa
+
+        for i in range(it):  # 8192
+            x_m_i = _x_m(p_m_i)
+            if x_m_i > x_k:
+                x_m_i = x_k
+            elif x_m_i < 0:
+                x_m_i = 0
+
+            l_m_i, t_m_i = propagate(x_m_i, it=it)  # see above
+            p_m_j = _p(x_m_i, l_m_i)
+
+            if abs(p_m_i - p_m_j) > self.f * self.Delta * tol:
+                p_m_i = p_m_j
+            else:
+                break
+
+        # value reflecting peak pressure point
+        p_m = p_m_j
+        x_m = x_m_i
+        l_m = l_m_i
+        t_m = t_m_i
+        v_m = _v(x_m)
+        psi_m = _psi(x_m)
