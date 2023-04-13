@@ -781,12 +781,12 @@ class Gun:
                 0.5 * (b_prime - 1) / b_prime
             )
 
+        """
         def _l(x, l_psi_avg):
             if B_1 > 0:
                 return l_psi_avg * (_Z_x(x) ** (-B_0 / B_1) - 1)
             elif B_1 == 0:
-                """this case is extremely rare and has not been rigorously
-                tested."""
+               
                 x_prime = K_1 / self.psi_0 * x
                 return (
                     exp(
@@ -799,24 +799,65 @@ class Gun:
                 ) * l_psi_avg
             else:  # this negation was corrected from the original work
                 return l_psi_avg * (_Z_prime_x(x) ** (-B_0 / B_1) - 1)
+        """
+        print(B_1)
+
+        def _l(x_i, x_j, l_i, l_psi_avg):
+            """
+            given a bunch of parameters, calculate l_j
+
+            """
+            if B_1 > 0:
+                Z_x_i = _Z_x(x_i)
+                Z_x_j = _Z_x(x_j)
+
+                return (l_i + l_psi_avg) * (Z_x_j / Z_x_i) ** (
+                    -B_0 / B_1
+                ) - l_psi_avg
+
+            elif B_1 == 0:
+                xi_prime = K_1 / self.psi_0 * x_i
+                xj_prime = K_1 / self.psi_0 * x_j
+
+                return (
+                    exp(xj_prime - xi_prime) * (1 + xi_prime) / (1 + xj_prime)
+                ) ** (B * self.psi_0 / K_1**2) * (l_i + l_psi_avg) - l_psi_avg
+
+            else:
+                Z_prime_i = _Z_prime_x(x_i)
+                Z_prime_j = _Z_prime_x(x_j)
+
+                return (l_i + l_psi_avg) * (Z_prime_j / Z_prime_i) ** (
+                    -B_0 / B_1
+                ) - l_psi_avg
 
         def propagate(x, it):
             # propagate l from x= 0 to x_k (1-Z_0)
             # simulatneousely, also propagate a time.
             if x == 0:
                 return 0, 0
-            l = 0
+            l_i = 0
             t = 0
             step = x / it
             x_i = 0
             for i in range(it):  # 8192
                 x_j = x_i + step
                 l_psi_avg = _l_psi_avg(x_i, x_j)
-                Delta_l = _l(x_j, l_psi_avg) - _l(x_i, l_psi_avg)
-                l += Delta_l
+
+                l_j = _l(x_i, x_j, l_i, l_psi_avg)
+                Delta_l = l_j - l_i
+                # Delta_l = _l(x_j, l_psi_avg) - _l(x_i, l_psi_avg)
+                # l += Delta_l
                 t += 2 * Delta_l / (_v(x_i) + _v(x_j))
+                l_i = l_j
+                # print(x_i, x_j)
+                # print(l_psi_avg)
+                # print(Delta_l)
+                # print(l, t)
+                # print("")
                 x_i = x_j
-            return l, t
+
+            return l_i, t
 
         def _p(x, l):
             l_psi = _l_psi_avg(x, x)
@@ -879,6 +920,7 @@ class Gun:
 
         # values reflceting fracture point
         l_k, t_k = propagate(x_k, it=it)
+
         # l_k = _l(x_k, _l_psi_avg(x_k, 0))
 
         p_k = _p(x_k, l_k)
@@ -888,7 +930,7 @@ class Gun:
             xi valid range  (0,1)
             psi valid range (0,1)
             Z valid range (0,Z_b)
-            """
+        """
 
         psi_k = _psi(x_k)
         xi_k = 1 / self.Z_b
@@ -897,10 +939,12 @@ class Gun:
             In the reference, the following terms are chi_s and labda_s.
             Issue is, this definition IS NOT the same as the definition
             self.chi_s and self.labda_s.from the previous chapter.
-            """
+        """
 
         chi_k = (psi_k / xi_k - xi_k) / (1 - xi_k)
         labda_k = 1 - 1 / chi_k
+
+        # print(-chi_k * labda_k, "xi**2", chi_k, "xi")
 
         def _psi_fracture(xi):
             """xi as in greek letter ξ
@@ -1079,7 +1123,7 @@ class Gun:
         data.append(("FRACTURE", t_k, l_k, psi_k, v_k_1, p_k))
         data.append(("BURNOUT", t_k_2, l_k_2, psi_k_2, v_k_2, p_k_2))
 
-        data.sort(key=lambda x: x[1])
+        data.sort(key=lambda x: x[1].real)
 
         return data
 
@@ -1143,10 +1187,11 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17"]
 
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1e-3, 0.5e-3, 2.5)
+    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 3e-3, 0.5e-3, 2.5)
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
     lf = 0.65
+    print(lf * M17SHC.maxLF)
     test = Gun(
         0.035,
         1.0,
