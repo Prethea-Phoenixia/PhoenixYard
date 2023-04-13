@@ -434,7 +434,7 @@ class Gun:
                     Z_i,
                     Z_j,
                     tol=tol,
-                    imax=maxiter * N**0.25,
+                    imax=maxiter,
                 )
                 if l_bar_j > l_g_bar:
                     # reduce the tolerance requirement here to speed up
@@ -458,10 +458,10 @@ class Gun:
             except ValueError:
                 N *= 2
                 Z_j = Z_i + Delta_Z / N
-
+            """
             if N > 1 / tol:
                 raise ValueError("Excessive division", N)
-
+        """
         if t_bar_i == 0:
             raise ValueError(
                 "No valid point along the barrel could be found such that"
@@ -1137,7 +1137,7 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17"]
 
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 0.2e-3, 0.1e-3, 2.5)
+    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1000e-3, 0.1e-3, 2.5)
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
     lf = 0.6
