@@ -178,12 +178,11 @@ class ToolTip(object):
         if self.tipwindow or not self.text:
             return
         x, y, cx, cy = self.widget.bbox("insert")
-        x = x + self.widget.winfo_rootx()  # + self.widget.winfo_width()
-        y = y + self.widget.winfo_rooty() + self.widget.winfo_height()
+
         """ initalize the tooltip window to the lower right corner of the widget"""
         self.tipwindow = tw = Toplevel(self.widget)
         tw.wm_overrideredirect(1)
-        tw.wm_geometry("+%d+%d" % (x, y))
+
         label = Label(
             tw,
             text=self.text,
@@ -194,12 +193,17 @@ class ToolTip(object):
             font=("tahoma", "8", "normal"),
         )
         label.pack(ipadx=1)
+        label.update()
+
+        x = x + self.widget.winfo_rootx() - label.winfo_width()
+        y = y + self.widget.winfo_rooty()
+        tw.wm_geometry("+%d+%d" % (x, y))
 
     def hidetip(self):
         tw = self.tipwindow
         self.tipwindow = None
         if tw:
-            tw.destroy()
+            tw.after(10, lambda: tw.destroy())
 
 
 def CreateToolTip(widget, text):
