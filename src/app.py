@@ -337,7 +337,6 @@ class IB(Frame):
                     steps=int(self.steps.get()),
                     dom=self.dropOptn.get(),
                     tol=10 ** -(int(self.accExp.get())),
-                    maxiter=int(self.maxIt.get()),
                 )
                 i = tuple(i[0] for i in self.tableData).index("SHOT EXIT")
                 vg = self.tableData[i][4]
@@ -754,26 +753,6 @@ class IB(Frame):
             "10",
             validation=validationPI,
             formatter=formatIntInput,
-        )
-
-        itText = "\n".join(
-            (
-                "Maximum iterations the numerical ",
-                "integrator is allowed to run to",
-                "before giving up.",
-            )
-        )
-
-        self.maxIt, _, i = self.add3Input(
-            opFrm,
-            i,
-            "Max Iter.",
-            "cycles",
-            default="100",
-            validation=validationPI,
-            formatter=formatIntInput,
-            color="red",
-            infotext=itText,
         )
 
         self.accExp, _, i = self.add2Input(

@@ -207,7 +207,7 @@ class Propellant:
         S_T = Q_1 * pi * self.c**2
         n = propGeom.nHole
 
-        """ 
+        """
         condition for progressive burning:
         (n-1) > (D_0 + n*d_0)/c
         """
@@ -215,9 +215,9 @@ class Propellant:
         self.maxLF = S_T / (S_T + n * pi * 0.25 * self.d_0**2)
 
         """
-        maximum load factor, the volume fraction of propellant 
-        within the geometry of the grain defined. In reality 
-        this will be a lot lower for any real weapons since 
+        maximum load factor, the volume fraction of propellant
+        within the geometry of the grain defined. In reality
+        this will be a lot lower for any real weapons since
         this both cause undesirably high pressure spike at start
         of shot, and in addition is physically impossible given
         realistic grain packing behaviours
@@ -420,21 +420,19 @@ class Gun:
         t_bar_i, l_bar_i, v_bar_i = 0, 0, 0
 
         """
-        Instead of letting the integrator handle the heavy lifting, we 
+        Instead of letting the integrator handle the heavy lifting, we
         partition Z and integrate upwards until either barrel exit or
         burnout has been achieved. This seek-and-validate inspired
         from bisection puts the group of value denoted by subscript
         i within or on the muzzle, with the propellant either still
         burning or right on the burnout point..
         """
-
         while Z_i < self.Z_b:  # terminates if burnout is achieved
             # print(Z_i, Z_j, N)
 
             if Z_j == Z_i:
                 raise ValueError(
-                    "Numerical accuracy has been exhausted when integrating,"
-                    + " indicating excessive pressure spike"
+                    "Numerical accuracy exhausted in search of exit/burnout point."
                 )
             try:
                 t_bar_j, l_bar_j, v_bar_j = RKF45OverTuple(
@@ -443,18 +441,21 @@ class Gun:
                     Z_i,
                     Z_j,
                     tol=tol,
-                    imax=maxiter,
                     termAbv=(None, l_g_bar, None),
                 )
-            except ValueError:
-                N *= 2
-                Z_j = Z_i + Delta_Z / N
-                continue
+
+            except ValueError as e:
+                raise ValueError(
+                    "Unable to integrate system due to ill defined system causing"
+                    + " vanishing step size."
+                )
 
             if any(
                 (t_bar_i == t_bar_j, l_bar_i == l_bar_j, v_bar_i == v_bar_j)
             ):
-                raise ValueError("Numerical integration has stalled")
+                raise ValueError(
+                    "Numerical integration stalled in search of exit/burnout point."
+                )
 
             if l_bar_j > l_g_bar:
                 # branch where premature termiantion should bring us to
@@ -478,14 +479,10 @@ class Gun:
                     Z_j = self.Z_b
 
         if t_bar_i == 0:
-            raise ValueError(
-                "No valid point along the barrel could be found such that"
-                + " burnout is contained down to 1 tolerance as specfied."
-            )
+            raise ValueError("exit/burnout point found to be at the origin.")
 
-        print("HERE")
         """
-        Uncomment the following code block to allows for verifying that the 
+        Uncomment the following code block to allows for verifying that the
         error as a result of compounding is significantly less than the tolerance
         specified
         """
@@ -501,11 +498,11 @@ class Gun:
         # )
 
         """
-        Subscript e indicate exit condition. 
+        Subscript e indicate exit condition.
         At this point, since its guaranteed that point i will be further
         towards the chamber of the firearm than point e, we do not have
         to worry about the dependency of the correct behaviour of this ODE
-        on the positive direction of integration. 
+        on the positive direction of integration.
         """
         t_bar_e, Z_e, v_bar_e = RKF45OverTuple(
             self._ode_l,
@@ -513,7 +510,6 @@ class Gun:
             l_bar_i,
             l_g_bar,
             tol=tol,
-            imax=maxiter,
         )
         bar_data.append(
             (
@@ -526,6 +522,7 @@ class Gun:
             )
         )
 
+        t_bar_b = None
         if Z_e > 1:  # fracture point is contained:
             """
             Subscript f indicate fracture condition
@@ -533,7 +530,11 @@ class Gun:
             movement to charge fracture
             """
             t_bar_f, l_bar_f, v_bar_f = RKF45OverTuple(
-                self._ode_Z, (0, 0, 0), self.Z_0, 1, tol=tol, imax=maxiter
+                self._ode_Z,
+                (0, 0, 0),
+                self.Z_0,
+                1,
+                tol=tol,
             )
 
             bar_data.append(
@@ -560,7 +561,6 @@ class Gun:
                 self.Z_0,
                 self.Z_b,
                 tol=tol,
-                imax=maxiter,
             )
             bar_data.append(
                 (
@@ -589,21 +589,23 @@ class Gun:
                 0,
                 t_bar,
                 tol=tol,
-                imax=maxiter,
             )
             return self._fp_bar(Z, l_bar, v_bar)
 
         # tolerance is specified a bit differently for gold section search
-        t_bar_p_1, t_bar_p_2 = gss(f, 0, t_bar_e, tol=tol, findMin=False)
+        t_bar_p_1, t_bar_p_2 = gss(
+            f,
+            0,
+            t_bar_e if t_bar_b is None else t_bar_b,
+            tol=tol,
+            findMin=False,
+        )
         t_bar_p = (t_bar_p_1 + t_bar_p_2) / 2
 
         Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
-            self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol, imax=maxiter
+            self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol
         )
-        """
-        for i in range(20):
-            print(self.Z_b / 20 * i, self._fpsi(self.Z_b / 20 * i))
-        """
+
         bar_data.append(
             (
                 "PEAK PRESSURE",
@@ -618,69 +620,72 @@ class Gun:
         populate data for output purposes
         """
 
-        if dom == "time":
-            for j in range(1, steps):
-                t_bar_j = t_bar_e / steps * j
+        bar_sample_data = []
+        try:
+            if dom == "time":
+                for j in range(1, steps):
+                    t_bar_j = t_bar_e / steps * j
 
-                Z_j, l_bar_j, v_bar_j = RKF45OverTuple(
+                    Z_j, l_bar_j, v_bar_j = RKF45OverTuple(
+                        self._ode_t,
+                        (self.Z_0, 0, 0),
+                        0,
+                        t_bar_j,
+                        tol=tol,
+                    )
+
+                    bar_sample_data.append(
+                        (
+                            "",
+                            t_bar_j,
+                            l_bar_j,
+                            Z_j,
+                            v_bar_j,
+                            self._fp_bar(Z_j, l_bar_j, v_bar_j),
+                        )
+                    )
+            else:
+                """
+                Due to two issues, i.e. 1.the distance domain ODE
+                cannot be integrated from the origin point, and 2.the
+                correct behaviour can only be expected when starting from
+                a point with active burning else dZ flat lines.
+                we do another Z domain integration to seed the initial values
+                to a point where ongoing burning is guaranteed.
+                """
+                t_bar_s = 0.5 * t_bar_i
+                Z_s, l_bar_s, v_bar_s = RKF45OverTuple(
                     self._ode_t,
                     (self.Z_0, 0, 0),
                     0,
-                    t_bar_j,
+                    t_bar_s,
                     tol=tol,
-                    imax=maxiter,
                 )
 
-                bar_data.append(
-                    (
-                        "",
-                        t_bar_j,
+                for i in range(1, steps):
+                    l_bar_j = l_g_bar / steps * i
+
+                    t_bar_j, Z_j, v_bar_j = RKF45OverTuple(
+                        self._ode_l,
+                        (t_bar_s, Z_s, v_bar_s),
+                        l_bar_s,
                         l_bar_j,
-                        Z_j,
-                        v_bar_j,
-                        self._fp_bar(Z_j, l_bar_j, v_bar_j),
+                        tol=tol,
                     )
-                )
-        else:
-            """
-            Due to two issues, i.e. 1.the distance domain ODE
-            cannot be integrated from the origin point, and 2.the
-            correct behaviour can only be expected when starting from
-            a point with active burning else dZ flat lines.
-            we do another Z domain integration to seed the initial values
-            to a point where ongoing burning is guaranteed.
-            """
-            t_bar_s = 0.5 * t_bar_i
-            Z_s, l_bar_s, v_bar_s = RKF45OverTuple(
-                self._ode_t,
-                (self.Z_0, 0, 0),
-                0,
-                t_bar_s,
-                tol=tol,
-                imax=maxiter,
-            )
-
-            for i in range(1, steps):
-                l_bar_j = l_g_bar / steps * i
-
-                t_bar_j, Z_j, v_bar_j = RKF45OverTuple(
-                    self._ode_l,
-                    (t_bar_s, Z_s, v_bar_s),
-                    l_bar_s,
-                    l_bar_j,
-                    tol=tol,
-                    imax=maxiter,
-                )
-                bar_data.append(
-                    (
-                        "",
-                        t_bar_j,
-                        l_bar_j,
-                        Z_j,
-                        v_bar_j,
-                        self._fp_bar(Z_j, l_bar_j, v_bar_j),
+                    bar_sample_data.append(
+                        (
+                            "",
+                            t_bar_j,
+                            l_bar_j,
+                            Z_j,
+                            v_bar_j,
+                            self._fp_bar(Z_j, l_bar_j, v_bar_j),
+                        )
                     )
-                )
+        except ValueError:
+            bar_sample_data = []
+        finally:
+            bar_data.extend(bar_sample_data)
 
         bar_data.sort(key=lambda x: x[1])  # sort by scaled time
         data = list(
@@ -697,7 +702,7 @@ class Gun:
 
         return data
 
-    def analyze(self, it=100, tol=1e-5):
+    def analyze(self, it=250, tol=1e-5):
         """run the psi-bar analytical solution on the defined weapon
 
         key assumptions:
@@ -1153,10 +1158,10 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17"]
 
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 0.2e-3, 0.1e-3, 2.5)
+    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 2e-3, 0e-3, 2.5)
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
-    lf = 0.6
+    lf = 0.75
     print("DELTA:", lf * M17SHC.maxLF)
     test = Gun(
         0.035,
@@ -1172,14 +1177,14 @@ if __name__ == "__main__":
         print("\nnumerical: time")
         print(
             tabulate(
-                test.integrate(10, 1e-5, dom="time"),
+                test.integrate(0, 1e-5, dom="time"),
                 headers=("tag", "t", "l", "phi", "v", "p"),
             )
         )
         print("\nnumerical: length")
         print(
             tabulate(
-                test.integrate(10, 1e-5, dom="length"),
+                test.integrate(0, 1e-5, dom="length"),
                 headers=("tag", "t", "l", "phi", "v", "p"),
             )
         )
@@ -1187,6 +1192,7 @@ if __name__ == "__main__":
     except ValueError as e:
         print(e)
         pass
+
     print("\nErrors")
     print(
         tabulate(

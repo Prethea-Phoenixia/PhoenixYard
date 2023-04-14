@@ -146,7 +146,7 @@ def gss(f, a, b, tol=1e-9, findMin=True):
 
 
 def RKF45OverTuple(
-    dTupleFunc, iniValTuple, x_0, x_1, tol, imax=100, termAbv=(None, None, None)
+    dTupleFunc, iniValTuple, x_0, x_1, tol, termAbv=(None, None, None)
 ):
     """
     Runge Kutta Fehlberg method, of the fourth and fifth order
@@ -163,23 +163,15 @@ def RKF45OverTuple(
     x = x_0
     beta = 0.9  # "safety" factor
     h = 0.1 * (x_1 - x_0)  # initial step size
-    i = 0
     while (h > 0 and x < x_1) or (h < 0 and x > x_1):
         if (x + h) == x:
             break  # catch the error using the final lines
-        i += 1
-        if i > imax:
-            raise ValueError(
-                "Integration Cycle Limit ({}) Exceeded at x={}, h={}\n y={}".format(
-                    i, x, h, y_this
-                )
-            )
         try:
             K1 = dTupleFunc(x, *y_this)
             K1 = tuple(k * h for k in K1)
 
             K2 = dTupleFunc(
-                x + 0.2 * h, *(y + 0.2 * k1 for y, k1 in zip(y_this, K1))
+                x + 0.25 * h, *(y + 0.25 * k1 for y, k1 in zip(y_this, K1))
             )
             K2 = tuple(k * h for k in K2)
 
@@ -237,12 +229,11 @@ def RKF45OverTuple(
             ZeroDivisionError,
         ):  # complex value has been encountered during calculation
             # or that through unfortuante chance we got a divide by zero
-
             h *= beta
             continue
 
         y_next = tuple(
-            y + 25 / 216 * k1 + 1408 / 2565 * k3 + 2197 / 4104 * k4 - 1 / 5 * k5
+            y + 25 / 216 * k1 + 1408 / 2565 * k3 + 2197 / 4104 * k4 - 0.2 * k5
             for y, k1, k3, k4, k5 in zip(y_this, K1, K3, K4, K5)
         )  # forth order estimation
         z_next = tuple(
@@ -255,12 +246,12 @@ def RKF45OverTuple(
             for y, k1, k3, k4, k5, k6 in zip(y_this, K1, K3, K4, K5, K6)
         )  # fifth order estimation
 
-        epsilon = (
-            sum(abs(z - y) ** 2 for z, y in zip(z_next, y_next)) ** 0.5
+        epsilon = sum(
+            abs(z - y) for z, y in zip(z_next, y_next)
         )  # error estimation
 
         if epsilon >= tol:  # error is greater than acceptable
-            h *= beta * (tol / (2 * epsilon)) ** 0.2
+            h *= beta * (tol / epsilon) ** 0.2
         else:  # error is acceptable
             y_this = y_next
             x += h
@@ -271,7 +262,7 @@ def RKF45OverTuple(
                 return y_this
             if epsilon != 0:  # sometimes the error can be estimated to be 0
                 h *= (
-                    beta * (tol / (2 * epsilon)) ** 0.25
+                    beta * (tol / epsilon) ** 0.25
                 )  # apply the new best estimate
 
         if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
@@ -280,7 +271,7 @@ def RKF45OverTuple(
     if abs(x - x_1) > tol:
         raise ValueError(
             "Premature Termination of Integration due to vanishing step size,"
-            + " after {} Cycles. x at {}, h at {}.".format(i, x, h)
+            + " x at {}, h at {}.".format(x, h)
         )
 
     return y_this
