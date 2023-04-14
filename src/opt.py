@@ -36,7 +36,7 @@ def guideMap(
             gun = Gun(cal, shotMass, prop, w, cv, startPress, 1, expRatio)
             return gun.propagate(tol=tolerance, maxiter=maxiter)
 
-        a = bisect(lambda a: fa(a)[0] - peakPres, 1e-4, 1e-2, tol=tolerance)[
+        a = bisect(lambda a: fa(a)[0] - peakPres, 1e-4, 0.5e-2, tol=tolerance)[
             0
         ]  # 0.1mm to 10mm
 

@@ -182,7 +182,6 @@ class ToolTip(object):
         y = y + self.widget.winfo_rooty() + self.widget.winfo_height()
         """ initalize the tooltip window to the lower right corner of the widget"""
         self.tipwindow = tw = Toplevel(self.widget)
-        dpi = tw.winfo_fpixels("1i")
         tw.wm_overrideredirect(1)
         tw.wm_geometry("+%d+%d" % (x, y))
         label = Label(
@@ -192,7 +191,7 @@ class ToolTip(object):
             background="#ffffe0",
             relief=SOLID,
             borderwidth=1,
-            font=("tahoma", str(round(3 * dpi / 72)), "normal"),
+            font=("tahoma", "8", "normal"),
         )
         label.pack(ipadx=1)
 
