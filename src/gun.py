@@ -446,8 +446,12 @@ class Gun:
 
             except ValueError as e:
                 raise ValueError(
-                    "Unable to integrate system due to ill defined system causing"
-                    + " vanishing step size."
+                    "Unable to integrate system due to ill defined system, requiring"
+                    + " vanishingly step size. Reducing tolerance limit is generally"
+                    + " not useful. This is usually caused by excessive pressure spike."
+                    + " Reduced propellant load or energy content,"
+                    + " lower chamber load fraction, longer burn times via greater"
+                    + " geometrical size of the propellant grain is suggested."
                 )
 
             if any(

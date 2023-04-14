@@ -5,7 +5,7 @@ from gun import *
 import os
 import sys
 
-DEBUG = True
+DEBUG = False
 
 _prefix = {
     "y": 1e-24,  # yocto
@@ -553,11 +553,15 @@ class IB(Frame):
                 "measures around half of the arc thickness",
                 "and a length to diameter ratio of between",
                 "2~2.5. In theory micrometer level precision",
-                "is possible. In practice, tolerance for",
-                "industrial bulk production is in the range",
-                "of 0.15mm to 1mm depending on caliber",
-                "arc thickness is generally found close",
-                "to 1mm for small to intermediate calibers.",
+                "is possible. In practice, tolerance for indu-",
+                "strial bulk production is in the range of",
+                "0.15mm to 1mm depending on caliber arc",
+                "thickness is generally found close to 1mm",
+                "for small to intermediate calibers.",
+                "Greater geometry will lead to a longer burn",
+                "time for the same load of propellant, giving",
+                "a more gradual rise and lower peak press-",
+                "ure.",
             )
         )
 
@@ -668,7 +672,7 @@ class IB(Frame):
                 "Specify the geometry of propellant using",
                 "ratios, scaled by arc thickness. These",
                 "entrys are in use when Lock Geometry is",
-                "enabled",
+                "enabled.",
             )
         )
         self.arcR, arcRw, i = self.add2Input(
