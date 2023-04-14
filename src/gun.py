@@ -194,7 +194,8 @@ class Propellant:
                 "unhandled propellant geometry {}".format(propGeom)
             )
 
-        grainLength = self.D_0 * grainLDR
+        grainLength = grainLDR * self.D_0
+        # grainLength = self.D_0 * grainLDR
         self.c = grainLength / 2
 
         A, B, C = propGeom.A, propGeom.B, propGeom.C
@@ -426,7 +427,15 @@ class Gun:
         i within or on the muzzle, with the propellant either still
         burning or right on the burnout point..
         """
+
         while Z_i < self.Z_b:  # terminates if burnout is achieved
+            # print(Z_i, Z_j, N)
+
+            if Z_j == Z_i:
+                raise ValueError(
+                    "Numerical accuracy has been exhausted when integrating,"
+                    + " indicating excessive pressure spike"
+                )
             try:
                 t_bar_j, l_bar_j, v_bar_j = RKF45OverTuple(
                     self._ode_Z,
@@ -435,39 +444,46 @@ class Gun:
                     Z_j,
                     tol=tol,
                     imax=maxiter,
+                    termAbv=(None, l_g_bar, None),
                 )
-                if l_bar_j > l_g_bar:
-                    # reduce the tolerance requirement here to speed up
-                    # calculation and allow the use of a terminating condition
-                    # to catch excessive division on the integrator
-                    if abs(l_bar_i - l_g_bar) > tol**0.5 or l_bar_i == 0:
-                        N *= 2
-                        Z_j = Z_i + Delta_Z / N
-                    else:
-                        break  # l_bar_i is solved to within a tol of l_bar_g
-                else:
-                    t_bar_i, l_bar_i, v_bar_i = t_bar_j, l_bar_j, v_bar_j
-                    Z_i = Z_j
-                    """
-                    this way the group of values denoted by _i is always updated
-                    as a group.
-                    """
-                    Z_j += Delta_Z / N
-                    if Z_j > self.Z_b:
-                        Z_j = self.Z_b
             except ValueError:
                 N *= 2
                 Z_j = Z_i + Delta_Z / N
-            """
-            if N > 1 / tol:
-                raise ValueError("Excessive division", N)
-        """
+                continue
+
+            if any(
+                (t_bar_i == t_bar_j, l_bar_i == l_bar_j, v_bar_i == v_bar_j)
+            ):
+                raise ValueError("Numerical integration has stalled")
+
+            if l_bar_j > l_g_bar:
+                # branch where premature termiantion should bring us to
+                # reduce the tolerance requirement here to speed up
+                # calculation and allow the use of a terminating condition
+                # to catch excessive division on the integrator
+                if abs(l_bar_i - l_g_bar) > tol**0.5 or l_bar_i == 0:
+                    N *= 2
+                    Z_j = Z_i + Delta_Z / N
+                else:
+                    break  # l_bar_i is solved to within a tol of l_bar_g
+            else:
+                t_bar_i, l_bar_i, v_bar_i = t_bar_j, l_bar_j, v_bar_j
+                Z_i = Z_j
+                """
+                this way the group of values denoted by _i is always updated
+                as a group.
+                """
+                Z_j += Delta_Z / N
+                if Z_j > self.Z_b:
+                    Z_j = self.Z_b
+
         if t_bar_i == 0:
             raise ValueError(
                 "No valid point along the barrel could be found such that"
                 + " burnout is contained down to 1 tolerance as specfied."
             )
 
+        print("HERE")
         """
         Uncomment the following code block to allows for verifying that the 
         error as a result of compounding is significantly less than the tolerance
@@ -1137,7 +1153,7 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17"]
 
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1000e-3, 0.1e-3, 2.5)
+    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 0.2e-3, 0.1e-3, 2.5)
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
     lf = 0.6
@@ -1156,14 +1172,14 @@ if __name__ == "__main__":
         print("\nnumerical: time")
         print(
             tabulate(
-                test.integrate(0, 1e-5, dom="time"),
+                test.integrate(10, 1e-5, dom="time"),
                 headers=("tag", "t", "l", "phi", "v", "p"),
             )
         )
         print("\nnumerical: length")
         print(
             tabulate(
-                test.integrate(0, 1e-5, dom="length"),
+                test.integrate(10, 1e-5, dom="length"),
                 headers=("tag", "t", "l", "phi", "v", "p"),
             )
         )

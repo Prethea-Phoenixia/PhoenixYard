@@ -960,25 +960,16 @@ class IB(Frame):
         return e, en, rowIndex + 2
 
     def arccallback(self, var, index, mode):
-        if any(
-            (
-                self.arcmm.get() == "",
-                self.arcR.get() == "",
-                self.perR.get() == "",
-            )
-        ):
-            pass
-        else:
-            if self.geoLocked.get() == 1:
-                try:
-                    self.geomError = False
-                    self.permm.set(
-                        float(self.arcmm.get())
-                        / float(self.arcR.get())
-                        * float(self.perR.get())
-                    )
-                except ZeroDivisionError:
-                    self.geomError = True
+        if self.geoLocked.get() == 1:
+            try:
+                self.geomError = False
+                self.permm.set(
+                    float(self.arcmm.get())
+                    / float(self.arcR.get())
+                    * float(self.perR.get())
+                )
+            except (ZeroDivisionError, ValueError):
+                self.geomError = True
 
 
 if __name__ == "__main__":

@@ -145,20 +145,29 @@ def gss(f, a, b, tol=1e-9, findMin=True):
         return (c, b)
 
 
-def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol, imax=100):
+def RKF45OverTuple(
+    dTupleFunc, iniValTuple, x_0, x_1, tol, imax=100, termAbv=(None, None, None)
+):
     """
     Runge Kutta Fehlberg method, of the fourth and fifth order
     Even though this involves a lot more computation per cycle,
     in practice since the step size is adaptive with regard to
     the tolerance specified, significant amount of extraneous
     computation can be saved.
+
+    In addition we specify a premature terminating condition
+    where if this condition is hit, the current iteration of
+    integration is returned.
     """
     y_this = iniValTuple
     x = x_0
     beta = 0.9  # "safety" factor
-    h = (x_1 - x_0) / 10  # initial step size
+    h = 0.1 * (x_1 - x_0)  # initial step size
     i = 0
     while (h > 0 and x < x_1) or (h < 0 and x > x_1):
+        if (x + h) == x:
+            break  # catch the error using the final lines
+        i += 1
         if i > imax:
             raise ValueError(
                 "Integration Cycle Limit ({}) Exceeded at x={}, h={}\n y={}".format(
@@ -228,6 +237,7 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol, imax=100):
             ZeroDivisionError,
         ):  # complex value has been encountered during calculation
             # or that through unfortuante chance we got a divide by zero
+
             h *= beta
             continue
 
@@ -251,23 +261,26 @@ def RKF45OverTuple(dTupleFunc, iniValTuple, x_0, x_1, tol, imax=100):
 
         if epsilon >= tol:  # error is greater than acceptable
             h *= beta * (tol / (2 * epsilon)) ** 0.2
-        else:
+        else:  # error is acceptable
             y_this = y_next
             x += h
+            if any(
+                cv > pv if pv is not None else False
+                for cv, pv in zip(y_this, termAbv)
+            ):  # premature terminating cond. is met
+                return y_this
             if epsilon != 0:  # sometimes the error can be estimated to be 0
                 h *= (
                     beta * (tol / (2 * epsilon)) ** 0.25
                 )  # apply the new best estimate
-            i += 1
 
         if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
             h = x_1 - x
 
     if abs(x - x_1) > tol:
         raise ValueError(
-            "Premature Termination of Integration, after {} Cycles. x at {}, h at {}.".format(
-                i, x, h
-            )
+            "Premature Termination of Integration due to vanishing step size,"
+            + " after {} Cycles. x at {}, h at {}.".format(i, x, h)
         )
 
     return y_this
