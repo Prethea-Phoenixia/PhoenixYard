@@ -1,7 +1,6 @@
 from tkinter import *
 from tkinter import ttk
 import traceback
-import tksvg
 from gun import *
 import os
 import sys
@@ -957,10 +956,10 @@ if __name__ == "__main__":
     root = Tk()
     # one must supply the entire path
     loadfont(resolvepath("ui/Hack-Regular.ttf"))
-    tksvg.load(root)
     dpi = root.winfo_fpixels("1i")
 
     root.tk.call("lappend", "auto_path", resolvepath("ui/awthemes-10.4.0"))
+    root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
     # root.tk.call("package", "require", "awdark")
 
     style = ttk.Style(root)
