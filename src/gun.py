@@ -399,17 +399,17 @@ class Gun:
 
         return (dt_bar, dl_bar, dv_bar)
 
-    def _T(psi, l, p):
+    def _T(self, psi, l, p):
         """
         given pressure and travel, return temperature
         using the Nobel- Abel EOS
         """
         l_psi = self.l_0 * (
             1
-            - self.Delta / self.rho_p * (1 - psi)
-            - self.alpha * self.Delta * self.phi
+            - self.Delta / self.rho_p
+            - self.Delta * (self.alpha * -1 / self.rho_p) * psi
         )
-        v = self.omega / (self.S * (l + l_psi))
+        return self.S * p * (l + l_psi) / (self.omega * psi * self.R)
 
     def integrate(self, steps=10, tol=1e-5, maxiter=100, dom="time"):
         """
@@ -729,6 +729,11 @@ class Gun:
                 p_bar * self.f * self.Delta,
             )
             for (tag, t_bar, l_bar, Z, v_bar, p_bar) in bar_data
+        )
+
+        data = list(
+            (tag, t, l, psi, v, p, self._T(psi, l, p))
+            for (tag, t, l, psi, v, p) in data
         )
 
         return data
@@ -1125,6 +1130,11 @@ class Gun:
         data.append(("FRACTURE", t_k, l_k, psi_k, v_k_1, p_k))
         data.append(("BURNOUT", t_k_2, l_k_2, psi_k_2, v_k_2, p_k_2))
 
+        data = list(
+            (tag, t, l, psi, v, p, self._T(psi, l, p))
+            for (tag, t, l, psi, v, p) in data
+        )
+
         data.sort(key=lambda x: x[1].real)
 
         return data
@@ -1148,11 +1158,9 @@ class Gun:
         t_err = (self.l_0 / self.v_j) * tol
         l_err = self.l_0 * tol
         v_err = self.v_j * tol
-        p_err = self.f * self.Delta * tol
 
         """
         technically speaking we should use self.Z_0 here, but that must be solved
-
         """
         Zs = (0, -self.labda / (3 * self.mu), 1, self.Z_b)
 
@@ -1171,7 +1179,7 @@ class Gun:
 
         psi_err = max(abs(dPsi(Z) * tol) for Z in Zs)
 
-        return (t_err, l_err, psi_err, v_err, p_err)
+        return (t_err, l_err, psi_err, v_err)
 
     def __getattr__(self, attrName):
         try:
@@ -1189,10 +1197,10 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17"]
 
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 2e-3, 0e-3, 2.5)
+    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1e-3, 0e-3, 2.5)
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
-    lf = 0.75
+    lf = 0.5
     print("DELTA:", lf * M17SHC.maxLF)
     test = Gun(
         0.035,
@@ -1208,15 +1216,15 @@ if __name__ == "__main__":
         print("\nnumerical: time")
         print(
             tabulate(
-                test.integrate(0, 1e-5, dom="time"),
-                headers=("tag", "t", "l", "phi", "v", "p"),
+                test.integrate(10, 1e-5, dom="time"),
+                headers=("tag", "t", "l", "phi", "v", "p", "T"),
             )
         )
         print("\nnumerical: length")
         print(
             tabulate(
-                test.integrate(0, 1e-5, dom="length"),
-                headers=("tag", "t", "l", "phi", "v", "p"),
+                test.integrate(10, 1e-5, dom="length"),
+                headers=("tag", "t", "l", "phi", "v", "p", "T"),
             )
         )
 

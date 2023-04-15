@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import ttk
+import tkinter.font as tkFont
 import traceback
 from gun import *
 import os
@@ -16,7 +17,11 @@ _prefix = {
     "n": 1e-9,  # nano
     "μ": 1e-6,  # micro
     "m": 1e-3,  # mili
+    # "c": 1e-2,  # centi
+    # "d": 1e-1,  # deci
     " ": 1,  # unit
+    # "da": 1e1, # deca
+    # "h": 1e2,  # hecto
     "k": 1e3,  # kilo
     "M": 1e6,  # mega
     "G": 1e9,  # giga
@@ -26,6 +31,19 @@ _prefix = {
     "Z": 1e21,  # zetta
     "Y": 1e24,  # yotta
 }
+
+
+# function to convert to superscript
+def get_super(x):
+    normal = (
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=()"
+    )
+    super_s = (
+        "ᴬᴮᶜᴰᴱᶠᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾQᴿˢᵀᵁⱽᵂˣʸᶻᵃᵇᶜᵈᵉᶠᵍʰᶦʲᵏˡᵐⁿᵒᵖ۹ʳˢᵗᵘᵛʷˣʸᶻ⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾"
+    )
+    res = x.maketrans("".join(normal), "".join(super_s))
+    return x.translate(res)
+
 
 from ctypes import windll, byref, create_unicode_buffer, create_string_buffer
 
@@ -75,14 +93,25 @@ def loadfont(fontpath, private=True, enumerable=False):
     return bool(numFontsAdded)
 
 
-def toSI(v, dec=4, unit=None):
-    for prefix, magnitude in zip(_prefix.keys(), _prefix.values()):
-        if 1 <= (v / magnitude) < 1e3:
+def toSI(v, dec=4, unit=None, useSN=False):
+    for prefix, magnitude, nextMagnitude in zip(
+        _prefix.keys(),
+        tuple(_prefix.values())[:-1],
+        tuple(_prefix.values())[1:],
+    ):
+        if 1 <= (v / magnitude) < nextMagnitude / magnitude:
+            # allows handling of non-uniformly log10 spaced prefixes
             vstr = "{:#.{:}g}".format(v / magnitude, dec)
             return (
                 vstr
                 + " " * (dec + 1 - len(vstr) + vstr.find("."))
-                + prefix
+                + (
+                    "x10{:<3}".format(
+                        get_super("{:.0g}".format(log(magnitude, 10)))
+                    )
+                    if useSN
+                    else prefix
+                )
                 + (unit if unit is not None else "")
             )
     if v == 0:
@@ -144,14 +173,14 @@ def formatIntInput(event):
         event.widget.insert(0, int(v))
 
 
-def dot_aligned(matrix, units):
+def dot_aligned(matrix, units, useSN):
     transposed = []
 
-    for seq, unit in zip(zip(*matrix), units):
+    for seq, unit, isSN in zip(zip(*matrix), units, useSN):
         snums = []
         for n in seq:
             try:
-                snums.append(toSI(float(n), unit=unit))
+                snums.append(toSI(float(n), unit=unit, useSN=isSN))
             except ValueError:
                 snums.append(n)
         dots = [s.find(".") for s in snums]
@@ -177,11 +206,18 @@ class ToolTip(object):
         self.text = text
         if self.tipwindow or not self.text:
             return
+
+        t_Font = tkFont.Font(family="hack", size=9)
+        # we use a fixed width font so any char will do
+        columnWidth = 40
+        width, height = t_Font.measure("m" * columnWidth), t_Font.metrics(
+            "linespace"
+        )
         x, y, cx, cy = self.widget.bbox("insert")
-        wrapl = 400
 
         """ initalize the tooltip window to the lower right corner of the widget"""
         self.tipwindow = tw = Toplevel(self.widget)
+
         tw.wm_overrideredirect(1)
         """
         root = self.widget.winfo_toplevel()
@@ -189,7 +225,7 @@ class ToolTip(object):
         print(root.winfo_rootx())
         print(root.winfo_rooty())
         """
-        x = x + self.widget.winfo_rootx() - wrapl
+        x = x + self.widget.winfo_rootx() - width
         y = y + self.widget.winfo_rooty()
 
         tw.wm_geometry("+%d+%d" % (x, y))
@@ -198,11 +234,12 @@ class ToolTip(object):
             text=self.text,
             justify=LEFT,
             background="#ffffe0",
-            wraplength=wrapl,
+            wraplength=width,
             relief=SOLID,
             borderwidth=1,
-            font=("tahoma", "8", "normal"),
+            font=t_Font,
         )
+        label.config(width=columnWidth)  # characters
         label.pack(ipadx=1)
 
     def hidetip(self):
@@ -294,7 +331,7 @@ class IB(Frame):
                 / float(self.ldf.get())
                 * 100
             )
-            self.cv.set(toSI(chamberVolume))
+            self.cv.set(toSI(chamberVolume, useSN=True).strip())
             if DEBUG:
                 print(
                     *(
@@ -322,7 +359,7 @@ class IB(Frame):
 
             self.va.set(toSI(self.gun.v_j))
 
-            t_err, l_err, psi_e, v_err, p_err = self.gun.getErr(
+            t_err, l_err, psi_e, v_err = self.gun.getErr(
                 10 ** -(int(self.accExp.get()))
             )
 
@@ -330,7 +367,7 @@ class IB(Frame):
             self.lerr.set(toSI(l_err))
             self.psierr.set(toSI(psi_e))
             self.verr.set(toSI(v_err))
-            self.perr.set(toSI(p_err))
+        # self.perr.set(toSI(p_err))
 
         except Exception as e:
             self.gun = None
@@ -361,7 +398,9 @@ class IB(Frame):
 
         self.tv.delete(*self.tv.get_children())
         self.tableData = dot_aligned(
-            self.tableData, units=(None, "s", "m", None, "m/s", "Pa")
+            self.tableData,
+            units=(None, "s", "m", None, "m/s", "Pa", "K"),
+            useSN=(False, False, False, True, False, False, True),
         )
 
         for row in self.tableData:
@@ -410,9 +449,11 @@ class IB(Frame):
         self.verr, _, j = self.add12Disp(
             errFrm, j, "Velocity", "m/s", justify="right"
         )
+        """
         self.perr, _, j = self.add12Disp(
             errFrm, j, "Pressure", "Pa", justify="right"
         )
+        """
 
         self.specFrmDisps = (
             self.va,
@@ -423,7 +464,7 @@ class IB(Frame):
             self.lerr,
             self.psierr,
             self.verr,
-            self.perr,
+            # self.perr,
         )
 
     def resetSpec(self):
@@ -841,7 +882,7 @@ class IB(Frame):
             yscrollcommand=errScroll.set,
             wrap=WORD,
             height=0,
-            width=80,
+            width=100,
         )
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
@@ -853,6 +894,7 @@ class IB(Frame):
             "Burnup",
             "Velocity",
             "Pressure",
+            "Temperature",
         ]
         tblFrm = ttk.LabelFrame(parent, text="Result Table")
         tblFrm.grid(row=0, column=1, sticky="nsew")
@@ -871,7 +913,7 @@ class IB(Frame):
         self.tv.tag_configure("BURNOUT", foreground="red")
         self.tv.tag_configure("FRACTURE", foreground="brown")
         # self.tv.tag_configure("monospace", font=("TkFixedFont", 9))
-        self.tv.tag_configure("monospace", font=("Hack", 8))
+        self.tv.tag_configure("monospace", font=("Hack", 10))
 
         for column in columnList:  # foreach column
             self.tv.heading(
@@ -965,6 +1007,39 @@ class IB(Frame):
             CreateToolTip(lb, infotext)
         return e, en, rowIndex + 1
 
+    def add11Disp(
+        self,
+        parent,
+        rowIndex,
+        labelText,
+        default="0.0",
+        entryWidth=5,
+        justify="center",
+    ):
+        ttk.Label(parent, text=labelText).grid(
+            row=rowIndex, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
+        )
+        e = StringVar(parent)
+        e.default = default
+        e.set(default)
+        parent.rowconfigure(rowIndex, weight=0)
+        en = ttk.Entry(
+            parent,
+            textvariable=e,
+            width=entryWidth,
+            state="disabled",
+            justify=justify,
+        )
+        en.grid(
+            row=rowIndex + 1,
+            column=0,
+            columnspan=2,
+            sticky="nsew",
+            padx=2,
+            pady=2,
+        )
+        return e, en, rowIndex + 2
+
     def add12Disp(
         self,
         parent,
@@ -1013,9 +1088,9 @@ if __name__ == "__main__":
     windll.shcore.SetProcessDpiAwareness(1)
     root = Tk()
     # one must supply the entire path
-    loadfont(resolvepath("ui/Hack-Regular.ttf"))
+    loadfont(resolvepath("ui/Hack-Regular.ttf"), True, True)
     dpi = root.winfo_fpixels("1i")
-
+    root.tk.call("tk", "scaling", "-displayof", ".", dpi / 72.0)
     root.tk.call("lappend", "auto_path", resolvepath("ui/awthemes-10.4.0"))
     root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
     # root.tk.call("package", "require", "awdark")
@@ -1025,12 +1100,15 @@ if __name__ == "__main__":
 
     # ensure that the treeview rows are roughly the same height
     # regardless of dpi. on Windows, default is Segoe UI at 9 points
-    style.configure("Treeview", rowheight=round(12 * dpi / 72))
-    style.configure("Treeview.Heading", font=("Hack", 8))
-    style.configure("TButton", font=("Hack", 9, "bold"))
-    style.configure("TLabelframe.Label", font=("Hack", 9, "bold"))
-    style.configure("TNotebook.Tab", font=("Hack", 8))
-    root.option_add("*Font", "Hack 8")
+    # so the default row height should be around 12
+
+    style.configure("Treeview", rowheight=round(14 * dpi / 72))
+    style.configure("Treeview.Heading", font=("Hack", 10))
+    style.configure("TButton", font=("Hack", 10, "bold"))
+    style.configure("TLabelframe.Label", font=("Hack", 10, "bold"))
+    style.configure("TNotebook.Tab", font=("Hack", 10))
+    root.option_add("*Font", "Hack 10")
+
     # root.option_add("*TCombobox*Listbox*Font", "Hack 8")
 
     root.title("Phoenix's Internal Ballistics Solver v0.2")
