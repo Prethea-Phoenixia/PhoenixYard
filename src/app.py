@@ -207,7 +207,7 @@ class ToolTip(object):
         if self.tipwindow or not self.text:
             return
 
-        t_Font = tkFont.Font(family="hack", size=9)
+        t_Font = tkFont.Font(family="hack", size=8)
         # we use a fixed width font so any char will do
         columnWidth = 40
         width, height = t_Font.measure("m" * columnWidth), t_Font.metrics(
@@ -882,7 +882,7 @@ class IB(Frame):
             yscrollcommand=errScroll.set,
             wrap=WORD,
             height=0,
-            width=100,
+            width=120,
         )
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
@@ -913,7 +913,7 @@ class IB(Frame):
         self.tv.tag_configure("BURNOUT", foreground="red")
         self.tv.tag_configure("FRACTURE", foreground="brown")
         # self.tv.tag_configure("monospace", font=("TkFixedFont", 9))
-        self.tv.tag_configure("monospace", font=("Hack", 10))
+        self.tv.tag_configure("monospace", font=("Hack", 8))
 
         for column in columnList:  # foreach column
             self.tv.heading(
@@ -1102,12 +1102,12 @@ if __name__ == "__main__":
     # regardless of dpi. on Windows, default is Segoe UI at 9 points
     # so the default row height should be around 12
 
-    style.configure("Treeview", rowheight=round(14 * dpi / 72))
-    style.configure("Treeview.Heading", font=("Hack", 10))
+    style.configure("Treeview", rowheight=round(12 * dpi / 72))
+    style.configure("Treeview.Heading", font=("Hack", 8))
     style.configure("TButton", font=("Hack", 10, "bold"))
     style.configure("TLabelframe.Label", font=("Hack", 10, "bold"))
     style.configure("TNotebook.Tab", font=("Hack", 10))
-    root.option_add("*Font", "Hack 10")
+    root.option_add("*Font", "Hack 8")
 
     # root.option_add("*TCombobox*Listbox*Font", "Hack 8")
 
