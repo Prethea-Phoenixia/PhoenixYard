@@ -210,9 +210,7 @@ class ToolTip(object):
         t_Font = tkFont.Font(family="hack", size=8)
         # we use a fixed width font so any char will do
         columnWidth = 40
-        width, height = t_Font.measure("m" * columnWidth), t_Font.metrics(
-            "linespace"
-        )
+        width, height = t_Font.measure("m"), t_Font.metrics("linespace")
         x, y, cx, cy = self.widget.bbox("insert")
 
         """ initalize the tooltip window to the lower right corner of the widget"""
@@ -225,7 +223,7 @@ class ToolTip(object):
         print(root.winfo_rootx())
         print(root.winfo_rooty())
         """
-        x = x + self.widget.winfo_rootx() - width
+        x = x + self.widget.winfo_rootx() - width * (columnWidth + 1)
         y = y + self.widget.winfo_rooty()
 
         tw.wm_geometry("+%d+%d" % (x, y))
@@ -234,7 +232,7 @@ class ToolTip(object):
             text=self.text,
             justify=LEFT,
             background="#ffffe0",
-            wraplength=width,
+            wraplength=width * columnWidth,
             relief=SOLID,
             borderwidth=1,
             font=t_Font,
@@ -882,7 +880,7 @@ class IB(Frame):
             yscrollcommand=errScroll.set,
             wrap=WORD,
             height=0,
-            width=120,
+            width=0,
         )
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
@@ -913,13 +911,24 @@ class IB(Frame):
         self.tv.tag_configure("BURNOUT", foreground="red")
         self.tv.tag_configure("FRACTURE", foreground="brown")
         # self.tv.tag_configure("monospace", font=("TkFixedFont", 9))
-        self.tv.tag_configure("monospace", font=("Hack", 8))
+
+        t_Font = tkFont.Font(family="hack", size=8)
+
+        self.tv.tag_configure("monospace", font=t_Font)
+        # we use a fixed width font so any char will do
+        width, height = t_Font.measure("m"), t_Font.metrics("linespace")
 
         for column in columnList:  # foreach column
             self.tv.heading(
                 column, text=column
             )  # let the column heading = column name
-            self.tv.column(column, stretch=1, width=0, anchor="e")
+            self.tv.column(
+                column,
+                stretch=1,
+                width=width * 16,
+                minwidth=width * 16,
+                anchor="e",
+            )
 
         vertscroll = ttk.Scrollbar(
             tblFrm, orient="vertical"
