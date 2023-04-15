@@ -96,16 +96,29 @@ class GrainComp:
         detVel,
         pressureExp,
         linBurnCoe,
+        flameTemp,
     ):
         self.name = name
         self.desc = desc
         self.f = propellantForce
+        """
+        Propellant force is related to the flame temperature
+        by:
+            f = R * T_1
+            R = R_0/M
+            R_0 = 8.314... J/(K*mol)
+        where T_1 is the temeprature propellants develop when
+        burning in an iso-volume chamber, ignoring losses.
+        M is the molar mass of the gas developed. (kg/mol)
+        """
         self.alpha = covolume
         self.rho_p = density
         self.theta = redAdbIndex
         self.u_1 = detVel
         self.n = pressureExp
         self.u_0 = linBurnCoe
+        self.T_1 = flameTemp
+        self.R = self.f / self.T_1
 
     def readFile(fileName):
         composition = []
@@ -133,6 +146,7 @@ class GrainComp:
                     pressureExp,
                     burnRateCoe,
                     linBurnCoe,
+                    flameTemp,
                 ) = prop
 
                 redAdbIndex = float(adb) - 1
@@ -147,6 +161,7 @@ class GrainComp:
                     float(burnRateCoe),
                     float(pressureExp),
                     float(linBurnCoe),
+                    float(flameTemp),
                 )
 
                 composition.append(newComp)
@@ -383,6 +398,18 @@ class Gun:
             dv_bar = 0
 
         return (dt_bar, dl_bar, dv_bar)
+
+    def _T(psi, l, p):
+        """
+        given pressure and travel, return temperature
+        using the Nobel- Abel EOS
+        """
+        l_psi = self.l_0 * (
+            1
+            - self.Delta / self.rho_p * (1 - psi)
+            - self.alpha * self.Delta * self.phi
+        )
+        v = self.omega / (self.S * (l + l_psi))
 
     def integrate(self, steps=10, tol=1e-5, maxiter=100, dom="time"):
         """
@@ -650,7 +677,7 @@ class Gun:
                     )
             else:
                 """
-                Due to two issues, i.e. 1.the distance domain ODE
+                Due to two issues, i.e. 1.the length domain ODE
                 cannot be integrated from the origin point, and 2.the
                 correct behaviour can only be expected when starting from
                 a point with active burning else dZ flat lines.

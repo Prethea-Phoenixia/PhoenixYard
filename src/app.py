@@ -178,26 +178,32 @@ class ToolTip(object):
         if self.tipwindow or not self.text:
             return
         x, y, cx, cy = self.widget.bbox("insert")
+        wrapl = 400
 
         """ initalize the tooltip window to the lower right corner of the widget"""
         self.tipwindow = tw = Toplevel(self.widget)
         tw.wm_overrideredirect(1)
+        """
+        root = self.widget.winfo_toplevel()
+        rx, ry, crx, cry = root.bbox()
+        print(root.winfo_rootx())
+        print(root.winfo_rooty())
+        """
+        x = x + self.widget.winfo_rootx() - wrapl
+        y = y + self.widget.winfo_rooty()
 
+        tw.wm_geometry("+%d+%d" % (x, y))
         label = Label(
             tw,
             text=self.text,
             justify=LEFT,
             background="#ffffe0",
+            wraplength=wrapl,
             relief=SOLID,
             borderwidth=1,
             font=("tahoma", "8", "normal"),
         )
         label.pack(ipadx=1)
-        label.update()
-
-        x = x + self.widget.winfo_rootx() - label.winfo_width()
-        y = y + self.widget.winfo_rooty()
-        tw.wm_geometry("+%d+%d" % (x, y))
 
     def hidetip(self):
         tw = self.tipwindow
@@ -454,8 +460,21 @@ class IB(Frame):
         self.shtkg, _, i = self.add3Input(
             parFrm, i, "Shot Mass", "kg", "0.0", validationNN
         )
+
+        chgText = " ".join(
+            (
+                "Mass of propellant charge to be used. Chamber",
+                "volume is determined from this and load fraction.",
+            )
+        )
         self.chgkg, _, i = self.add3Input(
-            parFrm, i, "Charge Mass", "kg", "0.0", validationNN
+            parFrm,
+            i,
+            "Charge Mass",
+            "kg",
+            "0.0",
+            validationNN,
+            infotext=chgText,
         )
 
         specVal = parent.register(self.updateSpec)
@@ -497,25 +516,29 @@ class IB(Frame):
         self.specs.grid(row=1, column=0, sticky="nsew", pady=2)
         specScroll.config(command=self.specs.yview)
 
-        specsText = "\n".join(
+        specsText = " ".join(
             (
                 "Nitration used for Nitrocellulose is between",
                 "13.15%-13.25% for all preset propellants.",
                 "Up to 14.14% is possible but has not been",
-                "adopted by the industry due to cost.",
+                "adopted by the industry due to cost.\n",
                 "Pure Nitrocellulose is plasticized and stabi-",
                 "lized with Dinitrotoluene to form single",
-                "based propellants.",
+                "based propellant.\n",
                 "Double based propellant is formed when",
                 "Nitroglycerin is used as gelatinizer instead.",
                 "While more energetic, it also burns hotter",
-                "and erodes barrel more.",
+                "and erodes barrel more.\n",
                 "Triple base propellants contains Nitro-",
                 "guanidine, with higher energy content",
                 "while keeping flame temperature low.",
                 "However, it is mechanically the weakest.",
             )
         )
+        """
+        DNT coating can act to retard initial burning and 
+        reduce the sensitivity of propellant behaviour to 
+        initial manufacturing deviations"""
 
         CreateToolTip(propFrm, specsText)
 
@@ -549,20 +572,17 @@ class IB(Frame):
 
         i += 1
 
-        geoDimText = "\n".join(
+        arcText = " ".join(
             (
                 "Specify the geometry of propellant grain",
-                "using dimensions. Generally speaking for",
-                "multi-perforated grains, the perf diameter",
-                "measures around half of the arc thickness",
-                "and a length to diameter ratio of between",
-                "2~2.5. In theory micrometer level precision",
+                "using dimensions.\n",
+                "In theory micrometer level precision",
                 "is possible. In practice, tolerance for indu-",
                 "strial bulk production is in the range of",
                 "0.15mm to 1mm depending on caliber arc",
                 "thickness is generally found close to 1mm",
-                "for small to intermediate calibers.",
-                "Greater geometry will lead to a longer burn",
+                "for small to intermediate calibers.\n",
+                "Greater web thickness will lead to a longer burn",
                 "time for the same load of propellant, giving",
                 "a more gradual rise and lower peak press-",
                 "ure.",
@@ -576,7 +596,19 @@ class IB(Frame):
             "mm",
             "0.0",
             validationNN,
-            infotext=geoDimText,
+            infotext=arcText,
+        )
+
+        pDiaText = " ".join(
+            (
+                "Speify the diameter of perforation using dimensions.",
+                "Perforations are formed by protrusions in the copper",
+                "casting die, the misalignment of which contributes",
+                "to deviations. Larger perforation diameter increase",
+                "progressiveness of burn but contributes to a lower",
+                "achievable loading density, with standard multi-perf grains",
+                "coming with a hole diameter half that of web thickness.",
+            )
         )
         self.permm, self.perw, i = self.add3Input(
             parFrm,
@@ -585,18 +617,26 @@ class IB(Frame):
             "mm",
             "0.0",
             validationNN,
-            infotext=geoDimText,
+            infotext=pDiaText,
         )
 
-        grlRtext = "\n".join(
-            ("Length to diameter ratio of the", "propellant grain.")
+        grlRtext = " ".join(
+            (
+                "Length to diameter ratio of the grain, usually",
+                "around 2-2.5. A higher value facilitate progressive",
+                "burning. If this is too low its possible for",
+                "propellant to exhibit regressive burning behaviour,",
+                "as the primary mode will be axial burning instead.",
+                "Length is usually limited by propellant strength",
+                "during the casting process.",
+            )
         )
 
         self.grlR, _, i = self.add3Input(
             parFrm, i, "Grain L/D", "", "2.5", validationNN, infotext=grlRtext
         )
 
-        ldftext = "\n".join(
+        ldftext = " ".join(
             (
                 "Percentage of chamber volume filled by",
                 "the outlines of the grain. Value of",
@@ -609,7 +649,11 @@ class IB(Frame):
                 "A high value is also undesirable for",
                 "causing excessive peak pressure as well",
                 "as moving the pressure spike closer to",
-                "the breech.",
+                "the breech.\n",
+                'This is different from the usual "loading',
+                'density" quoted as the geometrical limit',
+                "imposed by grain shape is already taken",
+                "into account.",
             )
         )
 
@@ -623,12 +667,12 @@ class IB(Frame):
             infotext=ldftext,
         )
 
-        clrtext = "\n".join(
+        clrtext = " ".join(
             (
                 "Chamber length ratio is the ratio between",
                 "the length of reduced chamber (dividing",
                 "the chamber volume with barrel cross",
-                "section) and the actual chamber.",
+                "section) to the actual chamber.",
             )
         )
 
@@ -636,7 +680,7 @@ class IB(Frame):
             parFrm, i, "Chamber L.R.", "", "1.1", validationNN, infotext=clrtext
         )
 
-        stpText = "\n".join(
+        stpText = " ".join(
             (
                 "Peak pressure that initially resists",
                 "the movement of shot. For rifled weapons",
@@ -671,11 +715,11 @@ class IB(Frame):
         validationNN = parent.register(validateNN)
         i = 0
 
-        ratioEntryText = "\n".join(
+        ratioEntryText = " ".join(
             (
                 "Specify the geometry of propellant using",
                 "ratios, scaled by arc thickness. These",
-                "entrys are in use when Lock Geometry is",
+                "entries are in use when Lock Geometry is",
                 "enabled.",
             )
         )
@@ -761,7 +805,13 @@ class IB(Frame):
             validation=validationPI,
             formatter=formatIntInput,
         )
-
+        tolText = " ".join(
+            (
+                "Unitless tolerance specification.",
+                "This is interpreted as the sum of error",
+                "in component being integrated.",
+            )
+        )
         self.accExp, _, i = self.add2Input(
             opFrm,
             i,
@@ -771,7 +821,7 @@ class IB(Frame):
             validation=validationPI,
             formatter=formatIntInput,
             color="red",
-            infotext="Unitless tolerance specification.",
+            infotext=tolText,
         )
 
         ttk.Button(
