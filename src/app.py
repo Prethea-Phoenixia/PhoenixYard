@@ -212,19 +212,24 @@ class ToolTip(object):
         columnWidth = 40
         width, height = t_Font.measure("m"), t_Font.metrics("linespace")
         x, y, cx, cy = self.widget.bbox("insert")
-
         """ initalize the tooltip window to the lower right corner of the widget"""
         self.tipwindow = tw = Toplevel(self.widget)
-
         tw.wm_overrideredirect(1)
-        """
         root = self.widget.winfo_toplevel()
-        rx, ry, crx, cry = root.bbox()
-        print(root.winfo_rootx())
-        print(root.winfo_rooty())
-        """
-        x = x + self.widget.winfo_rootx() - width * (columnWidth + 1)
-        y = y + self.widget.winfo_rooty()
+        # rx, ry, crx, cry = root.bbox("insert")
+        # print(self.widget.winfo_rootx())
+        # print(self.widget.winfo_rooty())
+        # print(root.winfo_rootx())
+        # print(root.winfo_rooty())
+        if (
+            x + self.widget.winfo_rootx()
+            > root.winfo_rootx() + 0.5 * root.winfo_width()
+        ):
+            x = x + self.widget.winfo_rootx() - width * (columnWidth + 1)
+            y = y + self.widget.winfo_rooty()
+        else:
+            x = x + self.widget.winfo_rootx() + self.widget.winfo_width()
+            y = y + self.widget.winfo_rooty()
 
         tw.wm_geometry("+%d+%d" % (x, y))
         label = Label(
@@ -420,11 +425,41 @@ class IB(Frame):
         specFrm.grid(row=0, column=0, rowspan=2, sticky="nsew")
         specFrm.columnconfigure(0, weight=1)
         i = 0
-        self.va, _, i = self.add12Disp(
-            specFrm, i, "Asymptotic Vel.", "m/s", justify="right"
+        vinfText = " ".join(
+            (
+                "Velocity the shot would achieve if",
+                "the barrel is extended to infinite length.",
+            )
         )
-        self.te, _, i = self.add12Disp(specFrm, i, "Thermal Eff.", "%")
-        self.be, _, i = self.add12Disp(specFrm, i, "Ballistic Eff.", "%")
+        self.va, _, i = self.add12Disp(
+            specFrm,
+            i,
+            "Asymptotic Vel.",
+            "m/s",
+            justify="right",
+            infotext=vinfText,
+        )
+        teffText = " ".join(
+            (
+                "Thermal efficiency of the gun system, i.e.",
+                "the amount of work done to both gas and",
+                "projectile over chemical potential energy",
+                "of propellant.",
+            )
+        )
+        self.te, _, i = self.add12Disp(
+            specFrm, i, "Thermal Eff.", "%", infotext=teffText
+        )
+        beffText = " ".join(
+            (
+                "Ballistic efficiency of the gun system, i.e.",
+                "the amount of work done the projectile over",
+                "chemical potential energy of propellant.",
+            )
+        )
+        self.be, _, i = self.add12Disp(
+            specFrm, i, "Ballistic Eff.", "%", infotext=beffText
+        )
         self.cv, _, i = self.add12Disp(
             specFrm, i, "Chamber Volume", "m³", justify="right"
         )
@@ -846,9 +881,9 @@ class IB(Frame):
         )
         tolText = " ".join(
             (
-                "Unitless tolerance specification.",
-                "This is interpreted as the sum of error",
-                "in component being integrated.",
+                "The (unitless) sum of error of all variables",
+                "being integrated should be smaller than 10",
+                "raised to the negative power of input.",
             )
         )
         self.accExp, _, i = self.add2Input(
@@ -863,9 +898,13 @@ class IB(Frame):
             infotext=tolText,
         )
 
-        ttk.Button(
+        calButton = ttk.Button(
             opFrm, text="Calculate", command=self.calculate, underline=0
-        ).grid(row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
+        )
+        calButton.grid(
+            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+        )
+        CreateToolTip(calButton, "Integrate system using RKF-45 integrator")
 
     def addExcFrm(self, parent):
         errorFrm = ttk.LabelFrame(parent, text="Exceptions")
@@ -925,7 +964,7 @@ class IB(Frame):
             self.tv.column(
                 column,
                 stretch=1,
-                width=width * 16,
+                width=width * 20,
                 minwidth=width * 16,
                 anchor="e",
             )
@@ -1024,8 +1063,10 @@ class IB(Frame):
         default="0.0",
         entryWidth=5,
         justify="center",
+        infotext=None,
     ):
-        ttk.Label(parent, text=labelText).grid(
+        lb = ttk.Label(parent, text=labelText)
+        lb.grid(
             row=rowIndex, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
         e = StringVar(parent)
@@ -1047,6 +1088,8 @@ class IB(Frame):
             padx=2,
             pady=2,
         )
+        if infotext is not None:
+            CreateToolTip(lb, infotext)
         return e, en, rowIndex + 2
 
     def add12Disp(
@@ -1058,8 +1101,10 @@ class IB(Frame):
         default="0.0",
         entryWidth=5,
         justify="center",
+        infotext=None,
     ):
-        ttk.Label(parent, text=labelText).grid(
+        lb = ttk.Label(parent, text=labelText)
+        lb.grid(
             row=rowIndex, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
         e = StringVar(parent)
@@ -1077,6 +1122,9 @@ class IB(Frame):
         ttk.Label(parent, text=unitText).grid(
             row=rowIndex + 1, column=1, sticky="nsew", padx=2, pady=2
         )
+        if infotext is not None:
+            CreateToolTip(lb, infotext)
+
         return e, en, rowIndex + 2
 
     def arccallback(self, var, index, mode):
@@ -1097,7 +1145,7 @@ if __name__ == "__main__":
     windll.shcore.SetProcessDpiAwareness(1)
     root = Tk()
     # one must supply the entire path
-    loadfont(resolvepath("ui/Hack-Regular.ttf"), True, True)
+    loadfont(resolvepath("ui/Hack-Regular.ttf"))
     dpi = root.winfo_fpixels("1i")
     root.tk.call("tk", "scaling", "-displayof", ".", dpi / 72.0)
     root.tk.call("lappend", "auto_path", resolvepath("ui/awthemes-10.4.0"))

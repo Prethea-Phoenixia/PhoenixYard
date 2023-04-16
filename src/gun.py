@@ -399,6 +399,17 @@ class Gun:
 
         return (dt_bar, dl_bar, dv_bar)
 
+    def _ode_v(self, v_bar, t_bar, Z, l_bar):
+        p_bar = self._fp_bar(Z, l_bar, v_bar)
+        if Z < self.Z_b:
+            dZ = (2 / (self.B * self.theta)) ** 0.5 * p_bar ** (self.n - 1)
+        else:
+            dZ = 0
+        dl_bar = 2 * v_bar / (self.theta * p_bar)
+        dt_bar = 2 / (self.theta * p_bar)
+
+        return (dt_bar, dZ, dl_bar)
+
     def _T(self, psi, l, p):
         """
         given pressure and travel, return temperature
@@ -411,7 +422,7 @@ class Gun:
         )
         return self.S * p * (l + l_psi) / (self.omega * psi * self.R)
 
-    def integrate(self, steps=10, tol=1e-5, maxiter=100, dom="time"):
+    def integrate(self, steps=10, tol=1e-5, dom="time"):
         """
         Runs a full numerical solution for the gun in the specified domain sampled
         evenly at specified number of steps, using a scaled numerical tolerance as
@@ -513,21 +524,17 @@ class Gun:
             raise ValueError("exit/burnout point found to be at the origin.")
 
         """
-        Uncomment the following code block to allows for verifying that the
-        error as a result of compounding is significantly less than the tolerance
-        specified
+        # verify the cumulative error is small enough
+        t_bar_v, l_bar_v, v_bar_v = RKF45OverTuple(
+            self._ode_Z,
+            (0, 0, 0),
+            self.Z_0,
+            Z_i,
+            tol=tol,
+            termAbv=(None, l_g_bar, None),
+        )
+        print(t_bar_v - t_bar_i, l_bar_v - l_bar_i, v_bar_v - v_bar_i)
         """
-
-        # print(N)
-        # t_bar_v, l_bar_v, v_bar_v = RKF45OverTuple(
-        #    self._ode_Z, (0, 0, 0), self.Z_0, Z_i, tol=tol, imax=maxiter
-        # )
-        # print(
-        #    (t_bar_v - t_bar_i) * self.l_0 / self.v_j,
-        #    (l_bar_v - l_bar_i) * self.l_0,
-        #    (v_bar_v - v_bar_i) * self.v_j,
-        # )
-
         """
         Subscript e indicate exit condition.
         At this point, since its guaranteed that point i will be further
@@ -730,7 +737,12 @@ class Gun:
             )
             for (tag, t_bar, l_bar, Z, v_bar, p_bar) in bar_data
         )
-
+        """
+        t_bar_v, Z_v, l_bar_v = RKF45OverTuple(
+            self._ode_v, (0, self.Z_0, 0), 0, v_bar_e, tol=tol
+        )
+        print(t_bar_v - t_bar_e, Z_v - self.Z_b, l_bar_v - l_g_bar)
+        """
         data = list(
             (tag, t, l, psi, v, p, self._T(psi, l, p))
             for (tag, t, l, psi, v, p) in data
