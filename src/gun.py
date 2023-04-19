@@ -2,7 +2,7 @@ import enum
 
 import csv
 
-from math import pi, log, exp
+from math import pi, log, exp, inf
 from num import *
 
 
@@ -1158,7 +1158,6 @@ class Gun:
         where burnout has occured, irregardless of barrel length specified.
         Then, the peak-finding routine is ran to find the peak pressure
         point.
-
         """
         l_g_bar = self.l_g / self.l_0
         try:
@@ -1217,6 +1216,25 @@ class Gun:
             p_bar_p * self.f * self.Delta,
         )
 
+    def findBL(self, targetVel, abortLength, tol=1e-3):
+        """find the necessary barrel length to derive the requisite velocity"""
+
+        try:
+            t_bar_e, Z_e, l_bar_e = RKF45OverTuple(
+                self._ode_v,
+                (0, self.Z_0, 0),
+                0,
+                targetVel / self.v_j,
+                tol=tol,
+                termAbv=(None, None, abortLength / self.l_0),
+            )
+        except ValueError as e:
+            raise e
+
+        if l_bar_e * self.l_0 > abortLength:
+            raise ValueError
+        return l_bar_e * self.l_0
+
     @classmethod
     def constrained(
         cls,
@@ -1233,12 +1251,12 @@ class Gun:
         designedVel,
         lengthGunMin,
         lengthGunMax,
-        loadFractionMin=0.2,
-        loadFractionMax=0.7,
-        grainArcMin=0.1e-3,
-        grainArcMax=1e-3,
+        loadFractionMin,
+        loadFractionMax,
+        grainArcMin=1e-3,
+        grainArcMax=5e-3,
         tol=1e-3,
-        step=5,
+        step=10,
     ):
         """does constrained design, finding the design space, with
         requisite grain size and
@@ -1251,7 +1269,8 @@ class Gun:
                 "The specified load fraction is impractical. (<=0.01/>=0.99)"
             )
 
-        designSpace = []
+        aSpace = []
+        lSpace = []
         xs = []
         for i in range(step + 1):
             loadFraction = (
@@ -1260,7 +1279,6 @@ class Gun:
             xs.append(loadFraction)
 
             def f_a(a):
-                print(loadFraction, a)
                 prop = Propellant(propComp, propGeom, a, grainPR, grainLDR)
                 cv = chargeMass / (prop.rho_p * prop.maxLF * loadFraction)
                 gun = Gun(
@@ -1279,41 +1297,83 @@ class Gun:
                         abortVel=designedVel,
                         tol=tol,
                     )
+
                 except ValueError as e:
                     """this approach is only possible since we have confidence
                     in that the valid solutions are islands surrounded by invalid
                     solutions. If instead the solution space was any other shape
                     this would have been cause for a grievious error."""
 
-                    return 1e99
+                    return inf, None
 
-                return abs(p_p - designedPress)
+                return abs(p_p - designedPress), gun
+
+            m = 1
+            minValida = grainArcMax
+            maxValida = grainArcMin
+            while 2**-m > tol:
+                for n in range(0, 2**m + 1):
+                    if n % 2 != 0:
+                        v = (
+                            n * (grainArcMax - grainArcMin) / 2**m
+                            + grainArcMin
+                        )
+
+                        if maxValida > v > minValida:
+                            continue
+
+                        _, det = f_a(v)
+
+                        if det is not None:
+                            if v < minValida:
+                                minValida = v
+                            if v > maxValida:
+                                maxValida = v
+
+                m += 1
 
             try:
                 a_1, a_2 = gss(
-                    f_a,
-                    grainArcMin,
-                    grainArcMax,
+                    lambda x: f_a(x)[0],
+                    minValida,
+                    maxValida,
                     tol=tol * grainArcMin,
                     findMin=True,
                 )
                 a = 0.5 * (a_1 + a_2)
-                print("solved to be", a_1, a_2)
 
-                DeltaP = f_a(a)
+                DeltaP, gun = f_a(a)
                 if DeltaP < designedPress * tol:
-                    designSpace.append(a)
+                    l_g = gun.findBL(designedVel, lengthGunMax, tol=tol)
+
+                    if lengthGunMin <= l_g <= lengthGunMax:
+                        aSpace.append(a)
+                        lSpace.append(l_g)
+                    else:
+                        raise ValueError
                 else:
                     raise ValueError
 
             except ValueError as e:
-                designSpace.append("x")
+                lSpace.append(None)
+                aSpace.append(None)
+
+        lSpace = [lSpace]
+        aSpace = [aSpace]
 
         from tabulate import tabulate
 
         print("designed vel: ", designedVel)
         print("designedPress: ", designedPress)
-        print(tabulate([designSpace], headers=xs))
+        tabuleau = [None] * (len(lSpace) + len(aSpace))
+        tabuleau[::2] = (("Tube length", *i) for i in lSpace)
+        tabuleau[1::2] = (("Grain arc:", *i) for i in aSpace)
+        print(
+            tabulate(
+                tabuleau,
+                headers=("Load Fraction", *(round(x, 2) for x in xs)),
+            )
+        )
 
     # values
     def getEff(self, vg):
@@ -1435,9 +1495,11 @@ if __name__ == "__main__":
         30e6,
         1.1,
         300e6,
-        2000,
-        1,
-        35,
+        1500,
+        0.5,
+        10,
+        0.33,
+        0.66,
     )
 
     # print(*test.integrate(10, 1e-5, dom="length"), sep="\n")
