@@ -1364,7 +1364,7 @@ class Gun:
         from tabulate import tabulate
 
         print("designed vel: ", designedVel)
-        print("designedPress: ", designedPress)
+        print("designed Pmax: ", designedPress)
         tabuleau = [None] * (len(lSpace) + len(aSpace))
         tabuleau[::2] = (("Tube length", *i) for i in lSpace)
         tabuleau[1::2] = (("Grain arc:", *i) for i in aSpace)
