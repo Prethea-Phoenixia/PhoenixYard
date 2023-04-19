@@ -171,12 +171,16 @@ class GrainComp:
 
 class Propellant:
     # assumed to be multi-holed propellants
-    def __init__(self, composition, propGeom, arcThick, holeDia, grainLDR):
+    def __init__(self, composition, propGeom, arcThick, grainPR, grainLDR):
+        """
+        LDR: length ot diameter ratio
+        PR: perf diameter to arc thickness ratio.
+        """
         self.composition = composition
         self.geometry = propGeom
 
         self.e_1 = arcThick / 2
-        self.d_0 = holeDia
+        self.d_0 = arcThick * grainPR
 
         if propGeom == Geometry.SEVEN_PERF_CYLINDER:
             self.D_0 = (
@@ -436,7 +440,6 @@ class Gun:
         """
 
         l_g_bar = self.l_g / self.l_0
-
         bar_data = []
 
         bar_data.append(
@@ -500,10 +503,6 @@ class Gun:
                 )
 
             if l_bar_j > l_g_bar:
-                # branch where premature termiantion should bring us to
-                # reduce the tolerance requirement here to speed up
-                # calculation and allow the use of a terminating condition
-                # to catch excessive division on the integrator
                 if abs(l_bar_i - l_g_bar) > tol**0.5 or l_bar_i == 0:
                     N *= 2
                     Z_j = Z_i + Delta_Z / N
@@ -690,6 +689,9 @@ class Gun:
                 a point with active burning else dZ flat lines.
                 we do another Z domain integration to seed the initial values
                 to a point where ongoing burning is guaranteed.
+                (in the case of gun barrel length >= burn length, the group
+                 of value by subscipt i will not guarantee burning is still
+                 ongoing).
                 """
                 t_bar_s = 0.5 * t_bar_i
                 Z_s, l_bar_s, v_bar_s = RKF45OverTuple(
@@ -1151,6 +1153,168 @@ class Gun:
 
         return data
 
+    def getBP(self, abortLength, abortVel, tol=1e-3):
+        """routine, meant exclusively to integrate the ODE to the point
+        where burnout has occured, irregardless of barrel length specified.
+        Then, the peak-finding routine is ran to find the peak pressure
+        point.
+
+        """
+        l_g_bar = self.l_g / self.l_0
+        try:
+            t_bar_b, l_bar_b, v_bar_b = RKF45OverTuple(
+                self._ode_Z,
+                (0, 0, 0),
+                self.Z_0,
+                self.Z_b,
+                tol=tol,
+                termAbv=(None, abortLength / self.l_0, abortVel / self.v_j),
+            )
+
+            if any(
+                (
+                    l_bar_b > abortLength / self.l_0,
+                    v_bar_b > abortVel / self.v_j,
+                )
+            ):
+                raise ValueError(
+                    "Burnout cannot be found within the abort range specified"
+                )
+
+        except ValueError as e:
+            raise e
+
+        def f(t_bar):
+            Z, l_bar, v_bar = RKF45OverTuple(
+                self._ode_t,
+                (self.Z_0, 0, 0),
+                0,
+                t_bar,
+                tol=tol,
+            )
+            return self._fp_bar(Z, l_bar, v_bar)
+
+        # tolerance is specified a bit differently for gold section search
+        t_bar_p_1, t_bar_p_2 = gss(
+            f,
+            0,
+            t_bar_b,
+            tol=tol,
+            findMin=False,
+        )
+        t_bar_p = (t_bar_p_1 + t_bar_p_2) / 2
+
+        Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
+            self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol
+        )
+        p_bar_p = self._fp_bar(Z_p, l_bar_p, v_bar_p)
+        # returns the minimum barrel length required to contain the burnup.
+        # the velocity at the burnup point
+        # peak pressure
+        return (
+            l_bar_b * self.l_0,
+            v_bar_b * self.v_j,
+            p_bar_p * self.f * self.Delta,
+        )
+
+    @classmethod
+    def constrained(
+        cls,
+        caliber,
+        shotMass,
+        propComp,
+        propGeom,
+        chargeMass,
+        grainPR,
+        grainLDR,
+        startPressure,
+        chamberExpansion,
+        designedPress,
+        designedVel,
+        lengthGunMin,
+        lengthGunMax,
+        loadFractionMin=0.2,
+        loadFractionMax=0.7,
+        grainArcMin=0.1e-3,
+        grainArcMax=1e-3,
+        tol=1e-3,
+        step=5,
+    ):
+        """does constrained design, finding the design space, with
+        requisite grain size and
+        length of gun to achieve the specified gun peak pressure and
+        shot velocity, subjected to the constraint given.
+        """
+
+        if loadFractionMax >= 0.99 or loadFractionMin <= 0.01:
+            raise ValueError(
+                "The specified load fraction is impractical. (<=0.01/>=0.99)"
+            )
+
+        designSpace = []
+        xs = []
+        for i in range(step + 1):
+            loadFraction = (
+                i * (loadFractionMax - loadFractionMin) / step + loadFractionMin
+            )
+            xs.append(loadFraction)
+
+            def f_a(a):
+                print(loadFraction, a)
+                prop = Propellant(propComp, propGeom, a, grainPR, grainLDR)
+                cv = chargeMass / (prop.rho_p * prop.maxLF * loadFraction)
+                gun = Gun(
+                    caliber,
+                    shotMass,
+                    prop,
+                    chargeMass,
+                    cv,
+                    startPressure,
+                    1,  # this doesn't matter now.
+                    chamberExpansion,
+                )
+                try:
+                    l_b, v_b, p_p = gun.getBP(
+                        abortLength=lengthGunMax,
+                        abortVel=designedVel,
+                        tol=tol,
+                    )
+                except ValueError as e:
+                    """this approach is only possible since we have confidence
+                    in that the valid solutions are islands surrounded by invalid
+                    solutions. If instead the solution space was any other shape
+                    this would have been cause for a grievious error."""
+
+                    return 1e99
+
+                return abs(p_p - designedPress)
+
+            try:
+                a_1, a_2 = gss(
+                    f_a,
+                    grainArcMin,
+                    grainArcMax,
+                    tol=tol * grainArcMin,
+                    findMin=True,
+                )
+                a = 0.5 * (a_1 + a_2)
+                print("solved to be", a_1, a_2)
+
+                DeltaP = f_a(a)
+                if DeltaP < designedPress * tol:
+                    designSpace.append(a)
+                else:
+                    raise ValueError
+
+            except ValueError as e:
+                designSpace.append("x")
+
+        from tabulate import tabulate
+
+        print("designed vel: ", designedVel)
+        print("designedPress: ", designedPress)
+        print(tabulate([designSpace], headers=xs))
+
     # values
     def getEff(self, vg):
         """
@@ -1209,7 +1373,7 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17"]
 
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1e-3, 0e-3, 2.5)
+    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1.5e-3, 0, 2.5)
 
     # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
     lf = 0.5
@@ -1258,6 +1422,22 @@ if __name__ == "__main__":
             test.analyze(it=100, tol=1e-5),
             headers=("tag", "t", "l", "phi", "v", "p"),
         )
+    )
+    print(test.getBP(tol=1e-3, abortVel=1200, abortLength=3.5))
+    test = Gun.constrained(
+        0.035,
+        1.0,
+        M17,
+        Geometry.SEVEN_PERF_ROSETTE,
+        0.8,
+        0,
+        2.5,
+        30e6,
+        1.1,
+        300e6,
+        2000,
+        1,
+        35,
     )
 
     # print(*test.integrate(10, 1e-5, dom="length"), sep="\n")

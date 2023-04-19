@@ -277,7 +277,6 @@ class IB(Frame):
         self.prop = None
         self.gun = None
         self.errorLst = []
-        self.geomError = False
 
         self.propOptions = tuple(self.compositions.keys())
         self.geoOptions = tuple(self.geometries.keys())
@@ -314,7 +313,7 @@ class IB(Frame):
                 compo,
                 geom,
                 float(self.arcmm.get()) / 1000,
-                float(self.permm.get()) / 1000,
+                float(self.permm.get()) / float(self.arcmm.get()),
                 float(self.grlR.get()),
             )
 
@@ -802,7 +801,7 @@ class IB(Frame):
             i,
             0,
             "A.Th.",
-            "2.0",
+            "1.0",
             validation=validationNN,
             infotext=ratioEntryText,
         )
@@ -811,7 +810,7 @@ class IB(Frame):
             i,
             0,
             "P.Dia.",
-            "1.0",
+            "0.5",
             validation=validationNN,
             infotext=ratioEntryText,
         )
@@ -836,6 +835,7 @@ class IB(Frame):
         configEntry()
 
         self.arcmm.trace_add("write", self.arccallback)
+        self.permm.trace_add("write", self.arccallback)
         self.arcR.trace_add("write", self.arccallback)
         self.perR.trace_add("write", self.arccallback)
 
@@ -1128,9 +1128,9 @@ class IB(Frame):
         return e, en, rowIndex + 2
 
     def arccallback(self, var, index, mode):
+        self.geomError = False
         if self.geoLocked.get() == 1:
             try:
-                self.geomError = False
                 self.permm.set(
                     float(self.arcmm.get())
                     / float(self.arcR.get())
@@ -1138,6 +1138,16 @@ class IB(Frame):
                 )
             except (ZeroDivisionError, ValueError):
                 self.geomError = True
+        else:
+            try:
+                self.perR.set(
+                    float(self.permm.get())
+                    / float(self.arcmm.get())
+                    * float(self.arcR.get())
+                )
+            except (ZeroDivisionError, ValueError):
+                self.geomError = True
+        self.updateError()
 
 
 if __name__ == "__main__":
