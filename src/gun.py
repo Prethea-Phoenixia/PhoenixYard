@@ -1242,7 +1242,8 @@ class Gun:
         shotMass,
         propComp,
         propGeom,
-        chargeMass,
+        chargeMassMin,
+        chargeMassMax,
         grainPR,
         grainLDR,
         startPressure,
@@ -1256,7 +1257,7 @@ class Gun:
         grainArcMin=1e-3,
         grainArcMax=5e-3,
         tol=1e-3,
-        step=10,
+        step=25,
     ):
         """does constrained design, finding the design space, with
         requisite grain size and
@@ -1271,107 +1272,136 @@ class Gun:
 
         aSpace = []
         lSpace = []
-        xs = []
-        for i in range(step + 1):
-            loadFraction = (
-                i * (loadFractionMax - loadFractionMin) / step + loadFractionMin
+        xs = [
+            i * (loadFractionMax - loadFractionMin) / step + loadFractionMin
+            for i in range(step + 1)
+        ]
+        ys = [
+            j * (chargeMassMax - chargeMassMin) / step + chargeMassMin
+            for j in range(step + 1)
+        ]
+        for j in range(step + 1):
+            chargeMass = (
+                j * (chargeMassMax - chargeMassMin) / step + chargeMassMin
             )
-            xs.append(loadFraction)
 
-            def f_a(a):
-                prop = Propellant(propComp, propGeom, a, grainPR, grainLDR)
-                cv = chargeMass / (prop.rho_p * prop.maxLF * loadFraction)
-                gun = Gun(
-                    caliber,
-                    shotMass,
-                    prop,
-                    chargeMass,
-                    cv,
-                    startPressure,
-                    1,  # this doesn't matter now.
-                    chamberExpansion,
+            aSpaceCM = []
+            lSpaceCM = []
+
+            for i in range(step + 1):
+                loadFraction = (
+                    i * (loadFractionMax - loadFractionMin) / step
+                    + loadFractionMin
                 )
-                try:
-                    l_b, v_b, p_p = gun.getBP(
-                        abortLength=lengthGunMax,
-                        abortVel=designedVel,
-                        tol=tol,
+
+                def f_a(a):
+                    prop = Propellant(propComp, propGeom, a, grainPR, grainLDR)
+                    cv = chargeMass / (prop.rho_p * prop.maxLF * loadFraction)
+                    gun = Gun(
+                        caliber,
+                        shotMass,
+                        prop,
+                        chargeMass,
+                        cv,
+                        startPressure,
+                        1,  # this doesn't matter now.
+                        chamberExpansion,
                     )
-
-                except ValueError as e:
-                    """this approach is only possible since we have confidence
-                    in that the valid solutions are islands surrounded by invalid
-                    solutions. If instead the solution space was any other shape
-                    this would have been cause for a grievious error."""
-
-                    return inf, None
-
-                return abs(p_p - designedPress), gun
-
-            m = 1
-            minValida = grainArcMax
-            maxValida = grainArcMin
-            while 2**-m > tol:
-                for n in range(0, 2**m + 1):
-                    if n % 2 != 0:
-                        v = (
-                            n * (grainArcMax - grainArcMin) / 2**m
-                            + grainArcMin
+                    try:
+                        l_b, v_b, p_p = gun.getBP(
+                            abortLength=lengthGunMax,
+                            abortVel=designedVel,
+                            tol=tol,
                         )
 
-                        if maxValida > v > minValida:
-                            continue
+                    except ValueError as e:
+                        """this approach is only possible since we have confidence
+                        in that the valid solutions are islands surrounded by invalid
+                        solutions. If instead the solution space was any other shape
+                        this would have been cause for a grievious error."""
 
-                        _, det = f_a(v)
+                        return inf, None
 
-                        if det is not None:
-                            if v < minValida:
-                                minValida = v
-                            if v > maxValida:
-                                maxValida = v
+                    return abs(p_p - designedPress), gun
 
-                m += 1
+                m = 1
 
-            try:
-                a_1, a_2 = gss(
-                    lambda x: f_a(x)[0],
-                    minValida,
-                    maxValida,
-                    tol=tol * grainArcMin,
-                    findMin=True,
-                )
-                a = 0.5 * (a_1 + a_2)
+                if f_a(grainArcMax)[1] is not None:
+                    maxValida = grainArcMax
+                else:
+                    maxValida = grainArcMin
+                if f_a(grainArcMin)[1] is not None:
+                    minValida = grainArcMin
+                else:
+                    minValida = grainArcMax
 
-                DeltaP, gun = f_a(a)
-                if DeltaP < designedPress * tol:
-                    l_g = gun.findBL(designedVel, lengthGunMax, tol=tol)
+                while 2**-m > tol:
+                    for n in range(0, 2**m):
+                        if n % 2 != 0:
+                            v = (
+                                n * (grainArcMax - grainArcMin) / 2**m
+                                + grainArcMin
+                            )
 
-                    if lengthGunMin <= l_g <= lengthGunMax:
-                        aSpace.append(a)
-                        lSpace.append(l_g)
+                            if maxValida > v > minValida:
+                                continue
+
+                            _, det = f_a(v)
+
+                            if det is not None:
+                                if v < minValida:
+                                    minValida = v
+                                if v > maxValida:
+                                    maxValida = v
+
+                    m += 1
+
+                try:
+                    if minValida >= maxValida:
+                        raise ValueError
+                    a_1, a_2 = gss(
+                        lambda x: f_a(x)[0],
+                        minValida,
+                        maxValida,
+                        tol=tol * grainArcMin,
+                        findMin=True,
+                    )
+                    a = 0.5 * (a_1 + a_2)
+
+                    DeltaP, gun = f_a(a)
+                    if DeltaP < designedPress * tol:
+                        l_g = gun.findBL(designedVel, lengthGunMax, tol=tol)
+
+                        if lengthGunMin <= l_g <= lengthGunMax:
+                            aSpaceCM.append(a)
+                            lSpaceCM.append(l_g)
+                        else:
+                            raise ValueError
                     else:
                         raise ValueError
-                else:
-                    raise ValueError
 
-            except ValueError as e:
-                lSpace.append(None)
-                aSpace.append(None)
+                except ValueError as e:
+                    lSpaceCM.append(None)
+                    aSpaceCM.append(None)
 
-        lSpace = [lSpace]
-        aSpace = [aSpace]
+            aSpace.append(aSpaceCM)
+            lSpace.append(lSpaceCM)
 
         from tabulate import tabulate
 
         print("designed vel: ", designedVel)
         print("designed Pmax: ", designedPress)
         tabuleau = [None] * (len(lSpace) + len(aSpace))
-        tabuleau[::2] = (("Tube length", *i) for i in lSpace)
-        tabuleau[1::2] = (("Grain arc:", *i) for i in aSpace)
+        tabuleau[::2] = ((j, "Tube length", *i) for i, j in zip(lSpace, ys))
+        tabuleau[1::2] = ((j, "Grain arc:", *i) for i, j in zip(aSpace, ys))
         print(
             tabulate(
                 tabuleau,
-                headers=("Load Fraction", *(round(x, 2) for x in xs)),
+                headers=(
+                    "Charge Mass",
+                    "Load Fraction",
+                    *(round(x, 2) for x in xs),
+                ),
             )
         )
 
@@ -1480,26 +1510,31 @@ if __name__ == "__main__":
     print(
         tabulate(
             test.analyze(it=100, tol=1e-5),
-            headers=("tag", "t", "l", "phi", "v", "p"),
+            headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )
     print(test.getBP(tol=1e-3, abortVel=1200, abortLength=3.5))
     test = Gun.constrained(
-        0.035,
+        0.05,
         1.0,
         M17,
         Geometry.SEVEN_PERF_ROSETTE,
-        0.8,
-        0,
-        2.5,
-        30e6,
-        1.1,
-        300e6,
-        1500,
-        0.5,
-        10,
-        0.33,
-        0.66,
+        chargeMassMin=0.5,
+        chargeMassMax=2,
+        grainPR=0,
+        grainLDR=2.5,
+        startPressure=30e6,
+        chamberExpansion=1.1,
+        designedPress=300e6,
+        designedVel=1600,
+        lengthGunMin=1,
+        lengthGunMax=10,
+        loadFractionMin=0.33,
+        loadFractionMax=0.66,
+        grainArcMin=0.5e-3,
+        grainArcMax=5e-3,
+        tol=1e-3,
+        step=10,
     )
 
     # print(*test.integrate(10, 1e-5, dom="length"), sep="\n")
