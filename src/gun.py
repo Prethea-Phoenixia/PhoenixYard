@@ -1127,9 +1127,6 @@ class Gun:
 
             return (t, l, psi, v, p)
 
-        """
-        This should be the only non-deterministic part of this routine.
-        """
         x_p_1, x_p_2 = gss(
             lambda x: findPeak(x)[4], 0, self.Z_b - Z_0, tol=tol, findMin=False
         )
@@ -1273,24 +1270,25 @@ class Gun:
         aSpace = []
         lSpace = []
         xs = [
-            i * (loadFractionMax - loadFractionMin) / step + loadFractionMin
-            for i in range(step + 1)
+            i * (loadFractionMax - loadFractionMin) / (step - 1)
+            + loadFractionMin
+            for i in range(step)
         ]
         ys = [
-            j * (chargeMassMax - chargeMassMin) / step + chargeMassMin
-            for j in range(step + 1)
+            j * (chargeMassMax - chargeMassMin) / (step - 1) + chargeMassMin
+            for j in range(step)
         ]
-        for j in range(step + 1):
+        for j in range(step):
             chargeMass = (
-                j * (chargeMassMax - chargeMassMin) / step + chargeMassMin
+                j * (chargeMassMax - chargeMassMin) / (step - 1) + chargeMassMin
             )
 
             aSpaceCM = []
             lSpaceCM = []
 
-            for i in range(step + 1):
+            for i in range(step):
                 loadFraction = (
-                    i * (loadFractionMax - loadFractionMin) / step
+                    i * (loadFractionMax - loadFractionMin) / (step - 1)
                     + loadFractionMin
                 )
 
@@ -1358,7 +1356,7 @@ class Gun:
 
                 try:
                     if minValida >= maxValida:
-                        raise ValueError
+                        raise ValueError("no valid arc range")
                     a_1, a_2 = gss(
                         lambda x: f_a(x)[0],
                         minValida,
@@ -1534,7 +1532,7 @@ if __name__ == "__main__":
         grainArcMin=0.5e-3,
         grainArcMax=5e-3,
         tol=1e-3,
-        step=10,
+        step=5,
     )
 
     # print(*test.integrate(10, 1e-5, dom="length"), sep="\n")

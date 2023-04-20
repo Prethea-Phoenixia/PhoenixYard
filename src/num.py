@@ -98,14 +98,7 @@ def gss(f, a, b, tol=1e-9, findMin=True):
     the interval [a,b], gss returns a subset interval
     [c,d] that contains the extremum with d-c <= tol.
 
-    Example:
-    >>> f = lambda x: (x-2)**2
-    >>> a = 1
-    >>> b = 5
-    >>> tol = 1e-5
-    >>> (c,d) = gss(f, a, b, tol)
-    >>> print(c, d)
-    1.9999959837979107 2.0000050911830893
+    a----c--d----b
     """
 
     (a, b) = (min(a, b), max(a, b))
@@ -122,9 +115,8 @@ def gss(f, a, b, tol=1e-9, findMin=True):
     yd = f(d)
 
     for k in range(n - 1):
-        if (yc < yd and findMin) or (
-            yc > yd and not findMin
-        ):  # yc > yd to find the maximum
+        if (yc < yd and findMin) or (yc > yd and not findMin):
+            # a---c---d
             b = d
             d = c
             yd = yc
@@ -132,6 +124,7 @@ def gss(f, a, b, tol=1e-9, findMin=True):
             c = a + invphi2 * h
             yc = f(c)
         else:
+            # c--d---b
             a = c
             c = d
             yc = yd
@@ -139,10 +132,87 @@ def gss(f, a, b, tol=1e-9, findMin=True):
             d = a + invphi * h
             yd = f(d)
 
-    if yc < yd:
+    if (yc < yd and findMin) or (yc > yd and not findMin):
         return (a, d)
     else:
         return (c, b)
+
+
+def findExtBnd(f, a, b, tol=1e-9, findMin=True):
+    n = int(math.ceil(math.log(tol / (b - a)) / math.log(invphi)))
+    (p, q) = (min(a, b), max(a, b))
+    if q - p <= tol:
+        return (p, q)
+
+    yp = f(p)
+    yq = f(q)
+    r = 0.5 * (a + b)
+    yr = f(r)
+
+    i = 0
+
+    # p---r---q#
+
+    while (q - r) > tol or (r - p) > tol:
+        if r == p or r == q:
+            gss = True
+        else:
+            alpha = (yq - yp) / (q - p)
+            beta = (yr - yp - alpha * (r - p)) / ((r - p) * (r - q))
+            if (beta > 0 and findMin) or (beta < 0 and not findMin):
+                x = 0.5 * (a + b - alpha / beta)
+                yx = f(x)
+                if p < x < q and (
+                    (yx < yr and findMin) or (yx > yr and not findMin)
+                ):
+                    if x < r:
+                        q = r
+                        yq = yr
+                        r = x
+                        yr = yx
+                    else:
+                        p = r
+                        yp = yr
+                        r = x
+                        yr = yx
+                    gss = False
+                else:
+                    gss = True
+            else:
+                gss = True
+        if gss:
+            a = p
+            b = q
+            h = b - a
+
+            c = a + invphi2 * h
+            d = a + invphi * h
+            yc = f(c)
+            yd = f(d)
+
+            if (yc < yd and findMin) or (yc > yd and not findMin):
+                # a---c---d     b
+                # p---r---q
+                q = d
+                r = c
+                yr = yc
+            else:
+                # a     c--d---b
+                #       p--r---q
+                p = c
+                r = d
+                yr = yd
+
+        i += 1
+        if (n - i) <= 0:
+            raise ValueError("Diverged")
+
+    print(n - i)
+
+    if (yp < yq and findMin) or (yp > yq and not findMin):
+        return (p, r)
+    else:
+        return (r, q)
 
 
 def RKF45OverTuple(
@@ -401,11 +471,17 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=100):
 
 
 if __name__ == "__main__":
+    """
     from random import uniform
-
     for _ in range(10):
         print(
             cubic(
                 uniform(-1, 1), uniform(-1, 1), uniform(-1, 1), uniform(-1, 1)
             )
         )
+    """
+
+    def f(x):
+        return (x - 1) ** 4
+
+    print(findExtBnd(f, -1, 10, tol=1e-9, findMin=True))
