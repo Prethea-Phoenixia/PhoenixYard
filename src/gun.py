@@ -1191,6 +1191,7 @@ class Gun:
             return self._fp_bar(Z, l_bar, v_bar)
 
         # tolerance is specified a bit differently for gold section search
+
         t_bar_p_1, t_bar_p_2 = gss(
             f,
             0,
@@ -1198,12 +1199,16 @@ class Gun:
             tol=tol,
             findMin=False,
         )
+
         t_bar_p = (t_bar_p_1 + t_bar_p_2) / 2
 
         Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
             self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol
         )
         p_bar_p = self._fp_bar(Z_p, l_bar_p, v_bar_p)
+        p_bar_max = self._fp_bar(Z_p + tol, l_bar_p - tol, v_bar_p - tol)
+        p_bar_min = self._fp_bar(Z_p - tol, l_bar_p + tol, v_bar_p + tol)
+
         # returns the minimum barrel length required to contain the burnup.
         # the velocity at the burnup point
         # peak pressure
@@ -1211,6 +1216,8 @@ class Gun:
             l_bar_b * self.l_0,
             v_bar_b * self.v_j,
             p_bar_p * self.f * self.Delta,
+            p_bar_max * self.f * self.Delta,
+            p_bar_min * self.f * self.Delta,
         )
 
     def findBL(self, targetVel, abortLength, tol=1e-3):
@@ -1251,10 +1258,11 @@ class Gun:
         lengthGunMax,
         loadFractionMin,
         loadFractionMax,
-        grainArcMin=1e-3,
-        grainArcMax=5e-3,
-        tol=1e-3,
-        step=25,
+        grainArcMin,
+        grainArcMax,
+        tol,
+        xstep,
+        ystep,
     ):
         """does constrained design, finding the design space, with
         requisite grain size and
@@ -1270,25 +1278,26 @@ class Gun:
         aSpace = []
         lSpace = []
         xs = [
-            i * (loadFractionMax - loadFractionMin) / (step - 1)
+            i * (loadFractionMax - loadFractionMin) / (xstep - 1)
             + loadFractionMin
-            for i in range(step)
+            for i in range(xstep)
         ]
         ys = [
-            j * (chargeMassMax - chargeMassMin) / (step - 1) + chargeMassMin
-            for j in range(step)
+            j * (chargeMassMax - chargeMassMin) / (ystep - 1) + chargeMassMin
+            for j in range(ystep)
         ]
-        for j in range(step):
+        for j in range(ystep):
             chargeMass = (
-                j * (chargeMassMax - chargeMassMin) / (step - 1) + chargeMassMin
+                j * (chargeMassMax - chargeMassMin) / (ystep - 1)
+                + chargeMassMin
             )
 
             aSpaceCM = []
             lSpaceCM = []
 
-            for i in range(step):
+            for i in range(xstep):
                 loadFraction = (
-                    i * (loadFractionMax - loadFractionMin) / (step - 1)
+                    i * (loadFractionMax - loadFractionMin) / (xstep - 1)
                     + loadFractionMin
                 )
 
@@ -1306,7 +1315,7 @@ class Gun:
                         chamberExpansion,
                     )
                     try:
-                        l_b, v_b, p_p = gun.getBP(
+                        l_b, v_b, p_p, p_max, p_min = gun.getBP(
                             abortLength=lengthGunMax,
                             abortVel=designedVel,
                             tol=tol,
@@ -1318,9 +1327,9 @@ class Gun:
                         solutions. If instead the solution space was any other shape
                         this would have been cause for a grievious error."""
 
-                        return inf, None
+                        return inf, None, None, None
 
-                    return abs(p_p - designedPress), gun
+                    return abs(p_p - designedPress), gun, p_max, p_min
 
                 m = 1
 
@@ -1344,7 +1353,7 @@ class Gun:
                             if maxValida > v > minValida:
                                 continue
 
-                            _, det = f_a(v)
+                            _, det, _, _ = f_a(v)
 
                             if det is not None:
                                 if v < minValida:
@@ -1354,9 +1363,12 @@ class Gun:
 
                     m += 1
 
+                # print(minValida, maxValida)
+
                 try:
                     if minValida >= maxValida:
-                        raise ValueError("no valid arc range")
+                        raise ValueError("arc.range.")
+
                     a_1, a_2 = gss(
                         lambda x: f_a(x)[0],
                         minValida,
@@ -1364,23 +1376,26 @@ class Gun:
                         tol=tol * grainArcMin,
                         findMin=True,
                     )
+
                     a = 0.5 * (a_1 + a_2)
 
-                    DeltaP, gun = f_a(a)
-                    if DeltaP < designedPress * tol:
+                    DeltaP, gun, pmax, pmin = f_a(a)
+
+                    if pmin < designedPress < pmax:
                         l_g = gun.findBL(designedVel, lengthGunMax, tol=tol)
 
                         if lengthGunMin <= l_g <= lengthGunMax:
                             aSpaceCM.append(a)
                             lSpaceCM.append(l_g)
                         else:
-                            raise ValueError
+                            raise ValueError("Gun.len.")
                     else:
-                        raise ValueError
+                        raise ValueError("P.low.")
 
                 except ValueError as e:
-                    lSpaceCM.append(None)
-                    aSpaceCM.append(None)
+                    # print(e)
+                    lSpaceCM.append(str(e))
+                    aSpaceCM.append(str(e))
 
             aSpace.append(aSpaceCM)
             lSpace.append(lSpaceCM)
@@ -1390,7 +1405,7 @@ class Gun:
         print("designed vel: ", designedVel)
         print("designed Pmax: ", designedPress)
         tabuleau = [None] * (len(lSpace) + len(aSpace))
-        tabuleau[::2] = ((j, "Tube length", *i) for i, j in zip(lSpace, ys))
+        tabuleau[::2] = ((j, "Tube length:", *i) for i, j in zip(lSpace, ys))
         tabuleau[1::2] = ((j, "Grain arc:", *i) for i, j in zip(aSpace, ys))
         print(
             tabulate(
@@ -1511,7 +1526,14 @@ if __name__ == "__main__":
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )
-    print(test.getBP(tol=1e-3, abortVel=1200, abortLength=3.5))
+    print(
+        test.getBP(
+            abortVel=2000,
+            abortLength=5,
+            tol=1e-3,
+        )
+    )
+
     test = Gun.constrained(
         0.05,
         1.0,
@@ -1526,13 +1548,14 @@ if __name__ == "__main__":
         designedPress=300e6,
         designedVel=1600,
         lengthGunMin=1,
-        lengthGunMax=10,
-        loadFractionMin=0.33,
-        loadFractionMax=0.66,
-        grainArcMin=0.5e-3,
+        lengthGunMax=100,
+        loadFractionMin=0.1,
+        loadFractionMax=0.3,
+        grainArcMin=0.1e-3,
         grainArcMax=5e-3,
         tol=1e-3,
-        step=5,
+        xstep=12,
+        ystep=6,
     )
 
     # print(*test.integrate(10, 1e-5, dom="length"), sep="\n")
