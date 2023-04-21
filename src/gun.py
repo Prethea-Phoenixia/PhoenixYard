@@ -6,6 +6,18 @@ from math import pi, log, exp, inf
 from num import *
 
 
+class AbortedDueToVelocity(ValueError):
+    def __init__(self, message=""):
+        self.message = message
+        super().__init__(self.message)
+
+
+class AbortedDueToLength(ValueError):
+    def __init__(self, message=""):
+        self.message = message
+        super().__init__(self.message)
+
+
 class Geometry(enum.Enum):
     """table 1-4 from ref[1] page 33"""
 
@@ -1166,15 +1178,13 @@ class Gun:
                 tol=tol,
                 termAbv=(None, abortLength / self.l_0, abortVel / self.v_j),
             )
-
-            if any(
-                (
-                    l_bar_b > abortLength / self.l_0,
-                    v_bar_b > abortVel / self.v_j,
+            if l_bar_b > abortLength / self.l_0:
+                raise AbortedDueToLength(
+                    "burnout cannot be found within the abort length specified"
                 )
-            ):
-                raise ValueError(
-                    "Burnout cannot be found within the abort range specified"
+            elif v_bar_b > abortVel / self.v_j:
+                raise AbortedDueToVelocity(
+                    "burnout cannot be found within the abort velocity specified"
                 )
 
         except ValueError as e:
@@ -1235,188 +1245,7 @@ class Gun:
         except ValueError as e:
             raise e
 
-        if l_bar_e * self.l_0 > abortLength:
-            raise ValueError
         return l_bar_e * self.l_0
-
-    @classmethod
-    def constrained(
-        cls,
-        caliber,
-        shotMass,
-        propComp,
-        propGeom,
-        chargeMassMin,
-        chargeMassMax,
-        grainPR,
-        grainLDR,
-        startPressure,
-        chamberExpansion,
-        designedPress,
-        designedVel,
-        lengthGunMin,
-        lengthGunMax,
-        loadFractionMin,
-        loadFractionMax,
-        grainArcMin,
-        grainArcMax,
-        tol,
-        xstep,
-        ystep,
-    ):
-        """does constrained design, finding the design space, with
-        requisite grain size and
-        length of gun to achieve the specified gun peak pressure and
-        shot velocity, subjected to the constraint given.
-        """
-
-        if loadFractionMax >= 0.99 or loadFractionMin <= 0.01:
-            raise ValueError(
-                "The specified load fraction is impractical. (<=0.01/>=0.99)"
-            )
-
-        aSpace = []
-        lSpace = []
-        xs = [
-            i * (loadFractionMax - loadFractionMin) / (xstep - 1)
-            + loadFractionMin
-            for i in range(xstep)
-        ]
-        ys = [
-            j * (chargeMassMax - chargeMassMin) / (ystep - 1) + chargeMassMin
-            for j in range(ystep)
-        ]
-        for j in range(ystep):
-            chargeMass = (
-                j * (chargeMassMax - chargeMassMin) / (ystep - 1)
-                + chargeMassMin
-            )
-
-            aSpaceCM = []
-            lSpaceCM = []
-
-            for i in range(xstep):
-                loadFraction = (
-                    i * (loadFractionMax - loadFractionMin) / (xstep - 1)
-                    + loadFractionMin
-                )
-
-                def f_a(a):
-                    prop = Propellant(propComp, propGeom, a, grainPR, grainLDR)
-                    cv = chargeMass / (prop.rho_p * prop.maxLF * loadFraction)
-                    gun = Gun(
-                        caliber,
-                        shotMass,
-                        prop,
-                        chargeMass,
-                        cv,
-                        startPressure,
-                        1,  # this doesn't matter now.
-                        chamberExpansion,
-                    )
-                    try:
-                        l_b, v_b, p_p, p_max, p_min = gun.getBP(
-                            abortLength=lengthGunMax,
-                            abortVel=designedVel,
-                            tol=tol,
-                        )
-
-                    except ValueError as e:
-                        """this approach is only possible since we have confidence
-                        in that the valid solutions are islands surrounded by invalid
-                        solutions. If instead the solution space was any other shape
-                        this would have been cause for a grievious error."""
-
-                        return inf, None, None, None
-
-                    return abs(p_p - designedPress), gun, p_max, p_min
-
-                m = 1
-
-                if f_a(grainArcMax)[1] is not None:
-                    maxValida = grainArcMax
-                else:
-                    maxValida = grainArcMin
-                if f_a(grainArcMin)[1] is not None:
-                    minValida = grainArcMin
-                else:
-                    minValida = grainArcMax
-
-                while 2**-m > tol:
-                    for n in range(0, 2**m):
-                        if n % 2 != 0:
-                            v = (
-                                n * (grainArcMax - grainArcMin) / 2**m
-                                + grainArcMin
-                            )
-
-                            if maxValida > v > minValida:
-                                continue
-
-                            _, det, _, _ = f_a(v)
-
-                            if det is not None:
-                                if v < minValida:
-                                    minValida = v
-                                if v > maxValida:
-                                    maxValida = v
-
-                    m += 1
-
-                # print(minValida, maxValida)
-
-                try:
-                    if minValida >= maxValida:
-                        raise ValueError("arc.range.")
-
-                    a_1, a_2 = gss(
-                        lambda x: f_a(x)[0],
-                        minValida,
-                        maxValida,
-                        tol=tol * grainArcMin,
-                        findMin=True,
-                    )
-
-                    a = 0.5 * (a_1 + a_2)
-
-                    DeltaP, gun, pmax, pmin = f_a(a)
-
-                    if pmin < designedPress < pmax:
-                        l_g = gun.findBL(designedVel, lengthGunMax, tol=tol)
-
-                        if lengthGunMin <= l_g <= lengthGunMax:
-                            aSpaceCM.append(a)
-                            lSpaceCM.append(l_g)
-                        else:
-                            raise ValueError("Gun.len.")
-                    else:
-                        raise ValueError("P.low.")
-
-                except ValueError as e:
-                    # print(e)
-                    lSpaceCM.append(str(e))
-                    aSpaceCM.append(str(e))
-
-            aSpace.append(aSpaceCM)
-            lSpace.append(lSpaceCM)
-
-        from tabulate import tabulate
-
-        print("designed vel: ", designedVel)
-        print("designed Pmax: ", designedPress)
-        tabuleau = [None] * (len(lSpace) + len(aSpace))
-        tabuleau[::2] = ((j, "Tube length:", *i) for i, j in zip(lSpace, ys))
-        tabuleau[1::2] = ((j, "Grain arc:", *i) for i, j in zip(aSpace, ys))
-        print(
-            tabulate(
-                tabuleau,
-                headers=(
-                    "Charge Mass",
-                    "Load Fraction",
-                    *(round(x, 2) for x in xs),
-                ),
-            )
-        )
 
     # values
     def getEff(self, vg):
@@ -1532,30 +1361,6 @@ if __name__ == "__main__":
             abortLength=5,
             tol=1e-3,
         )
-    )
-
-    test = Gun.constrained(
-        0.05,
-        1.0,
-        M17,
-        Geometry.SEVEN_PERF_ROSETTE,
-        chargeMassMin=0.5,
-        chargeMassMax=2,
-        grainPR=0,
-        grainLDR=2.5,
-        startPressure=30e6,
-        chamberExpansion=1.1,
-        designedPress=300e6,
-        designedVel=1600,
-        lengthGunMin=1,
-        lengthGunMax=100,
-        loadFractionMin=0.1,
-        loadFractionMax=0.3,
-        grainArcMin=0.1e-3,
-        grainArcMax=5e-3,
-        tol=1e-3,
-        xstep=12,
-        ystep=6,
     )
 
     # print(*test.integrate(10, 1e-5, dom="length"), sep="\n")
