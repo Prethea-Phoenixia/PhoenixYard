@@ -1283,13 +1283,17 @@ class Gun:
         """
         technically speaking we should use self.Z_0 here, but that must be solved
         """
-        Zs = (0, -self.labda / (3 * self.mu), 1, self.Z_b)
+        Zp = -self.labda / (3 * self.mu)
+
+        Zs = (self.Z_0, 1, self.Z_b)
+        if 0 < Zp < 1:
+            Zs.append(Zp)
 
         def dPsi(Z):
             """
             returns dPsi/dZ
             """
-            if Z < 1:
+            if Z <= 1:
                 return (
                     self.chi
                     + 2 * self.labda * self.chi * Z
@@ -1320,7 +1324,6 @@ if __name__ == "__main__":
 
     M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1.5e-3, 0, 2.5)
 
-    # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
     lf = 0.5
     print("DELTA:", lf * M17SHC.maxLF)
     test = Gun(
@@ -1337,14 +1340,14 @@ if __name__ == "__main__":
         print("\nnumerical: time")
         print(
             tabulate(
-                test.integrate(10, 1e-5, dom="time"),
+                test.integrate(10, 1e-5, dom="time")[0],
                 headers=("tag", "t", "l", "phi", "v", "p", "T"),
             )
         )
         print("\nnumerical: length")
         print(
             tabulate(
-                test.integrate(10, 1e-5, dom="length"),
+                test.integrate(10, 1e-5, dom="length")[0],
                 headers=("tag", "t", "l", "phi", "v", "p", "T"),
             )
         )
