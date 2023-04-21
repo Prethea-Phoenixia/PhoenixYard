@@ -94,20 +94,30 @@ def loadfont(fontpath, private=True, enumerable=False):
 
 
 def toSI(v, dec=4, unit=None, useSN=False):
+    if v >= 0:
+        positive = True
+    else:
+        positive = False
+    v = abs(v)
     for prefix, magnitude, nextMagnitude in zip(
         _prefix.keys(),
         tuple(_prefix.values())[:-1],
         tuple(_prefix.values())[1:],
     ):
-        if 1 <= (v / magnitude) < nextMagnitude / magnitude:
+        if 1 <= (v / magnitude) < (nextMagnitude / magnitude):
             # allows handling of non-uniformly log10 spaced prefixes
             vstr = "{:#.{:}g}".format(v / magnitude, dec)
             return (
-                vstr
+                (" " if positive else "-")
+                + vstr
                 + " " * (dec + 1 - len(vstr) + vstr.find("."))
                 + (
-                    "x10{:<3}".format(
-                        get_super("{:.0g}".format(log(magnitude, 10)))
+                    (
+                        "x10{:<3}".format(
+                            get_super("{:.0g}".format(log(magnitude, 10)))
+                        )
+                        if magnitude != 1
+                        else "      "  # 6 SPACES!
                     )
                     if useSN
                     else prefix
@@ -116,12 +126,32 @@ def toSI(v, dec=4, unit=None, useSN=False):
             )
     if v == 0:
         return (
-            "{:#.{:}g}".format(v, dec)
+            (" " if positive else "-")
+            + "{:#.{:}g}".format(v, dec)
             + "  "
             + (unit if unit is not None else "")
         )
     else:
-        raise ValueError(v + " not possible to assign a SI prefix")
+        raise ValueError(str(v) + " not possible to assign a SI prefix")
+
+
+def arrErr(errLst, units, useSN):
+    negLst = []
+    posLst = []
+    for line in errLst:
+        firstLine = []
+        secondLine = []
+        for err, u, sn in zip(line, units, useSN):
+            if isinstance(err, tuple):
+                firstLine.append(toSI(float(err[0]), unit=u, useSN=sn))
+                secondLine.append(toSI(float(err[1]), unit=u, useSN=sn))
+            else:
+                firstLine.append("")
+                secondLine.append("")
+        negLst.append(firstLine)
+        posLst.append(secondLine)
+
+    return negLst, posLst
 
 
 def validateNN(inp):
@@ -305,6 +335,7 @@ class IB(Frame):
         geom = self.geometries[self.dropGeom.get()]
 
         self.tableData = []
+        self.errorData = []
 
         self.resetSpec()
 
@@ -369,7 +400,6 @@ class IB(Frame):
             self.lerr.set(toSI(l_err))
             self.psierr.set(toSI(psi_e))
             self.verr.set(toSI(v_err))
-        # self.perr.set(toSI(p_err))
 
         except Exception as e:
             self.gun = None
@@ -381,7 +411,7 @@ class IB(Frame):
 
         if self.gun is not None:
             try:
-                self.tableData = self.gun.integrate(
+                self.tableData, self.errorData = self.gun.integrate(
                     steps=int(self.steps.get()),
                     dom=self.dropOptn.get(),
                     tol=10 ** -(int(self.accExp.get())),
@@ -399,14 +429,28 @@ class IB(Frame):
                     self.errorLst.append(str(e))
 
         self.tv.delete(*self.tv.get_children())
-        self.tableData = dot_aligned(
+        useSN = (False, False, False, True, False, False, True)
+        units = (None, "s", "m", None, "m/s", "Pa", "K")
+        tableData = dot_aligned(
             self.tableData,
-            units=(None, "s", "m", None, "m/s", "Pa", "K"),
-            useSN=(False, False, False, True, False, False, True),
+            units=units,
+            useSN=useSN,
         )
-
-        for row in self.tableData:
-            self.tv.insert("", "end", values=row, tags=(row[0], "monospace"))
+        negErr, posErr = arrErr(self.errorData, units=units, useSN=useSN)
+        i = 0
+        for row, negrow, posrow in zip(tableData, negErr, posErr):
+            self.tv.insert(
+                "", "end", str(i), values=row, tags=(row[0], "monospace")
+            )
+            self.tv.insert(
+                str(i), "end", str(i + 1), values=negrow, tags="error"
+            )
+            self.tv.insert(
+                str(i), "end", str(i + 2), values=posrow, tags="error"
+            )
+            self.tv.move(str(i + 1), str(i), "end")
+            self.tv.move(str(i + 2), str(i), "end")
+            i += 3
 
         self.updateError()
 
@@ -954,6 +998,8 @@ class IB(Frame):
         t_Font = tkFont.Font(family="hack", size=8)
 
         self.tv.tag_configure("monospace", font=t_Font)
+        self.tv.tag_configure("error", font=("hack", 7), foreground="grey")
+
         # we use a fixed width font so any char will do
         width, height = t_Font.measure("m"), t_Font.metrics("linespace")
 
