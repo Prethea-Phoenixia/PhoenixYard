@@ -469,8 +469,6 @@ class Gun:
         burning or right on the burnout point..
         """
         while Z_i < self.Z_b:  # terminates if burnout is achieved
-            # print(Z_i, Z_j, N)
-
             if Z_j == Z_i:
                 raise ValueError(
                     "Numerical accuracy exhausted in search of exit/burnout point."
@@ -739,18 +737,35 @@ class Gun:
             )
             for (tag, t_bar, l_bar, Z, v_bar, p_bar) in bar_data
         )
-        """
-        t_bar_v, Z_v, l_bar_v = RKF45OverTuple(
-            self._ode_v, (0, self.Z_0, 0), 0, v_bar_e, tol=tol
-        )
-        print(t_bar_v - t_bar_e, Z_v - self.Z_b, l_bar_v - l_g_bar)
-        """
+
         data = list(
             (tag, t, l, psi, v, p, self._T(psi, l, p))
             for (tag, t, l, psi, v, p) in data
         )
 
-        return data
+        error = list(
+            (
+                tag,
+                (-tol * self.l_0 / self.v_j, tol * self.l_0 / self.v_j),
+                (-tol * self.l_0, tol * self.l_0),
+                (
+                    self._fpsi(Z - tol) - self._fpsi(Z),
+                    self._fpsi(Z + tol) - self._fpsi(Z),
+                ),
+                (-tol * self.v_j, tol * self.v_j),
+                (
+                    (self._fp_bar(Z - tol, l_bar + tol, v_bar + tol) - p_bar)
+                    * self.f
+                    * self.Delta,
+                    (self._fp_bar(Z + tol, l_bar - tol, v_bar - tol) - p_bar)
+                    * self.f
+                    * self.Delta,
+                ),
+            )
+            for (tag, t_bar, l_bar, Z, v_bar, p_bar) in bar_data
+        )
+
+        return data, error
 
     def analyze(self, it=250, tol=1e-5):
         """run the psi-bar analytical solution on the defined weapon
@@ -940,8 +955,6 @@ class Gun:
         chi_k = (psi_k / xi_k - xi_k) / (1 - xi_k)
         labda_k = 1 - 1 / chi_k
 
-        # print(-chi_k * labda_k, "xi**2", chi_k, "xi")
-
         def _psi_fracture(xi):
             """xi as in greek letter ξ
             ψ(ξ) = χ_K * ξ - λ_k * χ_K * ξ^2
@@ -960,7 +973,7 @@ class Gun:
         Labda_1 = (
             l_k / self.l_0
         )  # reference is wrong, this is the implied definition
-        # print(l_k)
+
         B_2 = self.S**2 * I_s**2 / (self.f * self.omega * self.phi * self.m)
         B_2_bar = B_2 / (chi_k * labda_k)
         xi_k_bar = labda_k * xi_k
@@ -1363,8 +1376,6 @@ class Gun:
 
                     m += 1
 
-                # print(minValida, maxValida)
-
                 try:
                     if minValida >= maxValida:
                         raise ValueError("arc.range.")
@@ -1393,7 +1404,6 @@ class Gun:
                         raise ValueError("P.low.")
 
                 except ValueError as e:
-                    # print(e)
                     lSpaceCM.append(str(e))
                     aSpaceCM.append(str(e))
 
@@ -1441,13 +1451,17 @@ class Gun:
         """
         technically speaking we should use self.Z_0 here, but that must be solved
         """
-        Zs = (0, -self.labda / (3 * self.mu), 1, self.Z_b)
+        Zp = -self.labda / (3 * self.mu)
+
+        Zs = (self.Z_0, 1, self.Z_b)
+        if 0 < Zp < 1:
+            Zs.append(Zp)
 
         def dPsi(Z):
             """
             returns dPsi/dZ
             """
-            if Z < 1:
+            if Z <= 1:
                 return (
                     self.chi
                     + 2 * self.labda * self.chi * Z
@@ -1478,7 +1492,6 @@ if __name__ == "__main__":
 
     M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1.5e-3, 0, 2.5)
 
-    # print(1 / M17SHC.rho_p / M17SHC.maxLF / 1)
     lf = 0.5
     print("DELTA:", lf * M17SHC.maxLF)
     test = Gun(
@@ -1495,14 +1508,14 @@ if __name__ == "__main__":
         print("\nnumerical: time")
         print(
             tabulate(
-                test.integrate(10, 1e-5, dom="time"),
+                test.integrate(10, 1e-5, dom="time")[0],
                 headers=("tag", "t", "l", "phi", "v", "p", "T"),
             )
         )
         print("\nnumerical: length")
         print(
             tabulate(
-                test.integrate(10, 1e-5, dom="length"),
+                test.integrate(10, 1e-5, dom="length")[0],
                 headers=("tag", "t", "l", "phi", "v", "p", "T"),
             )
         )
