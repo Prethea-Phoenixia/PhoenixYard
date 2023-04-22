@@ -533,18 +533,6 @@ class Gun:
             raise ValueError("exit/burnout point found to be at the origin.")
 
         """
-        # verify the cumulative error is small enough
-        t_bar_v, l_bar_v, v_bar_v = RKF45OverTuple(
-            self._ode_Z,
-            (0, 0, 0),
-            self.Z_0,
-            Z_i,
-            tol=tol,
-            termAbv=(None, l_g_bar, None),
-        )
-        print(t_bar_v - t_bar_i, l_bar_v - l_bar_i, v_bar_v - v_bar_i)
-        """
-        """
         Subscript e indicate exit condition.
         At this point, since its guaranteed that point i will be further
         towards the chamber of the firearm than point e, we do not have
@@ -775,6 +763,25 @@ class Gun:
                 ),
             )
             for (tag, t_bar, l_bar, Z, v_bar, p_bar) in bar_data
+        )
+
+        error = list(
+            (
+                tag,
+                t_err,
+                l_err,
+                Z_err,
+                v_err,
+                (dp_neg, dp_pos),
+                (
+                    self._T(psi + tol, l - tol, p + dp_neg) - T,
+                    self._T(psi - tol, l + tol, p + dp_pos) - T,
+                ),
+            )
+            for (
+                (tag, t_err, l_err, Z_err, v_err, (dp_neg, dp_pos)),
+                (_, _, l, psi, _, p, T),
+            ) in zip(error, data)
         )
 
         return data, error

@@ -282,7 +282,7 @@ if __name__ == "__main__":
         loadFractionMax=0.65,
         grainArcMin=0.01e-3,
         grainArcMax=3e-3,
-        tol=1e-2,
+        tol=1e-3,
         xstep=12,
         ystep=12,
     )
