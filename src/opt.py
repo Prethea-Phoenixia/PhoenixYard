@@ -79,7 +79,7 @@ def searchChargeMass(context, chargeMass):
         else:
             minValida = grainArcMax
 
-        while 2**-m > tol:
+        while 2**-m > min(tol, grainArcMin / (grainArcMax - grainArcMin)):
             for n in range(0, 2**m):
                 if n % 2 != 0:
                     v = n * (grainArcMax - grainArcMin) / 2**m + grainArcMin
@@ -101,6 +101,12 @@ def searchChargeMass(context, chargeMass):
 
         try:
             if minValida >= maxValida:
+                """
+                DNE a valid range of arc such that:
+                    burnout is contained within max length
+                    designed velocity is achieved after burnout
+
+                """
                 raise ValueError("!ARC")
 
             a_1, a_2 = gss(
@@ -116,10 +122,6 @@ def searchChargeMass(context, chargeMass):
             DeltaP, gun, pmax, pmin, err = f_a(a)
 
             if gun is None:  # this **really** should not happen
-                """
-                print(minValida, maxValida)
-                print(a)
-                """
                 if isinstance(err, AbortedDueToLength):
                     raise ValueError("L<B.O.")
                 elif isinstance(err, AbortedDueToVelocity):
@@ -128,6 +130,13 @@ def searchChargeMass(context, chargeMass):
                     raise err
 
             if pmax < designedPress:
+                """
+                the required arc:
+                    to develop sufficient pressure, and:
+                    to contain the burnout within max length, and:
+                    to contain the designed velocity within the same.
+                is smaller than required
+                """
                 raise ValueError("A<MIN")
 
             elif pmin > designedPress:
@@ -259,8 +268,8 @@ if __name__ == "__main__":
         1.0,
         M17,
         Geometry.SEVEN_PERF_ROSETTE,
-        chargeMassMin=0.33,
-        chargeMassMax=3,
+        chargeMassMin=0.6,
+        chargeMassMax=6,
         grainPR=0,
         grainLDR=2.5,
         startPressure=30e6,
@@ -271,9 +280,9 @@ if __name__ == "__main__":
         lengthGunMax=10,
         loadFractionMin=0.05,
         loadFractionMax=0.65,
-        grainArcMin=0.6e-3,
+        grainArcMin=0.01e-3,
         grainArcMax=3e-3,
-        tol=1e-3,
+        tol=1e-2,
         xstep=12,
         ystep=12,
     )
