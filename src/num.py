@@ -394,6 +394,13 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=100):
 
 
 def findExtBnd(f, a, b, tol=1e-9, findMin=True):
+    """
+    Although theoretically this saves a few cycles comapred to straight
+    gold section search, it is also conditionally worse, and due to the
+    extra calculation involved, it is actually slower than straight
+    gss. Therefore it is only here as a testament to the effrot put into
+    making the code faster.
+    """
     n = int(math.ceil(math.log(tol / (b - a)) / math.log(invphi)))
     (p, q) = (min(a, b), max(a, b))
     if q - p <= tol:

@@ -1,6 +1,8 @@
 from gun import *
 import multiprocessing
 
+import time
+
 
 def flatten(l):
     """
@@ -74,10 +76,15 @@ def searchChargeMass(context, chargeMass):
             maxValida = grainArcMax
         else:
             maxValida = grainArcMin
+
         if f_a(grainArcMin)[1] is not None:
             minValida = grainArcMin
         else:
             minValida = grainArcMax
+
+        t0 = time.time()
+
+        # FIXME: This segment of code is extremely long running
 
         while 2**-m > min(tol, grainArcMin / (grainArcMax - grainArcMin)):
             for n in range(0, 2**m):
@@ -97,6 +104,10 @@ def searchChargeMass(context, chargeMass):
 
             m += 1
 
+        t1 = time.time()
+
+        print("validation of arc range took:", t1 - t0)
+
         # print(minValida, maxValida)
 
         try:
@@ -115,9 +126,13 @@ def searchChargeMass(context, chargeMass):
                 maxValida,
                 tol=tol * grainArcMin,
                 findMin=True,
-            )
+            )  # minimize the deviation of actual developed pressure with desired
 
             a = 0.5 * (a_1 + a_2)
+
+            t2 = time.time()
+
+            print("minimizing pressure deviation took:", t2 - t1)
 
             DeltaP, gun, pmax, pmin, err = f_a(a)
 
