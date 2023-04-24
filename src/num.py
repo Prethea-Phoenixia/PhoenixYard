@@ -262,6 +262,7 @@ def RKF45OverTuple(
             h = x_1 - x
 
     if abs(x - x_1) > tol:
+        print("vanished")
         raise ValueError(
             "Premature Termination of Integration due to vanishing step size,"
             + " x at {}, h at {}.".format(x, h)
