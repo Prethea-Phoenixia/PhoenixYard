@@ -800,16 +800,14 @@ class IB(Frame):
         stpText = " ".join(
             (
                 "Peak pressure that initially resists",
-                "the movement of shot. For rifled weapons",
-                "this is predominantely caused by the",
-                "shot or band being squeezed in to contact",
-                "with the rifling. For large caliber guns",
-                "25-30MPa is common. For rifles, 35-45MPa",
-                "is common.",
-                "For smoothbore weapons, this is instead",
-                "caused by cartridge holding on to the",
-                "projectile, greatly varying depending",
-                "on desired rate of fire and shot weight.",
+                "the movement of shot. This is made up of",
+                "the rifling resisting the drive band or",
+                "shell body, the static friction of the",
+                "barrel, and the cartridge case holding onto",
+                "the shot (greatly varying between 0.25-15MPa",
+                "depending on caliber and desired RoF)\n",
+                "For large caliber guns 25-30MPa is common.",
+                "For rifles, 35-45MPa is common.",
             )
         )
 

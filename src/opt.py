@@ -27,16 +27,20 @@ def searchChargeMass(context, chargeMass):
         chamberExpansion,
         designedPress,
         designedVel,
-        lengthGunMin,
-        lengthGunMax,
+        lengthGunMinCal,
+        lengthGunMaxCal,
         grainArcMin,
         grainArcMax,
-        tol,
+        tol,  # numerical tolerance, unitless
+        arcTol,  # tolerance for the arc, representing manufacturing limit
         xs,
     ) = context
 
     aSpaceCM = []
     lSpaceCM = []
+
+    lengthGunMin = lengthGunMinCal * caliber
+    lengthGunMax = lengthGunMaxCal * caliber
 
     for loadFraction in xs:
 
@@ -72,45 +76,52 @@ def searchChargeMass(context, chargeMass):
 
         m = 1
 
-        if f_a(grainArcMax)[1] is not None:
-            maxValida = grainArcMax
-        else:
-            maxValida = grainArcMin
-
-        if f_a(grainArcMin)[1] is not None:
-            minValida = grainArcMin
-        else:
-            minValida = grainArcMax
-
-        t0 = time.time()
-
-        # FIXME: This segment of code is extremely long running
-
-        while 2**-m > min(tol, grainArcMin / (grainArcMax - grainArcMin)):
-            for n in range(0, 2**m):
-                if n % 2 != 0:
-                    v = n * (grainArcMax - grainArcMin) / 2**m + grainArcMin
-
-                    if maxValida > v > minValida:
-                        continue
-
-                    (_, det, _, _, _) = f_a(v)
-
-                    if det is not None:
-                        if v < minValida:
-                            minValida = v
-                        if v > maxValida:
-                            maxValida = v
-
-            m += 1
-
-        t1 = time.time()
-
-        print("validation of arc range took:", t1 - t0)
-
-        # print(minValida, maxValida)
-
         try:
+            DeltaP_a, gun_a, pmax_a, pmin_a, err = f_a(grainArcMax)
+            if gun_a is not None:  # and pmin_a < designedPress:
+                maxValida = grainArcMax
+            else:
+                maxValida = grainArcMin
+
+            DeltaP_a, gun_a, pmax_a, pmin_a, err = f_a(grainArcMin)
+            if gun_a is not None:  # and pmax_a > designedPress:
+                minValida = grainArcMin
+            else:
+                minValida = grainArcMax
+
+            t0 = time.time()
+
+            # FIXME: This segment of code is extremely long running
+
+            while 2**-m > arcTol / (grainArcMax - grainArcMin):
+                for n in range(0, 2**m):
+                    if n % 2 != 0:
+                        v = (
+                            n * (grainArcMax - grainArcMin) / 2**m
+                            + grainArcMin
+                        )
+
+                        if maxValida > v > minValida:
+                            continue
+
+                        (_, det, pmax_v, pmin_v, _) = f_a(v)
+
+                        if det is not None:
+                            if v < minValida:
+                                minValida = v
+
+                            if v > maxValida:
+                                maxValida = v
+
+                m += 1
+
+            t1 = time.time()
+
+            print(loadFraction, chargeMass)
+            print("validation of arc range took:", t1 - t0)
+
+            # print(minValida, maxValida)
+
             if minValida >= maxValida:
                 """
                 DNE a valid range of arc such that:
@@ -119,6 +130,8 @@ def searchChargeMass(context, chargeMass):
 
                 """
                 raise ValueError("!ARC")
+
+            # print(minValida, maxValida)
 
             a_1, a_2 = gss(
                 lambda x: f_a(x)[0],
@@ -165,7 +178,7 @@ def searchChargeMass(context, chargeMass):
                 raise ValueError("L>MAX")
             else:
                 aSpaceCM.append(a)
-                lSpaceCM.append(lg)
+                lSpaceCM.append(lg / caliber)
 
         except ValueError as e:
             lSpaceCM.append(str(e))
@@ -192,13 +205,14 @@ def constrained(
     chamberExpansion,
     designedPress,
     designedVel,
-    lengthGunMin,
-    lengthGunMax,
+    lengthGunMinCal,
+    lengthGunMaxCal,
     loadFractionMin,
     loadFractionMax,
     grainArcMin,
     grainArcMax,
     tol,
+    arcTol,
     xstep,
     ystep,
 ):
@@ -237,11 +251,12 @@ def constrained(
         chamberExpansion,
         designedPress,
         designedVel,
-        lengthGunMin,
-        lengthGunMax,
+        lengthGunMinCal,
+        lengthGunMaxCal,
         grainArcMin,
         grainArcMax,
         tol,
+        arcTol,
         xs,
     )
     """
@@ -284,20 +299,21 @@ if __name__ == "__main__":
         M17,
         Geometry.SEVEN_PERF_ROSETTE,
         chargeMassMin=0.6,
-        chargeMassMax=6,
+        chargeMassMax=3,
         grainPR=0,
         grainLDR=2.5,
         startPressure=30e6,
         chamberExpansion=1.1,
         designedPress=300e6,
         designedVel=1500,
-        lengthGunMin=0,
-        lengthGunMax=10,
+        lengthGunMinCal=0,
+        lengthGunMaxCal=500,
         loadFractionMin=0.05,
         loadFractionMax=0.65,
-        grainArcMin=0.01e-3,
+        grainArcMin=0.1e-3,
         grainArcMax=3e-3,
         tol=1e-3,
+        arcTol=1e-6,  # 1um
         xstep=12,
         ystep=12,
     )
