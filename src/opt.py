@@ -314,6 +314,6 @@ if __name__ == "__main__":
         grainArcMax=3e-3,
         tol=1e-3,
         arcTol=1e-6,  # 1um
-        xstep=12,
-        ystep=12,
+        xstep=2,
+        ystep=2,
     )

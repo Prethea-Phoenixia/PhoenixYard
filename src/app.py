@@ -933,7 +933,7 @@ class IB(Frame):
             i,
             0,
             "-log10(ε)",
-            default="5",
+            default="3",
             validation=validationPI,
             formatter=formatIntInput,
             color="red",

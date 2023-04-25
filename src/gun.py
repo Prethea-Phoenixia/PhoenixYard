@@ -486,7 +486,7 @@ class Gun:
                     "Numerical accuracy exhausted in search of exit/burnout point."
                 )
             try:
-                t_bar_j, l_bar_j, v_bar_j = RKF45OverTuple(
+                t_bar_j, l_bar_j, v_bar_j = RKF45(
                     self._ode_Z,
                     (t_bar_i, l_bar_i, v_bar_i),
                     Z_i,
@@ -497,7 +497,7 @@ class Gun:
 
             except ValueError as e:
                 raise ValueError(
-                    "Unable to integrate system due to ill defined system, requiring"
+                    "Unable to integrate sdue to ill defined system, requiring"
                     + " vanishingly step size. Reducing tolerance limit is generally"
                     + " not useful. This is usually caused by excessive pressure spike."
                     + " Reduced propellant load or energy content,"
@@ -539,7 +539,7 @@ class Gun:
         to worry about the dependency of the correct behaviour of this ODE
         on the positive direction of integration.
         """
-        t_bar_e, Z_e, v_bar_e = RKF45OverTuple(
+        t_bar_e, Z_e, v_bar_e = RKF45(
             self._ode_l,
             (t_bar_i, Z_i, v_bar_i),
             l_bar_i,
@@ -564,7 +564,7 @@ class Gun:
             ODE w.r.t Z is integrated from Z_0 to 1, from onset of projectile
             movement to charge fracture
             """
-            t_bar_f, l_bar_f, v_bar_f = RKF45OverTuple(
+            t_bar_f, l_bar_f, v_bar_f = RKF45(
                 self._ode_Z,
                 (0, 0, 0),
                 self.Z_0,
@@ -590,7 +590,7 @@ class Gun:
             movement to charge burnout.
             """
 
-            t_bar_b, l_bar_b, v_bar_b = RKF45OverTuple(
+            t_bar_b, l_bar_b, v_bar_b = RKF45(
                 self._ode_Z,
                 (0, 0, 0),
                 self.Z_0,
@@ -618,7 +618,7 @@ class Gun:
         """
 
         def f(t_bar):
-            Z, l_bar, v_bar = RKF45OverTuple(
+            Z, l_bar, v_bar = RKF45(
                 self._ode_t,
                 (self.Z_0, 0, 0),
                 0,
@@ -628,6 +628,7 @@ class Gun:
             return self._fp_bar(Z, l_bar, v_bar)
 
         # tolerance is specified a bit differently for gold section search
+
         t_bar_p_1, t_bar_p_2 = gss(
             f,
             0,
@@ -637,7 +638,7 @@ class Gun:
         )
         t_bar_p = (t_bar_p_1 + t_bar_p_2) / 2
 
-        Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
+        Z_p, l_bar_p, v_bar_p = RKF45(
             self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol
         )
 
@@ -661,7 +662,7 @@ class Gun:
                 for j in range(1, steps):
                     t_bar_j = t_bar_e / steps * j
 
-                    Z_j, l_bar_j, v_bar_j = RKF45OverTuple(
+                    Z_j, l_bar_j, v_bar_j = RKF45(
                         self._ode_t,
                         (self.Z_0, 0, 0),
                         0,
@@ -692,7 +693,7 @@ class Gun:
                  ongoing).
                 """
                 t_bar_s = 0.5 * t_bar_i
-                Z_s, l_bar_s, v_bar_s = RKF45OverTuple(
+                Z_s, l_bar_s, v_bar_s = RKF45(
                     self._ode_t,
                     (self.Z_0, 0, 0),
                     0,
@@ -703,7 +704,7 @@ class Gun:
                 for i in range(1, steps):
                     l_bar_j = l_g_bar / steps * i
 
-                    t_bar_j, Z_j, v_bar_j = RKF45OverTuple(
+                    t_bar_j, Z_j, v_bar_j = RKF45(
                         self._ode_l,
                         (t_bar_s, Z_s, v_bar_s),
                         l_bar_s,
@@ -1190,7 +1191,7 @@ class Gun:
         """
         l_g_bar = self.l_g / self.l_0
         try:
-            t_bar_b, l_bar_b, v_bar_b = RKF45OverTuple(
+            t_bar_b, l_bar_b, v_bar_b = RKF45(
                 self._ode_Z,
                 (0, 0, 0),
                 self.Z_0,
@@ -1211,7 +1212,7 @@ class Gun:
             raise e
 
         def f(t_bar):
-            Z, l_bar, v_bar = RKF45OverTuple(
+            Z, l_bar, v_bar = RKF45(
                 self._ode_t,
                 (self.Z_0, 0, 0),
                 0,
@@ -1232,7 +1233,7 @@ class Gun:
 
         t_bar_p = (t_bar_p_1 + t_bar_p_2) / 2
 
-        Z_p, l_bar_p, v_bar_p = RKF45OverTuple(
+        Z_p, l_bar_p, v_bar_p = RKF45(
             self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol
         )
         p_bar_p = self._fp_bar(Z_p, l_bar_p, v_bar_p)
@@ -1254,7 +1255,7 @@ class Gun:
         """find the necessary barrel length to derive the requisite velocity"""
 
         try:
-            t_bar_e, Z_e, l_bar_e = RKF45OverTuple(
+            t_bar_e, Z_e, l_bar_e = RKF45(
                 self._ode_v,
                 (0, self.Z_0, 0),
                 0,
@@ -1329,9 +1330,9 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17"]
 
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1.5e-3, 0, 2.5)
+    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 0.92e-3, 0, 2.5)
 
-    lf = 0.5
+    lf = 0.66
     print("DELTA:", lf * M17SHC.maxLF)
     test = Gun(
         0.035,
@@ -1347,14 +1348,14 @@ if __name__ == "__main__":
         print("\nnumerical: time")
         print(
             tabulate(
-                test.integrate(10, 1e-5, dom="time")[0],
+                test.integrate(10, 1e-3, dom="time")[0],
                 headers=("tag", "t", "l", "phi", "v", "p", "T"),
             )
         )
         print("\nnumerical: length")
         print(
             tabulate(
-                test.integrate(10, 1e-5, dom="length")[0],
+                test.integrate(10, 1e-3, dom="length")[0],
                 headers=("tag", "t", "l", "phi", "v", "p", "T"),
             )
         )
@@ -1366,7 +1367,7 @@ if __name__ == "__main__":
     print("\nErrors")
     print(
         tabulate(
-            [test.getErr(1e-5)],
+            [test.getErr(1e-3)],
             headers=("t", "l", "phi", "v", "p"),
         )
     )

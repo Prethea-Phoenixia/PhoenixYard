@@ -138,9 +138,7 @@ def gss(f, a, b, tol=1e-9, findMin=True):
         return (c, b)
 
 
-def RKF45OverTuple(
-    dTupleFunc, iniValTuple, x_0, x_1, tol, termAbv=(None, None, None)
-):
+def RKF45(dFunc, iniVal, x_0, x_1, tol, termAbv=None):
     """
     Runge Kutta Fehlberg method, of the fourth and fifth order
     Even though this involves a lot more computation per cycle,
@@ -152,7 +150,10 @@ def RKF45OverTuple(
     where if this condition is hit, the current iteration of
     integration is returned.
     """
-    y_this = iniValTuple
+    # i = 0
+    if termAbv is None:
+        termAbv = tuple(None for _ in iniVal)
+    y_this = iniVal
     x = x_0
     beta = 0.9  # "safety" factor
     h = 0.1 * (x_1 - x_0)  # initial step size
@@ -160,15 +161,15 @@ def RKF45OverTuple(
         if (x + h) == x:
             break  # catch the error using the final lines
         try:
-            K1 = dTupleFunc(x, *y_this)
+            K1 = dFunc(x, *y_this)
             K1 = tuple(k * h for k in K1)
 
-            K2 = dTupleFunc(
+            K2 = dFunc(
                 x + 0.25 * h, *(y + 0.25 * k1 for y, k1 in zip(y_this, K1))
             )
             K2 = tuple(k * h for k in K2)
 
-            K3 = dTupleFunc(
+            K3 = dFunc(
                 x + 0.375 * h,
                 *(
                     y + (3 * k1 + 9 * k2) / 32
@@ -177,7 +178,7 @@ def RKF45OverTuple(
             )
             K3 = tuple(k * h for k in K3)
 
-            K4 = dTupleFunc(
+            K4 = dFunc(
                 x + 12 / 13 * h,
                 *(
                     y + (1932 * k1 - 7200 * k2 + 7296 * k3) / 2197
@@ -186,7 +187,7 @@ def RKF45OverTuple(
             )
             K4 = tuple(k * h for k in K4)
 
-            K5 = dTupleFunc(
+            K5 = dFunc(
                 x + h,
                 *(
                     y
@@ -200,7 +201,7 @@ def RKF45OverTuple(
             K5 = tuple(k * h for k in K5)
 
             # 20520
-            K6 = dTupleFunc(
+            K6 = dFunc(
                 x + 0.5 * h,
                 *(
                     y
@@ -239,12 +240,13 @@ def RKF45OverTuple(
             for y, k1, k3, k4, k5, k6 in zip(y_this, K1, K3, K4, K5, K6)
         )  # fifth order estimation
 
-        epsilon = sum(
-            abs(z - y) for z, y in zip(z_next, y_next)
+        R = (
+            sum(abs(z - y) for z, y in zip(z_next, y_next)) / h
         )  # error estimation
 
-        if epsilon >= tol:  # error is greater than acceptable
-            h *= beta * (tol / epsilon) ** 0.2
+        if R >= tol:  # error is greater than acceptable
+            h *= beta * abs(tol / R) ** 0.2
+
         else:  # error is acceptable
             y_this = y_next
             x += h
@@ -253,16 +255,105 @@ def RKF45OverTuple(
                 for cv, pv in zip(y_this, termAbv)
             ):  # premature terminating cond. is met
                 return y_this
-            if epsilon != 0:  # sometimes the error can be estimated to be 0
-                h *= (
-                    beta * (tol / epsilon) ** 0.25
-                )  # apply the new best estimate
+            if R != 0:  # sometimes the error can be estimated to be 0
+                h *= beta * abs(tol / R) ** 0.25  # apply the new best estimate
+            else:
+                """
+                if this continues to be true, we are integrating a polynomial,
+                in which case the error should be independent of the step size
+                Therefore we aggressively increase the step size to seek forward.
+                """
+                h *= 2
 
         if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
             h = x_1 - x
 
     if abs(x - x_1) > tol:
-        print("vanished")
+        raise ValueError(
+            "Premature Termination of Integration due to vanishing step size,"
+            + " x at {}, h at {}.".format(x, h)
+        )
+
+    return y_this
+
+
+def RKF23(dFunc, iniVal, x_0, x_1, tol, termAbv=None):
+    """
+    An extension of the thinking of Fehlberg down to a lower
+    order Runge Kutta integrator.
+    dFunc is interpreted as:
+        d/dx|_x(y1,y2,y3...)  = dFUnc(x,y1,y2,y3....)
+    """
+    if termAbv is None:
+        termAbv = tuple(None for _ in iniVal)
+    y_this = iniVal
+    x = x_0
+    beta = 0.9  # "safety" factor
+    h = 0.1 * (x_1 - x_0)  # initial step size
+    while (h > 0 and x < x_1) or (h < 0 and x > x_1):
+        # print(x, y_this, h)
+        if (x + h) == x:
+            break  # catch the error using the final lines
+        try:
+            K1 = dFunc(x, *y_this)
+            K1 = tuple(k * h for k in K1)
+
+            K2 = dFunc(x + h, *(y + k1 for y, k1 in zip(y_this, K1)))
+            K2 = tuple(k * h for k in K2)
+
+            K3 = dFunc(
+                x + 0.5 * h,
+                *(y + 0.25 * (k1 + k2) for y, k1, k2 in zip(y_this, K1, K2))
+            )
+            K3 = tuple(k * h for k in K3)
+
+            if any(isinstance(i, complex) for i in K1 + K2 + K3):
+                raise TypeError
+
+        except (
+            TypeError,
+            ZeroDivisionError,
+        ):  # complex value has been encountered during calculation
+            # or that through unfortuante chance we got a divide by zero
+            h *= beta
+            continue
+
+        y_next = tuple(
+            y + 0.5 * (k1 + k2) for y, k1, k2 in zip(y_this, K1, K2)
+        )  # 2nd order estimation
+        z_next = tuple(
+            y + (k1 + k2 + 4 * k3) / 6
+            for y, k1, k2, k3 in zip(y_this, K1, K2, K3)
+        )  # 3rd order estimation
+
+        R = (
+            sum(abs(z - y) for z, y in zip(z_next, y_next)) / h
+        )  # error estimation
+
+        if R >= tol:  # error is greater than acceptable
+            h *= beta * (tol / R) ** (1 / 3)
+        else:  # error is acceptable
+            y_this = y_next
+            x += h
+            if any(
+                cv > pv if pv is not None else False
+                for cv, pv in zip(y_this, termAbv)
+            ):  # premature terminating cond. is met
+                return y_this
+            if R != 0:  # sometimes the error can be estimated to be 0
+                h *= beta * (tol / R) ** 0.5  # apply the new best estimate
+            else:
+                """
+                if this continues to be true, we are integrating a polynomial,
+                in which case the error should be independent of the step size
+                Therefore we aggressively increase the step size to seek forward.
+                """
+                h *= 2
+
+        if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
+            h = x_1 - x
+
+    if abs(x - x_1) > tol:
         raise ValueError(
             "Premature Termination of Integration due to vanishing step size,"
             + " x at {}, h at {}.".format(x, h)
@@ -474,17 +565,28 @@ def findExtBnd(f, a, b, tol=1e-9, findMin=True):
 
 
 if __name__ == "__main__":
-    """
-    from random import uniform
-    for _ in range(10):
-        print(
-            cubic(
-                uniform(-1, 1), uniform(-1, 1), uniform(-1, 1), uniform(-1, 1)
+    print("verifying RKF45 is of 4th order")
+    tols = [1e-2, 1e-3, 1e-4]
+    devs = []
+    for i in range(0, 10):
+        dev_i = [i]
+        for tol in tols:
+            val = RKF45(
+                lambda x, y: (x**i,),
+                (0,),
+                1,
+                2,
+                tol=tol,
             )
-        )
-    """
 
-    def f(x):
-        return (x - 1) ** 9
+            # x**i <- 1/(i+1) x**(i+1)
 
-    print(findExtBnd(f, -1, 10, tol=1e-9, findMin=True))
+            act = (2 ** (i + 1) - 1 ** (i + 1)) / (i + 1)
+            dev_i.append(act - val[0])
+        dev_i.append(all(dev_i[1] == di for di in dev_i[1:]))
+
+        devs.append(dev_i)
+
+    from tabulate import tabulate
+
+    print(tabulate(devs, headers=("order", *(str(t) for t in tols), "isSame?")))
