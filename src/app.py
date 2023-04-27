@@ -6,7 +6,7 @@ from gun import *
 import os
 import sys
 
-DEBUG = False
+DEBUG = True
 
 _prefix = {
     "y": 1e-24,  # yocto
@@ -181,6 +181,18 @@ def validatePI(inp):
         return True  # we will catch this by filling the default value
     try:
         return float(inp).is_integer() and float(inp) > 0 and "." not in inp
+    except ValueError:
+        return False
+
+
+def validateG1(inp):
+    """
+    validate an input such that the result is an integer greater than one."""
+
+    if inp == "":
+        return True  # we will catch this by filling the default value
+    try:
+        return float(inp).is_integer() and float(inp) > 1 and "." not in inp
     except ValueError:
         return False
 
@@ -908,8 +920,6 @@ class IB(Frame):
             row=2, column=2, sticky="nsew", padx=2, pady=2
         )
 
-        validationPI = parent.register(validatePI)
-
         i = 3
 
         self.steps, _, i = self.add3Input(
@@ -918,9 +928,13 @@ class IB(Frame):
             "Show",
             "steps",
             "10",
-            validation=validationPI,
+            validation=validationNN,
             formatter=formatIntInput,
         )
+
+        validationPI = parent.register(validatePI)
+        validationG1 = parent.register(validateG1)
+
         tolText = " ".join(
             (
                 "The (unitless) sum of error of all variables",
@@ -934,6 +948,7 @@ class IB(Frame):
             0,
             "-log10(ε)",
             default="3",
+            # validation=validationG1,
             validation=validationPI,
             formatter=formatIntInput,
             color="red",
@@ -946,7 +961,7 @@ class IB(Frame):
         calButton.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
-        CreateToolTip(calButton, "Integrate system using RKF-45 integrator")
+        CreateToolTip(calButton, "Integrate system using RKF7(8) integrator")
 
     def addExcFrm(self, parent):
         errorFrm = ttk.LabelFrame(parent, text="Exceptions")

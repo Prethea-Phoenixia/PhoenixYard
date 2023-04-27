@@ -117,7 +117,7 @@ def searchChargeMass(context, chargeMass):
 
             t1 = time.time()
 
-            print(loadFraction, chargeMass)
+            # print(loadFraction, chargeMass)
             print("validation of arc range took:", t1 - t0)
 
             # print(minValida, maxValida)
@@ -313,7 +313,7 @@ if __name__ == "__main__":
         grainArcMin=0.1e-3,
         grainArcMax=3e-3,
         tol=1e-3,
-        arcTol=1e-6,  # 1um
-        xstep=2,
-        ystep=2,
+        arcTol=1e-5,  # 1um
+        xstep=12,
+        ystep=24,
     )

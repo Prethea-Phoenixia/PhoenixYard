@@ -308,3 +308,357 @@ print(tabulate(test.analyze(1e-3), headers=("tag", "t", "l", "phi", "v", "p")))
         t_m = t_m_i
         v_m = _v(x_m)
         psi_m = _psi(x_m)
+
+
+
+def RKF45(dFunc, iniVal, x_0, x_1, tol, termAbv=None):
+    """
+    Runge Kutta Fehlberg method, of the fourth and fifth order
+    Even though this involves a lot more computation per cycle,
+    in practice since the step size is adaptive with regard to
+    the tolerance specified, significant amount of extraneous
+    computation can be saved.
+
+    In addition we specify a premature terminating condition
+    where if this condition is hit, the current iteration of
+    integration is returned.
+
+    For a RKF-45 method, the local truncation error is O(h^5)
+    while the global accumulated error is O(h^4)
+    """
+    # i = 0
+    if termAbv is None:
+        termAbv = tuple(None for _ in iniVal)
+    y_this = iniVal
+    x = x_0
+    beta = 0.9  # "safety" factor
+    h = tol * (x_1 - x_0)  # initial step size
+    while (h > 0 and x < x_1) or (h < 0 and x > x_1):
+        if (x + h) == x:
+            break  # catch the error using the final lines
+
+        try:
+            K1 = tuple(k * h for k in dFunc(x, *y_this))
+            K2 = tuple(
+                k * h
+                for k in dFunc(
+                    x + 0.25 * h, *(y + 0.25 * k1 for y, k1 in zip(y_this, K1))
+                )
+            )
+            K3 = tuple(
+                k * h
+                for k in dFunc(
+                    x + 0.375 * h,
+                    *(
+                        y + (3 * k1 + 9 * k2) / 32
+                        for y, k1, k2 in zip(y_this, K1, K2)
+                    )
+                )
+            )
+            K4 = tuple(
+                k * h
+                for k in dFunc(
+                    x + 12 / 13 * h,
+                    *(
+                        y + (1932 * k1 - 7200 * k2 + 7296 * k3) / 2197
+                        for y, k1, k2, k3 in zip(y_this, K1, K2, K3)
+                    )
+                )
+            )
+            K5 = tuple(
+                k * h
+                for k in dFunc(
+                    x + h,
+                    *(
+                        y
+                        + 439 / 216 * k1
+                        - 8 * k2
+                        + 3680 / 513 * k3
+                        - 845 / 4104 * k4
+                        for y, k1, k2, k3, k4 in zip(y_this, K1, K2, K3, K4)
+                    )
+                )
+            )
+            K6 = tuple(
+                k * h
+                for k in dFunc(
+                    x + 0.5 * h,
+                    *(
+                        y
+                        + -8 / 27 * k1
+                        + 2 * k2
+                        - 3544 / 2565 * k3
+                        + 1859 / 4104 * k4
+                        - 11 / 40 * k5
+                        for y, k1, k2, k3, k4, k5 in zip(
+                            y_this, K1, K2, K3, K4, K5
+                        )
+                    )
+                )
+            )
+
+            if any(isinstance(i, complex) for i in K1 + K2 + K3 + K4 + K5 + K6):
+                raise TypeError
+
+        except (
+            TypeError,
+            ZeroDivisionError,
+        ):  # complex value has been encountered during calculation
+            # or that through unfortuante chance we got a divide by zero
+
+            h *= beta
+            continue
+
+        y_next = tuple(
+            y + 25 / 216 * k1 + 1408 / 2565 * k3 + 2197 / 4104 * k4 - 0.2 * k5
+            for y, k1, k3, k4, k5 in zip(y_this, K1, K3, K4, K5)
+        )  # forth order estimation
+        z_next = tuple(
+            y
+            + 16 / 135 * k1
+            + 6656 / 12825 * k3
+            + 28561 / 56430 * k4
+            - 9 / 50 * k5
+            + 2 / 55 * k6
+            for y, k1, k3, k4, k5, k6 in zip(y_this, K1, K3, K4, K5, K6)
+        )  # fifth order estimation
+
+        R = (
+            sum(abs(z - y) for z, y in zip(z_next, y_next)) / h
+        )  # error estimation
+
+        delta = 1
+        if R >= tol:  # error is greater than acceptable
+            delta = beta * abs(tol / R) ** 0.2
+
+        else:  # error is acceptable
+            y_this = y_next
+            x += h
+            if any(
+                cv > pv if pv is not None else False
+                for cv, pv in zip(y_this, termAbv)
+            ):  # premature terminating cond. is met
+                return y_this
+            if R != 0:  # sometimes the error can be estimated to be 0
+                delta = (
+                    beta * abs(tol / R) ** 0.25
+                )  # apply the new best estimate
+            else:
+                """
+                if this continues to be true, we are integrating a polynomial,
+                in which case the error should be independent of the step size
+                Therefore we aggressively increase the step size to seek forward.
+                """
+                delta = 2
+
+        h *= min(max(delta, 0.3), 2)  # to ensure that this does not jump
+        # print(*y_this)
+        # print(h, tol)
+        if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
+            h = x_1 - x
+    if abs(x - x_1) > tol:
+        raise ValueError(
+            "Premature Termination of Integration due to vanishing step size,"
+            + " x at {}, h at {}.".format(x, h)
+        )
+
+    return y_this
+
+
+def RKF23(dFunc, iniVal, x_0, x_1, tol, termAbv=None):
+    """
+    An extension of the thinking of Fehlberg down to a lower
+    order Runge Kutta integrator.
+    dFunc is interpreted as:
+        d/dx|_x(y1,y2,y3...)  = dFUnc(x,y1,y2,y3....)
+    """
+    if termAbv is None:
+        termAbv = tuple(None for _ in iniVal)
+    y_this = iniVal
+    x = x_0
+    beta = 0.9  # "safety" factor
+    h = tol * (x_1 - x_0)  # initial step size
+    while (h > 0 and x < x_1) or (h < 0 and x > x_1):
+        # print(x, y_this, h)
+        if (x + h) == x:
+            break  # catch the error using the final lines
+
+        try:
+            K1 = tuple(k * h for k in dFunc(x, *y_this))
+            K2 = tuple(
+                k * h
+                for k in dFunc(x + h, *(y + k1 for y, k1 in zip(y_this, K1)))
+            )
+            K3 = tuple(
+                k * h
+                for k in dFunc(
+                    x + 0.5 * h,
+                    *(y + 0.25 * (k1 + k2) for y, k1, k2 in zip(y_this, K1, K2))
+                )
+            )
+
+            if any(isinstance(i, complex) for i in K1 + K2 + K3):
+                raise TypeError
+
+        except (
+            TypeError,
+            ZeroDivisionError,
+        ):  # complex value has been encountered during calculation
+            # or that through unfortuante chance we got a divide by zero
+            h *= beta
+            continue
+
+        y_next = tuple(
+            y + 0.5 * (k1 + k2) for y, k1, k2 in zip(y_this, K1, K2)
+        )  # 2nd order estimation
+        z_next = tuple(
+            y + (k1 + k2 + 4 * k3) / 6
+            for y, k1, k2, k3 in zip(y_this, K1, K2, K3)
+        )  # 3rd order estimation
+
+        R = (
+            max(abs((z - y) / y) for z, y in zip(z_next, y_next)) / h
+        )  # error estimation
+
+        delta = 1
+        if R >= tol:  # error is greater than acceptable
+            delta = beta * (tol / R) ** (1 / 3)
+        else:  # error is acceptable
+            y_this = y_next
+            x += h
+            if any(
+                cv > pv if pv is not None else False
+                for cv, pv in zip(y_this, termAbv)
+            ):  # premature terminating cond. is met
+                return y_this
+            if R != 0:  # sometimes the error can be estimated to be 0
+                delta = beta * (tol / R) ** 0.5  # apply the new best estimate
+            else:
+                """
+                if this continues to be true, we are integrating a polynomial,
+                in which case the error should be independent of the step size
+                Therefore we aggressively increase the step size to seek forward.
+                """
+                delta = 2
+
+        h *= delta
+        if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
+            h = x_1 - x
+
+    if abs(x - x_1) > tol:
+        raise ValueError(
+            "Premature Termination of Integration due to vanishing step size,"
+            + " x at {}, h at {}.".format(x, h)
+        )
+
+    return y_this
+
+
+def RK45(dFunc, iniVal, x_0, x_1, steps):
+    y_this = iniVal
+    x = x_0
+    h = (x_1 - x_0) / steps
+    for i in range(steps):
+        K1 = dFunc(x, *y_this)
+        K1 = tuple(k * h for k in K1)
+
+        K2 = dFunc(x + 0.5 * h, *(y + 0.5 * k1 for y, k1 in zip(y_this, K1)))
+        K2 = tuple(k * h for k in K2)
+
+        K3 = dFunc(
+            x + 0.5 * h, *(y + 0.5 * k2 for y, k1, k2 in zip(y_this, K1, K2))
+        )
+        K3 = tuple(k * h for k in K3)
+
+        K4 = dFunc(
+            x + h, *(y + k3 for y, k1, k2, k3 in zip(y_this, K1, K2, K3))
+        )
+        K4 = tuple(k * h for k in K4)
+
+        y_next = tuple(
+            y + (k1 + 2 * k2 + 2 * k3 + k4) / 6
+            for y, k1, k2, k3, k4 in zip(y_this, K1, K2, K3, K4)
+        )
+
+        x += h
+        y_this = y_next
+
+    return y_this
+
+def findExtBnd(f, a, b, tol=1e-9, findMin=True):
+    """
+    Although theoretically this saves a few cycles comapred to straight
+    gold section search, it is also conditionally worse, and due to the
+    extra calculation involved, it is actually slower than straight
+    gss. Therefore it is only here as a testament to the effrot put into
+    making the code faster.
+    """
+    n = int(math.ceil(math.log(tol / (b - a)) / math.log(invphi)))
+    (p, q) = (min(a, b), max(a, b))
+    if q - p <= tol:
+        return (p, q)
+
+    yp = f(p)
+    yq = f(q)
+    r = 0.5 * (a + b)
+    yr = f(r)
+
+    i = 0
+
+    # p---r---q#
+    while (q - r) > tol or (r - p) > tol:
+        if r == p or r == q:
+            gss = True
+        else:
+            alpha = (yq - yp) / (q - p)
+            beta = (yr - yp - alpha * (r - p)) / ((r - p) * (r - q))
+            if (beta > 0 and findMin) or (beta < 0 and not findMin):
+                x = 0.5 * (a + b - alpha / beta)
+                yx = f(x)
+                if p < x < q and (
+                    (yx < yr and findMin) or (yx > yr and not findMin)
+                ):
+                    if x < r:
+                        q = r
+                        yq = yr
+                        r = x
+                        yr = yx
+                    else:
+                        p = r
+                        yp = yr
+                        r = x
+                        yr = yx
+                    gss = False
+                else:
+                    gss = True
+            else:
+                gss = True
+        if gss:
+            a = p
+            b = q
+            h = b - a
+
+            c = a + invphi2 * h
+            d = a + invphi * h
+            yc = f(c)
+            yd = f(d)
+
+            if (yc < yd and findMin) or (yc > yd and not findMin):
+                # a---c---d     b
+                # p---r---q
+                q = d
+                r = c
+                yr = yc
+            else:
+                # a     c--d---b
+                #       p--r---q
+                p = c
+                r = d
+                yr = yd
+
+        i += 1
+
+    if (yp < yq and findMin) or (yp > yq and not findMin):
+        return (p, r)
+    else:
+        return (r, q)

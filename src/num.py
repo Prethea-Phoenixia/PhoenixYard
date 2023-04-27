@@ -138,84 +138,222 @@ def gss(f, a, b, tol=1e-9, findMin=True):
         return (c, b)
 
 
-def RKF45(dFunc, iniVal, x_0, x_1, tol, termAbv=None):
-    """
-    Runge Kutta Fehlberg method, of the fourth and fifth order
-    Even though this involves a lot more computation per cycle,
-    in practice since the step size is adaptive with regard to
-    the tolerance specified, significant amount of extraneous
-    computation can be saved.
-
-    In addition we specify a premature terminating condition
-    where if this condition is hit, the current iteration of
-    integration is returned.
-    """
-    # i = 0
+def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
+    """ """
+    i = 0
     if termAbv is None:
         termAbv = tuple(None for _ in iniVal)
     y_this = iniVal
     x = x_0
     beta = 0.9  # "safety" factor
-    h = 0.1 * (x_1 - x_0)  # initial step size
+    h = x_1 - x_0  # initial step size
+    Rm = tuple(0 for _ in iniVal)
     while (h > 0 and x < x_1) or (h < 0 and x > x_1):
         if (x + h) == x:
             break  # catch the error using the final lines
+        if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
+            h = x_1 - x
         try:
-            K1 = dFunc(x, *y_this)
-            K1 = tuple(k * h for k in K1)
+            allK = []
+            K1 = tuple(k * h for k in dFunc(x, *y_this))
+            allK.append(K1)
 
-            K2 = dFunc(
-                x + 0.25 * h, *(y + 0.25 * k1 for y, k1 in zip(y_this, K1))
-            )
-            K2 = tuple(k * h for k in K2)
-
-            K3 = dFunc(
-                x + 0.375 * h,
-                *(
-                    y + (3 * k1 + 9 * k2) / 32
-                    for y, k1, k2 in zip(y_this, K1, K2)
+            K2 = tuple(
+                k * h
+                for k in dFunc(
+                    x + 2 / 27 * h,
+                    *(y + 2 / 27 * k1 for y, k1 in zip(y_this, *allK))
                 )
             )
-            K3 = tuple(k * h for k in K3)
+            allK.append(K2)
 
-            K4 = dFunc(
-                x + 12 / 13 * h,
-                *(
-                    y + (1932 * k1 - 7200 * k2 + 7296 * k3) / 2197
-                    for y, k1, k2, k3 in zip(y_this, K1, K2, K3)
+            K3 = tuple(
+                k * h
+                for k in dFunc(
+                    x + 1 / 9 * h,
+                    *(
+                        y + 1 / 36 * k1 + 1 / 12 * k2
+                        for y, k1, k2 in zip(y_this, *allK)
+                    )
                 )
             )
-            K4 = tuple(k * h for k in K4)
+            allK.append(K3)
 
-            K5 = dFunc(
-                x + h,
-                *(
-                    y
-                    + 439 / 216 * k1
-                    - 8 * k2
-                    + 3680 / 513 * k3
-                    - 845 / 4104 * k4
-                    for y, k1, k2, k3, k4 in zip(y_this, K1, K2, K3, K4)
+            K4 = tuple(
+                k * h
+                for k in dFunc(
+                    x + 1 / 6 * h,
+                    *(
+                        y + 1 / 24 * k1 + 1 / 8 * k3
+                        for y, k1, k2, k3 in zip(y_this, *allK)
+                    )
                 )
             )
-            K5 = tuple(k * h for k in K5)
+            allK.append(K4)
 
-            # 20520
-            K6 = dFunc(
-                x + 0.5 * h,
-                *(
-                    y
-                    + -8 / 27 * k1
-                    + 2 * k2
-                    - 3544 / 2565 * k3
-                    + 1859 / 4104 * k4
-                    - 11 / 40 * k5
-                    for y, k1, k2, k3, k4, k5 in zip(y_this, K1, K2, K3, K4, K5)
+            K5 = tuple(
+                k * h
+                for k in dFunc(
+                    x + 5 / 12 * h,
+                    *(
+                        y + 5 / 12 * k1 - 25 / 16 * k3 + 25 / 16 * k4
+                        for y, k1, k2, k3, k4 in zip(y_this, *allK)
+                    )
                 )
             )
-            K6 = tuple(k * h for k in K6)
+            allK.append(K5)
 
-            if any(isinstance(i, complex) for i in K1 + K2 + K3 + K4 + K5 + K6):
+            K6 = tuple(
+                k * h
+                for k in dFunc(
+                    x + 1 / 2 * h,
+                    *(
+                        y + 1 / 20 * k1 + 1 / 4 * k4 + 1 / 5 * k5
+                        for y, k1, k2, k3, k4, k5 in zip(y_this, *allK)
+                    )
+                )
+            )
+            allK.append(K6)
+
+            K7 = tuple(
+                k * h
+                for k in dFunc(
+                    x + 5 / 6 * h,
+                    *(
+                        y
+                        - 25 / 108 * k1
+                        + 125 / 108 * k4
+                        - 65 / 27 * k5
+                        + 125 / 54 * k6
+                        for y, k1, k2, k3, k4, k5, k6 in zip(y_this, *allK)
+                    )
+                )
+            )
+            allK.append(K7)
+
+            K8 = tuple(
+                k * h
+                for k in dFunc(
+                    x + 1 / 6 * h,
+                    *(
+                        y
+                        + 31 / 300 * k1
+                        + 61 / 225 * k5
+                        - 2 / 9 * k6
+                        + 13 / 900 * k7
+                        for y, k1, k2, k3, k4, k5, k6, k7 in zip(y_this, *allK)
+                    )
+                )
+            )
+            allK.append(K8)
+
+            K9 = tuple(
+                k * h
+                for k in dFunc(
+                    x + 2 / 3 * h,
+                    *(
+                        y
+                        + 2 * k1
+                        - 53 / 6 * k4
+                        + 704 / 45 * k5
+                        - 107 / 9 * k6
+                        + 67 / 90 * k7
+                        + 3 * k8
+                        for y, k1, k2, k3, k4, k5, k6, k7, k8 in zip(
+                            y_this, *allK
+                        )
+                    )
+                )
+            )
+            allK.append(K9)
+
+            K10 = tuple(
+                k * h
+                for k in dFunc(
+                    x + 1 / 3 * h,
+                    *(
+                        y
+                        - 91 / 108 * k1
+                        + 23 / 108 * k4
+                        - 976 / 135 * k5
+                        + 311 / 54 * k6
+                        - 19 / 60 * k7
+                        + 17 / 6 * k8
+                        - 1 / 12 * k9
+                        for y, k1, k2, k3, k4, k5, k6, k7, k8, k9 in zip(
+                            y_this, *allK
+                        )
+                    )
+                )
+            )
+            allK.append(K10)
+
+            K11 = tuple(
+                k * h
+                for k in dFunc(
+                    x + h,
+                    *(
+                        y
+                        + 2383 / 4100 * k1
+                        - 341 / 164 * k4
+                        + 4496 / 1025 * k5
+                        - 301 / 82 * k6
+                        + 2133 / 4100 * k7
+                        + 45 / 82 * k8
+                        + 45 / 164 * k9
+                        + 18 / 41 * k10
+                        for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10 in zip(
+                            y_this, *allK
+                        )
+                    )
+                )
+            )
+            allK.append(K11)
+
+            K12 = tuple(
+                k * h
+                for k in dFunc(
+                    x,
+                    *(
+                        y
+                        + 3 / 205 * k1
+                        - 6 / 41 * k6
+                        - 3 / 205 * k7
+                        - 3 / 41 * k8
+                        + 3 / 41 * k9
+                        + 6 / 41 * k10
+                        for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11 in zip(
+                            y_this, *allK
+                        )
+                    )
+                )
+            )
+            allK.append(K12)
+
+            K13 = tuple(
+                k * h
+                for k in dFunc(
+                    x + h,
+                    *(
+                        y
+                        - 1777 / 4100 * k1
+                        - 341 / 164 * k4
+                        + 4496 / 1025 * k5
+                        - 289 / 82 * k6
+                        + 2193 / 4100 * k7
+                        + 51 / 82 * k8
+                        + 33 / 164 * k9
+                        + 12 / 41 * k10
+                        + k12
+                        for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12 in zip(
+                            y_this, *allK
+                        )
+                    )
+                )
+            )
+            allK.append(K13)
+
+            if any(isinstance(i, complex) for k in allK for i in k):
                 raise TypeError
 
         except (
@@ -223,135 +361,78 @@ def RKF45(dFunc, iniVal, x_0, x_1, tol, termAbv=None):
             ZeroDivisionError,
         ):  # complex value has been encountered during calculation
             # or that through unfortuante chance we got a divide by zero
+
             h *= beta
             continue
 
         y_next = tuple(
-            y + 25 / 216 * k1 + 1408 / 2565 * k3 + 2197 / 4104 * k4 - 0.2 * k5
-            for y, k1, k3, k4, k5 in zip(y_this, K1, K3, K4, K5)
-        )  # forth order estimation
+            y
+            + 41 / 840 * k1
+            + 34 / 105 * k6
+            + 9 / 35 * k7
+            + 9 / 35 * k8
+            + 9 / 280 * k9
+            + 9 / 280 * k10
+            + 41 / 840 * k11
+            for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13 in zip(
+                y_this, *allK
+            )
+        )
+        """
         z_next = tuple(
             y
-            + 16 / 135 * k1
-            + 6656 / 12825 * k3
-            + 28561 / 56430 * k4
-            - 9 / 50 * k5
-            + 2 / 55 * k6
-            for y, k1, k3, k4, k5, k6 in zip(y_this, K1, K3, K4, K5, K6)
-        )  # fifth order estimation
-
-        R = (
-            sum(abs(z - y) for z, y in zip(z_next, y_next)) / h
-        )  # error estimation
-
-        if R >= tol:  # error is greater than acceptable
-            h *= beta * abs(tol / R) ** 0.2
-
-        else:  # error is acceptable
-            y_this = y_next
-            x += h
-            if any(
-                cv > pv if pv is not None else False
-                for cv, pv in zip(y_this, termAbv)
-            ):  # premature terminating cond. is met
-                return y_this
-            if R != 0:  # sometimes the error can be estimated to be 0
-                h *= beta * abs(tol / R) ** 0.25  # apply the new best estimate
-            else:
-                """
-                if this continues to be true, we are integrating a polynomial,
-                in which case the error should be independent of the step size
-                Therefore we aggressively increase the step size to seek forward.
-                """
-                h *= 2
-
-        if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
-            h = x_1 - x
-
-    if abs(x - x_1) > tol:
-        raise ValueError(
-            "Premature Termination of Integration due to vanishing step size,"
-            + " x at {}, h at {}.".format(x, h)
-        )
-
-    return y_this
-
-
-def RKF23(dFunc, iniVal, x_0, x_1, tol, termAbv=None):
-    """
-    An extension of the thinking of Fehlberg down to a lower
-    order Runge Kutta integrator.
-    dFunc is interpreted as:
-        d/dx|_x(y1,y2,y3...)  = dFUnc(x,y1,y2,y3....)
-    """
-    if termAbv is None:
-        termAbv = tuple(None for _ in iniVal)
-    y_this = iniVal
-    x = x_0
-    beta = 0.9  # "safety" factor
-    h = 0.1 * (x_1 - x_0)  # initial step size
-    while (h > 0 and x < x_1) or (h < 0 and x > x_1):
-        # print(x, y_this, h)
-        if (x + h) == x:
-            break  # catch the error using the final lines
-        try:
-            K1 = dFunc(x, *y_this)
-            K1 = tuple(k * h for k in K1)
-
-            K2 = dFunc(x + h, *(y + k1 for y, k1 in zip(y_this, K1)))
-            K2 = tuple(k * h for k in K2)
-
-            K3 = dFunc(
-                x + 0.5 * h,
-                *(y + 0.25 * (k1 + k2) for y, k1, k2 in zip(y_this, K1, K2))
+            + 34 / 105 * k6
+            + 9 / 35 * k7
+            + 9 / 35 * k8
+            + 9 / 280 * k9
+            + 9 / 280 * k10
+            + 41 / 840 * k12
+            + 41 / 840 * k13
+            for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13 in zip(
+                y_this, *allK
             )
-            K3 = tuple(k * h for k in K3)
+        )
+        """
+        te = tuple(
+            41 / 840 * (k1 + k11 - k12 - k13)
+            for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13 in zip(
+                y_this, *allK
+            )
+        )
+        Rs = tuple(abs(e) / h for e in te)
+        Rs = tuple(
+            r / (absTol + tol * (abs(y) + abs(k1)))
+            for r, y, k1 in zip(Rs, y_this, K1)
+        )
+        R = max(Rs)
 
-            if any(isinstance(i, complex) for i in K1 + K2 + K3):
-                raise TypeError
-
-        except (
-            TypeError,
-            ZeroDivisionError,
-        ):  # complex value has been encountered during calculation
-            # or that through unfortuante chance we got a divide by zero
-            h *= beta
-            continue
-
-        y_next = tuple(
-            y + 0.5 * (k1 + k2) for y, k1, k2 in zip(y_this, K1, K2)
-        )  # 2nd order estimation
-        z_next = tuple(
-            y + (k1 + k2 + 4 * k3) / 6
-            for y, k1, k2, k3 in zip(y_this, K1, K2, K3)
-        )  # 3rd order estimation
-
-        R = (
-            sum(abs(z - y) for z, y in zip(z_next, y_next)) / h
-        )  # error estimation
+        delta = 1
 
         if R >= tol:  # error is greater than acceptable
-            h *= beta * (tol / R) ** (1 / 3)
+            delta = beta * abs(tol / R) ** (1 / 8)
+
         else:  # error is acceptable
             y_this = y_next
             x += h
+            i += 1
+            Rm = tuple(max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs))
             if any(
                 cv > pv if pv is not None else False
                 for cv, pv in zip(y_this, termAbv)
             ):  # premature terminating cond. is met
                 return y_this
             if R != 0:  # sometimes the error can be estimated to be 0
-                h *= beta * (tol / R) ** 0.5  # apply the new best estimate
+                delta = beta * abs(tol / R) ** (1 / 7)
+
             else:
                 """
                 if this continues to be true, we are integrating a polynomial,
                 in which case the error should be independent of the step size
                 Therefore we aggressively increase the step size to seek forward.
                 """
-                h *= 2
+                delta = 2
 
-        if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
-            h = x_1 - x
+        h *= min(max(delta, 0.3), 2)  # to ensure that this does not jump
 
     if abs(x - x_1) > tol:
         raise ValueError(
@@ -359,7 +440,7 @@ def RKF23(dFunc, iniVal, x_0, x_1, tol, termAbv=None):
             + " x at {}, h at {}.".format(x, h)
         )
 
-    return y_this
+    return y_this, Rm
 
 
 def cubic(a, b, c, d):
@@ -485,108 +566,26 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=100):
     raise ValueError("Maximum iteration exceeded at ({},{})".format(x_1, fx_1))
 
 
-def findExtBnd(f, a, b, tol=1e-9, findMin=True):
-    """
-    Although theoretically this saves a few cycles comapred to straight
-    gold section search, it is also conditionally worse, and due to the
-    extra calculation involved, it is actually slower than straight
-    gss. Therefore it is only here as a testament to the effrot put into
-    making the code faster.
-    """
-    n = int(math.ceil(math.log(tol / (b - a)) / math.log(invphi)))
-    (p, q) = (min(a, b), max(a, b))
-    if q - p <= tol:
-        return (p, q)
-
-    yp = f(p)
-    yq = f(q)
-    r = 0.5 * (a + b)
-    yr = f(r)
-
-    i = 0
-
-    # p---r---q#
-    while (q - r) > tol or (r - p) > tol:
-        if r == p or r == q:
-            gss = True
-        else:
-            alpha = (yq - yp) / (q - p)
-            beta = (yr - yp - alpha * (r - p)) / ((r - p) * (r - q))
-            if (beta > 0 and findMin) or (beta < 0 and not findMin):
-                x = 0.5 * (a + b - alpha / beta)
-                yx = f(x)
-                if p < x < q and (
-                    (yx < yr and findMin) or (yx > yr and not findMin)
-                ):
-                    if x < r:
-                        q = r
-                        yq = yr
-                        r = x
-                        yr = yx
-                    else:
-                        p = r
-                        yp = yr
-                        r = x
-                        yr = yx
-                    gss = False
-                else:
-                    gss = True
-            else:
-                gss = True
-        if gss:
-            a = p
-            b = q
-            h = b - a
-
-            c = a + invphi2 * h
-            d = a + invphi * h
-            yc = f(c)
-            yd = f(d)
-
-            if (yc < yd and findMin) or (yc > yd and not findMin):
-                # a---c---d     b
-                # p---r---q
-                q = d
-                r = c
-                yr = yc
-            else:
-                # a     c--d---b
-                #       p--r---q
-                p = c
-                r = d
-                yr = yd
-
-        i += 1
-
-    if (yp < yq and findMin) or (yp > yq and not findMin):
-        return (p, r)
-    else:
-        return (r, q)
-
-
 if __name__ == "__main__":
-    print("verifying RKF45 is of 4th order")
-    tols = [1e-2, 1e-3, 1e-4]
+    from tabulate import tabulate
+
+    print("verifying RKF78 is of 7th order")
+    tols = [1e-3, 1e-4, 1e-5]
     devs = []
-    for i in range(0, 10):
+    for i in range(0, 12):
         dev_i = [i]
         for tol in tols:
-            val = RKF45(
+            val = RKF78(
                 lambda x, y: (x**i,),
                 (0,),
-                1,
-                2,
+                0.5,
+                1.5,
                 tol=tol,
             )
 
-            # x**i <- 1/(i+1) x**(i+1)
-
-            act = (2 ** (i + 1) - 1 ** (i + 1)) / (i + 1)
-            dev_i.append(act - val[0])
-        dev_i.append(all(dev_i[1] == di for di in dev_i[1:]))
+            act = (1.5 ** (i + 1) - (0.5) ** (i + 1)) / (i + 1)
+            dev_i.append((act - val[0]) / act)
 
         devs.append(dev_i)
-
-    from tabulate import tabulate
 
     print(tabulate(devs, headers=("order", *(str(t) for t in tols), "isSame?")))
