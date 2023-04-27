@@ -74,9 +74,21 @@ def searchChargeMass(context, chargeMass):
 
             return abs(p_p - designedPress), gun, p_max, p_min, None
 
-        m = 1
-
         try:
+            testProp = Propellant(propComp, propGeom, 1, grainPR, grainLDR)
+            testGun = Gun(
+                caliber,
+                shotMass,
+                testProp,
+                chargeMass,
+                chargeMass / (testProp.rho_p * testProp.maxLF * loadFraction),
+                startPressure,
+                1,  # this doesn't matter now.
+                chamberExpansion,
+            )
+            if testGun.v_j < designedVel:
+                raise ValueError("!Vinf")
+
             DeltaP_a, gun_a, pmax_a, pmin_a, err = f_a(grainArcMax)
             if gun_a is not None:  # and pmin_a < designedPress:
                 maxValida = grainArcMax
@@ -92,7 +104,7 @@ def searchChargeMass(context, chargeMass):
             t0 = time.time()
 
             # FIXME: This segment of code is extremely long running
-
+            m = 1
             while 2**-m > arcTol / (grainArcMax - grainArcMin):
                 for n in range(0, 2**m):
                     if n % 2 != 0:
@@ -137,7 +149,7 @@ def searchChargeMass(context, chargeMass):
                 lambda x: f_a(x)[0],
                 minValida,
                 maxValida,
-                tol=tol * grainArcMin,
+                tol=arcTol,
                 findMin=True,
             )  # minimize the deviation of actual developed pressure with desired
 
@@ -148,7 +160,6 @@ def searchChargeMass(context, chargeMass):
             print("minimizing pressure deviation took:", t2 - t1)
 
             DeltaP, gun, pmax, pmin, err = f_a(a)
-
             if gun is None:  # this **really** should not happen
                 if isinstance(err, AbortedDueToLength):
                     raise ValueError("L<B.O.")
@@ -157,7 +168,18 @@ def searchChargeMass(context, chargeMass):
                 else:
                     raise err
 
-            if pmax < designedPress:
+            if DeltaP < designedPress * tol:
+                lg = gun.findBL(designedVel, lengthGunMax, tol=tol)
+
+                if lengthGunMin > lg:
+                    raise ValueError("L<MIN")
+                elif lg > lengthGunMax:
+                    raise ValueError("L>MAX")
+                else:
+                    aSpaceCM.append(a)
+                    lSpaceCM.append(lg / caliber)
+
+            elif pmax < designedPress:
                 """
                 the required arc:
                     to develop sufficient pressure, and:
@@ -169,16 +191,6 @@ def searchChargeMass(context, chargeMass):
 
             elif pmin > designedPress:
                 raise ValueError("A>MAX")
-
-            lg = gun.findBL(designedVel, lengthGunMax, tol=tol)
-
-            if lengthGunMin > lg:
-                raise ValueError("L<MIN")
-            elif lg > lengthGunMax:
-                raise ValueError("L>MAX")
-            else:
-                aSpaceCM.append(a)
-                lSpaceCM.append(lg / caliber)
 
         except ValueError as e:
             lSpaceCM.append(str(e))
@@ -311,9 +323,9 @@ if __name__ == "__main__":
         loadFractionMin=0.05,
         loadFractionMax=0.65,
         grainArcMin=0.1e-3,
-        grainArcMax=3e-3,
+        grainArcMax=1.5e-3,
         tol=1e-3,
-        arcTol=1e-5,  # 1um
-        xstep=12,
-        ystep=24,
+        arcTol=1e-6,  # 10um
+        xstep=3,
+        ystep=4,
     )

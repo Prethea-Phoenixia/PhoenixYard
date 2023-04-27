@@ -448,21 +448,22 @@ class IB(Frame):
             units=units,
             useSN=useSN,
         )
-        negErr, posErr = arrErr(self.errorData, units=units, useSN=useSN)
+        errorData = dot_aligned(self.errorData, units=units, useSN=useSN)
+        # negErr, posErr = arrErr(self.errorData, units=units, useSN=useSN)
         i = 0
-        for row, negrow, posrow in zip(tableData, negErr, posErr):
+        for row, erow in zip(tableData, errorData):
             self.tv.insert(
                 "", "end", str(i), values=row, tags=(row[0], "monospace")
             )
-            self.tv.insert(
-                str(i), "end", str(i + 1), values=negrow, tags="error"
-            )
+            self.tv.insert(str(i), "end", str(i + 1), values=erow, tags="error")
+            """
             self.tv.insert(
                 str(i), "end", str(i + 2), values=posrow, tags="error"
             )
+            """
             self.tv.move(str(i + 1), str(i), "end")
-            self.tv.move(str(i + 2), str(i), "end")
-            i += 3
+            # self.tv.move(str(i + 2), str(i), "end")
+            i += 2
 
         self.updateError()
 

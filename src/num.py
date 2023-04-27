@@ -139,8 +139,23 @@ def gss(f, a, b, tol=1e-9, findMin=True):
 
 
 def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
-    """ """
-    i = 0
+    """
+    use Runge Kutta Fehlberg of 7(8)th power to solve the System of Equation
+
+    Arguments:
+        dFunc   : d/dx|x=x(y1, y2, y3....) = dFunc(x, y1, y2, y3...)
+        iniVal  : initial values for (y1, y2, y3...)
+        x_0, x_1: integration
+        tol     : relative tolerance, per component
+        absTol  : absolute tolerance, per component
+        termAbv : premature termination condition
+
+    Returns:
+        (y1, y2, y3...)|x = x_1, (e1, e2, e3....)
+        where e1, e2, e3...
+        is the estimated maximum deviation (in absolute) for that individual
+        component
+    """
     if termAbv is None:
         termAbv = tuple(None for _ in iniVal)
     y_this = iniVal
@@ -400,11 +415,10 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
             )
         )
         Rs = tuple(abs(e) / h for e in te)
-        Rs = tuple(
+        R = max(
             r / (absTol + tol * (abs(y) + abs(k1)))
             for r, y, k1 in zip(Rs, y_this, K1)
         )
-        R = max(Rs)
 
         delta = 1
 
@@ -414,13 +428,12 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
         else:  # error is acceptable
             y_this = y_next
             x += h
-            i += 1
             Rm = tuple(max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs))
             if any(
                 cv > pv if pv is not None else False
                 for cv, pv in zip(y_this, termAbv)
             ):  # premature terminating cond. is met
-                return y_this
+                return y_this, Rm
             if R != 0:  # sometimes the error can be estimated to be 0
                 delta = beta * abs(tol / R) ** (1 / 7)
 
@@ -581,7 +594,7 @@ if __name__ == "__main__":
                 0.5,
                 1.5,
                 tol=tol,
-            )
+            )[0]
 
             act = (1.5 ** (i + 1) - (0.5) ** (i + 1)) / (i + 1)
             dev_i.append((act - val[0]) / act)
