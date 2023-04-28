@@ -5,6 +5,7 @@ import traceback
 from gun import *
 import os
 import sys
+from math import ceil
 
 DEBUG = True
 
@@ -95,13 +96,14 @@ def toSI(v, dec=4, unit=None, useSN=False):
         if 1 <= (v / magnitude) < (nextMagnitude / magnitude):
             # allows handling of non-uniformly log10 spaced prefixes
             vstr = "{:#.{:}g}".format(v / magnitude, dec)
+
             return (
                 (" " if positive else "-")
                 + vstr
                 + " " * (dec + 1 - len(vstr) + vstr.find("."))
                 + (
                     (
-                        "E{:<3}".format("{:.0g}".format(log(magnitude, 10)))
+                        "E{:<3}".format(round(log(magnitude, 10)))
                         if magnitude != 1
                         else "    "  # 4 SPACES!
                     )
@@ -1215,7 +1217,7 @@ if __name__ == "__main__":
 
     # root.option_add("*TCombobox*Listbox*Font", "Hack 8")
 
-    root.title("Phoenix's Internal Ballistics Solver v0.2")
+    root.title("Phoenix's Internal Ballistics Solver v0.3")
 
     ibPanel = IB(root)
     root.mainloop()

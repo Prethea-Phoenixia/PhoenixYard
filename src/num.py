@@ -162,7 +162,6 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
     x = x_0
     beta = 0.84  # "safety" factor
     h = x_1 - x_0  # initial step size
-    # tol = tol / abs(x_1 - x_0)
     Rm = tuple(0 for _ in iniVal)
     while (h > 0 and x < x_1) or (h < 0 and x > x_1):
         if (x + h) == x:
@@ -514,70 +513,6 @@ def cubic(a, b, c, d):
     # put the first real solution at first.
     xs.sort(key=lambda z: 1 if isinstance(z, complex) else 0)
     return tuple(xs)
-
-
-def bisect(f, x_0, x_1, tol, it=100):
-    """bisection method to numerically solve for zero
-    two initial guesses must be of opposite sign.
-    The root found is guaranteed to be within the range specified.
-
-    tol: tolerance of f(x) if x is root
-    it: maximum iteration
-    """
-    a = x_0
-    b = x_1
-
-    if abs(f(a)) < tol:
-        return a, f(a)
-    elif abs(f(b)) < tol:
-        return b, f(b)
-    elif sign(f(a)) * sign(f(b)) > 0:
-        raise ValueError("Initial guesses must be of opposite sign")
-
-    for _ in range(it):
-        c = (a + b) / 2
-
-        if abs(f(c)) < tol:
-            return (c, f(c))
-
-        if sign(f(c)) == sign(f(a)):
-            a = c
-        else:
-            b = c
-
-    raise ValueError("Maximum iteration exceeded at ({},{})".format(c, f(c)))
-
-
-def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=100):
-    """secant method that solves f(x) = 0 subjected to x in [x_min,x_max]"""
-    if x_min is not None:
-        if x_0 < x_min:
-            x_0 = x_min
-        if x_1 < x_min:
-            x_1 = x_min
-    if x_max is not None:
-        if x_0 > x_max:
-            x_0 = x_max
-        if x_1 > x_max:
-            x_1 = x_max
-
-    fx_0 = f(x_0)
-    fx_1 = f(x_1)
-
-    if x_0 == x_1 or fx_0 == fx_1:
-        raise ValueError("Initial guess must evaluate to different values")
-
-    for _ in range(it):
-        x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
-        if x_min is not None and x_2 < x_min:
-            x_2 = x_min
-        if x_max is not None and x_2 > x_max:
-            x_2 = x_max
-        x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, f(x_2)
-        if abs(fx_1) < tol or (fx_0 == fx_1):
-            return x_1, fx_1
-
-    raise ValueError("Maximum iteration exceeded at ({},{})".format(x_1, fx_1))
 
 
 if __name__ == "__main__":
