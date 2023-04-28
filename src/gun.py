@@ -432,7 +432,7 @@ class Gun:
 
     def _ode_v(self, v_bar, t_bar, Z, l_bar):
         p_bar = self._fp_bar(Z, l_bar, v_bar)
-        if Z <= self.Z_b:
+        if Z < self.Z_b:
             dZ = (2 / (self.B * self.theta)) ** 0.5 * p_bar ** (self.n - 1)
         else:
             dZ = 0
@@ -879,7 +879,7 @@ class Gun:
 
         error = list(
             (
-                tag,
+                "L",
                 t_bar_err * self.l_0 / self.v_j,
                 l_bar_err * self.l_0,
                 abs(self._dPsi(Z) * Z_err),
@@ -1227,8 +1227,8 @@ class Gun:
             return t
 
         """
-            Solving for muzzle exit condition
-            """
+        Solving for muzzle exit condition
+        """
 
         l_e = self.l_g
         Labda_e = l_e / self.l_0
@@ -1410,42 +1410,6 @@ class Gun:
         be = te / self.phi
         return te, be
 
-    def getErr(self, tol):
-        """
-        returns the worst case maximum deviation given specified tolerance
-        in domain of:
-        time, length, charge burnt volume ratio, velocity, pressure.
-        """
-        t_err = (self.l_0 / self.v_j) * tol
-        l_err = self.l_0 * tol
-        v_err = self.v_j * tol
-
-        """
-        technically speaking we should use self.Z_0 here, but that must be solved
-        """
-        Zp = -self.labda / (3 * self.mu)
-
-        Zs = (self.Z_0, 1, self.Z_b)
-        if 0 < Zp < 1:
-            Zs.append(Zp)
-
-        def dPsi(Z):
-            """
-            returns dPsi/dZ
-            """
-            if Z <= 1:
-                return (
-                    self.chi
-                    + 2 * self.labda * self.chi * Z
-                    + 3 * self.mu * self.chi * Z**2
-                )
-            else:
-                return self.chi_s + 2 * Z * self.labda_s * self.chi_s
-
-        psi_err = max(abs(dPsi(Z) * tol) for Z in Zs)
-
-        return (t_err, l_err, psi_err, v_err)
-
     def __getattr__(self, attrName):
         try:
             return getattr(self.propellant, attrName)
@@ -1462,18 +1426,18 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17"]
 
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 1e-3, 0, 2.5)
+    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 0.1e-3, 0, 2.5)
 
     lf = 0.5
     print("DELTA:", lf * M17SHC.maxLF)
     test = Gun(
-        0.035,
+        0.050,
         1.0,
         M17SHC,
-        0.8,
-        0.8 / M17SHC.rho_p / M17SHC.maxLF / lf,
+        1.0,
+        1.0 / M17SHC.rho_p / M17SHC.maxLF / lf,
         30000000.0,
-        0.5,
+        3.5,
         1.1,
     )
     try:
@@ -1496,26 +1460,11 @@ if __name__ == "__main__":
         print(e)
         pass
 
-    print("\nErrors")
-    print(
-        tabulate(
-            [test.getErr(1e-3)],
-            headers=("t", "l", "phi", "v", "p"),
-        )
-    )
-
     print("\nanalytical:")
     print(
         tabulate(
             test.analyze(it=100, tol=1e-5),
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
-        )
-    )
-    print(
-        test.getBP(
-            abortVel=2000,
-            abortLength=5,
-            tol=1e-3,
         )
     )
 

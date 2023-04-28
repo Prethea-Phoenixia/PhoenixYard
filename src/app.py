@@ -33,18 +33,6 @@ _prefix = {
 }
 
 
-# function to convert to superscript
-def get_super(x):
-    normal = (
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=()"
-    )
-    super_s = (
-        "ᴬᴮᶜᴰᴱᶠᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾQᴿˢᵀᵁⱽᵂˣʸᶻᵃᵇᶜᵈᵉᶠᵍʰᶦʲᵏˡᵐⁿᵒᵖ۹ʳˢᵗᵘᵛʷˣʸᶻ⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾"
-    )
-    res = x.maketrans("".join(normal), "".join(super_s))
-    return x.translate(res)
-
-
 from ctypes import windll, byref, create_unicode_buffer, create_string_buffer
 
 FR_PRIVATE = 0x10
@@ -113,11 +101,9 @@ def toSI(v, dec=4, unit=None, useSN=False):
                 + " " * (dec + 1 - len(vstr) + vstr.find("."))
                 + (
                     (
-                        "x10{:<3}".format(
-                            get_super("{:.0g}".format(log(magnitude, 10)))
-                        )
+                        "E{:<3}".format("{:.0g}".format(log(magnitude, 10)))
                         if magnitude != 1
-                        else "      "  # 6 SPACES!
+                        else "    "  # 4 SPACES!
                     )
                     if useSN
                     else prefix
@@ -128,30 +114,11 @@ def toSI(v, dec=4, unit=None, useSN=False):
         return (
             (" " if positive else "-")
             + "{:#.{:}g}".format(v, dec)
-            + "  "
+            + ("     " if useSN else "  ")
             + (unit if unit is not None else "")
         )
     else:
         raise ValueError(str(v) + " not possible to assign a SI prefix")
-
-
-def arrErr(errLst, units, useSN):
-    negLst = []
-    posLst = []
-    for line in errLst:
-        firstLine = []
-        secondLine = []
-        for err, u, sn in zip(line, units, useSN):
-            if isinstance(err, tuple):
-                firstLine.append(toSI(float(err[0]), unit=u, useSN=sn))
-                secondLine.append(toSI(float(err[1]), unit=u, useSN=sn))
-            else:
-                firstLine.append("")
-                secondLine.append("")
-        negLst.append(firstLine)
-        posLst.append(secondLine)
-
-    return negLst, posLst
 
 
 def validateNN(inp):
@@ -234,7 +201,8 @@ def dot_aligned(matrix, units, useSN):
 
 class ToolTip(object):
     """solution found in
-    https://stackoverflow.com/questions/20399243/display-message-when-hovering-over-something-with-mouse-cursor-in-python
+    https://stackoverflow.com/questions/20399243/display-message
+    -when-hovering-over-something-with-mouse-cursor-in-python
     """
 
     def __init__(self, widget):
@@ -349,7 +317,7 @@ class IB(Frame):
         self.tableData = []
         self.errorData = []
 
-        self.resetSpec()
+        # self.resetSpec()
 
         try:
             self.prop = Propellant(
@@ -403,7 +371,7 @@ class IB(Frame):
             )
 
             self.va.set(toSI(self.gun.v_j))
-
+            """
             t_err, l_err, psi_e, v_err = self.gun.getErr(
                 10 ** -(int(self.accExp.get()))
             )
@@ -412,7 +380,7 @@ class IB(Frame):
             self.lerr.set(toSI(l_err))
             self.psierr.set(toSI(psi_e))
             self.verr.set(toSI(v_err))
-
+            """
         except Exception as e:
             self.gun = None
             self.errorLst.append("Exception when defining guns:")
@@ -455,7 +423,13 @@ class IB(Frame):
             self.tv.insert(
                 "", "end", str(i), values=row, tags=(row[0], "monospace")
             )
-            self.tv.insert(str(i), "end", str(i + 1), values=erow, tags="error")
+            self.tv.insert(
+                str(i),
+                "end",
+                str(i + 1),
+                values=tuple("±" + e if e != erow[0] else e for e in erow),
+                tags="error",
+            )
             """
             self.tv.insert(
                 str(i), "end", str(i + 2), values=posrow, tags="error"
@@ -520,6 +494,7 @@ class IB(Frame):
             specFrm, i, "Chamber Volume", "m³", justify="right"
         )
 
+        """
         specFrm.rowconfigure(i, weight=1)
         errFrm = ttk.LabelFrame(specFrm, text="Maximum Error")
         errFrm.grid(row=i, column=0, columnspan=2, sticky="sew")
@@ -538,11 +513,11 @@ class IB(Frame):
         self.verr, _, j = self.add12Disp(
             errFrm, j, "Velocity", "m/s", justify="right"
         )
-        """
-        self.perr, _, j = self.add12Disp(
-            errFrm, j, "Pressure", "Pa", justify="right"
-        )
-        """
+    
+        #self.perr, _, j = self.add12Disp(
+        #    errFrm, j, "Pressure", "Pa", justify="right"
+        #)
+        #
 
         self.specFrmDisps = (
             self.va,
@@ -556,9 +531,11 @@ class IB(Frame):
             # self.perr,
         )
 
+
     def resetSpec(self):
         for specDisp in self.specFrmDisps:
             specDisp.set(specDisp.default)
+    """
 
     def updateSpec(self, *inp):
         self.specs.config(state="normal")
