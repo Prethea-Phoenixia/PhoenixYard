@@ -594,9 +594,9 @@ class Gun:
             movement to charge fracture
             """
             (t_bar_f, l_bar_f, v_bar_f), (
-                t_bar_err,
-                l_bar_err,
-                v_bar_err,
+                t_bar_err_f,
+                l_bar_err_f,
+                v_bar_err_f,
             ) = RKF78(
                 self._ode_Z,
                 (0, 0, 0),
@@ -618,11 +618,13 @@ class Gun:
             bar_err.append(
                 (
                     "FRACTURE",
-                    t_bar_err,
-                    l_bar_err,
+                    t_bar_err_f,
+                    l_bar_err_f,
                     0,
-                    v_bar_err,
-                    self._fp_bar(1, l_bar_f - l_bar_err, v_bar_f - v_bar_err)
+                    v_bar_err_f,
+                    self._fp_bar(
+                        1, l_bar_f - l_bar_err_f, v_bar_f - v_bar_err_f
+                    )
                     - self._fp_bar(1, l_bar_f, v_bar_f),
                 )
             )
@@ -635,9 +637,9 @@ class Gun:
             """
 
             (t_bar_b, l_bar_b, v_bar_b), (
-                t_bar_err,
-                l_bar_err,
-                v_bar_err,
+                t_bar_err_b,
+                l_bar_err_b,
+                v_bar_err_b,
             ) = RKF78(
                 self._ode_Z,
                 (0, 0, 0),
@@ -658,12 +660,12 @@ class Gun:
             bar_err.append(
                 (
                     "BURNOUT",
-                    t_bar_err,
-                    l_bar_err,
+                    t_bar_err_b,
+                    l_bar_err_b,
                     0,
-                    v_bar_err,
+                    v_bar_err_b,
                     self._fp_bar(
-                        self.Z_b, l_bar_b - l_bar_err, v_bar_b - v_bar_err
+                        self.Z_b, l_bar_b - l_bar_err_b, v_bar_b - v_bar_err_b
                     )
                     - self._fp_bar(self.Z_b, l_bar_b, v_bar_b),
                 )
@@ -694,20 +696,43 @@ class Gun:
             f,
             0,
             t_bar_e if t_bar_b is None else t_bar_b,
-            tol=tol,
+            tol=tol * (t_bar_e if t_bar_b is None else t_bar_b),
             findMin=False,
         )
 
         t_bar_p = 0.5 * (t_bar_p_1 + t_bar_p_2)
 
         if t_bar_f is not None and abs(t_bar_p - t_bar_f) / t_bar_p < tol:
+            # peak pressure occurs sufficiently close to fracture.
+            Z_p = 1
+            l_bar_p = l_bar_f
+            v_bar_p = v_bar_f
             t_bar_p = t_bar_f
-        if t_bar_b is not None and abs(t_bar_p - t_bar_b) / t_bar_p < tol:
+
+            Z_err_p = 0
+            l_bar_err_p = l_bar_err_f
+            v_bar_err_p = v_bar_err_f
+            t_bar_err_p = t_bar_err_f
+
+        elif t_bar_b is not None and abs(t_bar_p - t_bar_b) / t_bar_p < tol:
+            # peak pressure occurs sufficiently close to burnout.
+            Z_p = self.Z_b
+            l_bar_p = l_bar_b
+            v_bar_p = v_bar_b
             t_bar_p = t_bar_b
 
-        (Z_p, l_bar_p, v_bar_p), (Z_err, l_bar_err, v_bar_err) = RKF78(
-            self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol
-        )
+            Z_err_p = 0
+            l_bar_err_p = l_bar_err_b
+            v_bar_err_p = v_bar_err_b
+            t_bar_err_p = t_bar_err_b
+
+        else:
+            (Z_p, l_bar_p, v_bar_p), (
+                Z_err_p,
+                l_bar_err_p,
+                v_bar_err_p,
+            ) = RKF78(self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol)
+            t_bar_err_p = 0.5 * tol * (t_bar_e if t_bar_b is None else t_bar_b)
 
         bar_data.append(
             (
@@ -722,12 +747,12 @@ class Gun:
         bar_err.append(
             (
                 "PEAK PRESSURE",
-                0.5 * tol,
-                l_bar_err,
-                Z_err,
-                v_bar_err,
+                t_bar_err_p,
+                l_bar_err_p,
+                Z_err_p,
+                v_bar_err_p,
                 self._fp_bar(
-                    Z_p + Z_err, l_bar_p - l_bar_err, v_bar_p - v_bar_err
+                    Z_p + Z_err_p, l_bar_p - l_bar_err_p, v_bar_p - v_bar_err_p
                 )
                 - self._fp_bar(Z_p, l_bar_p, v_bar_p),
             )
@@ -837,7 +862,7 @@ class Gun:
                             v_bar_err,
                             self._fp_bar(
                                 Z_j + Z_err,
-                                l_bar_j - l_bar_err,
+                                l_bar_j,
                                 v_bar_j - v_bar_err,
                             )
                             - self._fp_bar(Z_j, l_bar_j, v_bar_j),

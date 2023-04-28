@@ -138,164 +138,6 @@ def gss(f, a, b, tol=1e-9, findMin=True):
         return (c, b)
 
 
-def RKF45(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
-    """
-    use Runge Kutta Fehlberg of 4(5)th power to solve the System of Equation
-
-    Arguments:
-        dFunc   : d/dx|x=x(y1, y2, y3....) = dFunc(x, y1, y2, y3...)
-        iniVal  : initial values for (y1, y2, y3...)
-        x_0, x_1: integration
-        tol     : relative tolerance, per component
-        absTol  : absolute tolerance, per component
-        termAbv : premature termination condition
-
-    Returns:
-        (y1, y2, y3...)|x = x_1, (e1, e2, e3....)
-        where e1, e2, e3...
-        is the estimated maximum deviation (in absolute) for that individual
-        component
-    """
-    if termAbv is None:
-        termAbv = tuple(None for _ in iniVal)
-    y_this = iniVal
-    x = x_0
-    beta = 0.84  # "safety" factor
-    h = x_1 - x_0  # initial step size
-    Rm = tuple(0 for _ in iniVal)
-    while (h > 0 and x < x_1) or (h < 0 and x > x_1):
-        if (x + h) == x:
-            break  # catch the error using the final lines
-        if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
-            h = x_1 - x
-        try:
-            K1 = tuple(k * h for k in dFunc(x, *y_this))
-            K2 = tuple(
-                k * h
-                for k in dFunc(
-                    x + 0.25 * h, *(y + 0.25 * k1 for y, k1 in zip(y_this, K1))
-                )
-            )
-            K3 = tuple(
-                k * h
-                for k in dFunc(
-                    x + 0.375 * h,
-                    *(
-                        y + (3 * k1 + 9 * k2) / 32
-                        for y, k1, k2 in zip(y_this, K1, K2)
-                    )
-                )
-            )
-            K4 = tuple(
-                k * h
-                for k in dFunc(
-                    x + 12 / 13 * h,
-                    *(
-                        y + (1932 * k1 - 7200 * k2 + 7296 * k3) / 2197
-                        for y, k1, k2, k3 in zip(y_this, K1, K2, K3)
-                    )
-                )
-            )
-            K5 = tuple(
-                k * h
-                for k in dFunc(
-                    x + h,
-                    *(
-                        y
-                        + 439 / 216 * k1
-                        - 8 * k2
-                        + 3680 / 513 * k3
-                        - 845 / 4104 * k4
-                        for y, k1, k2, k3, k4 in zip(y_this, K1, K2, K3, K4)
-                    )
-                )
-            )
-            K6 = tuple(
-                k * h
-                for k in dFunc(
-                    x + 0.5 * h,
-                    *(
-                        y
-                        + -8 / 27 * k1
-                        + 2 * k2
-                        - 3544 / 2565 * k3
-                        + 1859 / 4104 * k4
-                        - 11 / 40 * k5
-                        for y, k1, k2, k3, k4, k5 in zip(
-                            y_this, K1, K2, K3, K4, K5
-                        )
-                    )
-                )
-            )
-
-            if any(isinstance(i, complex) for i in K1 + K2 + K3 + K4 + K5 + K6):
-                raise TypeError
-
-        except (
-            TypeError,
-            ZeroDivisionError,
-        ):  # complex value has been encountered during calculation
-            # or that through unfortuante chance we got a divide by zero
-            h *= beta
-            continue
-
-        y_next = tuple(
-            y + 25 / 216 * k1 + 1408 / 2565 * k3 + 2197 / 4104 * k4 - 0.2 * k5
-            for y, k1, k3, k4, k5 in zip(y_this, K1, K3, K4, K5)
-        )  # forth order estimation
-        z_next = tuple(
-            y
-            + 16 / 135 * k1
-            + 6656 / 12825 * k3
-            + 28561 / 56430 * k4
-            - 9 / 50 * k5
-            + 2 / 55 * k6
-            for y, k1, k3, k4, k5, k6 in zip(y_this, K1, K3, K4, K5, K6)
-        )
-
-        te = tuple(z - y for z, y in zip(z_next, y_next))
-
-        Rs = tuple(abs(e / h) for e in te)  # projected global error
-        # print("Rs:", Rs[0])
-        R = max(
-            r / (absTol + tol * (abs(y) + abs(k1)))
-            for r, y, k1 in zip(Rs, y_this, K1)
-        )  # relative error as compared to specification
-        # print("R :", R)
-        delta = 1
-        if R > 1:  # error is greater than acceptable
-            delta = beta * abs(1 / R) ** 0.2
-
-        else:  # error is acceptable
-            y_this = y_next
-            x += h
-            Rm = tuple(max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs))
-            if any(
-                cv > pv if pv is not None else False
-                for cv, pv in zip(y_this, termAbv)
-            ):  # premature terminating cond. is met
-                return y_this, Rm
-            if R != 0:  # sometimes the error can be estimated to be 0
-                delta = beta * abs(1 / R) ** 0.25  # apply the new best estimate
-            else:
-                """
-                if this continues to be true, we are integrating a polynomial,
-                in which case the error should be independent of the step size
-                Therefore we aggressively increase the step size to seek forward.
-                """
-                delta = 4
-        # print("Delta", delta)
-        h *= min(max(delta, 0.25), 4)  # to ensure that this does not jump
-
-    if abs((x - x_1) / (x_1 - x_0)) > tol:
-        raise ValueError(
-            "Premature Termination of Integration due to vanishing step size,"
-            + " x at {}, h at {}.".format(x, h)
-        )
-
-    return y_this, Rm
-
-
 def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
     """
     use Runge Kutta Fehlberg of 7(8)th power to solve the System of Equation
@@ -318,16 +160,16 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
         termAbv = tuple(None for _ in iniVal)
     y_this = iniVal
     x = x_0
-    beta = 0.9  # "safety" factor
-    h = (x_1 - x_0) / 7  # initial step size
+    beta = 0.84  # "safety" factor
+    h = x_1 - x_0  # initial step size
+    # tol = tol / abs(x_1 - x_0)
     Rm = tuple(0 for _ in iniVal)
-    i = 0
     while (h > 0 and x < x_1) or (h < 0 and x > x_1):
-        i += 1
         if (x + h) == x:
             break  # catch the error using the final lines
         if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
             h = x_1 - x
+
         try:
             allK = []
             K1 = tuple(k * h for k in dFunc(x, *y_this))
@@ -534,8 +376,10 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
         except (
             TypeError,
             ZeroDivisionError,
+            OverflowError,
         ):  # complex value has been encountered during calculation
             # or that through unfortuante chance we got a divide by zero
+            # or that a step is too large that some operation overflowed
 
             h *= beta
             continue
@@ -559,21 +403,30 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
             for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13 in zip(
                 y_this, *allK
             )
-        )
+        )  # local truncation error, or difference per step
 
-        Rs = tuple(abs(e / h) for e in te)
-        # print("Rs:", Rs)
+        Rs = tuple(
+            abs(e * (x_1 - x_0) / h) for e in te
+        )  # extrapolate local truncation error to global error by multiplying step nbr
+
         R = max(
             r / (absTol + tol * (abs(y) + abs(k1)))
             for r, y, k1 in zip(Rs, y_this, K1)
         )
+        # construct a ratio to tolerable error using both relative error
+        # specification (tol) and absolute error specification (absTol),
+        # the latter considers both the value at point and first derivative
 
+        # print("R :", R)
         delta = 1
 
         if R >= 1:  # error is greater than acceptable
+            # print("not accepted", R)
             delta = beta * abs(1 / R) ** (1 / 8)
 
         else:  # error is acceptable
+            # print("accepted", R)
+            # print(*Rs)
             y_this = y_next
             x += h
             Rm = tuple(max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs))
@@ -592,7 +445,7 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
                 Therefore we aggressively increase the step size to seek forward.
                 """
                 delta = 4
-
+        # print("Delta:", delta)
         h *= min(max(delta, 0.125), 4)  # to ensure that this does not jump
 
     if abs((x - x_1) / (x_1 - x_0)) > tol:
@@ -728,38 +581,14 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=100):
 
 
 if __name__ == "__main__":
-    from tabulate import tabulate
 
-    print("verifying RKF45 is of 4th order")
-    tols = [1e-5, 1e-6, 1e-7]
-    devs = []
-    for i in range(0, 6):
-        dev_i = [i]
-        for tol in tols:
-            val, e = RKF45(
-                lambda x, y: (x**i,), (0,), 4, 5, tol=tol, absTol=1e-16
-            )
+    def df1(x, y):
+        # y(x) = -1/(7/4*x**4+C)
+        return (7 * y**2 * x**3,)
 
-            act = (5 ** (i + 1) - (4) ** (i + 1)) / (i + 1)
-            dev_i.append((act - val[0]) / act)
-
-        devs.append(dev_i)
-
-    print(tabulate(devs, headers=("order", *(str(t) for t in tols), "isSame?")))
-
-    print("verifying RKF78 is of 7th order")
-    tols = [1e-12, 1e-13, 1e-14]
-    devs = []
-    for i in range(0, 10):
-        dev_i = [i]
-        for tol in tols:
-            val, e = RKF78(
-                lambda x, y: (x**i,), (0,), 4, 5, tol=tol, absTol=1e-16
-            )
-            # print(e)
-            act = (5 ** (i + 1) - (4) ** (i + 1)) / (i + 1)
-            dev_i.append((act - val[0]) / act)
-
-        devs.append(dev_i)
-
-    print(tabulate(devs, headers=("order", *(str(t) for t in tols), "isSame?")))
+    v, e = RKF78(df1, (3,), 2, 0, tol=1e-4, absTol=1e-14)
+    # solution is -1/(7/4*x**4-85/3)
+    print(v)
+    print(e)
+    print("expected value")
+    print(-1 / (7 / 4 * 0**4 - 85 / 3))
