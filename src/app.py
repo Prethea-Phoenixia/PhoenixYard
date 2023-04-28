@@ -119,8 +119,17 @@ def toSI(v, dec=4, unit=None, useSN=False):
             + ("     " if useSN else "  ")
             + (unit if unit is not None else "")
         )
-    else:
-        raise ValueError(str(v) + " not possible to assign a SI prefix")
+    else:  # return a result in SI as a last resort
+        closest = log(v, 10) // 3
+        magnitude = 10**closest
+        vstr = "{:#.{:}g}".format(v / magnitude, dec)
+        return (
+            (" " if positive else "-")
+            + "{:#.{:}g}".format(v / magnitude, dec)
+            + " " * (dec + 1 - len(vstr) + vstr.find("."))
+            + ("E{:<3}".format(round(log(magnitude, 10))))
+            + (unit if unit is not None else "")
+        )
 
 
 def validateNN(inp):
@@ -193,6 +202,7 @@ def dot_aligned(matrix, units, useSN):
             try:
                 snums.append(toSI(float(n), unit=unit, useSN=isSN))
             except ValueError:
+                print(n)
                 snums.append(n)
         dots = [s.find(".") for s in snums]
         m = max(dots)
@@ -219,20 +229,20 @@ class ToolTip(object):
         if self.tipwindow or not self.text:
             return
 
+        self.tipwindow = tw = Toplevel(self.widget)
+        tw.wm_overrideredirect(1)
+        root = self.widget.winfo_toplevel()
+
         t_Font = tkFont.Font(family="hack", size=8)
         # we use a fixed width font so any char will do
         columnWidth = 40
         width, height = t_Font.measure("m"), t_Font.metrics("linespace")
         x, y, cx, cy = self.widget.bbox("insert")
+        rx, ry, crx, cry = root.bbox()
+        # bouding box coordinate is in regard to origin of widget/window
+
         """ initalize the tooltip window to the lower right corner of the widget"""
-        self.tipwindow = tw = Toplevel(self.widget)
-        tw.wm_overrideredirect(1)
-        root = self.widget.winfo_toplevel()
-        # rx, ry, crx, cry = root.bbox("insert")
-        # print(self.widget.winfo_rootx())
-        # print(self.widget.winfo_rooty())
-        # print(root.winfo_rootx())
-        # print(root.winfo_rooty())
+
         if (
             x + self.widget.winfo_rootx()
             > root.winfo_rootx() + 0.5 * root.winfo_width()
@@ -242,6 +252,18 @@ class ToolTip(object):
         else:
             x = x + self.widget.winfo_rootx() + self.widget.winfo_width()
             y = y + self.widget.winfo_rooty()
+
+        margin = (
+            y
+            + ceil(t_Font.measure(self.text) / (width * columnWidth) + 1)
+            * height
+            - ry
+            - root.winfo_rooty()
+            - root.winfo_height()
+        )  # ensure that tooltip does not overrun the main window
+
+        if margin > 0:
+            y -= margin
 
         tw.wm_geometry("+%d+%d" % (x, y))
         label = Label(
@@ -257,11 +279,17 @@ class ToolTip(object):
         label.config(width=columnWidth)  # characters
         label.pack(ipadx=1)
 
+        if (
+            y + t_Font.measure(self.text) / (width * columnWidth) * height
+            > ry + root.winfo_rooty() + root.winfo_height()
+        ):
+            print("this")
+
     def hidetip(self):
         tw = self.tipwindow
         self.tipwindow = None
         if tw:
-            tw.after(10, lambda: tw.destroy())
+            tw.after(25, lambda: tw.destroy())
 
 
 def CreateToolTip(widget, text):
@@ -398,6 +426,8 @@ class IB(Frame):
                     dom=self.dropOptn.get(),
                     tol=10 ** -(int(self.accExp.get())),
                 )
+                print(*self.tableData, sep="\n")
+                print(*self.errorData, sep="\n")
                 i = tuple(i[0] for i in self.tableData).index("SHOT EXIT")
                 vg = self.tableData[i][4]
                 te, be = self.gun.getEff(vg)
@@ -631,15 +661,15 @@ class IB(Frame):
                 "13.15%-13.25% for all preset propellants.",
                 "Up to 14.14% is possible but has not been",
                 "adopted by the industry due to cost.\n",
-                "Pure Nitrocellulose is plasticized and stabi-",
-                "lized with Dinitrotoluene to form single",
+                "Pure Nitrocellulose is plasticized and stabilized",
+                "with Dinitrotoluene to form single",
                 "based propellant.\n",
                 "Double based propellant is formed when",
                 "Nitroglycerin is used as gelatinizer instead.",
                 "While more energetic, it also burns hotter",
                 "and erodes barrel more.\n",
-                "Triple base propellants contains Nitro-",
-                "guanidine, with higher energy content",
+                "Triple base propellants contains Nitroguanidine,",
+                "with higher energy content",
                 "while keeping flame temperature low.",
                 "However, it is mechanically the weakest.",
             )
@@ -905,7 +935,7 @@ class IB(Frame):
         self.steps, _, i = self.add3Input(
             opFrm,
             i,
-            "Show",
+            "",
             "steps",
             "10",
             validation=validationNN,
@@ -917,9 +947,11 @@ class IB(Frame):
 
         tolText = " ".join(
             (
-                "The (unitless) sum of error of all variables",
-                "being integrated should be smaller than 10",
-                "raised to the negative power of input.",
+                "The maximum relative error, ε, that is allowed in the integrands,",
+                "for each component. In practice the integrator use the sum of",
+                "the value and first partial derivative at any point, thus this",
+                "is more of a suggestion to the order of magnitude of the result",
+                "than an exact tolerance limit.",
             )
         )
         self.accExp, _, i = self.add2Input(

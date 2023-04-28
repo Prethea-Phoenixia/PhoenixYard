@@ -585,6 +585,11 @@ class Gun:
                 - self._fp_bar(Z_e, l_g_bar, v_bar_e),
             )
         )
+        """
+        Worst case scenario for pressure deviation is when:
+        Z higher than actual, l lower than actual, v lower than actual
+        more burnt propellant, less volume, lower speed of projectile.
+        """
 
         t_bar_f = None
         if Z_e > 1:  # fracture point is contained:
@@ -734,6 +739,8 @@ class Gun:
             ) = RKF78(self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol)
             t_bar_err_p = 0.5 * tol * (t_bar_e if t_bar_b is None else t_bar_b)
 
+        p_bar_p = self._fp_bar(Z_p, l_bar_p, v_bar_p)
+
         bar_data.append(
             (
                 "PEAK PRESSURE",
@@ -741,7 +748,7 @@ class Gun:
                 l_bar_p,
                 Z_p,
                 v_bar_p,
-                self._fp_bar(Z_p, l_bar_p, v_bar_p),
+                p_bar_p,
             )
         )
         bar_err.append(
@@ -751,10 +758,20 @@ class Gun:
                 l_bar_err_p,
                 Z_err_p,
                 v_bar_err_p,
-                self._fp_bar(
-                    Z_p + Z_err_p, l_bar_p - l_bar_err_p, v_bar_p - v_bar_err_p
-                )
-                - self._fp_bar(Z_p, l_bar_p, v_bar_p),
+                max(
+                    self._fp_bar(
+                        Z_p + Z_err_p,
+                        l_bar_p - l_bar_err_p,
+                        v_bar_p - v_bar_err_p,
+                    )
+                    - p_bar_p,
+                    p_bar_p,
+                    -self._fp_bar(
+                        Z_p - Z_err_p,
+                        l_bar_p + l_bar_err_p,
+                        v_bar_p + v_bar_err_p,
+                    ),
+                ),
             )
         )
         """
@@ -781,16 +798,9 @@ class Gun:
                         t_bar_j,
                         tol=tol,
                     )
-
+                    p_bar_j = self._fp_bar(Z_j, l_bar_j, v_bar_j)
                     bar_sample_data.append(
-                        (
-                            "",
-                            t_bar_j,
-                            l_bar_j,
-                            Z_j,
-                            v_bar_j,
-                            self._fp_bar(Z_j, l_bar_j, v_bar_j),
-                        )
+                        ("", t_bar_j, l_bar_j, Z_j, v_bar_j, p_bar_j)
                     )
 
                     bar_sample_err.append(
@@ -800,12 +810,20 @@ class Gun:
                             l_bar_err,
                             Z_err,
                             v_bar_err,
-                            self._fp_bar(
-                                Z_j + Z_err,
-                                l_bar_j - l_bar_err,
-                                v_bar_j - v_bar_err,
-                            )
-                            - self._fp_bar(Z_j, l_bar_j, v_bar_j),
+                            max(
+                                self._fp_bar(
+                                    Z_j + Z_err,
+                                    l_bar_j,
+                                    v_bar_j - v_bar_err,
+                                )
+                                - p_bar_j,
+                                p_bar_j
+                                - self._fp_bar(
+                                    Z_j - Z_err,
+                                    l_bar_j,
+                                    v_bar_j + v_bar_err,
+                                ),
+                            ),
                         )
                     )
             else:
@@ -843,6 +861,7 @@ class Gun:
                         l_bar_j,
                         tol=tol,
                     )
+                    p_bar_j = self._fp_bar(Z_j, l_bar_j, v_bar_j)
                     bar_sample_data.append(
                         (
                             "",
@@ -850,7 +869,7 @@ class Gun:
                             l_bar_j,
                             Z_j,
                             v_bar_j,
-                            self._fp_bar(Z_j, l_bar_j, v_bar_j),
+                            p_bar_j,
                         )
                     )
                     bar_sample_err.append(
@@ -860,12 +879,20 @@ class Gun:
                             0,
                             Z_err,
                             v_bar_err,
-                            self._fp_bar(
-                                Z_j + Z_err,
-                                l_bar_j,
-                                v_bar_j - v_bar_err,
-                            )
-                            - self._fp_bar(Z_j, l_bar_j, v_bar_j),
+                            max(
+                                self._fp_bar(
+                                    Z_j + Z_err,
+                                    l_bar_j,
+                                    v_bar_j - v_bar_err,
+                                )
+                                - p_bar_j,
+                                p_bar_j
+                                - self._fp_bar(
+                                    Z_j - Z_err,
+                                    l_bar_j,
+                                    v_bar_j + v_bar_err,
+                                ),
+                            ),
                         )
                     )
         except ValueError as e:
@@ -883,7 +910,16 @@ class Gun:
             )
         )
 
-        # print(*bar_data, sep="\n")
+        """
+        Since for known propellants 1/alpha, or the reciprocal of 
+        the covolume is smaller than the density, therefore the free
+        volume decrease monotically, the number of molecules increase
+        monotically.
+
+        Therefore, the worst case error for temperature is achieved by: 
+        psi lower than actual, length longer than actual, pressure higher than actual
+        According to the Nobel-Abel EoS
+        """
 
         data = list(
             (
@@ -901,7 +937,6 @@ class Gun:
             (tag, t, l, psi, v, p, self._T(psi, l, p))
             for (tag, t, l, psi, v, p) in data
         )
-
         error = list(
             (
                 "L",
@@ -927,10 +962,32 @@ class Gun:
                 _,
             ), in zip(bar_err, bar_data)
         )
-
         error = list(
-            (tag, terr, lerr, psierr, verr, perr, 0)
-            for (tag, terr, lerr, psierr, verr, perr) in error
+            (
+                tag,
+                terr,
+                lerr,
+                psierr,
+                verr,
+                perr,
+                self._T(psi - psierr, l + lerr, p + perr) - T,
+            )
+            for (
+                tag,
+                terr,
+                lerr,
+                psierr,
+                verr,
+                perr,
+            ), (
+                _,
+                t,
+                l,
+                psi,
+                v,
+                p,
+                T,
+            ), in zip(error, data)
         )
 
         return data, error
@@ -975,25 +1032,25 @@ if __name__ == "__main__":
         3.5,
         1.1,
     )
-    try:
-        print("\nnumerical: time")
-        print(
-            tabulate(
-                test.integrate(10, 1e-3, dom="time")[0],
-                headers=("tag", "t", "l", "phi", "v", "p", "T"),
-            )
+    # try:
+    print("\nnumerical: time")
+    print(
+        tabulate(
+            test.integrate(10, 1e-3, dom="time")[0],
+            headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
-        print("\nnumerical: length")
-        print(
-            tabulate(
-                test.integrate(10, 1e-3, dom="length")[0],
-                headers=("tag", "t", "l", "phi", "v", "p", "T"),
-            )
+    )
+    print("\nnumerical: length")
+    print(
+        tabulate(
+            test.integrate(10, 1e-3, dom="length")[0],
+            headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
+    )
 
-    except ValueError as e:
-        print(e)
-        pass
+    # except ValueError as e:
+    #    print(e)
+    #    pass
 
     # print(*test.integrate(10, 1e-5, dom="length"), sep="\n")
     # density:  lbs/in^3 -> kg/m^3, multiply by 27680
