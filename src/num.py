@@ -407,7 +407,7 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
         Rs = tuple(
             abs(e * (x_1 - x_0) / h) for e in te
         )  # extrapolate local truncation error to global error by multiplying step nbr
-
+        """
         R = max(
             r / (absTol + tol * (abs(y) + abs(k1)))
             for r, y, k1 in zip(Rs, y_this, K1)
@@ -415,7 +415,8 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
         # construct a ratio to tolerable error using both relative error
         # specification (tol) and absolute error specification (absTol),
         # the latter considers both the value at point and first derivative
-
+        """
+        R = max(r / (absTol + tol * abs(y)) for r, y in zip(Rs, y_this))
         # print("R :", R)
         delta = 1
 

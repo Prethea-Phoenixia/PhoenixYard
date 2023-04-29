@@ -5,6 +5,15 @@ import csv
 from math import pi, log, exp, inf
 from num import *
 
+DOMAIN_TIME = "Time"
+DOMAIN_LENG = "Length"
+
+POINT_START = "SHOT START"
+POINT_PEAK = "PEAK PRESSURE"
+POINT_FRACTURE = "FRACTURE"
+POINT_BURNOUT = "BURNOUT"
+POINT_EXIT = "SHOT EXIT"
+
 
 class AbortedDueToVelocity(ValueError):
     def __init__(self, message=""):
@@ -460,28 +469,67 @@ class Gun:
         evenly at specified number of steps, using a scaled numerical tolerance as
         specified.
 
-        tolerance is meant to be interpreted as in the worst case, each unitless result
-        is allowed to be tol distance away from the real solution as specified.
+        tolerance is meant to be interpreted as the maximum relative deviation each
+        component is allowed to have, at each step of integration point.
 
         Through significant trials and errors, it was determined that for this particular
-        system, the error due to compounding does not appear to be significant.
+        system, the error due to compounding does not appear to be significant,
+        usually on the order of 1e-16 - 1e-14 as compared to much larger for component
+        errors.
         """
 
         l_g_bar = self.l_g / self.l_0
         bar_data = []
         bar_err = []
 
-        bar_data.append(
-            (
-                "SHOT START",
-                0,
-                0,
-                self.Z_0,
-                0,
-                self.p_0 / (self.f * self.Delta),
+        def updBarData(
+            tag,
+            t_bar,
+            l_bar,
+            Z,
+            v_bar,
+            t_bar_err,
+            l_bar_err,
+            Z_err,
+            v_bar_err,
+        ):
+            p_bar = self._fp_bar(Z, l_bar, v_bar)
+            p_bar_u = self._fp_bar(
+                Z + Z_err, l_bar - l_bar_err, v_bar - v_bar_err
             )
+            p_bar_l = self._fp_bar(
+                Z - Z_err,
+                l_bar + l_bar_err,
+                v_bar + v_bar_err,
+            )
+            bar_data.append((tag, t_bar, l_bar, Z, v_bar, p_bar))
+            """
+            Worst case scenario for pressure deviation is when:
+            Z higher than actual, l lower than actual, v lower than actual
+            more burnt propellant, less volume, lower speed of projectile.
+            """
+            bar_err.append(
+                (
+                    "L",
+                    t_bar_err,
+                    l_bar_err,
+                    Z_err,
+                    v_bar_err,
+                    max(p_bar_u - p_bar, p_bar - p_bar_l),
+                )
+            )
+
+        updBarData(
+            tag=POINT_START,
+            t_bar=0,
+            l_bar=0,
+            Z=self.Z_0,
+            v_bar=0,
+            t_bar_err=0,
+            l_bar_err=0,
+            Z_err=0,
+            v_bar_err=0,
         )
-        bar_err.append(("SHOT START", 0, 0, 0, 0, 0))
 
         N = 1
         Delta_Z = self.Z_b - self.Z_0
@@ -564,32 +612,18 @@ class Gun:
             l_g_bar,
             tol=tol,
         )
-        bar_data.append(
-            (
-                "SHOT EXIT",
-                t_bar_e,
-                l_g_bar,
-                Z_e,
-                v_bar_e,
-                self._fp_bar(Z_e, l_g_bar, v_bar_e),
-            )
+
+        updBarData(
+            tag=POINT_EXIT,
+            t_bar=t_bar_e,
+            l_bar=l_g_bar,
+            Z=Z_e,
+            v_bar=v_bar_e,
+            t_bar_err=t_bar_err,
+            l_bar_err=0,
+            Z_err=Z_err,
+            v_bar_err=v_bar_err,
         )
-        bar_err.append(
-            (
-                "SHOT EXIT",
-                t_bar_err,
-                0,
-                Z_err,
-                v_bar_err,
-                self._fp_bar(Z_e + Z_err, l_g_bar, v_bar_e - v_bar_err)
-                - self._fp_bar(Z_e, l_g_bar, v_bar_e),
-            )
-        )
-        """
-        Worst case scenario for pressure deviation is when:
-        Z higher than actual, l lower than actual, v lower than actual
-        more burnt propellant, less volume, lower speed of projectile.
-        """
 
         t_bar_f = None
         if Z_e > 1:  # fracture point is contained:
@@ -610,29 +644,18 @@ class Gun:
                 tol=tol,
             )
 
-            bar_data.append(
-                (
-                    "FRACTURE",
-                    t_bar_f,
-                    l_bar_f,
-                    1,
-                    v_bar_f,
-                    self._fp_bar(1, l_bar_f, v_bar_f),
-                )
+            updBarData(
+                tag=POINT_FRACTURE,
+                t_bar=t_bar_f,
+                l_bar=l_bar_f,
+                Z=1,
+                v_bar=v_bar_f,
+                t_bar_err=t_bar_err_f,
+                l_bar_err=l_bar_err_f,
+                Z_err=0,
+                v_bar_err=v_bar_err_f,
             )
-            bar_err.append(
-                (
-                    "FRACTURE",
-                    t_bar_err_f,
-                    l_bar_err_f,
-                    0,
-                    v_bar_err_f,
-                    self._fp_bar(
-                        1, l_bar_f - l_bar_err_f, v_bar_f - v_bar_err_f
-                    )
-                    - self._fp_bar(1, l_bar_f, v_bar_f),
-                )
-            )
+
         t_bar_b = None
         if Z_e >= self.Z_b:
             """
@@ -652,28 +675,17 @@ class Gun:
                 self.Z_b,
                 tol=tol,
             )
-            bar_data.append(
-                (
-                    "BURNOUT",
-                    t_bar_b,
-                    l_bar_b,
-                    self.Z_b,
-                    v_bar_b,
-                    self._fp_bar(self.Z_b, l_bar_b, v_bar_b),
-                )
-            )
-            bar_err.append(
-                (
-                    "BURNOUT",
-                    t_bar_err_b,
-                    l_bar_err_b,
-                    0,
-                    v_bar_err_b,
-                    self._fp_bar(
-                        self.Z_b, l_bar_b - l_bar_err_b, v_bar_b - v_bar_err_b
-                    )
-                    - self._fp_bar(self.Z_b, l_bar_b, v_bar_b),
-                )
+
+            updBarData(
+                tag=POINT_BURNOUT,
+                t_bar=t_bar_b,
+                l_bar=l_bar_b,
+                Z=self.Z_b,
+                v_bar=v_bar_b,
+                t_bar_err=t_bar_err_b,
+                l_bar_err=l_bar_err_b,
+                Z_err=0,
+                v_bar_err=v_bar_err_b,
             )
 
         """
@@ -739,92 +751,48 @@ class Gun:
             ) = RKF78(self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol)
             t_bar_err_p = 0.5 * tol * (t_bar_e if t_bar_b is None else t_bar_b)
 
-        p_bar_p = self._fp_bar(Z_p, l_bar_p, v_bar_p)
+        updBarData(
+            tag=POINT_PEAK,
+            t_bar=t_bar_p,
+            l_bar=l_bar_p,
+            Z=Z_p,
+            v_bar=v_bar_p,
+            t_bar_err=t_bar_err_p,
+            l_bar_err=l_bar_err_p,
+            Z_err=Z_err_p,
+            v_bar_err=v_bar_err_p,
+        )
 
-        bar_data.append(
-            (
-                "PEAK PRESSURE",
-                t_bar_p,
-                l_bar_p,
-                Z_p,
-                v_bar_p,
-                p_bar_p,
-            )
-        )
-        bar_err.append(
-            (
-                "PEAK PRESSURE",
-                t_bar_err_p,
-                l_bar_err_p,
-                Z_err_p,
-                v_bar_err_p,
-                max(
-                    self._fp_bar(
-                        Z_p + Z_err_p,
-                        l_bar_p - l_bar_err_p,
-                        v_bar_p - v_bar_err_p,
-                    )
-                    - p_bar_p,
-                    p_bar_p,
-                    -self._fp_bar(
-                        Z_p - Z_err_p,
-                        l_bar_p + l_bar_err_p,
-                        v_bar_p + v_bar_err_p,
-                    ),
-                ),
-            )
-        )
         """
         populate data for output purposes
         """
-
-        bar_sample_data = []
-        bar_sample_err = []
         try:
-            if dom == "time":
-                Z_j, l_bar_j, v_bar_j = self.Z_0, 0, 0
-
+            if dom == DOMAIN_TIME:
                 for j in range(steps):
                     t_bar_j = t_bar_e / (steps + 1) * (j + 1)
-
+                    Z_j, l_bar_j, v_bar_j = self.Z_0, 0, 0
                     (Z_j, l_bar_j, v_bar_j), (
                         Z_err,
                         l_bar_err,
                         v_bar_err,
                     ) = RKF78(
                         self._ode_t,
-                        (self.Z_0, 0, 0),
+                        (Z_j, l_bar_j, v_bar_j),
                         0,
                         t_bar_j,
                         tol=tol,
                     )
-                    p_bar_j = self._fp_bar(Z_j, l_bar_j, v_bar_j)
-                    bar_sample_data.append(
-                        ("", t_bar_j, l_bar_j, Z_j, v_bar_j, p_bar_j)
-                    )
 
-                    bar_sample_err.append(
-                        (
-                            "",
-                            0,
-                            l_bar_err,
-                            Z_err,
-                            v_bar_err,
-                            max(
-                                self._fp_bar(
-                                    Z_j + Z_err,
-                                    l_bar_j,
-                                    v_bar_j - v_bar_err,
-                                )
-                                - p_bar_j,
-                                p_bar_j
-                                - self._fp_bar(
-                                    Z_j - Z_err,
-                                    l_bar_j,
-                                    v_bar_j + v_bar_err,
-                                ),
-                            ),
-                        )
+                    updBarData(
+                        tag="",
+                        t_bar=t_bar_j,
+                        l_bar=l_bar_j,
+                        Z=Z_j,
+                        v_bar=v_bar_j,
+                        t_bar_err=0,
+                        l_bar_err=l_bar_err,
+                        Z_err=Z_err,
+                        v_bar_err=v_bar_err,
                     )
             else:
                 """
@@ -847,8 +815,8 @@ class Gun:
                     tol=tol,
                 )[0]
 
-                for i in range(steps):
-                    l_bar_j = l_g_bar / (steps + 1) * (i + 1)
+                for j in range(steps):
+                    l_bar_j = l_g_bar / (steps + 1) * (j + 1)
 
                     (t_bar_j, Z_j, v_bar_j), (
                         t_bar_err,
@@ -861,45 +829,27 @@ class Gun:
                         l_bar_j,
                         tol=tol,
                     )
-                    p_bar_j = self._fp_bar(Z_j, l_bar_j, v_bar_j)
-                    bar_sample_data.append(
-                        (
-                            "",
-                            t_bar_j,
-                            l_bar_j,
-                            Z_j,
-                            v_bar_j,
-                            p_bar_j,
-                        )
+
+                    updBarData(
+                        tag="",
+                        t_bar=t_bar_j,
+                        l_bar=l_bar_j,
+                        Z=Z_j,
+                        v_bar=v_bar_j,
+                        t_bar_err=t_bar_err,
+                        l_bar_err=0,
+                        Z_err=Z_err,
+                        v_bar_err=v_bar_err,
                     )
-                    bar_sample_err.append(
-                        (
-                            "",
-                            t_bar_err,
-                            0,
-                            Z_err,
-                            v_bar_err,
-                            max(
-                                self._fp_bar(
-                                    Z_j + Z_err,
-                                    l_bar_j,
-                                    v_bar_j - v_bar_err,
-                                )
-                                - p_bar_j,
-                                p_bar_j
-                                - self._fp_bar(
-                                    Z_j - Z_err,
-                                    l_bar_j,
-                                    v_bar_j + v_bar_err,
-                                ),
-                            ),
-                        )
-                    )
+
         except ValueError as e:
             pass
         finally:
-            bar_data.extend(bar_sample_data)
-            bar_err.extend(bar_sample_err)
+            pass
+
+        """
+        sort the data points
+        """
 
         bar_data, bar_err = zip(
             *(
@@ -910,85 +860,44 @@ class Gun:
             )
         )
 
-        """
-        Since for known propellants 1/alpha, or the reciprocal of 
-        the covolume is smaller than the density, therefore the free
-        volume decrease monotically, the number of molecules increase
-        monotically.
-
-        Therefore, the worst case error for temperature is achieved by: 
-        psi lower than actual, length longer than actual, pressure higher than actual
-        According to the Nobel-Abel EoS
-        """
-
-        data = list(
+        data = []
+        error = []
+        for bar_dataLine, bar_errorLine in zip(bar_data, bar_err):
+            dtag, t_bar, l_bar, Z, v_bar, p_bar = bar_dataLine
             (
-                tag,
-                t_bar * self.l_0 / self.v_j,
-                l_bar * self.l_0,
-                self._fpsi(Z),
-                v_bar * self.v_j,
-                p_bar * self.f * self.Delta,
-            )
-            for (tag, t_bar, l_bar, Z, v_bar, p_bar) in bar_data
-        )
-
-        data = list(
-            (tag, t, l, psi, v, p, self._T(psi, l, p))
-            for (tag, t, l, psi, v, p) in data
-        )
-        error = list(
-            (
-                "L",
-                t_bar_err * self.l_0 / self.v_j,
-                l_bar_err * self.l_0,
-                abs(self._dPsi(Z) * Z_err),
-                v_bar_err * self.v_j,
-                p_bar_err * self.f * self.Delta,
-            )
-            for (
-                tag,
+                etag,
                 t_bar_err,
                 l_bar_err,
                 Z_err,
                 v_bar_err,
                 p_bar_err,
-            ), (
-                _,
-                _,
-                _,
-                Z,
-                _,
-                _,
-            ), in zip(bar_err, bar_data)
-        )
-        error = list(
-            (
-                tag,
-                terr,
-                lerr,
-                psierr,
-                verr,
-                perr,
-                self._T(psi - psierr, l + lerr, p + perr) - T,
+            ) = bar_errorLine
+
+            tScale = self.l_0 / self.v_j
+            t, t_err = (t_bar * tScale, t_bar_err * tScale)
+            l, l_err = (l_bar * self.l_0, l_bar_err * self.l_0)
+            psi, psi_err = (self._fpsi(Z), abs(self._dPsi(Z) * Z_err))
+            v, v_err = v_bar * self.v_j, v_bar_err * self.v_j
+            pScale = self.f * self.Delta
+            p, p_err = p_bar * pScale, p_bar_err * pScale
+
+            T = self._T(psi, l, p)
+            """
+            Since for known propellants 1/alpha, or the reciprocal of 
+            the covolume is smaller than the density, therefore the free
+            volume decrease monotically, the number of molecules increase
+            monotically.
+
+            Therefore, the worst case error for temperature is achieved by: 
+            psi lower than actual, length longer than actual, pressure higher than actual
+            According to the Nobel-Abel EoS
+            """
+            T_err = max(
+                self._T(psi - psi_err, l + l_err, p + p_err) - T,
+                T - self._T(psi + psi_err, l - l_err, p - p_err),
             )
-            for (
-                tag,
-                terr,
-                lerr,
-                psierr,
-                verr,
-                perr,
-            ), (
-                _,
-                t,
-                l,
-                psi,
-                v,
-                p,
-                T,
-            ), in zip(error, data)
-        )
+            data.append((dtag, t, l, psi, v, p, T))
+            error.append((etag, t_err, l_err, psi_err, v_err, p_err, T_err))
 
         return data, error
 

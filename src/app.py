@@ -202,7 +202,6 @@ def dot_aligned(matrix, units, useSN):
             try:
                 snums.append(toSI(float(n), unit=unit, useSN=isSN))
             except ValueError:
-                print(n)
                 snums.append(n)
         dots = [s.find(".") for s in snums]
         m = max(dots)
@@ -320,7 +319,7 @@ class IB(Frame):
 
         self.propOptions = tuple(self.compositions.keys())
         self.geoOptions = tuple(self.geometries.keys())
-        self.domainOptions = ("time", "length")
+        self.domainOptions = (DOMAIN_TIME, DOMAIN_LENG)
 
         self.geoLocked = IntVar()
 
@@ -426,8 +425,7 @@ class IB(Frame):
                     dom=self.dropOptn.get(),
                     tol=10 ** -(int(self.accExp.get())),
                 )
-                print(*self.tableData, sep="\n")
-                print(*self.errorData, sep="\n")
+
                 i = tuple(i[0] for i in self.tableData).index("SHOT EXIT")
                 vg = self.tableData[i][4]
                 te, be = self.gun.getEff(vg)
@@ -462,11 +460,7 @@ class IB(Frame):
                 values=tuple("±" + e if e != erow[0] else e for e in erow),
                 tags="error",
             )
-            """
-            self.tv.insert(
-                str(i), "end", str(i + 2), values=posrow, tags="error"
-            )
-            """
+
             self.tv.move(str(i + 1), str(i), "end")
             # self.tv.move(str(i + 2), str(i), "end")
             i += 2
@@ -912,10 +906,12 @@ class IB(Frame):
             command=configEntry,
         ).grid(row=0, column=2, rowspan=2, sticky="nsew", padx=2, pady=2)
 
-        ttk.Label(opFrm, text="Sample").grid(
-            row=2, column=0, sticky="nsew", padx=2, pady=2
+        samplbl = ttk.Label(opFrm, text="Sample")
+        samplbl.grid(row=2, column=0, sticky="nsew", padx=2, pady=2)
+        sampTxt = " ".join(
+            ("The amount of sample points and domain to take them.", "")
         )
-
+        CreateToolTip(samplbl, sampTxt)
         self.dropOptn = ttk.Combobox(
             opFrm, values=self.domainOptions, state="readonly", justify="center"
         )
@@ -947,11 +943,9 @@ class IB(Frame):
 
         tolText = " ".join(
             (
-                "The maximum relative error, ε, that is allowed in the integrands,",
-                "for each component. In practice the integrator use the sum of",
-                "the value and first partial derivative at any point, thus this",
-                "is more of a suggestion to the order of magnitude of the result",
-                "than an exact tolerance limit.",
+                "The maximum relative error, ε, that is allowed in the integrands",
+                "for each component. Some components may have significantly less",
+                "error than specified here, as shown under each entry.",
             )
         )
         self.accExp, _, i = self.add2Input(
@@ -1015,9 +1009,9 @@ class IB(Frame):
 
         self.tv["columns"] = columnList
         self.tv["show"] = "headings"
-        self.tv.tag_configure("PEAK PRESSURE", foreground="orange")
-        self.tv.tag_configure("BURNOUT", foreground="red")
-        self.tv.tag_configure("FRACTURE", foreground="brown")
+        self.tv.tag_configure(POINT_PEAK, foreground="orange")
+        self.tv.tag_configure(POINT_BURNOUT, foreground="red")
+        self.tv.tag_configure(POINT_FRACTURE, foreground="brown")
         # self.tv.tag_configure("monospace", font=("TkFixedFont", 9))
 
         t_Font = tkFont.Font(family="hack", size=8)
