@@ -1,4 +1,4 @@
-import enum
+from enum import Enum
 
 import csv
 
@@ -27,23 +27,17 @@ class AbortedDueToLength(ValueError):
         super().__init__(self.message)
 
 
-class Geometry(enum.Enum):
+class MultPerfGeometry(Enum):
     """table 1-4 from ref[1] page 33"""
-
-    def __new__(cls, *args, **kwds):
-        value = len(cls.__members__) + 1
-        obj = object.__new__(cls)
-        obj._value_ = value
-        return obj
 
     def __init__(self, desc, A, B, C, rhoDiv, nHole):
         self.desc = desc
         self.A = A
         self.B = B
         self.C = C
-
         self.rhoDiv = rhoDiv  # rho divided by (e_1+d_0/2)
         self.nHole = nHole
+        self.useAR = False
 
     SEVEN_PERF_CYLINDER = (
         "7 Perf Cylinder",
@@ -60,6 +54,14 @@ class Geometry(enum.Enum):
         12 * 3**0.5 / pi,
         0.1547,
         7,
+    )
+    FOURTEEN_PERF_ROSETTE = (
+        "14 Perf Rosette",
+        8 / 3,
+        47 / 3,
+        26 * 3**0.5 / pi,
+        0.1547,
+        14,
     )
     NINETEEN_PERF_ROSETTE = (
         "19 Perf Rosette",
@@ -93,6 +95,16 @@ class Geometry(enum.Enum):
         0.1977,
         19,
     )
+
+
+class SimpleGeometry(Enum):
+    """table 1-3 from ref[1] page 23"""
+
+    def __init__(self, desc):
+        self.desc = desc
+
+    TUBE = "Cylindrical Tube"
+    ROD = "Square Rod / Tape"
 
 
 class GrainComp:
@@ -192,95 +204,170 @@ class GrainComp:
 
 class Propellant:
     # assumed to be multi-holed propellants
-    def __init__(self, composition, propGeom, arcThick, grainPR, grainLDR):
+    def __init__(self, composition, propGeom, length, R1, R2):
         """
-        LDR: length ot diameter ratio
-        PR: perf diameter to arc thickness ratio.
+
+        length:
+            interpreted as:
+                arc thickness
+                for perforated cylinders
+
+                primary length
+                for rectangular rods
+
+        R1: ratio w.r.t arc thickness
+            interpreted as:
+                Perf diameter to arc thickness ratio
+                for perforated cylinders
+
+                Secondary length to primary length ratio
+                for rectangular rod shape
+
+        R2: ratio w.r.t arc thickness
+            interpreted as:
+                Length to "effective diameter" ratio
+                for perforated cylinders
+
+                teritary length to primary length ratio
+                for rectangular rod shapes
+
         """
         self.composition = composition
         self.geometry = propGeom
 
-        self.e_1 = arcThick / 2
-        self.d_0 = arcThick * grainPR
+        if self.geometry in MultPerfGeometry:
+            arcThick, PR, LR = length, R1, R2
 
-        if propGeom == Geometry.SEVEN_PERF_CYLINDER:
-            self.D_0 = (
-                8 * self.e_1 + 3 * self.d_0
-            )  # enforce geometry constraints
-            b, a = self.D_0, 0
+            self.e_1 = 0.5 * arcThick
+            self.d_0 = arcThick * PR
 
-        elif propGeom == Geometry.SEVEN_PERF_ROSETTE:
-            self.D_0 = 8 * self.e_1 + 3 * self.d_0
-            b, a = self.d_0 + 4 * self.e_1, self.d_0 + 2 * self.e_1
+            if propGeom == MultPerfGeometry.SEVEN_PERF_CYLINDER:
+                b, a = 3 * self.d_0 + 8 * self.e_1, 0
 
-        elif propGeom == Geometry.NINETEEN_PERF_ROSETTE:
-            self.D_0 = 12 * self.e_1 + 5 * self.d_0
-            b, a = self.d_0 + 4 * self.e_1, self.d_0 + 2 * self.e_1
+            elif propGeom == MultPerfGeometry.SEVEN_PERF_ROSETTE:
+                b, a = self.d_0 + 4 * self.e_1, self.d_0 + 2 * self.e_1
 
-        elif propGeom == Geometry.NINETEEN_PERF_CYLINDER:
-            self.D_0 = 12 * self.e_1 + 5 * self.d_0
-            b, a = self.D_0, 0
+            elif propGeom == MultPerfGeometry.FOURTEEN_PERF_ROSETTE:
+                b, a = self.d_0 + 4 * self.e_1, self.d_0 + 2 * self.e_1
 
-        elif propGeom == Geometry.NINETEEN_PERF_HEXAGON:
-            self.D_0 = 12 * self.e_1 + 5 * self.d_0
-            b, a = self.d_0 + 2 * self.e_1, self.d_0 + 2 * self.e_1
+            elif propGeom == MultPerfGeometry.NINETEEN_PERF_ROSETTE:
+                b, a = self.d_0 + 4 * self.e_1, self.d_0 + 2 * self.e_1
 
-        elif propGeom == Geometry.NINETEEN_PERF_ROUNDED_HEXAGON:
-            self.D_0 = 12 * self.e_1 + 5 * self.d_0
-            b, a = self.d_0 + 2 * self.e_1, self.d_0 + 2 * self.e_1
+            elif propGeom == MultPerfGeometry.NINETEEN_PERF_CYLINDER:
+                b, a = 5 * self.d_0 + 12 * self.e_1, 0
+
+            elif propGeom == MultPerfGeometry.NINETEEN_PERF_HEXAGON:
+                b, a = self.d_0 + 2 * self.e_1, self.d_0 + 2 * self.e_1
+
+            elif propGeom == MultPerfGeometry.NINETEEN_PERF_ROUNDED_HEXAGON:
+                b, a = self.d_0 + 2 * self.e_1, self.d_0 + 2 * self.e_1
+
+            else:
+                raise ValueError(
+                    "unhandled propellant geometry {}".format(propGeom)
+                )
+
+            A, B, C, n = propGeom.A, propGeom.B, propGeom.C, propGeom.nHole
+            S_T = 0.25 * pi * (C * a**2 + A * b**2 - B * self.d_0**2)
+            self.maxLF = S_T / (S_T + n * pi * 0.25 * self.d_0**2)
+
+            D_0 = (C * a**2 + A * b**2 + (n - B) * self.d_0**2) ** 0.5
+            # effective diameter, equals to diameter for perforated cylinders
+            grainLength = LR * D_0
+            # derive length based on "mean"/"effective" diameter
+            self.c = grainLength / 2
+
+            self.rho = propGeom.rhoDiv * (self.e_1 + self.d_0 / 2)
+
+            Pi_1 = (A * b + B * self.d_0) / (2 * self.c)
+            Q_1 = (C * a**2 + A * b**2 - B * self.d_0**2) / (
+                2 * self.c
+            ) ** 2
+
+            """
+            maximum load factor, the volume fraction of propellant
+            within the geometry of the grain defined. In reality
+            this will be a lot lower for any real weapons since
+            this both cause undesirably high pressure spike at start
+            of shot, and in addition is physically impossible given
+            realistic grain packing behaviours
+            """
+
+            beta = self.e_1 / self.c
+
+            # first phase of burning rate parameters, Z from 0 to 1
+            self.chi = (Q_1 + 2 * Pi_1) / Q_1 * beta
+            self.labda = (
+                (n - 1 - 2 * Pi_1) / (Q_1 + 2 * Pi_1) * beta
+            )  # deliberate misspell to prevent issues with python lambda keyword
+            self.mu = -(n - 1) / (Q_1 + 2 * Pi_1) * beta**2
+
+            self.Z_b = (
+                self.e_1 + self.rho
+            ) / self.e_1  # second phase burning Z upper limit
+
+            psi_s = self.chi * (1 + self.labda + self.mu)
+
+            # second phase of burning rate parameters, Z from 1 to Z_b
+            self.chi_s = (1 - psi_s * self.Z_b**2) / (
+                self.Z_b - self.Z_b**2
+            )
+            self.labda_s = psi_s / self.chi_s - 1
+
+        elif self.geometry in SimpleGeometry:
+            self.Z_b = 1  # this will prevent the running of post fracture code
+
+            if self.geometry == SimpleGeometry.TUBE:
+                arcThick, PR, LR = length, R1, R2
+                self.e_1 = 0.5 * arcThick
+                self.d_0 = arcThick * PR
+                D_0 = self.d_0 + self.e_1 * 4
+                self.c = D_0 * LR
+
+                beta = self.e_1 / self.c
+
+                S_T = 0.25 * pi * (D_0**2 - self.d_0**2)
+                self.maxLF = S_T / (S_T + pi * 0.25 * self.d_0**2)
+
+                self.chi = 1 + beta
+                self.labda = -beta / (1 + beta)
+                self.mu = 0
+
+            elif self.geometry == SimpleGeometry.ROD:
+                AR, LR = R1, R2
+                self.e_1, self.b, self.c = sorted(
+                    (0.5 * length, 0.5 * length * AR, 0.5 * length * LR)
+                )
+
+                alpha = self.e_1 / self.b  # only used for rods
+                beta = self.e_1 / self.c
+
+                self.maxLF = 1
+
+                if (self.e_1 == self.b) and (self.b == self.c):
+                    self.chi = 3
+                    self.labda = -1
+                    self.mu = 1 / 3
+
+                elif self.e_1 == self.b:
+                    self.chi = 2 + beta
+                    self.labda = -(1 + 2 * beta) / self.chi
+                    self.mu = beta / self.chi
+
+                elif self.b == self.c:
+                    self.chi = 1 + 2 * beta
+                    self.labda = -(2 * beta + beta**2) / self.chi
+                    self.mu = beta**2 / self.chi
+
+                else:
+                    self.chi = 1 + alpha + beta
+                    self.labda = -(alpha + beta + alpha * beta) / self.chi
+                    self.mu = alpha * beta / self.chi
 
         else:
             raise ValueError(
                 "unhandled propellant geometry {}".format(propGeom)
             )
-
-        grainLength = grainLDR * self.D_0
-        # grainLength = self.D_0 * grainLDR
-        self.c = grainLength / 2
-
-        A, B, C = propGeom.A, propGeom.B, propGeom.C
-        self.rho = propGeom.rhoDiv * (self.e_1 + self.d_0 / 2)
-
-        Pi_1 = (A * b + B * self.d_0) / (2 * self.c)
-        Q_1 = (C * a**2 + A * b**2 - B * self.d_0**2) / (2 * self.c) ** 2
-
-        S_T = Q_1 * pi * self.c**2
-        n = propGeom.nHole
-
-        """
-        condition for progressive burning:
-        (n-1) > (D_0 + n*d_0)/c
-        """
-
-        self.maxLF = S_T / (S_T + n * pi * 0.25 * self.d_0**2)
-
-        """
-        maximum load factor, the volume fraction of propellant
-        within the geometry of the grain defined. In reality
-        this will be a lot lower for any real weapons since
-        this both cause undesirably high pressure spike at start
-        of shot, and in addition is physically impossible given
-        realistic grain packing behaviours
-        """
-
-        beta = self.e_1 / self.c
-
-        # first phase of burning rate parameters, Z from 0 to 1
-        self.chi = (Q_1 + 2 * Pi_1) / Q_1 * beta
-        self.labda = (
-            (n - 1 - 2 * Pi_1) / (Q_1 + 2 * Pi_1) * beta
-        )  # deliberate misspell to prevent issues with python lambda keyword
-        self.mu = -(n - 1) / (Q_1 + 2 * Pi_1) * beta**2
-
-        self.Z_b = (
-            self.e_1 + self.rho
-        ) / self.e_1  # second phase burning Z upper limit
-
-        psi_s = self.chi * (1 + self.labda + self.mu)
-
-        # second phase of burning rate parameters, Z from 1 to Z_b
-        self.chi_s = (1 - psi_s * self.Z_b**2) / (self.Z_b - self.Z_b**2)
-        self.labda_s = psi_s / self.chi_s - 1
 
     def __getattr__(self, attrName):
         try:
@@ -347,7 +434,11 @@ class Gun:
             self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0
         )
         # pick a valid solution between 0 and 1
-        Zs = tuple(Z for Z in Zs if (Z > 0 and Z < 1))
+        Zs = tuple(
+            Z
+            for Z in Zs
+            if not isinstance(Z, complex) and (Z > 0.0 and Z < 1.0)
+        )  # evaluated from left to right, guards against complex >/< float
         if len(Zs) < 1:
             raise ValueError(
                 "Propellant has burnt to fracture before start"
@@ -709,6 +800,8 @@ class Gun:
 
         # tolerance is specified a bit differently for gold section search
 
+        t_bar_tol = min(t for t in (t_bar_e, t_bar_b, t_bar_f) if t is not None)
+
         t_bar_p_1, t_bar_p_2 = gss(
             f,
             0,
@@ -748,8 +841,8 @@ class Gun:
                 Z_err_p,
                 l_bar_err_p,
                 v_bar_err_p,
-            ) = RKF78(self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=tol)
-            t_bar_err_p = 0.5 * tol * (t_bar_e if t_bar_b is None else t_bar_b)
+            ) = RKF78(self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=t_bar_tol)
+            t_bar_err_p = 0.5 * t_bar_tol
 
         updBarData(
             tag=POINT_PEAK,
@@ -927,7 +1020,7 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     M17 = compositions["M17"]
 
-    M17SHC = Propellant(M17, Geometry.SEVEN_PERF_ROSETTE, 0.1e-3, 0, 2.5)
+    M17SHC = Propellant(M17, SimpleGeometry.ROD, 0.1e-3, 2, 2.5)
 
     lf = 0.5
     print("DELTA:", lf * M17SHC.maxLF)

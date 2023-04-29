@@ -465,7 +465,8 @@ def cubic(a, b, c, d):
     """
     if any(isinstance(i, complex) for i in (a, b, c, d)):
         raise ValueError("coefficients must be real")
-
+    if a == 0:
+        return quadratic(b, c, d)
     Delta = (
         18 * a * b * c * d
         - 4 * b**3 * d
@@ -516,7 +517,23 @@ def cubic(a, b, c, d):
     return tuple(xs)
 
 
+def quadratic(a, b, c):
+    """
+    solve the quadratic equation
+    defined by:
+    y = a*x**2 + b * x + c
+    """
+
+    Delta = b**2 - 4 * a * c
+
+    x_1 = 0.5 * (-b + Delta**0.5) / a
+    x_2 = 0.5 * (-b - Delta**0.5) / a
+
+    return (x_1, x_2)
+
+
 if __name__ == "__main__":
+    print(cubic(1, 1, 2, 3))
 
     def df1(x, y):
         # y(x) = -1/(7/4*x**4+C)

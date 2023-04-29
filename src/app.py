@@ -311,8 +311,8 @@ class IB(Frame):
         self.compositions = GrainComp.readFile(
             resolvepath("data/propellants.csv")
         )
-        self.geometries = {i.desc: i for i in Geometry}
-
+        self.geometries = {i.desc: i for i in SimpleGeometry}
+        self.geometries.update({i.desc: i for i in MultPerfGeometry})
         self.prop = None
         self.gun = None
         self.errorLst = []
@@ -341,6 +341,8 @@ class IB(Frame):
     def calculate(self, event=None):
         # force an immediate redraw after calculation
         compo = self.compositions[self.dropProp.get()]
+        # lookup dictionary using the string key to get
+        # the requisite object
         geom = self.geometries[self.dropGeom.get()]
 
         self.tableData = []
@@ -655,9 +657,10 @@ class IB(Frame):
                 "13.15%-13.25% for all preset propellants.",
                 "Up to 14.14% is possible but has not been",
                 "adopted by the industry due to cost.\n",
-                "Pure Nitrocellulose is plasticized and stabilized",
-                "with Dinitrotoluene to form single",
-                "based propellant.\n",
+                "Pure Nitrocellulose is plasticized with",
+                "Dinitrotoluene to reduce burn rate and lower",
+                "flame temperature, forming single based",
+                "propellant.\n",
                 "Double based propellant is formed when",
                 "Nitroglycerin is used as gelatinizer instead.",
                 "While more energetic, it also burns hotter",
