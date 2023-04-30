@@ -311,8 +311,7 @@ class IB(Frame):
         self.compositions = GrainComp.readFile(
             resolvepath("data/propellants.csv")
         )
-        self.geometries = {i.desc: i for i in SimpleGeometry}
-        self.geometries.update({i.desc: i for i in MultPerfGeometry})
+        self.geometries = GEOMETRIES
         self.prop = None
         self.gun = None
         self.errorLst = []
@@ -335,6 +334,8 @@ class IB(Frame):
         self.addExcFrm(parent)
         self.addTblFrm(parent)
         self.addOpsFrm(parent)
+
+        self.wrapup()
 
         parent.bind("<Return>", self.calculate)
 
@@ -522,59 +523,6 @@ class IB(Frame):
             specFrm, i, "Chamber Volume", "m³", justify="right"
         )
 
-        """
-        specFrm.rowconfigure(i, weight=1)
-        errFrm = ttk.LabelFrame(specFrm, text="Maximum Error")
-        errFrm.grid(row=i, column=0, columnspan=2, sticky="sew")
-        errFrm.columnconfigure(0, weight=1)
-
-        j = 0
-        self.terr, _, j = self.add12Disp(
-            errFrm, j, "Time", "s", justify="right"
-        )
-        self.lerr, _, j = self.add12Disp(
-            errFrm, j, "Travel", "m", justify="right"
-        )
-        self.psierr, _, j = self.add12Disp(
-            errFrm, j, "Burnup", "", justify="right"
-        )
-        self.verr, _, j = self.add12Disp(
-            errFrm, j, "Velocity", "m/s", justify="right"
-        )
-    
-        #self.perr, _, j = self.add12Disp(
-        #    errFrm, j, "Pressure", "Pa", justify="right"
-        #)
-        #
-
-        self.specFrmDisps = (
-            self.va,
-            self.te,
-            self.be,
-            self.cv,
-            self.terr,
-            self.lerr,
-            self.psierr,
-            self.verr,
-            # self.perr,
-        )
-
-
-    def resetSpec(self):
-        for specDisp in self.specFrmDisps:
-            specDisp.set(specDisp.default)
-    """
-
-    def updateSpec(self, *inp):
-        self.specs.config(state="normal")
-        compo = self.compositions[self.dropProp.get()]
-        self.specs.delete("1.0", "end")
-        for line in compo.desc.split(","):
-            self.specs.insert("end", line + "\n")
-        self.specs.config(state="disabled")
-
-        return True
-
     def addParFrm(self, parent):
         parFrm = ttk.LabelFrame(parent, text="Parameters")
         parFrm.grid(row=0, column=2, sticky="nsew")
@@ -681,8 +629,6 @@ class IB(Frame):
         propFrm.rowconfigure(1, weight=1)
         propFrm.columnconfigure(0, weight=1)
 
-        self.updateSpec()
-
         i += 1
 
         ttk.Label(parFrm, text="Grain Shape").grid(
@@ -695,10 +641,18 @@ class IB(Frame):
 
         i += 1
 
+        geomVal = parent.register(self.updateGeom)
+
         # Create Dropdown menu
         self.dropGeom = ttk.Combobox(
-            parFrm, values=self.geoOptions, state="readonly", justify="center"
+            parFrm,
+            values=self.geoOptions,
+            state="readonly",
+            justify="center",
+            validate="focusin",
+            validatecommand=(geomVal, "%P"),
         )
+
         self.dropGeom.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropGeom.current(0)
         self.dropGeom.grid(
@@ -712,6 +666,9 @@ class IB(Frame):
             (
                 "Specify the geometry of propellant grain",
                 "using dimensions.\n",
+                "Burning radially outward along the arc is",
+                "the shortest path, and therefore is the",
+                "primary geometrical determinant of burn rapidity.\n",
                 "In theory micrometer level precision",
                 "is possible. In practice, tolerance for indu-",
                 "strial bulk production is in the range of",
@@ -720,24 +677,28 @@ class IB(Frame):
                 "for small to intermediate calibers.\n",
                 "Greater web thickness will lead to a longer burn",
                 "time for the same load of propellant, giving",
-                "a more gradual rise and lower peak press-",
-                "ure.",
+                "a more gradual rise and lower peak pressure.",
             )
         )
+
+        self.lengthPrimaryAs = StringVar()
 
         self.arcmm, _, i = self.add3Input(
             parFrm,
             i,
-            "Arc Thickness",
+            "",
+            # "Arc Thickness",
             "mm",
             "0.0",
             validationNN,
             infotext=arcText,
+            textvariable=self.lengthPrimaryAs,
         )
 
         pDiaText = " ".join(
             (
-                "Speify the diameter of perforation using dimensions.",
+                "Specify the geometry of propellant grain",
+                "using dimensions.\n",
                 "Perforations are formed by protrusions in the copper",
                 "casting die, the misalignment of which contributes",
                 "to deviations. Larger perforation diameter increase",
@@ -746,14 +707,19 @@ class IB(Frame):
                 "coming with a hole diameter half that of web thickness.",
             )
         )
+
+        self.lengthSecondaryAs = StringVar()
+
         self.permm, self.perw, i = self.add3Input(
             parFrm,
             i,
-            "Perf Diameter",
+            "",
+            # "Perf Diameter",
             "mm",
             "0.0",
             validationNN,
             infotext=pDiaText,
+            textvariable=self.lengthSecondaryAs,
         )
 
         grlRtext = " ".join(
@@ -768,8 +734,17 @@ class IB(Frame):
             )
         )
 
+        self.lengthRatioAs = StringVar()
+
         self.grlR, _, i = self.add3Input(
-            parFrm, i, "Grain L/D", "", "2.5", validationNN, infotext=grlRtext
+            parFrm,
+            i,
+            "",
+            "",
+            "2.5",
+            validationNN,
+            infotext=grlRtext,
+            textvariable=self.lengthRatioAs,
         )
 
         ldftext = " ".join(
@@ -840,6 +815,35 @@ class IB(Frame):
             infotext=stpText,
         )
 
+    def updateSpec(self, *inp):
+        self.specs.config(state="normal")
+        compo = self.compositions[self.dropProp.get()]
+        self.specs.delete("1.0", "end")
+        for line in compo.desc.split(","):
+            self.specs.insert("end", line + "\n")
+        self.specs.config(state="disabled")
+        # this updates the specification description
+
+        return True
+
+    def updateGeom(self, *inp):
+        geom = self.geometries[self.dropGeom.get()]
+
+        if geom == SimpleGeometry.ROD:
+            self.lengthPrimaryAs.set("Width")
+            self.lengthSecondaryAs.set("Height")
+            self.lengthRatioAs.set("Length/Width")
+            self.primaryRatio.set("Width")
+            self.secondaryRatio.set("Height")
+        else:
+            self.lengthPrimaryAs.set("Arc Thickness")
+            self.lengthSecondaryAs.set("Perf Diameter")
+            self.lengthRatioAs.set("Grain L/D")
+            self.primaryRatio.set("Arc")
+            self.secondaryRatio.set("P.D.")
+
+        return True
+
     def addOpsFrm(self, parent):
         opFrm = ttk.LabelFrame(parent, text="Options")
         opFrm.grid(row=1, column=2, sticky="nsew")
@@ -852,28 +856,34 @@ class IB(Frame):
         ratioEntryText = " ".join(
             (
                 "Specify the geometry of propellant using",
-                "ratios, scaled by arc thickness. These",
+                "ratios, scaled by the top entry. These",
                 "entries are in use when Lock Geometry is",
                 "enabled.",
             )
         )
+
+        self.primaryRatio = StringVar()
         self.arcR, arcRw, i = self.add2Input(
             opFrm,
             i,
             0,
-            "A.Th.",
+            "",
             "1.0",
             validation=validationNN,
             infotext=ratioEntryText,
+            textvariable=self.primaryRatio,
         )
+
+        self.secondaryRatio = StringVar()
         self.perR, perRw, i = self.add2Input(
             opFrm,
             i,
             0,
-            "P.Dia.",
+            "",
             "0.5",
             validation=validationNN,
             infotext=ratioEntryText,
+            textvariable=self.secondaryRatio,
         )
 
         ratioEntrys = (arcRw, perRw)
@@ -989,6 +999,10 @@ class IB(Frame):
         )
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
+    def wrapup(self):
+        self.updateSpec()
+        self.updateGeom()
+
     def addTblFrm(self, parent):
         columnList = [
             "Event",
@@ -1062,8 +1076,13 @@ class IB(Frame):
         formatter=formatFloatInput,
         color=None,
         infotext=None,
+        textvariable=None,
     ):
-        lb = ttk.Label(parent, text=labelText)
+        if textvariable is not None:
+            lb = ttk.Label(parent, textvariable=textvariable)
+        else:
+            lb = ttk.Label(parent, text=labelText)
+
         lb.grid(row=rowIndex, column=colIndex, sticky="nsew", padx=2, pady=2)
         if infotext is not None:
             CreateToolTip(lb, infotext)
@@ -1098,29 +1117,25 @@ class IB(Frame):
         formatter=formatFloatInput,
         color=None,
         infotext=None,
+        textvariable=None,
+        colIndex=0,
     ):
-        lb = ttk.Label(parent, text=labelText)
-        lb.grid(row=rowIndex, column=0, sticky="nsew", padx=2, pady=2)
-        parent.rowconfigure(rowIndex, weight=0)
-        e = StringVar(parent)
-        e.set(default)
-        en = ttk.Entry(
+        e, en, _ = self.add2Input(
             parent,
-            textvariable=e,
-            validate="key",
-            validatecommand=(validation, "%P"),
-            foreground=color,
-            width=entryWidth,
-            justify="center",
+            rowIndex,
+            colIndex,
+            labelText,
+            default,
+            validation,
+            entryWidth,
+            formatter,
+            color,
+            infotext,
+            textvariable,
         )
-        en.default = default
-        en.grid(row=rowIndex, column=1, sticky="nsew", padx=2, pady=2)
-        en.bind("<FocusOut>", formatter)
         ttk.Label(parent, text=unitText).grid(
-            row=rowIndex, column=2, sticky="nsew", padx=2, pady=2
+            row=rowIndex, column=colIndex + 2, sticky="nsew", padx=2, pady=2
         )
-        if infotext is not None:
-            CreateToolTip(lb, infotext)
         return e, en, rowIndex + 1
 
     def add11Disp(

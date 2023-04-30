@@ -48,7 +48,7 @@ class MultPerfGeometry(Enum):
         7,
     )
     SEVEN_PERF_ROSETTE = (
-        "7 Perf Rosette",
+        "7 Perf Rosette Prism",
         2,
         8,
         12 * 3**0.5 / pi,
@@ -56,7 +56,7 @@ class MultPerfGeometry(Enum):
         7,
     )
     FOURTEEN_PERF_ROSETTE = (
-        "14 Perf Rosette",
+        "14 Perf Rosette Prism",
         8 / 3,
         47 / 3,
         26 * 3**0.5 / pi,
@@ -64,7 +64,7 @@ class MultPerfGeometry(Enum):
         14,
     )
     NINETEEN_PERF_ROSETTE = (
-        "19 Perf Rosette",
+        "19 Perf Rosette Prism",
         3,
         21,
         36 * 3**0.5 / pi,
@@ -80,7 +80,7 @@ class MultPerfGeometry(Enum):
         19,
     )
     NINETEEN_PERF_HEXAGON = (
-        "19 Perf Hexagon",
+        "19 Perf Hexagonal Prism",
         18 / pi,
         19,
         18 * (3 * 3**0.5 - 1) / pi,
@@ -88,7 +88,7 @@ class MultPerfGeometry(Enum):
         19,
     )
     NINETEEN_PERF_ROUNDED_HEXAGON = (
-        "19 Perf Rounded Hexagon",
+        "19 Perf Rounded Hex. Prism",
         3**0.5 + 12 / pi,
         19,
         3 - 3**0.5 + 12 * (4 * 3**0.5 - 1) / pi,
@@ -103,8 +103,12 @@ class SimpleGeometry(Enum):
     def __init__(self, desc):
         self.desc = desc
 
-    TUBE = "Cylindrical Tube"
-    ROD = "Square Rod / Tape"
+    ROD = "Strip / Flake (Rect. Prism)"
+    TUBE = "1 Perf Cylinder"
+
+
+GEOMETRIES = {i.desc: i for i in SimpleGeometry}
+GEOMETRIES.update({i.desc: i for i in MultPerfGeometry})
 
 
 class GrainComp:
