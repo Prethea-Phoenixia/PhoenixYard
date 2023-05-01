@@ -163,21 +163,22 @@ def validatePI(inp):
         return False
 
 
-def validateG1(inp):
+def validateGZ(inp):
     """
-    validate an input such that the result is an integer greater than one."""
+    validate an input such that the result is greater than zero."""
 
-    if inp == "":
+    if inp == "" or inp == ".":
         return True  # we will catch this by filling the default value
     try:
-        return float(inp).is_integer() and float(inp) > 1 and "." not in inp
+        return float(inp) > 0
     except ValueError:
         return False
 
 
 def formatFloatInput(event):
     v = event.widget.get()
-    if v == "":
+    if v == "" or v == ".":
+        event.widget.delete(0, END)
         event.widget.insert(0, event.widget.default)
     else:
         event.widget.delete(0, END)
@@ -224,7 +225,10 @@ class ToolTip(object):
 
     def showtip(self, text):
         """Display text in tooltip window"""
-        self.text = text
+        if isinstance(text, StringVar):
+            self.text = text.get()
+        else:
+            self.text = text
         if self.tipwindow or not self.text:
             return
 
@@ -337,7 +341,7 @@ class IB(Frame):
 
         self.wrapup()
 
-        parent.bind("<Return>", self.calculate)
+        # parent.bind("<Return>", self.calculate)
 
     def calculate(self, event=None):
         # force an immediate redraw after calculation
@@ -403,16 +407,7 @@ class IB(Frame):
             )
 
             self.va.set(toSI(self.gun.v_j))
-            """
-            t_err, l_err, psi_e, v_err = self.gun.getErr(
-                10 ** -(int(self.accExp.get()))
-            )
 
-            self.terr.set(toSI(t_err))
-            self.lerr.set(toSI(l_err))
-            self.psierr.set(toSI(psi_e))
-            self.verr.set(toSI(v_err))
-            """
         except Exception as e:
             self.gun = None
             self.errorLst.append("Exception when defining guns:")
@@ -473,7 +468,9 @@ class IB(Frame):
     def updateError(self):
         self.errorText.delete("1.0", "end")
         if self.geomError:
-            self.errorLst.append("Invalid geometry")
+            self.errorLst = [
+                "Specified Geometry of Propellant is Invalid"
+            ] + self.errorLst
 
         for line in self.errorLst:
             self.errorText.insert("end", line + "\n")
@@ -532,16 +529,17 @@ class IB(Frame):
 
         # validation
         validationNN = parent.register(validateNN)
+        validationGZ = parent.register(validateGZ)
 
         i = 0
         self.calmm, _, i = self.add3Input(
-            parFrm, i, "Caliber", "mm", "0.0", validationNN
+            parFrm, i, "Caliber", "mm", "50.0", validationGZ
         )
         self.tblmm, _, i = self.add3Input(
-            parFrm, i, "Tube Length", "mm", "0.0", validationNN
+            parFrm, i, "Tube Length", "mm", "3500.0", validationGZ
         )
         self.shtkg, _, i = self.add3Input(
-            parFrm, i, "Shot Mass", "kg", "0.0", validationNN
+            parFrm, i, "Shot Mass", "kg", "1.0", validationGZ
         )
 
         chgText = " ".join(
@@ -555,8 +553,8 @@ class IB(Frame):
             i,
             "Charge Mass",
             "kg",
-            "0.0",
-            validationNN,
+            "1.0",
+            validationGZ,
             infotext=chgText,
         )
 
@@ -662,89 +660,45 @@ class IB(Frame):
 
         i += 1
 
-        arcText = " ".join(
-            (
-                "Specify the geometry of propellant grain",
-                "using dimensions.\n",
-                "Burning radially outward along the arc is",
-                "the shortest path, and therefore is the",
-                "primary geometrical determinant of burn rapidity.\n",
-                "In theory micrometer level precision",
-                "is possible. In practice, tolerance for indu-",
-                "strial bulk production is in the range of",
-                "0.15mm to 1mm depending on caliber arc",
-                "thickness is generally found close to 1mm",
-                "for small to intermediate calibers.\n",
-                "Greater web thickness will lead to a longer burn",
-                "time for the same load of propellant, giving",
-                "a more gradual rise and lower peak pressure.",
-            )
-        )
-
         self.lengthPrimaryAs = StringVar()
+        self.lengthPrimaryTip = StringVar()
 
         self.arcmm, _, i = self.add3Input(
             parFrm,
             i,
-            "",
+            self.lengthPrimaryAs,
             # "Arc Thickness",
             "mm",
-            "0.0",
-            validationNN,
-            infotext=arcText,
-            textvariable=self.lengthPrimaryAs,
-        )
-
-        pDiaText = " ".join(
-            (
-                "Specify the geometry of propellant grain",
-                "using dimensions.\n",
-                "Perforations are formed by protrusions in the copper",
-                "casting die, the misalignment of which contributes",
-                "to deviations. Larger perforation diameter increase",
-                "progressiveness of burn but contributes to a lower",
-                "achievable loading density, with standard multi-perf grains",
-                "coming with a hole diameter half that of web thickness.",
-            )
+            "1.0",
+            validationGZ,
+            infotext=self.lengthPrimaryTip,
         )
 
         self.lengthSecondaryAs = StringVar()
+        self.lengthSecondaryTip = StringVar()
 
         self.permm, self.perw, i = self.add3Input(
             parFrm,
             i,
-            "",
+            self.lengthSecondaryAs,
             # "Perf Diameter",
             "mm",
             "0.0",
-            validationNN,
-            infotext=pDiaText,
-            textvariable=self.lengthSecondaryAs,
-        )
-
-        grlRtext = " ".join(
-            (
-                "Length to diameter ratio of the grain, usually",
-                "around 2-2.5. A higher value facilitate progressive",
-                "burning. If this is too low its possible for",
-                "propellant to exhibit regressive burning behaviour,",
-                "as the primary mode will be axial burning instead.",
-                "Length is usually limited by propellant strength",
-                "during the casting process.",
-            )
+            validationNN,  # can be 0
+            infotext=self.lengthSecondaryTip,
         )
 
         self.lengthRatioAs = StringVar()
+        self.lengthRatioTip = StringVar()
 
-        self.grlR, _, i = self.add3Input(
+        self.grlR, self.grlRw, i = self.add3Input(
             parFrm,
             i,
-            "",
+            self.lengthRatioAs,
             "",
             "2.5",
             validationNN,
-            infotext=grlRtext,
-            textvariable=self.lengthRatioAs,
+            infotext=self.lengthRatioTip,
         )
 
         ldftext = " ".join(
@@ -827,31 +781,68 @@ class IB(Frame):
         return True
 
     def updateGeom(self, *inp):
+        self.configEntry()
         geom = self.geometries[self.dropGeom.get()]
+        arcText = " ".join(
+            (
+                "Specify the geometry of propellant grain",
+                "using dimensions.\n",
+                "Burning radially outward along the arc is",
+                "the shortest path, and therefore is the",
+                "primary geometrical determinant of burn rapidity.\n",
+                "In theory micrometer level precision",
+                "is possible. In practice, tolerance for indu-",
+                "strial bulk production is in the range of",
+                "0.15mm to 1mm depending on caliber arc",
+                "thickness is generally found close to 1mm",
+                "for small to intermediate calibers.\n",
+                "Greater web thickness will lead to a longer burn",
+                "time for the same load of propellant, giving",
+                "a more gradual rise and lower peak pressure.",
+            )
+        )
 
-        if geom == SimpleGeometry.ROD:
-            self.lengthPrimaryAs.set("Width")
-            self.lengthSecondaryAs.set("Height")
-            self.lengthRatioAs.set("Length/Width")
-            self.primaryRatio.set("Width")
-            self.secondaryRatio.set("Height")
-        else:
-            self.lengthPrimaryAs.set("Arc Thickness")
-            self.lengthSecondaryAs.set("Perf Diameter")
-            self.lengthRatioAs.set("Grain L/D")
-            self.primaryRatio.set("Arc")
-            self.secondaryRatio.set("P.D.")
+        pDiaText = " ".join(
+            (
+                "Specify the geometry of propellant grain",
+                "using dimensions.\n",
+                "Perforations are formed by protrusions in the copper",
+                "casting die, the misalignment of which contributes",
+                "to deviations. Larger perforation diameter increase",
+                "progressiveness of burn but contributes to a lower",
+                "achievable loading density, with standard multi-perf grains",
+                "coming with a hole diameter half that of web thickness.",
+            )
+        )
 
-        return True
+        diaText = " ".join(("Specify the diameter of the propellant grain.",))
 
-    def addOpsFrm(self, parent):
-        opFrm = ttk.LabelFrame(parent, text="Options")
-        opFrm.grid(row=1, column=2, sticky="nsew")
+        grlRtext = " ".join(
+            (
+                "Length to diameter ratio of the grain, usually",
+                "around 2-2.5. A higher value facilitate progressive",
+                "burning. If this is too low its possible for",
+                "propellant to exhibit regressive burning behaviour,",
+                "as the primary mode will be axial burning instead.",
+                "Length is usually limited by propellant strength",
+                "during the casting process.",
+            )
+        )
 
-        opFrm.columnconfigure(1, weight=1)
+        widthText = " ".join(
+            (
+                "Specify the width of propellant rod or flake.\n",
+                "This value is used to scale all other dimension",
+                "for rod or flake like propellants. Does not have",
+                "to be the smallest dimension.",
+            )
+        )
 
-        validationNN = parent.register(validateNN)
-        i = 0
+        heightText = " ".join(
+            ("Specify the height of propellant rod or flake.",)
+        )
+
+        lengthRtext = " ".join(("Height to width ratio of the rod or flake.",))
 
         ratioEntryText = " ".join(
             (
@@ -862,48 +853,75 @@ class IB(Frame):
             )
         )
 
+        if geom == SimpleGeometry.SPHERE:
+            self.lengthPrimaryAs.set("Diameter")
+            self.lengthSecondaryAs.set("")
+            self.lengthRatioAs.set("")
+            self.primaryRatio.set("")
+            self.secondaryRatio.set("")
+            self.lengthPrimaryTip.set(diaText)
+            self.lengthSecondaryTip.set("")
+            self.lengthRatioTip.set("")
+            self.ratioTip.set("")
+
+        elif geom == SimpleGeometry.ROD:
+            self.lengthPrimaryAs.set("Width")
+            self.lengthSecondaryAs.set("Height")
+            self.lengthRatioAs.set("Length/Width")
+            self.primaryRatio.set("Width")
+            self.secondaryRatio.set("Height")
+            self.lengthPrimaryTip.set(widthText)
+            self.lengthSecondaryTip.set(heightText)
+            self.lengthRatioTip.set(lengthRtext)
+            self.ratioTip.set(ratioEntryText)
+
+        else:
+            self.lengthPrimaryAs.set("Arc Thickness")
+            self.lengthSecondaryAs.set("Perf Diameter")
+            self.lengthRatioAs.set("Grain L/D")
+            self.primaryRatio.set("Arc")
+            self.secondaryRatio.set("P.D.")
+            self.lengthPrimaryTip.set(arcText)
+            self.lengthSecondaryTip.set(pDiaText)
+            self.lengthRatioTip.set(grlRtext)
+            self.ratioTip.set(ratioEntryText)
+
+        return True
+
+    def addOpsFrm(self, parent):
+        opFrm = ttk.LabelFrame(parent, text="Options")
+        opFrm.grid(row=1, column=2, sticky="nsew")
+
+        opFrm.columnconfigure(1, weight=1)
+
+        validationNN = parent.register(validateNN)
+
+        i = 0
+
         self.primaryRatio = StringVar()
-        self.arcR, arcRw, i = self.add2Input(
+        self.ratioTip = StringVar()
+        self.arcR, self.arcRw, i = self.add2Input(
             opFrm,
             i,
             0,
-            "",
+            self.primaryRatio,
             "1.0",
             validation=validationNN,
-            infotext=ratioEntryText,
-            textvariable=self.primaryRatio,
+            infotext=self.ratioTip,
         )
 
         self.secondaryRatio = StringVar()
-        self.perR, perRw, i = self.add2Input(
+        self.perR, self.perRw, i = self.add2Input(
             opFrm,
             i,
             0,
-            "",
+            self.secondaryRatio,
             "0.5",
             validation=validationNN,
-            infotext=ratioEntryText,
-            textvariable=self.secondaryRatio,
+            infotext=self.ratioTip,
         )
 
-        ratioEntrys = (arcRw, perRw)
-        directEntrys = (self.perw,)
-
-        def configEntry():
-            if self.geoLocked.get() == 0:
-                for en in ratioEntrys:
-                    en.config(state="disabled")
-                for en in directEntrys:
-                    en.config(state="normal")
-            else:
-                for en in ratioEntrys:
-                    en.config(state="normal")
-                for en in directEntrys:
-                    en.config(state="disabled")
-
-            self.arccallback(None, None, None)
-
-        configEntry()
+        self.configEntry()
 
         self.arcmm.trace_add("write", self.arccallback)
         self.permm.trace_add("write", self.arccallback)
@@ -916,7 +934,7 @@ class IB(Frame):
             variable=self.geoLocked,
             onvalue=1,
             offvalue=0,
-            command=configEntry,
+            command=self.configEntry,
         ).grid(row=0, column=2, rowspan=2, sticky="nsew", padx=2, pady=2)
 
         samplbl = ttk.Label(opFrm, text="Sample")
@@ -952,7 +970,6 @@ class IB(Frame):
         )
 
         validationPI = parent.register(validatePI)
-        validationG1 = parent.register(validateG1)
 
         tolText = " ".join(
             (
@@ -967,7 +984,6 @@ class IB(Frame):
             0,
             "-log10(ε)",
             default="3",
-            # validation=validationG1,
             validation=validationPI,
             formatter=formatIntInput,
             color="red",
@@ -975,12 +991,39 @@ class IB(Frame):
         )
 
         calButton = ttk.Button(
-            opFrm, text="Calculate", command=self.calculate, underline=0
+            opFrm,
+            text="Calculate",
+            command=self.calculate,  # underline=0
         )
         calButton.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
         CreateToolTip(calButton, "Integrate system using RKF7(8) integrator")
+
+    def configEntry(self):
+        ratioEntrys = (self.arcRw, self.perRw)
+        directEntrys = (self.perw,)
+        geom = self.geometries[self.dropGeom.get()]
+        if geom == SimpleGeometry.SPHERE:
+            for en in ratioEntrys:
+                en.config(state="disabled")
+            for en in directEntrys:
+                en.config(state="disabled")
+            self.grlRw.config(state="disabled")
+        else:
+            if self.geoLocked.get() == 0:
+                for en in ratioEntrys:
+                    en.config(state="disabled")
+                for en in directEntrys:
+                    en.config(state="normal")
+            else:
+                for en in ratioEntrys:
+                    en.config(state="normal")
+                for en in directEntrys:
+                    en.config(state="disabled")
+            self.grlRw.config(state="normal")
+
+        self.arccallback(None, None, None)
 
     def addExcFrm(self, parent):
         errorFrm = ttk.LabelFrame(parent, text="Exceptions")
@@ -1076,10 +1119,9 @@ class IB(Frame):
         formatter=formatFloatInput,
         color=None,
         infotext=None,
-        textvariable=None,
     ):
-        if textvariable is not None:
-            lb = ttk.Label(parent, textvariable=textvariable)
+        if isinstance(labelText, StringVar):
+            lb = ttk.Label(parent, textvariable=labelText)
         else:
             lb = ttk.Label(parent, text=labelText)
 
@@ -1117,7 +1159,6 @@ class IB(Frame):
         formatter=formatFloatInput,
         color=None,
         infotext=None,
-        textvariable=None,
         colIndex=0,
     ):
         e, en, _ = self.add2Input(
@@ -1131,7 +1172,6 @@ class IB(Frame):
             formatter,
             color,
             infotext,
-            textvariable,
         )
         ttk.Label(parent, text=unitText).grid(
             row=rowIndex, column=colIndex + 2, sticky="nsew", padx=2, pady=2
@@ -1212,6 +1252,7 @@ class IB(Frame):
 
     def arccallback(self, var, index, mode):
         self.geomError = False
+
         if self.geoLocked.get() == 1:
             try:
                 self.permm.set(

@@ -103,6 +103,7 @@ class SimpleGeometry(Enum):
     def __init__(self, desc):
         self.desc = desc
 
+    SPHERE = "Sphere"
     ROD = "Strip / Flake (Rect. Prism)"
     TUBE = "1 Perf Cylinder"
 
@@ -210,7 +211,6 @@ class Propellant:
     # assumed to be multi-holed propellants
     def __init__(self, composition, propGeom, length, R1, R2):
         """
-
         length:
             interpreted as:
                 arc thickness
@@ -234,6 +234,24 @@ class Propellant:
 
                 teritary length to primary length ratio
                 for rectangular rod shapes
+
+
+        Requried attributes:
+        .e_1, shortest burn path
+        .maxLF, geometrical volume fraction
+
+        for geometries where burning is single phase
+        (Z: 0->1, phi: 0->1)
+        .Z_b = 1.0
+        .chi
+        .labda
+        .mu
+
+        for multi-perf propellants:
+        (Z: 0->Z_b, phi: 0->1)
+        .Z_b > 1.0
+        .chi_s
+        .labda_s
 
         """
         self.composition = composition
@@ -321,7 +339,16 @@ class Propellant:
         elif self.geometry in SimpleGeometry:
             self.Z_b = 1  # this will prevent the running of post fracture code
 
-            if self.geometry == SimpleGeometry.TUBE:
+            if self.geometry == SimpleGeometry.SPHERE:
+                arcThick, PR, LR = length, R1, R2
+
+                self.e_1 = 0.5 * arcThick
+                self.maxLF = 1
+                self.chi = 3
+                self.labda = -1
+                self.mu = 1 / 3
+
+            elif self.geometry == SimpleGeometry.TUBE:
                 arcThick, PR, LR = length, R1, R2
                 self.e_1 = 0.5 * arcThick
                 self.d_0 = arcThick * PR
