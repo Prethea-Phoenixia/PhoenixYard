@@ -399,6 +399,12 @@ class Propellant:
                 "unhandled propellant geometry {}".format(propGeom)
             )
 
+    def f_sigma_Z(self, Z):
+        if Z < 1:
+            return self.chi * (1 + 2 * self.labda * Z + 3 * self.mu * Z**2)
+        elif Z < self.Z_b:
+            return 1 + 2 * self.labda_s * Z
+
     def __getattr__(self, attrName):
         try:
             return getattr(self.composition, attrName)

@@ -7,6 +7,33 @@ import os
 import sys
 from math import ceil
 
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg,
+    NavigationToolbar2Tk,
+)
+
+# Implement the default Matplotlib key bindings.
+import matplotlib.pyplot as plt
+from matplotlib.backend_bases import key_press_handler
+from matplotlib.figure import Figure
+
+SMALL_SIZE = 6
+MEDIUM_SIZE = 8
+BIGGER_SIZE = 10
+
+plt.rc("font", size=SMALL_SIZE)  # controls default text sizes
+plt.rc("axes", titlesize=SMALL_SIZE)  # fontsize of the axes title
+plt.rc("axes", labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+plt.rc("xtick", labelsize=SMALL_SIZE)  # fontsize of the tick labels
+plt.rc("ytick", labelsize=SMALL_SIZE)  # fontsize of the tick labels
+plt.rc("legend", fontsize=SMALL_SIZE)  # legend fontsize
+plt.rc("figure", titlesize=BIGGER_SIZE)  # fontsize of the figure title
+plt.rc("axes", edgecolor="white", facecolor="#33393b")
+plt.rc("figure", facecolor="#33393b")
+# plt.rc("text", color="white")
+plt.rc("xtick", color="white")
+plt.rc("ytick", color="white")
+
 DEBUG = True
 
 _prefix = {
@@ -159,18 +186,6 @@ def validatePI(inp):
         return True  # we will catch this by filling the default value
     try:
         return float(inp).is_integer() and float(inp) > 0 and "." not in inp
-    except ValueError:
-        return False
-
-
-def validateGZ(inp):
-    """
-    validate an input such that the result is greater than zero."""
-
-    if inp == "" or inp == ".":
-        return True  # we will catch this by filling the default value
-    try:
-        return float(inp) > 0
     except ValueError:
         return False
 
@@ -355,6 +370,8 @@ class IB(Frame):
 
         # self.resetSpec()
 
+        """
+
         try:
             self.prop = Propellant(
                 compo,
@@ -371,6 +388,7 @@ class IB(Frame):
                 self.errorLst.append("".join(traceback.format_exception(e)))
             else:
                 self.errorLst.append(str(e))
+        """
 
         try:
             chamberVolume = (
@@ -529,17 +547,16 @@ class IB(Frame):
 
         # validation
         validationNN = parent.register(validateNN)
-        validationGZ = parent.register(validateGZ)
 
         i = 0
         self.calmm, _, i = self.add3Input(
-            parFrm, i, "Caliber", "mm", "50.0", validationGZ
+            parFrm, i, "Caliber", "mm", "50.0", validationNN
         )
         self.tblmm, _, i = self.add3Input(
-            parFrm, i, "Tube Length", "mm", "3500.0", validationGZ
+            parFrm, i, "Tube Length", "mm", "3500.0", validationNN
         )
         self.shtkg, _, i = self.add3Input(
-            parFrm, i, "Shot Mass", "kg", "1.0", validationGZ
+            parFrm, i, "Shot Mass", "kg", "1.0", validationNN
         )
 
         chgText = " ".join(
@@ -554,7 +571,7 @@ class IB(Frame):
             "Charge Mass",
             "kg",
             "1.0",
-            validationGZ,
+            validationNN,
             infotext=chgText,
         )
 
@@ -566,6 +583,10 @@ class IB(Frame):
         propFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
+
+        propFrm.rowconfigure(1, weight=1)
+        propFrm.columnconfigure(0, weight=1)
+
         self.dropProp = ttk.Combobox(
             propFrm,
             values=self.propOptions,
@@ -577,8 +598,8 @@ class IB(Frame):
         )
         self.dropProp.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropProp.current(0)
-        self.dropProp.grid(row=0, column=0, columnspan=2, sticky="nsew", pady=2)
         self.dropProp.configure(width=10)
+        self.dropProp.grid(row=0, column=0, columnspan=2, sticky="nsew", pady=2)
 
         specScroll = ttk.Scrollbar(propFrm, orient="vertical")
         specScroll.grid(
@@ -624,26 +645,31 @@ class IB(Frame):
 
         CreateToolTip(propFrm, specsText)
 
-        propFrm.rowconfigure(1, weight=1)
-        propFrm.columnconfigure(0, weight=1)
-
         i += 1
 
-        ttk.Label(parFrm, text="Grain Shape").grid(
-            row=i,
+        grainFrm = ttk.LabelFrame(parFrm, text="Grain Geometry")
+        grainFrm.grid(
+            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+        )
+
+        grainFrm.rowconfigure(1, weight=1)
+        grainFrm.columnconfigure(0, weight=1)
+
+        j = 0
+        """
+        ttk.Label(grainFrm, text="Grain Shape").grid(
+            row=0,
             column=0,
             sticky="nsew",
             padx=2,
             pady=2,
         )
-
-        i += 1
-
+        """
         geomVal = parent.register(self.updateGeom)
 
         # Create Dropdown menu
         self.dropGeom = ttk.Combobox(
-            parFrm,
+            grainFrm,
             values=self.geoOptions,
             state="readonly",
             justify="center",
@@ -653,52 +679,75 @@ class IB(Frame):
 
         self.dropGeom.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropGeom.current(0)
-        self.dropGeom.grid(
-            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
-        )
         self.dropGeom.configure(width=10)
 
-        i += 1
+        self.dropGeom.grid(
+            row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+        )
 
         self.lengthPrimaryAs = StringVar()
         self.lengthPrimaryTip = StringVar()
 
-        self.arcmm, _, i = self.add3Input(
-            parFrm,
-            i,
+        j += 1
+        self.arcmm, _, j = self.add3Input(
+            grainFrm,
+            j,
             self.lengthPrimaryAs,
             # "Arc Thickness",
             "mm",
             "1.0",
-            validationGZ,
+            validationNN,
             infotext=self.lengthPrimaryTip,
         )
 
         self.lengthSecondaryAs = StringVar()
         self.lengthSecondaryTip = StringVar()
 
-        self.permm, self.perw, i = self.add3Input(
-            parFrm,
-            i,
+        self.permm, self.perw, j = self.add3Input(
+            grainFrm,
+            j,
             self.lengthSecondaryAs,
             "mm",
             "0.5",
-            validationNN,  # can be 0
+            validationNN,
             infotext=self.lengthSecondaryTip,
         )
 
         self.lengthRatioAs = StringVar()
         self.lengthRatioTip = StringVar()
 
-        self.grlR, self.grlRw, i = self.add3Input(
-            parFrm,
-            i,
+        self.grlR, self.grlRw, j = self.add3Input(
+            grainFrm,
+            j,
             self.lengthRatioAs,
             "",
             "2.5",
             validationNN,
             infotext=self.lengthRatioTip,
         )
+
+        parFrm.update()
+        dpi = parFrm.winfo_fpixels("1i")
+        size = parFrm.winfo_width() / dpi
+
+        fig = Figure(
+            figsize=(size, size),
+            dpi=dpi,
+        )
+
+        self.geomAx = fig.add_subplot()
+
+        # ax.set_xlabel("Z")
+        # ax.set_ylabel("sigma")
+
+        fig.tight_layout()
+
+        self.geomCanvas = FigureCanvasTkAgg(fig, master=grainFrm)
+        self.geomCanvas.get_tk_widget().grid(
+            row=j, column=0, columnspan=3, padx=2, pady=2
+        )
+
+        i += 1
 
         ldftext = " ".join(
             (
@@ -823,13 +872,18 @@ class IB(Frame):
                 "burning. If this is too low its possible for",
                 "propellant to exhibit regressive burning behaviour,",
                 "as the primary mode will be axial burning instead.",
-                "Length is usually limited by propellant strength",
+                "Length can be limited by propellant strength",
                 "during the casting process.",
             )
         )
 
         cylLRtext = " ".join(
-            ("Length to diameter ratio of the grain, usually", "around 2-2.5.")
+            (
+                "Length to diameter ratio of the grain, usually",
+                "around 2-2.5.\n",
+                "A higher value tends to reduce the regressiveness",
+                "of burning.",
+            )
         )
 
         widthText = " ".join(
@@ -875,7 +929,7 @@ class IB(Frame):
             self.secondaryRatio.set("Height")
             self.lengthPrimaryTip.set(widthText)
             self.lengthSecondaryTip.set(heightText)
-            self.lengthRatioTip.set(perfLRtext)
+            self.lengthRatioTip.set(cylLRtext)
             self.ratioTip.set(ratioEntryText)
 
         elif geom == SimpleGeometry.CYLINDER:
@@ -901,6 +955,19 @@ class IB(Frame):
             self.ratioTip.set(ratioEntryText)
 
         return True
+
+    def updateGeomPlot(self):
+        N = 100
+        prop = self.prop
+        if prop is not None:
+            self.geomAx.cla()
+            xs = [i / (N - 1) * prop.Z_b for i in range(N)]
+            ys = [prop.f_sigma_Z(x) for x in xs]
+            self.geomAx.plot(xs, ys, color="#215d9c")
+            self.geomAx.grid(which="major", color="white", linestyle="-")
+            # self.geomAx.minorticks_on()
+
+            self.geomCanvas.draw()
 
     def addOpsFrm(self, parent):
         opFrm = ttk.LabelFrame(parent, text="Options")
@@ -973,17 +1040,17 @@ class IB(Frame):
 
         i = 3
 
+        validationPI = parent.register(validatePI)
+
         self.steps, _, i = self.add3Input(
             opFrm,
             i,
             "",
             "steps",
             "10",
-            validation=validationNN,
+            validation=validationPI,
             formatter=formatIntInput,
         )
-
-        validationPI = parent.register(validatePI)
 
         tolText = " ".join(
             (
@@ -1075,8 +1142,8 @@ class IB(Frame):
             "Travel",
             "Burnup",
             "Velocity",
-            "Pressure",
-            "Temperature",
+            "Avg. Pressure",
+            "Avg. Temperature",
         ]
         tblFrm = ttk.LabelFrame(parent, text="Result Table")
         tblFrm.grid(row=0, column=1, sticky="nsew")
@@ -1277,9 +1344,11 @@ class IB(Frame):
         This is called on every write event to the related widgets.
         Since this is handled before the user <FocusOut>, we need to
         deal with partial inputs as well.
-
         """
         self.geomError = False
+        geom = self.geometries[self.dropGeom.get()]
+        compo = self.compositions[self.dropProp.get()]
+
         try:
             if self.geoLocked.get() == 1:
                 self.permm.set(
@@ -1294,18 +1363,34 @@ class IB(Frame):
                     / float(self.arcmm.get())
                     * float(self.arcR.get())
                 )
-            geom = self.geometries[self.dropGeom.get()]
-
-            if geom not in (SimpleGeometry.SPHERE, SimpleGeometry.CYLINDER):
-                if float(self.permm.get()) == 0:
-                    self.geomError = True
-                elif float(self.perR.get()) == 0:
-                    self.geomError = True
 
         except (ZeroDivisionError, ValueError):
             self.geomError = True
 
+        """
+        Update the propellant object
+        """
+
+        if not self.geomError:
+            try:
+                self.prop = Propellant(
+                    compo,
+                    geom,
+                    float(self.arcmm.get()) / 1000,
+                    float(self.permm.get()) / float(self.arcmm.get()),
+                    float(self.grlR.get()),
+                )
+            except Exception as e:
+                if DEBUG:
+                    self.errorLst.append("".join(traceback.format_exception(e)))
+                else:
+                    self.errorLst.append(str(e))
+
+        else:
+            self.prop = None
+
         self.updateError()
+        self.updateGeomPlot()
 
 
 if __name__ == "__main__":
