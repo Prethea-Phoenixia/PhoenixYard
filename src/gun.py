@@ -105,6 +105,7 @@ class SimpleGeometry(Enum):
 
     SPHERE = "Sphere"
     ROD = "Strip / Flake (Rect. Prism)"
+    CYLINDER = "Cylinder"
     TUBE = "1 Perf Cylinder"
 
 
@@ -297,7 +298,7 @@ class Propellant:
             # effective diameter, equals to diameter for perforated cylinders
             grainLength = LR * D_0
             # derive length based on "mean"/"effective" diameter
-            self.c = grainLength / 2
+            self.c = 0.5 * grainLength
 
             self.rho = propGeom.rhoDiv * (self.e_1 + self.d_0 / 2)
 
@@ -340,20 +341,34 @@ class Propellant:
             self.Z_b = 1  # this will prevent the running of post fracture code
 
             if self.geometry == SimpleGeometry.SPHERE:
-                arcThick, PR, LR = length, R1, R2
+                D_0, PR, LR = length, R1, R2
 
-                self.e_1 = 0.5 * arcThick
+                self.e_1 = 0.5 * D_0
                 self.maxLF = 1
                 self.chi = 3
                 self.labda = -1
                 self.mu = 1 / 3
 
+            elif self.geometry == SimpleGeometry.CYLINDER:
+                D_0, LR = length, R2
+
+                self.e_1 = 0.5 * D_0
+                self.c = 0.5 * D_0 * LR
+                self.maxLF = 1
+
+                beta = self.e_1 / self.c
+
+                self.chi = 2 + beta
+                self.labda = -(1 + 2 * beta) / self.chi
+                self.mu = beta / self.chi
+
             elif self.geometry == SimpleGeometry.TUBE:
                 arcThick, PR, LR = length, R1, R2
+
                 self.e_1 = 0.5 * arcThick
                 self.d_0 = arcThick * PR
                 D_0 = self.d_0 + self.e_1 * 4
-                self.c = D_0 * LR
+                self.c = 0.5 * D_0 * LR
 
                 beta = self.e_1 / self.c
 
@@ -375,25 +390,9 @@ class Propellant:
 
                 self.maxLF = 1
 
-                if (self.e_1 == self.b) and (self.b == self.c):
-                    self.chi = 3
-                    self.labda = -1
-                    self.mu = 1 / 3
-
-                elif self.e_1 == self.b:
-                    self.chi = 2 + beta
-                    self.labda = -(1 + 2 * beta) / self.chi
-                    self.mu = beta / self.chi
-
-                elif self.b == self.c:
-                    self.chi = 1 + 2 * beta
-                    self.labda = -(2 * beta + beta**2) / self.chi
-                    self.mu = beta**2 / self.chi
-
-                else:
-                    self.chi = 1 + alpha + beta
-                    self.labda = -(alpha + beta + alpha * beta) / self.chi
-                    self.mu = alpha * beta / self.chi
+                self.chi = 1 + alpha + beta
+                self.labda = -(alpha + beta + alpha * beta) / self.chi
+                self.mu = alpha * beta / self.chi
 
         else:
             raise ValueError(

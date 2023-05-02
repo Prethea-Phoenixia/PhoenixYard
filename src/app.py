@@ -469,7 +469,7 @@ class IB(Frame):
         self.errorText.delete("1.0", "end")
         if self.geomError:
             self.errorLst = [
-                "Specified Geometry of Propellant is Invalid"
+                "Invalid Geometry Parameter of Propellant"
             ] + self.errorLst
 
         for line in self.errorLst:
@@ -681,9 +681,8 @@ class IB(Frame):
             parFrm,
             i,
             self.lengthSecondaryAs,
-            # "Perf Diameter",
             "mm",
-            "0.0",
+            "0.5",
             validationNN,  # can be 0
             infotext=self.lengthSecondaryTip,
         )
@@ -817,7 +816,7 @@ class IB(Frame):
 
         diaText = " ".join(("Specify the diameter of the propellant grain.",))
 
-        grlRtext = " ".join(
+        perfLRtext = " ".join(
             (
                 "Length to diameter ratio of the grain, usually",
                 "around 2-2.5. A higher value facilitate progressive",
@@ -827,6 +826,10 @@ class IB(Frame):
                 "Length is usually limited by propellant strength",
                 "during the casting process.",
             )
+        )
+
+        cylLRtext = " ".join(
+            ("Length to diameter ratio of the grain, usually", "around 2-2.5.")
         )
 
         widthText = " ".join(
@@ -872,8 +875,19 @@ class IB(Frame):
             self.secondaryRatio.set("Height")
             self.lengthPrimaryTip.set(widthText)
             self.lengthSecondaryTip.set(heightText)
-            self.lengthRatioTip.set(lengthRtext)
+            self.lengthRatioTip.set(perfLRtext)
             self.ratioTip.set(ratioEntryText)
+
+        elif geom == SimpleGeometry.CYLINDER:
+            self.lengthPrimaryAs.set("Diameter")
+            self.lengthSecondaryAs.set("")
+            self.lengthRatioAs.set("Grain L/D")
+            self.primaryRatio.set("")
+            self.secondaryRatio.set("")
+            self.lengthPrimaryTip.set(diaText)
+            self.lengthSecondaryTip.set("")
+            self.lengthRatioTip.set(cylLRtext)
+            self.ratioTip.set("")
 
         else:
             self.lengthPrimaryAs.set("Arc Thickness")
@@ -883,7 +897,7 @@ class IB(Frame):
             self.secondaryRatio.set("P.D.")
             self.lengthPrimaryTip.set(arcText)
             self.lengthSecondaryTip.set(pDiaText)
-            self.lengthRatioTip.set(grlRtext)
+            self.lengthRatioTip.set(perfLRtext)
             self.ratioTip.set(ratioEntryText)
 
         return True
@@ -1010,6 +1024,14 @@ class IB(Frame):
             for en in directEntrys:
                 en.config(state="disabled")
             self.grlRw.config(state="disabled")
+
+        elif geom == SimpleGeometry.CYLINDER:
+            for en in ratioEntrys:
+                en.config(state="disabled")
+            for en in directEntrys:
+                en.config(state="disabled")
+            self.grlRw.config(state="normal")
+
         else:
             if self.geoLocked.get() == 0:
                 for en in ratioEntrys:
@@ -1251,26 +1273,38 @@ class IB(Frame):
         return e, en, rowIndex + 2
 
     def arccallback(self, var, index, mode):
-        self.geomError = False
+        """
+        This is called on every write event to the related widgets.
+        Since this is handled before the user <FocusOut>, we need to
+        deal with partial inputs as well.
 
-        if self.geoLocked.get() == 1:
-            try:
+        """
+        self.geomError = False
+        try:
+            if self.geoLocked.get() == 1:
                 self.permm.set(
                     float(self.arcmm.get())
                     / float(self.arcR.get())
                     * float(self.perR.get())
                 )
-            except (ZeroDivisionError, ValueError):
-                self.geomError = True
-        else:
-            try:
+
+            else:
                 self.perR.set(
                     float(self.permm.get())
                     / float(self.arcmm.get())
                     * float(self.arcR.get())
                 )
-            except (ZeroDivisionError, ValueError):
-                self.geomError = True
+            geom = self.geometries[self.dropGeom.get()]
+
+            if geom not in (SimpleGeometry.SPHERE, SimpleGeometry.CYLINDER):
+                if float(self.permm.get()) == 0:
+                    self.geomError = True
+                elif float(self.perR.get()) == 0:
+                    self.geomError = True
+
+        except (ZeroDivisionError, ValueError):
+            self.geomError = True
+
         self.updateError()
 
 
