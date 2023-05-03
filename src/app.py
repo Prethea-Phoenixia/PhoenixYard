@@ -297,12 +297,6 @@ class ToolTip(object):
         label.config(width=columnWidth)  # characters
         label.pack(ipadx=1)
 
-        if (
-            y + t_Font.measure(self.text) / (width * columnWidth) * height
-            > ry + root.winfo_rooty() + root.winfo_height()
-        ):
-            print("this")
-
     def hidetip(self):
         tw = self.tipwindow
         self.tipwindow = None
@@ -368,27 +362,8 @@ class IB(Frame):
         self.tableData = []
         self.errorData = []
 
-        # self.resetSpec()
-
-        """
-
-        try:
-            self.prop = Propellant(
-                compo,
-                geom,
-                float(self.arcmm.get()) / 1000,
-                float(self.permm.get()) / float(self.arcmm.get()),
-                float(self.grlR.get()),
-            )
-
-        except Exception as e:
-            self.prop = None
-            self.errorLst.append("Exception when defining propellant:")
-            if DEBUG:
-                self.errorLst.append("".join(traceback.format_exception(e)))
-            else:
-                self.errorLst.append(str(e))
-        """
+        if self.prop is None:
+            return
 
         try:
             chamberVolume = (
@@ -485,11 +460,6 @@ class IB(Frame):
 
     def updateError(self):
         self.errorText.delete("1.0", "end")
-        if self.geomError:
-            self.errorLst = [
-                "Invalid Geometry Parameter of Propellant"
-            ] + self.errorLst
-
         for line in self.errorLst:
             self.errorText.insert("end", line + "\n")
         self.errorLst = []
@@ -620,6 +590,7 @@ class IB(Frame):
 
         specsText = " ".join(
             (
+                "Specify the propellant composition used.\n",
                 "Nitration used for Nitrocellulose is between",
                 "13.15%-13.25% for all preset propellants.",
                 "Up to 14.14% is possible but has not been",
@@ -726,9 +697,17 @@ class IB(Frame):
             infotext=self.lengthRatioTip,
         )
 
-        parFrm.update()
-        dpi = parFrm.winfo_fpixels("1i")
-        size = parFrm.winfo_width() / dpi
+        geomPlotFrm = ttk.LabelFrame(grainFrm, text="σ(Z)")
+        geomPlotFrm.grid(
+            row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+        )
+
+        geomPlotFrm.rowconfigure(0, weight=1)
+        geomPlotFrm.columnconfigure(0, weight=1)
+
+        geomPlotFrm.update()
+        dpi = geomPlotFrm.winfo_fpixels("1i")
+        size = geomPlotFrm.winfo_width() / dpi
 
         fig = Figure(
             figsize=(size, size),
@@ -742,10 +721,18 @@ class IB(Frame):
 
         fig.tight_layout()
 
-        self.geomCanvas = FigureCanvasTkAgg(fig, master=grainFrm)
+        self.geomCanvas = FigureCanvasTkAgg(fig, master=geomPlotFrm)
         self.geomCanvas.get_tk_widget().grid(
             row=j, column=0, columnspan=3, padx=2, pady=2
         )
+
+        geomPlotTxt = " ".join(
+            (
+                "Plot of σ, or burn surface area (unitless) with",
+                "respect to Z, or the linear burnt ratio.",
+            )
+        )
+        CreateToolTip(geomPlotFrm, geomPlotTxt)
 
         i += 1
 
@@ -839,11 +826,11 @@ class IB(Frame):
                 "the shortest path, and therefore is the",
                 "primary geometrical determinant of burn rapidity.\n",
                 "In theory micrometer level precision",
-                "is possible. In practice, tolerance for indu-",
-                "strial bulk production is in the range of",
-                "0.15mm to 1mm depending on caliber arc",
-                "thickness is generally found close to 1mm",
-                "for small to intermediate calibers.\n",
+                "is possible. In practice, tolerance for industrial",
+                "bulk production is in the range of 0.15mm",
+                "to 1mm depending on sources.\n",
+                "Arc thickness is generally found close to 1mm",
+                "for small to intermediate calibers.",
                 "Greater web thickness will lead to a longer burn",
                 "time for the same load of propellant, giving",
                 "a more gradual rise and lower peak pressure.",
@@ -959,15 +946,23 @@ class IB(Frame):
     def updateGeomPlot(self):
         N = 100
         prop = self.prop
+        self.geomAx.cla()
         if prop is not None:
-            self.geomAx.cla()
             xs = [i / (N - 1) * prop.Z_b for i in range(N)]
             ys = [prop.f_sigma_Z(x) for x in xs]
             self.geomAx.plot(xs, ys, color="#215d9c")
-            self.geomAx.grid(which="major", color="white", linestyle="-")
+            self.geomAx.grid(which="major", color="grey", linestyle="dotted")
             # self.geomAx.minorticks_on()
+            self.geomAx.set_xlim(left=0, right=max(xs))
+            self.geomAx.xaxis.set_ticks(
+                [i * 0.2 for i in range(ceil(prop.Z_b / 0.2) + 1)]
+            )
+            self.geomAx.set_ylim(bottom=0, top=max(ys))
+            self.geomAx.yaxis.set_ticks(
+                [i * 0.2 for i in range(ceil(max(ys) / 0.2) + 1)]
+            )
 
-            self.geomCanvas.draw()
+        self.geomCanvas.draw()
 
     def addOpsFrm(self, parent):
         opFrm = ttk.LabelFrame(parent, text="Options")
@@ -1008,6 +1003,7 @@ class IB(Frame):
         self.permm.trace_add("write", self.arccallback)
         self.arcR.trace_add("write", self.arccallback)
         self.perR.trace_add("write", self.arccallback)
+        self.grlR.trace_add("write", self.arccallback)
 
         ttk.Checkbutton(
             opFrm,
@@ -1267,43 +1263,6 @@ class IB(Frame):
         )
         return e, en, rowIndex + 1
 
-    def add11Disp(
-        self,
-        parent,
-        rowIndex,
-        labelText,
-        default="0.0",
-        entryWidth=5,
-        justify="center",
-        infotext=None,
-    ):
-        lb = ttk.Label(parent, text=labelText)
-        lb.grid(
-            row=rowIndex, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
-        )
-        e = StringVar(parent)
-        e.default = default
-        e.set(default)
-        parent.rowconfigure(rowIndex, weight=0)
-        en = ttk.Entry(
-            parent,
-            textvariable=e,
-            width=entryWidth,
-            state="disabled",
-            justify=justify,
-        )
-        en.grid(
-            row=rowIndex + 1,
-            column=0,
-            columnspan=2,
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        if infotext is not None:
-            CreateToolTip(lb, infotext)
-        return e, en, rowIndex + 2
-
     def add12Disp(
         self,
         parent,
@@ -1345,7 +1304,7 @@ class IB(Frame):
         Since this is handled before the user <FocusOut>, we need to
         deal with partial inputs as well.
         """
-        self.geomError = False
+
         geom = self.geometries[self.dropGeom.get()]
         compo = self.compositions[self.dropProp.get()]
 
@@ -1364,30 +1323,30 @@ class IB(Frame):
                     * float(self.arcR.get())
                 )
 
-        except (ZeroDivisionError, ValueError):
-            self.geomError = True
+        except ZeroDivisionError:
+            self.errorLst.append("Primary length specification must >0")
+
+        except ValueError:
+            self.errorLst.append("Unable to format entry")
 
         """
         Update the propellant object
         """
 
-        if not self.geomError:
-            try:
-                self.prop = Propellant(
-                    compo,
-                    geom,
-                    float(self.arcmm.get()) / 1000,
-                    float(self.permm.get()) / float(self.arcmm.get()),
-                    float(self.grlR.get()),
-                )
-            except Exception as e:
-                if DEBUG:
-                    self.errorLst.append("".join(traceback.format_exception(e)))
-                else:
-                    self.errorLst.append(str(e))
-
-        else:
+        try:
+            self.prop = Propellant(
+                compo,
+                geom,
+                float(self.arcmm.get()) / 1000,
+                float(self.permm.get()) / float(self.arcmm.get()),
+                float(self.grlR.get()),
+            )
+        except Exception as e:
             self.prop = None
+            if DEBUG:
+                self.errorLst.append("".join(traceback.format_exception(e)))
+            else:
+                self.errorLst.append(str(e))
 
         self.updateError()
         self.updateGeomPlot()

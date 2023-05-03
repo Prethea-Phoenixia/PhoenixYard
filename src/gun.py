@@ -255,6 +255,16 @@ class Propellant:
         .labda_s
 
         """
+
+        if length <= 0:
+            raise ValueError("Primary length input must be >0")
+        if R2 == 0:
+            raise ValueError("Teritary length must be >0")
+        if R1 == 0 and composition == SimpleGeometry.ROD:
+            raise ValueError(
+                "Secondary length must >0 when designing rod type propellant"
+            )
+
         self.composition = composition
         self.geometry = propGeom
 
@@ -400,10 +410,23 @@ class Propellant:
             )
 
     def f_sigma_Z(self, Z):
+        # is the first derivative of psi(Z)
         if Z < 1:
             return self.chi * (1 + 2 * self.labda * Z + 3 * self.mu * Z**2)
         elif Z < self.Z_b:
             return 1 + 2 * self.labda_s * Z
+        else:
+            return 0
+
+    def f_psi_Z(self, Z):
+        if Z < 0:
+            return 0
+        elif Z < 1.0:
+            return self.chi * Z * (1 + self.labda * Z + self.mu * Z**2)
+        elif Z < self.Z_b:
+            return self.chi_s * Z * (1 + self.labda_s * Z)
+        else:
+            return 1.0
 
     def __getattr__(self, attrName):
         try:
@@ -424,6 +447,17 @@ class Gun:
         lengthGun,
         chamberExpansion,
     ):
+        if any(
+            (
+                caliber <= 0,
+                shotMass <= 0,
+                chargeMass <= 0,
+                chamberVolume <= 0,
+                lengthGun <= 0,
+                chamberExpansion <= 0,
+            )
+        ):
+            raise ValueError("Invalid gun parameters")
         self.S = (caliber / 2) ** 2 * pi
         self.m = shotMass
         self.propellant = propellant
@@ -443,9 +477,9 @@ class Gun:
         ) ** 0.5
 
         if self.p_0 == 0:
-            raise ValueError(
-                "Currently solving for the case with 0 starting pressure"
-                + " is not implemented."
+            raise NotImplementedError(
+                "Current implementation use exponential burn rate and does not"
+                + " allow for solving the case with 0 shot start pressure."
             )
         else:
             self.psi_0 = (1 / self.Delta - 1 / self.rho_p) / (
@@ -484,35 +518,8 @@ class Gun:
 
         self.Z_0 = Zs[0]
 
-    def _fpsi(self, Z):
-        if Z < 0:
-            return 0
-        elif Z < 1.0:
-            return self.chi * Z * (1 + self.labda * Z + self.mu * Z**2)
-        elif Z < self.Z_b:
-            return self.chi_s * Z * (1 + self.labda_s * Z)
-        else:
-            return 1.0
-
-    def _dPsi(self, Z):
-        """
-        returns dPsi/dZ
-        """
-        if Z < 0:
-            return 0
-        elif Z < 1:
-            return (
-                self.chi
-                + 2 * self.labda * self.chi * Z
-                + 3 * self.mu * self.chi * Z**2
-            )
-        elif Z < self.Z_b:
-            return self.chi_s + 2 * Z * self.labda_s * self.chi_s
-        else:
-            return 0
-
     def _fp_bar(self, Z, l_bar, v_bar):
-        psi = self._fpsi(Z)
+        psi = self.f_psi_Z(Z)
         l_psi_bar = (
             1
             - self.Delta / self.rho_p
@@ -1005,7 +1012,7 @@ class Gun:
             tScale = self.l_0 / self.v_j
             t, t_err = (t_bar * tScale, t_bar_err * tScale)
             l, l_err = (l_bar * self.l_0, l_bar_err * self.l_0)
-            psi, psi_err = (self._fpsi(Z), abs(self._dPsi(Z) * Z_err))
+            psi, psi_err = (self.f_psi_Z(Z), abs(self.f_sigma_Z(Z) * Z_err))
             v, v_err = v_bar * self.v_j, v_bar_err * self.v_j
             pScale = self.f * self.Delta
             p, p_err = p_bar * pScale, p_bar_err * pScale
