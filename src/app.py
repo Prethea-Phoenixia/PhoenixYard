@@ -319,7 +319,7 @@ def CreateToolTip(widget, text):
 
 
 class IB(Frame):
-    def __init__(self, parent, dpi, tdpi):
+    def __init__(self, parent, dpi):
         Frame.__init__(self, parent)
 
         self.compositions = GrainComp.readFile(
@@ -349,9 +349,7 @@ class IB(Frame):
         self.addTblFrm(parent)
         self.addOpsFrm(parent)
 
-        parent.update()
-
-        self.addGeomPlot(geomPlotFrm, dpi, tdpi)
+        self.addGeomPlot(geomPlotFrm, dpi)
 
         self.wrapup()
 
@@ -712,8 +710,8 @@ class IB(Frame):
             pady=2,
         )
 
-        geomPlotFrm.rowconfigure(0, weight=1)
-        geomPlotFrm.columnconfigure(0, weight=1)
+        geomPlotFrm.rowconfigure(0, weight=0)
+        geomPlotFrm.columnconfigure(0, weight=0)
 
         geomPlotTxt = " ".join(
             (
@@ -804,8 +802,12 @@ class IB(Frame):
 
         return geomPlotFrm
 
-    def addGeomPlot(self, geomPlotFrm, dpi, tdpi):
-        width = geomPlotFrm.winfo_width()  # in pixels
+    def addGeomPlot(self, geomPlotFrm, dpi):
+        geomPlotFrm.update()
+
+        width = (
+            geomPlotFrm.winfo_width() - 2
+        )  # in pixels, -2 to account for label frame border thickness
         """
         geomPlotFrm.config(width=width, height=width)
         # we lock the frame the plot is put in
@@ -817,10 +819,8 @@ class IB(Frame):
         window, and everything would be fine, ironically.
         (in this case, dpi = dpi)
         """
-        print(dpi)
-        print(((dpi // 96) * 96 + 96))
-        print(tdpi)
-        print(geomPlotFrm.winfo_width())
+
+        # print(geomPlotFrm.winfo_width())
         fig = Figure(
             figsize=(width / dpi, width / dpi),
             dpi=96,
@@ -838,8 +838,10 @@ class IB(Frame):
         self.geomCanvas.get_tk_widget().grid(
             row=0, column=0, padx=0, pady=0, sticky="nsw"
         )
+        """
         geomPlotFrm.update()
         print(geomPlotFrm.winfo_width())
+        """
 
     def updateSpec(self, *inp):
         self.specs.config(state="normal")
@@ -1395,8 +1397,9 @@ if __name__ == "__main__":
     root = Tk()
     # one must supply the entire path
     loadfont(resolvepath("ui/Hack-Regular.ttf"))
-    dpi = root.winfo_fpixels("1i")
+    dpi = round(root.winfo_fpixels("1i") / 96) * 96
 
+    """
     # this will return the "windows scaling factor"
     # wsf = ctypes.windll.user32.GetDpiForWindow(root.winfo_id()) / 96
     MM_TO_IN = 0.0393700787
@@ -1414,6 +1417,7 @@ if __name__ == "__main__":
     hdpi, vdpi = dw / mw, dh / mh
     # get the "diagonal" physical dpi
     ddpi = (hdpi**2 + vdpi**2) ** 0.5
+    """
 
     # Tk was originally developed for a dpi of 72
     root.tk.call("tk", "scaling", "-displayof", ".", dpi / 72.0)
@@ -1443,5 +1447,12 @@ if __name__ == "__main__":
 
     root.title("Phoenix's Internal Ballistics Solver v0.3")
 
-    ibPanel = IB(root, dpi=dpi, tdpi=ddpi)
+    ibPanel = IB(root, dpi=dpi)
+
+    # set up widgets here, do your grid/pack/place
+    # root.geometry() will return '1x1+0+0' here
+    root.update()
+    # now root.geometry() returns valid size/placement
+    root.minsize(root.winfo_width(), root.winfo_height())
+
     root.mainloop()
