@@ -729,7 +729,16 @@ class IB(Frame):
         geomPlotTxt = " ".join(
             (
                 "Plot of σ, or burn surface area (unitless) with",
-                "respect to Z, or the linear burnt ratio.",
+                "respect to Z, or the linear burnt ratio. A upward",
+                "slope on this graph indicate progressive burning",
+                "while a downward slope indicate regressive burning.",
+                "Discontinuity indicate fracture of mutli-perforated",
+                "propellant.\n",
+                "Regressive burning puts the peak pressure point closer",
+                "to the breech, leading to higher peak pressure, and",
+                "vice versa for progressive burning.\n",
+                "Note, the treatment for post fracture",
+                "burn behaviour is not entirely rigorous.",
             )
         )
         CreateToolTip(geomPlotFrm, geomPlotTxt)
