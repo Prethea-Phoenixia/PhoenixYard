@@ -5,6 +5,7 @@ import traceback
 from gun import *
 import os
 import sys
+import ctypes
 from math import ceil
 
 from matplotlib.backends.backend_tkagg import (
@@ -318,7 +319,7 @@ def CreateToolTip(widget, text):
 
 
 class IB(Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, dpi, tdpi):
         Frame.__init__(self, parent)
 
         self.compositions = GrainComp.readFile(
@@ -343,10 +344,14 @@ class IB(Frame):
         parent.rowconfigure(1, weight=0)
 
         self.addSpecFrm(parent)
-        self.addParFrm(parent)
+        geomPlotFrm = self.addParFrm(parent)
         self.addExcFrm(parent)
         self.addTblFrm(parent)
         self.addOpsFrm(parent)
+
+        parent.update()
+
+        self.addGeomPlot(geomPlotFrm, dpi, tdpi)
 
         self.wrapup()
 
@@ -699,32 +704,16 @@ class IB(Frame):
 
         geomPlotFrm = ttk.LabelFrame(grainFrm, text="σ(Z)")
         geomPlotFrm.grid(
-            row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+            row=j,
+            column=0,
+            columnspan=3,
+            sticky="nsew",
+            padx=2,
+            pady=2,
         )
 
         geomPlotFrm.rowconfigure(0, weight=1)
         geomPlotFrm.columnconfigure(0, weight=1)
-
-        geomPlotFrm.update()
-        dpi = geomPlotFrm.winfo_fpixels("1i")
-        size = geomPlotFrm.winfo_width() / dpi
-
-        fig = Figure(
-            figsize=(size, size),
-            dpi=dpi,
-        )
-
-        self.geomAx = fig.add_subplot()
-
-        # ax.set_xlabel("Z")
-        # ax.set_ylabel("sigma")
-
-        fig.tight_layout()
-
-        self.geomCanvas = FigureCanvasTkAgg(fig, master=geomPlotFrm)
-        self.geomCanvas.get_tk_widget().grid(
-            row=j, column=0, columnspan=3, padx=2, pady=2
-        )
 
         geomPlotTxt = " ".join(
             (
@@ -812,6 +801,45 @@ class IB(Frame):
             validationNN,
             infotext=stpText,
         )
+
+        return geomPlotFrm
+
+    def addGeomPlot(self, geomPlotFrm, dpi, tdpi):
+        width = geomPlotFrm.winfo_width()  # in pixels
+        """
+        geomPlotFrm.config(width=width, height=width)
+        # we lock the frame the plot is put in
+        geomPlotFrm.grid_propagate(False)
+        # and lock it there
+        
+        If we set the global dpi awareness for this window
+        to false (0), this will result in a correctly sized
+        window, and everything would be fine, ironically.
+        (in this case, dpi = dpi)
+        """
+        print(dpi)
+        print(((dpi // 96) * 96 + 96))
+        print(tdpi)
+        print(geomPlotFrm.winfo_width())
+        fig = Figure(
+            figsize=(width / dpi, width / dpi),
+            dpi=96,
+            tight_layout=True,
+        )
+        self.geomAx = fig.add_subplot()
+
+        # ax.set_xlabel("Z")
+        # ax.set_ylabel("sigma")
+
+        # fig.tight_layout()
+        # fig.set_dpi(dpi)
+
+        self.geomCanvas = FigureCanvasTkAgg(fig, master=geomPlotFrm)
+        self.geomCanvas.get_tk_widget().grid(
+            row=0, column=0, padx=0, pady=0, sticky="nsw"
+        )
+        geomPlotFrm.update()
+        print(geomPlotFrm.winfo_width())
 
     def updateSpec(self, *inp):
         self.specs.config(state="normal")
@@ -1006,7 +1034,7 @@ class IB(Frame):
             infotext=self.ratioTip,
         )
 
-        self.configEntry()
+        # self.configEntry()
 
         self.arcmm.trace_add("write", self.arccallback)
         self.permm.trace_add("write", self.arccallback)
@@ -1362,13 +1390,36 @@ class IB(Frame):
 
 
 if __name__ == "__main__":
-    # high dpi scaling
+    # this tells windows that our program will handle scaling ourselves
     windll.shcore.SetProcessDpiAwareness(1)
     root = Tk()
     # one must supply the entire path
     loadfont(resolvepath("ui/Hack-Regular.ttf"))
     dpi = root.winfo_fpixels("1i")
+
+    # this will return the "windows scaling factor"
+    # wsf = ctypes.windll.user32.GetDpiForWindow(root.winfo_id()) / 96
+    MM_TO_IN = 0.0393700787
+    dc = ctypes.windll.user32.GetDC(root.winfo_id())
+    # the monitor's physical width in inches
+    mw = ctypes.windll.gdi32.GetDeviceCaps(dc, 4) * MM_TO_IN
+    # the monitor's physical height in inches
+    mh = ctypes.windll.gdi32.GetDeviceCaps(dc, 6) * MM_TO_IN
+    # horizontal resolution
+    dw = ctypes.windll.gdi32.GetDeviceCaps(dc, 8)
+    # vertical resolution
+    dh = ctypes.windll.gdi32.GetDeviceCaps(dc, 10)
+
+    # get the "true, physical" DPI
+    hdpi, vdpi = dw / mw, dh / mh
+    # get the "diagonal" physical dpi
+    ddpi = (hdpi**2 + vdpi**2) ** 0.5
+
+    # Tk was originally developed for a dpi of 72
     root.tk.call("tk", "scaling", "-displayof", ".", dpi / 72.0)
+
+    plt.rc("figure", dpi=dpi)
+
     root.tk.call("lappend", "auto_path", resolvepath("ui/awthemes-10.4.0"))
     root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
     # root.tk.call("package", "require", "awdark")
@@ -1380,7 +1431,8 @@ if __name__ == "__main__":
     # regardless of dpi. on Windows, default is Segoe UI at 9 points
     # so the default row height should be around 12
 
-    style.configure("Treeview", rowheight=round(12 * dpi / 72))
+    style.configure("Treeview", rowheight=round(12 * dpi / 72.0))
+
     style.configure("Treeview.Heading", font=("Hack", 8))
     style.configure("TButton", font=("Hack", 10, "bold"))
     style.configure("TLabelframe.Label", font=("Hack", 10, "bold"))
@@ -1391,5 +1443,5 @@ if __name__ == "__main__":
 
     root.title("Phoenix's Internal Ballistics Solver v0.3")
 
-    ibPanel = IB(root)
+    ibPanel = IB(root, dpi=dpi, tdpi=ddpi)
     root.mainloop()
