@@ -7,6 +7,7 @@ import os
 import sys
 import ctypes
 from math import ceil
+from labellines import labelLine, labelLines
 
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg,
@@ -14,10 +15,11 @@ from matplotlib.backends.backend_tkagg import (
 )
 
 # Implement the default Matplotlib key bindings.
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as mpl
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.figure import Figure
 
+"""
 SMALL_SIZE = 6
 MEDIUM_SIZE = 8
 BIGGER_SIZE = 10
@@ -31,9 +33,42 @@ plt.rc("legend", fontsize=SMALL_SIZE)  # legend fontsize
 plt.rc("figure", titlesize=BIGGER_SIZE)  # fontsize of the figure title
 plt.rc("axes", edgecolor="white", facecolor="#33393b")
 plt.rc("figure", facecolor="#33393b")
+plt.rc("text", color="white")
 # plt.rc("text", color="white")
 plt.rc("xtick", color="white")
 plt.rc("ytick", color="white")
+"""
+GEOM_CONTEXT = {
+    "font.size": 6,
+    "axes.titlesize": 6,
+    "axes.labelsize": 8,
+    "xtick.labelsize": 6,
+    "ytick.labelsize": 6,
+    "legend.fontsize": 6,
+    "figure.titlesize": 10,
+    "axes.edgecolor": "white",
+    "axes.facecolor": "#33393b",
+    "figure.facecolor": "#33393b",
+    "text.color": "white",
+    "xtick.color": "white",
+    "ytick.color": "white",
+}
+
+FIG_CONTEXT = {
+    "font.size": 10,
+    "axes.titlesize": 10,
+    "axes.labelsize": 12,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+    "legend.fontsize": 10,
+    "figure.titlesize": 14,
+    "axes.edgecolor": "white",
+    "axes.facecolor": "#33393b",
+    "figure.facecolor": "#33393b",
+    "text.color": "white",
+    "xtick.color": "white",
+    "ytick.color": "white",
+}
 
 DEBUG = True
 
@@ -344,14 +379,22 @@ class IB(Frame):
         parent.rowconfigure(1, weight=0)
 
         self.addSpecFrm(parent)
-        geomPlotFrm = self.addParFrm(parent)
-        self.addExcFrm(parent)
+        plotFrm = self.addPlotFrm(parent)
+        parFrm, geomPlotFrm = self.addParFrm(parent)
         self.addTblFrm(parent)
         self.addOpsFrm(parent)
 
-        self.addGeomPlot(geomPlotFrm, dpi)
+        parent.update()
+        self.addGeomPlot(parFrm, geomPlotFrm, dpi)
+
+        parent.update()
+        self.addFigPlot(plotFrm, dpi)
 
         self.wrapup()
+
+        parent.bind(
+            "<Configure>", lambda event: self.resizeFigPlot(event, plotFrm)
+        )
 
         # parent.bind("<Return>", self.calculate)
 
@@ -460,6 +503,7 @@ class IB(Frame):
             i += 2
 
         self.updateError()
+        self.updateFigPlot()
 
     def updateError(self):
         self.errorText.delete("1.0", "end")
@@ -510,6 +554,23 @@ class IB(Frame):
         self.cv, _, i = self.add12Disp(
             specFrm, i, "Chamber Volume", "m³", justify="right"
         )
+
+        errorFrm = ttk.LabelFrame(specFrm, text="Exceptions")
+        errorFrm.grid(row=i, column=0, columnspan=2, sticky="nsew")
+        errorFrm.columnconfigure(0, weight=1)
+        errorFrm.rowconfigure(0, weight=1)
+
+        specFrm.rowconfigure(i, weight=1)
+        errScroll = ttk.Scrollbar(errorFrm, orient="vertical")
+        errScroll.grid(row=0, column=1, sticky="nsew")
+        self.errorText = Text(
+            errorFrm,
+            yscrollcommand=errScroll.set,
+            wrap=WORD,
+            height=0,
+            width=0,
+        )
+        self.errorText.grid(row=0, column=0, sticky="nsew")
 
     def addParFrm(self, parent):
         parFrm = ttk.LabelFrame(parent, text="Parameters")
@@ -700,7 +761,7 @@ class IB(Frame):
             infotext=self.lengthRatioTip,
         )
 
-        geomPlotFrm = ttk.LabelFrame(grainFrm, text="σ(Z)")
+        geomPlotFrm = ttk.LabelFrame(grainFrm, text="σ(Z)", width=100)
         geomPlotFrm.grid(
             row=j,
             column=0,
@@ -710,8 +771,8 @@ class IB(Frame):
             pady=2,
         )
 
-        geomPlotFrm.rowconfigure(0, weight=0)
-        geomPlotFrm.columnconfigure(0, weight=0)
+        geomPlotFrm.rowconfigure(0, weight=1)
+        geomPlotFrm.columnconfigure(0, weight=1)
 
         geomPlotTxt = " ".join(
             (
@@ -800,14 +861,13 @@ class IB(Frame):
             infotext=stpText,
         )
 
-        return geomPlotFrm
+        return parFrm, geomPlotFrm
 
-    def addGeomPlot(self, geomPlotFrm, dpi):
-        geomPlotFrm.update()
+    def addGeomPlot(self, parFrm, geomPlotFrm, dpi):
+        print(geomPlotFrm.bbox("insert"))
+        _, _, width, _ = parFrm.bbox("insert")
+        width -= 4  # padding
 
-        width = (
-            geomPlotFrm.winfo_width() - 2
-        )  # in pixels, -2 to account for label frame border thickness
         """
         geomPlotFrm.config(width=width, height=width)
         # we lock the frame the plot is put in
@@ -818,30 +878,35 @@ class IB(Frame):
         to false (0), this will result in a correctly sized
         window, and everything would be fine, ironically.
         (in this case, dpi = dpi)
+
+        width = (
+            geomPlotFrm.winfo_width() - 2
+        )  # in pixels, -2 to account for label frame border thickness
         """
 
         # print(geomPlotFrm.winfo_width())
-        fig = Figure(
-            figsize=(width / dpi, width / dpi),
-            dpi=96,
-            tight_layout=True,
-        )
-        self.geomAx = fig.add_subplot()
+        with mpl.rc_context(GEOM_CONTEXT):
+            fig = Figure(
+                figsize=(width / dpi, width / dpi),
+                dpi=96,
+                # tight_layout=True,
+            )
+            self.geomAx = fig.add_subplot()
 
-        # ax.set_xlabel("Z")
-        # ax.set_ylabel("sigma")
+            # ax.set_xlabel("Z")
+            # ax.set_ylabel("sigma")
 
-        # fig.tight_layout()
-        # fig.set_dpi(dpi)
+            fig.tight_layout(pad=1)
+            # fig.set_dpi(dpi)
 
-        self.geomCanvas = FigureCanvasTkAgg(fig, master=geomPlotFrm)
-        self.geomCanvas.get_tk_widget().grid(
-            row=0, column=0, padx=0, pady=0, sticky="nsw"
-        )
-        """
-        geomPlotFrm.update()
-        print(geomPlotFrm.winfo_width())
-        """
+            self.geomCanvas = FigureCanvasTkAgg(fig, master=geomPlotFrm)
+            self.geomCanvas.get_tk_widget().grid(
+                row=0, column=0, padx=0, pady=0, sticky="nsew"
+            )
+            """
+            geomPlotFrm.update()
+            print(geomPlotFrm.winfo_width())
+            """
 
     def updateSpec(self, *inp):
         self.specs.config(state="normal")
@@ -851,6 +916,8 @@ class IB(Frame):
             self.specs.insert("end", line + "\n")
         self.specs.config(state="disabled")
         # this updates the specification description
+
+        self.arccallback(None, None, None)
 
         return True
 
@@ -983,25 +1050,28 @@ class IB(Frame):
         return True
 
     def updateGeomPlot(self):
-        N = 100
-        prop = self.prop
-        self.geomAx.cla()
-        if prop is not None:
-            xs = [i / (N - 1) * prop.Z_b for i in range(N)]
-            ys = [prop.f_sigma_Z(x) for x in xs]
-            self.geomAx.plot(xs, ys, color="#215d9c")
-            self.geomAx.grid(which="major", color="grey", linestyle="dotted")
-            # self.geomAx.minorticks_on()
-            self.geomAx.set_xlim(left=0, right=max(xs))
-            self.geomAx.xaxis.set_ticks(
-                [i * 0.2 for i in range(ceil(prop.Z_b / 0.2) + 1)]
-            )
-            self.geomAx.set_ylim(bottom=0, top=max(ys))
-            self.geomAx.yaxis.set_ticks(
-                [i * 0.2 for i in range(ceil(max(ys) / 0.2) + 1)]
-            )
+        with mpl.rc_context(GEOM_CONTEXT):
+            N = 100
+            prop = self.prop
+            self.geomAx.cla()
+            if prop is not None:
+                xs = [i / (N - 1) * prop.Z_b for i in range(N)]
+                ys = [prop.f_sigma_Z(x) for x in xs]
+                self.geomAx.plot(xs, ys, color="#215d9c")
+                self.geomAx.grid(
+                    which="major", color="grey", linestyle="dotted"
+                )
+                # self.geomAx.minorticks_on()
+                self.geomAx.set_xlim(left=0, right=max(xs))
+                self.geomAx.xaxis.set_ticks(
+                    [i * 0.2 for i in range(ceil(prop.Z_b / 0.2) + 1)]
+                )
+                self.geomAx.set_ylim(bottom=0, top=max(ys))
+                self.geomAx.yaxis.set_ticks(
+                    [i * 0.2 for i in range(ceil(max(ys) / 0.2) + 1)]
+                )
 
-        self.geomCanvas.draw()
+            self.geomCanvas.draw()
 
     def addOpsFrm(self, parent):
         opFrm = ttk.LabelFrame(parent, text="Options")
@@ -1114,6 +1184,8 @@ class IB(Frame):
         calButton.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
+
+        opFrm.rowconfigure(i, weight=1)
         CreateToolTip(calButton, "Integrate system using RKF7(8) integrator")
 
     def configEntry(self):
@@ -1149,22 +1221,113 @@ class IB(Frame):
 
         self.arccallback(None, None, None)
 
-    def addExcFrm(self, parent):
-        errorFrm = ttk.LabelFrame(parent, text="Exceptions")
-        errorFrm.grid(row=1, column=1, sticky="nsew")
-        errorFrm.columnconfigure(0, weight=1)
-        errorFrm.rowconfigure(0, weight=1)
+    def addPlotFrm(self, parent):
+        plotFrm = ttk.LabelFrame(parent, text="Plot")
+        plotFrm.grid(row=0, column=1, sticky="nsew")
+        plotFrm.columnconfigure(0, weight=1)
+        plotFrm.rowconfigure(0, weight=1)
 
-        errScroll = ttk.Scrollbar(errorFrm, orient="vertical")
-        errScroll.grid(row=0, column=1, sticky="nsew")
-        self.errorText = Text(
-            errorFrm,
-            yscrollcommand=errScroll.set,
-            wrap=WORD,
-            height=0,
-            width=0,
-        )
-        self.errorText.grid(row=0, column=0, sticky="nsew")
+        return plotFrm
+
+    def addFigPlot(self, plotFrm, dpi):
+        width = (
+            plotFrm.winfo_width() - 2
+        )  # in pixels, -2 to account for label frame border thickness
+        height = plotFrm.winfo_height() - 2
+        with mpl.rc_context(FIG_CONTEXT):
+            fig = Figure(figsize=(width / dpi, height / dpi), dpi=96)
+
+            axes = fig.add_subplot()
+
+            ax = axes
+            axP = ax.twinx()
+            axv = ax.twinx()
+
+            fig.tight_layout(pad=1)
+
+            self.ax = ax
+            self.axP = axP
+            self.axv = axv
+            self.fig = fig
+
+            self.pltCanvas = FigureCanvasTkAgg(fig, master=plotFrm)
+            self.pltCanvas.get_tk_widget().grid(
+                row=0, column=0, padx=0, pady=0, sticky="nsew"
+            )
+
+    def resizeFigPlot(self, event, plotFrm):
+        """
+        width = (
+            plotFrm.winfo_width() - 2
+        )  # in pixels, -2 to account for label frame border thickness
+        height = plotFrm.winfo_height() - 2
+        """
+
+        _, _, width, height = plotFrm.bbox("insert")
+
+        with mpl.rc_context(FIG_CONTEXT):
+            self.fig.set_size_inches(width / dpi, height / dpi)
+
+    def updateFigPlot(self):
+        with mpl.rc_context(FIG_CONTEXT):
+            gun = self.gun
+
+            self.ax.cla()
+            self.axP.cla()
+            self.axv.cla()
+
+            xs = []
+            vs = []
+            Ps = []
+            psis = []
+
+            if gun is not None:
+                maxIndex = 0
+                nums = 0
+                for line in self.tableData:
+                    tag, t, l, psi, v, p, T = line
+                    if tag == POINT_PEAK:
+                        maxIndex = nums
+                    xs.append(l)
+                    vs.append(v)
+                    Ps.append(p / 1e6)
+                    psis.append(psi)
+                    nums += 1
+
+                self.ax.set_xlim(left=0, right=xs[-1])
+
+                self.axP.spines.right.set_position(
+                    ("axes", xs[maxIndex] / xs[-1])
+                )
+
+                (pv,) = self.axv.plot(xs, vs, "tab:blue", label="Velocity")
+                (pP,) = self.axP.plot(
+                    xs, Ps, "tab:green", label="Breech Pressure"
+                )
+                (ppsi,) = self.ax.plot(
+                    xs, psis, "tab:red", label="Volume Burnt Fraction"
+                )
+
+                # self.axP.plot(self.x_m, self.P_bm / MPa, marker="o")
+
+                tkw = dict(size=4, width=1.5, direction="in")
+
+                self.ax.tick_params(axis="y", colors=ppsi.get_color(), **tkw)
+                self.axv.tick_params(axis="y", colors=pv.get_color(), **tkw)
+                self.axP.tick_params(axis="y", colors=pP.get_color(), **tkw)
+                self.ax.tick_params(axis="x", **tkw)
+
+                self.ax.set(
+                    xlabel="Travel - m", ylabel="Propellant Unburnt Fraction"
+                )
+                self.axP.set(ylabel="Breech Pressure - MPa")
+                self.axv.set(ylabel="Velocity - m/s")
+
+                labelLines(self.ax.get_lines(), align=False, color="white")
+                labelLines(self.axv.get_lines(), align=False, color="white")
+                labelLines(self.axP.get_lines(), align=False, color="white")
+
+            self.pltCanvas.draw()
 
     def wrapup(self):
         self.updateSpec()
@@ -1181,14 +1344,14 @@ class IB(Frame):
             "Avg. Temperature",
         ]
         tblFrm = ttk.LabelFrame(parent, text="Result Table")
-        tblFrm.grid(row=0, column=1, sticky="nsew")
+        tblFrm.grid(row=1, column=1, sticky="nsew")
 
         tblFrm.columnconfigure(0, weight=1)
         tblFrm.rowconfigure(1, weight=1)
 
         # configure the numerical
 
-        self.tv = ttk.Treeview(tblFrm, selectmode="browse")
+        self.tv = ttk.Treeview(tblFrm, selectmode="browse", height=8)
         self.tv.grid(row=1, column=0, sticky="nsew")
 
         self.tv["columns"] = columnList
@@ -1212,7 +1375,7 @@ class IB(Frame):
             )  # let the column heading = column name
             self.tv.column(
                 column,
-                stretch=1,
+                stretch=True,  # will adjust to window resizing
                 width=width * 20,
                 minwidth=width * 16,
                 anchor="e",
@@ -1422,7 +1585,7 @@ if __name__ == "__main__":
     # Tk was originally developed for a dpi of 72
     root.tk.call("tk", "scaling", "-displayof", ".", dpi / 72.0)
 
-    plt.rc("figure", dpi=dpi)
+    mpl.rc("figure", dpi=dpi)
 
     root.tk.call("lappend", "auto_path", resolvepath("ui/awthemes-10.4.0"))
     root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))

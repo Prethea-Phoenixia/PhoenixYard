@@ -257,13 +257,11 @@ class Propellant:
         """
 
         if length <= 0:
-            raise ValueError("Primary length input must be >0")
+            raise ValueError("grain width/height/arc input must be >0")
         if R2 == 0:
-            raise ValueError("Teritary length must be >0")
+            raise ValueError("grain length must be >0")
         if R1 == 0 and composition == SimpleGeometry.ROD:
-            raise ValueError(
-                "Secondary length must >0 when designing rod type propellant"
-            )
+            raise ValueError("grain width/height input must be >0")
 
         self.composition = composition
         self.geometry = propGeom
