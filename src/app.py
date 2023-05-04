@@ -38,13 +38,14 @@ GEOM_CONTEXT = {
 FIG_CONTEXT = {
     "font.size": 10,
     "axes.titlesize": 10,
-    "axes.labelsize": 12,
+    "axes.labelsize": 10,
     "xtick.labelsize": 10,
     "ytick.labelsize": 10,
     "legend.fontsize": 10,
     "figure.titlesize": 14,
     "axes.edgecolor": "white",
     "axes.facecolor": "#33393b",
+    "axes.labelcolor": "white",
     "figure.facecolor": "#33393b",
     "text.color": "white",
     "xtick.color": "white",
@@ -869,6 +870,7 @@ class IB(Frame):
             fig = Figure(
                 figsize=(width / dpi, width / dpi),
                 dpi=96,
+                layout="constrained"
                 # tight_layout=True,
             )
             self.geomAx = fig.add_subplot()
@@ -876,12 +878,12 @@ class IB(Frame):
             # ax.set_xlabel("Z")
             # ax.set_ylabel("sigma")
 
-            fig.tight_layout(pad=1)
+            # fig.tight_layout(pad=1)
             # fig.set_dpi(dpi)
 
             self.geomCanvas = FigureCanvasTkAgg(fig, master=geomPlotFrm)
             self.geomCanvas.get_tk_widget().grid(
-                row=0, column=0, padx=0, pady=0, sticky="nsew"
+                row=0, column=0, padx=0, pady=0, sticky="ne"
             )
             """
             geomPlotFrm.update()
@@ -1042,7 +1044,7 @@ class IB(Frame):
                     which="major", color="grey", linestyle="dotted"
                 )
                 # self.geomAx.minorticks_on()
-                self.geomAx.set_xlim(left=0, right=max(xs))
+                self.geomAx.set_xlim(left=0, right=prop.Z_b)
                 self.geomAx.xaxis.set_ticks(
                     [i * 0.2 for i in range(ceil(prop.Z_b / 0.2) + 1)]
                 )
@@ -1220,12 +1222,17 @@ class IB(Frame):
                 dpi=96,
                 layout="constrained",
             )
+            # fig.subplots_adjust(right=0.75)
 
             axes = fig.add_subplot()
 
             ax = axes
             axP = ax.twinx()
             axv = ax.twinx()
+
+            ax.yaxis.tick_right()
+            ax.set(xlabel="Domain")
+            axv.spines.right.set_position(("axes", 1.0 + 85 / width))
 
             # fig.tight_layout(pad=1)
 
@@ -1253,6 +1260,7 @@ class IB(Frame):
             # print(width, height)
             # print(width / dpi, height / dpi)
             self.fig.set_size_inches(width / dpi, height / dpi)
+            self.axv.spines.right.set_position(("axes", 1 + 85 / width))
 
     def updateFigPlot(self):
         with mpl.rc_context(FIG_CONTEXT):
@@ -1267,6 +1275,8 @@ class IB(Frame):
             Ps = []
             psis = []
 
+            dom = self.dropOptn.get()
+
             if gun is not None:
                 maxIndex = 0
                 nums = 0
@@ -1274,66 +1284,77 @@ class IB(Frame):
                     tag, t, l, psi, v, p, T = line
                     if tag == POINT_PEAK:
                         maxIndex = nums
-                    xs.append(l)
+                    if dom == DOMAIN_TIME:
+                        xs.append(t * 1000)
+                    elif dom == DOMAIN_LENG:
+                        xs.append(l)
                     vs.append(v)
                     Ps.append(p / 1e6)
                     psis.append(psi)
                     nums += 1
 
+                size = self.fig.get_size_inches() * self.fig.dpi
+
+                self.axv.spines.right.set_position(("axes", 1 + 85 / size[0]))
+
                 self.ax.set_xlim(left=0, right=xs[-1])
-                self.ax.set_ylim(bottom=0, top=1.05)
+                self.ax.set_ylim(bottom=0, top=1.025)
 
                 self.axP.set(ylim=(0, max(Ps) * 1.05))
                 self.axv.set(ylim=(0, max(vs) * 1.05))
 
-                self.axP.spines.right.set_position(
-                    ("axes", xs[maxIndex] / xs[-1])
-                )
+                self.axP.spines.right.set_position(("data", xs[maxIndex]))
 
-                (pv,) = self.axv.plot(xs, vs, "tab:blue", label="Shot Velocity")
+                (pv,) = self.axv.plot(
+                    xs, vs, "tab:blue", label="Shot Velocity m/s"
+                )
                 (pP,) = self.axP.plot(
-                    xs, Ps, "tab:green", label="Avg. Pressure"
+                    xs, Ps, "tab:green", label="Avg. Pressure MPa"
                 )
                 (ppsi,) = self.ax.plot(
-                    xs, psis, "tab:red", label="Volume Burnt Fraction"
+                    xs, psis, "tab:red", label="Volume Burnup"
                 )
 
-                # self.axP.plot(self.x_m, self.P_bm / MPa, marker="o")
+                (ref,) = self.ax.plot(
+                    (0, xs[-1]),
+                    (1, 1),
+                    "tab:red",
+                    alpha=0.5,
+                    linestyle="dashed",
+                    label="Burnout",
+                )
 
-                tkw = dict(size=4, width=1.5, direction="in")
+                tkw = dict(size=4, width=1.5)
 
+                self.ax.yaxis.tick_right()
                 self.ax.tick_params(axis="y", colors=ppsi.get_color(), **tkw)
                 self.axv.tick_params(axis="y", colors=pv.get_color(), **tkw)
                 self.axP.tick_params(axis="y", colors=pP.get_color(), **tkw)
                 self.ax.tick_params(axis="x", **tkw)
-                """
-                self.axv.grid(
-                    which="major",
-                    color=pv.get_color(),
-                    linestyle="dotted",
-                    axis="y",
-                )
-                self.axP.grid(
-                    which="major",
-                    color=pP.get_color(),
-                    linestyle="dashed",
-                    axis="y",
-                )
-                self.axv.yaxis.set_label_position("right")
-               
-                self.ax.set(
-                    xlabel="Travel - m", ylabel="Propellant Unburnt Fraction"
-                )
-                self.axP.set(ylabel="Breech Pressure - MPa")
-                self.axv.set(ylabel="Velocity - m/s")
-                """
-                labelLines(
-                    self.ax.get_lines(),
-                    align=False,
-                    color="white",  # fontsize is inherited from rc setting font.size
-                )
-                labelLines(self.axv.get_lines(), align=False, color="white")
-                labelLines(self.axP.get_lines(), align=False, color="white")
+
+                if dom == DOMAIN_TIME:
+                    self.ax.set(xlabel="Time - ms")
+                elif dom == DOMAIN_LENG:
+                    self.ax.set(xlabel="Length - m")
+
+                sep = xs[maxIndex]
+
+                for ax, xvals in zip(
+                    (self.axP, self.axv, self.ax),
+                    (
+                        (0, 0.3 * xs[-1]),
+                        (0.3 * xs[-1], 0.6 * xs[-1]),
+                        (0.6 * xs[-1], xs[-1]),
+                    ),
+                ):
+                    labelLines(
+                        ax.get_lines(),
+                        align=True,
+                        zorder=3.5,
+                        color="white",
+                        xvals=xvals,
+                    )
+                # labelLines(, zorder=2.5, color="white")
 
             self.pltCanvas.draw()
 
@@ -1359,7 +1380,7 @@ class IB(Frame):
 
         # configure the numerical
 
-        self.tv = ttk.Treeview(tblFrm, selectmode="browse", height=8)
+        self.tv = ttk.Treeview(tblFrm, selectmode="browse", height=6)
         self.tv.grid(row=1, column=0, sticky="nsew")
 
         self.tv["columns"] = columnList

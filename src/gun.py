@@ -758,7 +758,7 @@ class Gun:
         )
 
         t_bar_f = None
-        if Z_e > 1:  # fracture point is contained:
+        if self.Z_b > 1 and Z_e >= 1:  # fracture point exist and is contained
             """
             Subscript f indicate fracture condition
             ODE w.r.t Z is integrated from Z_0 to 1, from onset of projectile
