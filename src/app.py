@@ -19,25 +19,6 @@ import matplotlib.pyplot as mpl
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.figure import Figure
 
-"""
-SMALL_SIZE = 6
-MEDIUM_SIZE = 8
-BIGGER_SIZE = 10
-
-plt.rc("font", size=SMALL_SIZE)  # controls default text sizes
-plt.rc("axes", titlesize=SMALL_SIZE)  # fontsize of the axes title
-plt.rc("axes", labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
-plt.rc("xtick", labelsize=SMALL_SIZE)  # fontsize of the tick labels
-plt.rc("ytick", labelsize=SMALL_SIZE)  # fontsize of the tick labels
-plt.rc("legend", fontsize=SMALL_SIZE)  # legend fontsize
-plt.rc("figure", titlesize=BIGGER_SIZE)  # fontsize of the figure title
-plt.rc("axes", edgecolor="white", facecolor="#33393b")
-plt.rc("figure", facecolor="#33393b")
-plt.rc("text", color="white")
-# plt.rc("text", color="white")
-plt.rc("xtick", color="white")
-plt.rc("ytick", color="white")
-"""
 GEOM_CONTEXT = {
     "font.size": 6,
     "axes.titlesize": 6,
@@ -864,7 +845,6 @@ class IB(Frame):
         return parFrm, geomPlotFrm
 
     def addGeomPlot(self, parFrm, geomPlotFrm, dpi):
-        print(geomPlotFrm.bbox("insert"))
         _, _, width, _ = parFrm.bbox("insert")
         width -= 4  # padding
 
@@ -1235,7 +1215,11 @@ class IB(Frame):
         )  # in pixels, -2 to account for label frame border thickness
         height = plotFrm.winfo_height() - 2
         with mpl.rc_context(FIG_CONTEXT):
-            fig = Figure(figsize=(width / dpi, height / dpi), dpi=96)
+            fig = Figure(
+                figsize=(width / dpi, height / dpi),
+                dpi=96,
+                layout="constrained",
+            )
 
             axes = fig.add_subplot()
 
@@ -1243,7 +1227,7 @@ class IB(Frame):
             axP = ax.twinx()
             axv = ax.twinx()
 
-            fig.tight_layout(pad=1)
+            # fig.tight_layout(pad=1)
 
             self.ax = ax
             self.axP = axP
@@ -1266,6 +1250,8 @@ class IB(Frame):
         _, _, width, height = plotFrm.bbox("insert")
 
         with mpl.rc_context(FIG_CONTEXT):
+            # print(width, height)
+            # print(width / dpi, height / dpi)
             self.fig.set_size_inches(width / dpi, height / dpi)
 
     def updateFigPlot(self):
@@ -1295,14 +1281,18 @@ class IB(Frame):
                     nums += 1
 
                 self.ax.set_xlim(left=0, right=xs[-1])
+                self.ax.set_ylim(bottom=0, top=1.05)
+
+                self.axP.set(ylim=(0, max(Ps) * 1.05))
+                self.axv.set(ylim=(0, max(vs) * 1.05))
 
                 self.axP.spines.right.set_position(
                     ("axes", xs[maxIndex] / xs[-1])
                 )
 
-                (pv,) = self.axv.plot(xs, vs, "tab:blue", label="Velocity")
+                (pv,) = self.axv.plot(xs, vs, "tab:blue", label="Shot Velocity")
                 (pP,) = self.axP.plot(
-                    xs, Ps, "tab:green", label="Breech Pressure"
+                    xs, Ps, "tab:green", label="Avg. Pressure"
                 )
                 (ppsi,) = self.ax.plot(
                     xs, psis, "tab:red", label="Volume Burnt Fraction"
@@ -1316,14 +1306,32 @@ class IB(Frame):
                 self.axv.tick_params(axis="y", colors=pv.get_color(), **tkw)
                 self.axP.tick_params(axis="y", colors=pP.get_color(), **tkw)
                 self.ax.tick_params(axis="x", **tkw)
-
+                """
+                self.axv.grid(
+                    which="major",
+                    color=pv.get_color(),
+                    linestyle="dotted",
+                    axis="y",
+                )
+                self.axP.grid(
+                    which="major",
+                    color=pP.get_color(),
+                    linestyle="dashed",
+                    axis="y",
+                )
+                self.axv.yaxis.set_label_position("right")
+               
                 self.ax.set(
                     xlabel="Travel - m", ylabel="Propellant Unburnt Fraction"
                 )
                 self.axP.set(ylabel="Breech Pressure - MPa")
                 self.axv.set(ylabel="Velocity - m/s")
-
-                labelLines(self.ax.get_lines(), align=False, color="white")
+                """
+                labelLines(
+                    self.ax.get_lines(),
+                    align=False,
+                    color="white",  # fontsize is inherited from rc setting font.size
+                )
                 labelLines(self.axv.get_lines(), align=False, color="white")
                 labelLines(self.axP.get_lines(), align=False, color="white")
 
@@ -1560,8 +1568,8 @@ if __name__ == "__main__":
     root = Tk()
     # one must supply the entire path
     loadfont(resolvepath("ui/Hack-Regular.ttf"))
-    dpi = round(root.winfo_fpixels("1i") / 96) * 96
-
+    # dpi = round(root.winfo_fpixels("1i") / 96) * 96
+    dpi = root.winfo_fpixels("1i")
     """
     # this will return the "windows scaling factor"
     # wsf = ctypes.windll.user32.GetDpiForWindow(root.winfo_id()) / 96
