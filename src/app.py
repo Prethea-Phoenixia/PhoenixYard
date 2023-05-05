@@ -1217,7 +1217,7 @@ class IB(Frame):
 
             ax.yaxis.tick_right()
             ax.set(xlabel="Domain")
-            axv.spines.right.set_position(("axes", 1.0 + 50 * dpi / 96 / width))
+            axv.spines.right.set_position(("axes", 1.0 + 35 * dpi / 96 / width))
 
             # fig.tight_layout(pad=1)
 
@@ -1247,7 +1247,7 @@ class IB(Frame):
             # print(width / dpi, height / dpi)
             self.fig.set_size_inches(width / dpi, height / dpi)
             self.axv.spines.right.set_position(
-                ("axes", 1 + 50 * dpi / 96 / width)
+                ("axes", 1 + 35 * dpi / 96 / width)
             )
 
     def updateFigPlot(self):
@@ -1286,7 +1286,7 @@ class IB(Frame):
                 size = self.fig.get_size_inches() * self.fig.dpi
 
                 self.axv.spines.right.set_position(
-                    ("axes", 1 + 50 * dpi / 96 / size[0])
+                    ("axes", 1 + 35 * dpi / 96 / size[0])
                 )
 
                 self.ax.set_xlim(left=0, right=xs[-1])
