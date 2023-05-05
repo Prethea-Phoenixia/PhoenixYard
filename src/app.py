@@ -627,8 +627,8 @@ class IB(Frame):
         self.specs = Text(
             propFrm,
             wrap=WORD,
-            height=4,
-            width=10,
+            height=5,
+            width=33,
             yscrollcommand=specScroll.set,
         )
         self.specs.grid(row=1, column=0, sticky="nsew", pady=2)
@@ -1374,7 +1374,7 @@ class IB(Frame):
 
         # configure the numerical
 
-        self.tv = ttk.Treeview(tblFrm, selectmode="browse", height=6)
+        self.tv = ttk.Treeview(tblFrm, selectmode="browse", height=7)
         self.tv.grid(row=1, column=0, sticky="nsew")
 
         self.tv["columns"] = columnList

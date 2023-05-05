@@ -207,6 +207,39 @@ class GrainComp:
 
         return {i.name: i for i in composition}
 
+    def check(compositions):
+        from tabulate import tabulate
+
+        line = [
+            [
+                "Propellant",
+                "Adb.Temp",
+                "Force 10^3 ft-lb/lb",
+                "Adb.Index",
+                "Covolume in^3/lbs",
+                "density",
+                "b.r.coe mm/s/MPa",
+                "b.r.exp",
+            ]
+        ]
+        for comp in compositions:
+            line.append(
+                [
+                    comp.name,
+                    comp.T_1,
+                    round(comp.f / 2.98907e3),
+                    comp.theta + 1,
+                    round(comp.alpha * 27680, 2),
+                    comp.rho_p,
+                    round(comp.u_1 * (1e6) ** comp.n * 1e3, 3),
+                    comp.n,
+                ]
+            )
+
+        line = [list(l) for l in zip(*line)]
+
+        print(tabulate(line))
+
 
 class Propellant:
     # assumed to be multi-holed propellants
@@ -1059,6 +1092,7 @@ if __name__ == "__main__":
     from tabulate import tabulate
 
     compositions = GrainComp.readFile("data/propellants.csv")
+    GrainComp.check(compositions.values())
     M17 = compositions["M17"]
 
     M17SHC = Propellant(M17, SimpleGeometry.ROD, 0.1e-3, 2, 2.5)
@@ -1101,3 +1135,6 @@ if __name__ == "__main__":
     # force:    ft-lbs per lb ->J/kg multiply by 2.98907
     # burn rate coefficient:
     # mm/s/(MPa)**exponent -> m/s/Pa**exponent * 1e-3 /(1e6)**exponent
+    # cm/s/(MPa)**exponent -> m/s/Pa**exponent * 1e-2 /(1e6)**exponent
+
+    # IMR ,"Single Base,*100.00% Nitrocellulose (13.15%), 1.00% Potassium Sulfate, 8.00% Dinitrotoluene, 0.70% Diphenylamine" ,1.2413 ,1620 ,989400 ,1.044e-3,
