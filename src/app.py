@@ -36,13 +36,13 @@ GEOM_CONTEXT = {
 }
 
 FIG_CONTEXT = {
-    "font.size": 10,
-    "axes.titlesize": 10,
-    "axes.labelsize": 10,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "legend.fontsize": 10,
-    "figure.titlesize": 14,
+    "font.size": 8,
+    "axes.titlesize": 8,
+    "axes.labelsize": 8,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "legend.fontsize": 8,
+    "figure.titlesize": 12,
     "axes.edgecolor": "white",
     "axes.facecolor": "#33393b",
     "axes.labelcolor": "white",
@@ -336,8 +336,10 @@ def CreateToolTip(widget, text):
 
 
 class IB(Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, dpi):
         Frame.__init__(self, parent)
+
+        self.dpi = dpi
 
         self.compositions = GrainComp.readFile(
             resolvepath("data/propellants.csv")
@@ -840,7 +842,7 @@ class IB(Frame):
         parFrm = self.parFrm
         geomPlotFrm = self.geomPlotFrm
         _, _, width, _ = parFrm.bbox("insert")
-        width -= 4  # padding
+        width -= 12  # paddings
 
         """
         geomPlotFrm.config(width=width, height=width)
@@ -857,7 +859,7 @@ class IB(Frame):
             geomPlotFrm.winfo_width() - 2
         )  # in pixels, -2 to account for label frame border thickness
         """
-        dpi = parFrm.winfo_fpixels("1i")
+        dpi = self.dpi
         with mpl.rc_context(GEOM_CONTEXT):
             fig = Figure(
                 figsize=(width / dpi, width / dpi), dpi=96, layout="constrained"
@@ -1197,7 +1199,7 @@ class IB(Frame):
         )  # in pixels, -2 to account for label frame border thickness
         height = plotFrm.winfo_height() - 2
 
-        dpi = plotFrm.winfo_fpixels("1i")
+        dpi = self.dpi
 
         with mpl.rc_context(FIG_CONTEXT):
             fig = Figure(
@@ -1238,7 +1240,7 @@ class IB(Frame):
         """
         plotFrm = self.plotFrm
         _, _, width, height = plotFrm.bbox("insert")
-        dpi = plotFrm.winfo_fpixels("1i")
+        dpi = self.dpi
 
         with mpl.rc_context(FIG_CONTEXT):
             # print(width, height)
@@ -1249,7 +1251,7 @@ class IB(Frame):
             )
 
     def updateFigPlot(self):
-        dpi = self.plotFrm.winfo_fpixels("1i")
+        dpi = self.dpi
 
         with mpl.rc_context(FIG_CONTEXT):
             gun = self.gun
@@ -1631,7 +1633,7 @@ if __name__ == "__main__":
 
     root.title("Phoenix's Internal Ballistics Solver v0.3")
 
-    ibPanel = IB(root)
+    ibPanel = IB(root, dpi)
 
     # set up widgets here, do your grid/pack/place
     # root.geometry() will return '1x1+0+0' here
