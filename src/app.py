@@ -336,7 +336,7 @@ def CreateToolTip(widget, text):
 
 
 class IB(Frame):
-    def __init__(self, parent, dpi):
+    def __init__(self, parent):
         Frame.__init__(self, parent)
 
         self.compositions = GrainComp.readFile(
@@ -361,22 +361,20 @@ class IB(Frame):
         parent.rowconfigure(1, weight=0)
 
         self.addSpecFrm(parent)
-        plotFrm = self.addPlotFrm(parent)
-        parFrm, geomPlotFrm = self.addParFrm(parent)
+        self.addPlotFrm(parent)
+        self.addParFrm(parent)
         self.addTblFrm(parent)
         self.addOpsFrm(parent)
 
         parent.update()
-        self.addGeomPlot(parFrm, geomPlotFrm, dpi)
+        self.addGeomPlot()
 
         parent.update()
-        self.addFigPlot(plotFrm, dpi)
+        self.addFigPlot()
 
         self.wrapup()
 
-        parent.bind(
-            "<Configure>", lambda event: self.resizeFigPlot(event, plotFrm)
-        )
+        parent.bind("<Configure>", self.resizeFigPlot)
 
         # parent.bind("<Return>", self.calculate)
 
@@ -843,9 +841,12 @@ class IB(Frame):
             infotext=stpText,
         )
 
-        return parFrm, geomPlotFrm
+        self.parFrm = parFrm
+        self.geomPlotFrm = geomPlotFrm
 
-    def addGeomPlot(self, parFrm, geomPlotFrm, dpi):
+    def addGeomPlot(self):
+        parFrm = self.parFrm
+        geomPlotFrm = self.geomPlotFrm
         _, _, width, _ = parFrm.bbox("insert")
         width -= 4  # padding
 
@@ -864,31 +865,17 @@ class IB(Frame):
             geomPlotFrm.winfo_width() - 2
         )  # in pixels, -2 to account for label frame border thickness
         """
-
-        # print(geomPlotFrm.winfo_width())
+        dpi = parFrm.winfo_fpixels("1i")
         with mpl.rc_context(GEOM_CONTEXT):
             fig = Figure(
-                figsize=(width / dpi, width / dpi),
-                dpi=96,
-                layout="constrained"
-                # tight_layout=True,
+                figsize=(width / dpi, width / dpi), dpi=96, layout="constrained"
             )
             self.geomAx = fig.add_subplot()
-
-            # ax.set_xlabel("Z")
-            # ax.set_ylabel("sigma")
-
-            # fig.tight_layout(pad=1)
-            # fig.set_dpi(dpi)
 
             self.geomCanvas = FigureCanvasTkAgg(fig, master=geomPlotFrm)
             self.geomCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=0, pady=0, sticky="ne"
             )
-            """
-            geomPlotFrm.update()
-            print(geomPlotFrm.winfo_width())
-            """
 
     def updateSpec(self, *inp):
         self.specs.config(state="normal")
@@ -1209,13 +1196,17 @@ class IB(Frame):
         plotFrm.columnconfigure(0, weight=1)
         plotFrm.rowconfigure(0, weight=1)
 
-        return plotFrm
+        self.plotFrm = plotFrm
 
-    def addFigPlot(self, plotFrm, dpi):
+    def addFigPlot(self):
+        plotFrm = self.plotFrm
         width = (
             plotFrm.winfo_width() - 2
         )  # in pixels, -2 to account for label frame border thickness
         height = plotFrm.winfo_height() - 2
+
+        dpi = plotFrm.winfo_fpixels("1i")
+
         with mpl.rc_context(FIG_CONTEXT):
             fig = Figure(
                 figsize=(width / dpi, height / dpi),
@@ -1232,7 +1223,7 @@ class IB(Frame):
 
             ax.yaxis.tick_right()
             ax.set(xlabel="Domain")
-            axv.spines.right.set_position(("axes", 1.0 + 85 / width))
+            axv.spines.right.set_position(("axes", 1.0 + 50 * dpi / 96 / width))
 
             # fig.tight_layout(pad=1)
 
@@ -1246,23 +1237,28 @@ class IB(Frame):
                 row=0, column=0, padx=0, pady=0, sticky="nsew"
             )
 
-    def resizeFigPlot(self, event, plotFrm):
+    def resizeFigPlot(self, event):
         """
         width = (
             plotFrm.winfo_width() - 2
         )  # in pixels, -2 to account for label frame border thickness
         height = plotFrm.winfo_height() - 2
         """
-
+        plotFrm = self.plotFrm
         _, _, width, height = plotFrm.bbox("insert")
+        dpi = plotFrm.winfo_fpixels("1i")
 
         with mpl.rc_context(FIG_CONTEXT):
             # print(width, height)
             # print(width / dpi, height / dpi)
             self.fig.set_size_inches(width / dpi, height / dpi)
-            self.axv.spines.right.set_position(("axes", 1 + 85 / width))
+            self.axv.spines.right.set_position(
+                ("axes", 1 + 50 * dpi / 96 / width)
+            )
 
     def updateFigPlot(self):
+        dpi = self.plotFrm.winfo_fpixels("1i")
+
         with mpl.rc_context(FIG_CONTEXT):
             gun = self.gun
 
@@ -1295,10 +1291,17 @@ class IB(Frame):
 
                 size = self.fig.get_size_inches() * self.fig.dpi
 
-                self.axv.spines.right.set_position(("axes", 1 + 85 / size[0]))
+                self.axv.spines.right.set_position(
+                    ("axes", 1 + 50 * dpi / 96 / size[0])
+                )
 
                 self.ax.set_xlim(left=0, right=xs[-1])
                 self.ax.set_ylim(bottom=0, top=1.025)
+                """
+                self.ax.spines[["top", "left"]].set_visible(False)
+                self.axP.spines[["top", "left"]].set_visible(False)
+                self.axv.spines[["top", "left"]].set_visible(False)
+                """
 
                 self.axP.set(ylim=(0, max(Ps) * 1.05))
                 self.axv.set(ylim=(0, max(vs) * 1.05))
@@ -1639,7 +1642,7 @@ if __name__ == "__main__":
 
     root.title("Phoenix's Internal Ballistics Solver v0.3")
 
-    ibPanel = IB(root, dpi=dpi)
+    ibPanel = IB(root)
 
     # set up widgets here, do your grid/pack/place
     # root.geometry() will return '1x1+0+0' here
