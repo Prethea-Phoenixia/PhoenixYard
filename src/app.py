@@ -671,15 +671,7 @@ class IB(Frame):
         grainFrm.columnconfigure(0, weight=1)
 
         j = 0
-        """
-        ttk.Label(grainFrm, text="Grain Shape").grid(
-            row=0,
-            column=0,
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        """
+
         geomVal = parent.register(self.updateGeom)
 
         # Create Dropdown menu
@@ -1297,11 +1289,6 @@ class IB(Frame):
 
                 self.ax.set_xlim(left=0, right=xs[-1])
                 self.ax.set_ylim(bottom=0, top=1.025)
-                """
-                self.ax.spines[["top", "left"]].set_visible(False)
-                self.axP.spines[["top", "left"]].set_visible(False)
-                self.axv.spines[["top", "left"]].set_visible(False)
-                """
 
                 self.axP.set(ylim=(0, max(Ps) * 1.05))
                 self.axv.set(ylim=(0, max(vs) * 1.05))
@@ -1334,6 +1321,8 @@ class IB(Frame):
                 self.axv.tick_params(axis="y", colors=pv.get_color(), **tkw)
                 self.axP.tick_params(axis="y", colors=pP.get_color(), **tkw)
                 self.ax.tick_params(axis="x", **tkw)
+
+                self.axP.yaxis.set_ticks(self.axP.get_yticks()[1:-1:])
 
                 if dom == DOMAIN_TIME:
                     self.ax.set(xlabel="Time - ms")
