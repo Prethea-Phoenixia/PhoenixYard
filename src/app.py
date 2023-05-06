@@ -355,14 +355,11 @@ class IB(Frame):
 
         self.geoLocked = IntVar()
 
-        parent.columnconfigure(0, weight=0)
         parent.columnconfigure(1, weight=1)
-        parent.columnconfigure(2, weight=0)
-
-        parent.rowconfigure(0, weight=1)
-        parent.rowconfigure(1, weight=0)
+        parent.rowconfigure(1, weight=1)
 
         self.addSpecFrm(parent)
+        self.addErrFrm(parent)
         self.addPlotFrm(parent)
         self.addParFrm(parent)
         self.addTblFrm(parent)
@@ -495,7 +492,7 @@ class IB(Frame):
 
     def addSpecFrm(self, parent):
         specFrm = ttk.LabelFrame(parent, text="Design Summary")
-        specFrm.grid(row=0, column=0, rowspan=2, sticky="nsew")
+        specFrm.grid(row=0, column=0, rowspan=3, sticky="nsew")
         specFrm.columnconfigure(0, weight=1)
         i = 0
         vinfText = " ".join(
@@ -537,26 +534,26 @@ class IB(Frame):
             specFrm, i, "Chamber Volume", "m³", justify="right"
         )
 
-        errorFrm = ttk.LabelFrame(specFrm, text="Exceptions")
-        errorFrm.grid(row=i, column=0, columnspan=2, sticky="nsew")
+    def addErrFrm(self, parent):
+        errorFrm = ttk.LabelFrame(parent, text="Exceptions")
+        errorFrm.grid(row=0, column=1, sticky="nsew")
         errorFrm.columnconfigure(0, weight=1)
         errorFrm.rowconfigure(0, weight=1)
 
-        specFrm.rowconfigure(i, weight=1)
         errScroll = ttk.Scrollbar(errorFrm, orient="vertical")
         errScroll.grid(row=0, column=1, sticky="nsew")
         self.errorText = Text(
             errorFrm,
             yscrollcommand=errScroll.set,
             wrap=WORD,
-            height=0,
+            height=6,
             width=0,
         )
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
     def addParFrm(self, parent):
         parFrm = ttk.LabelFrame(parent, text="Parameters")
-        parFrm.grid(row=0, column=2, sticky="nsew")
+        parFrm.grid(row=0, column=2, rowspan=2, sticky="nsew")
         parFrm.columnconfigure(0, weight=3)
         parFrm.columnconfigure(1, weight=3)
         parFrm.columnconfigure(2, weight=1)
@@ -1038,7 +1035,7 @@ class IB(Frame):
 
     def addOpsFrm(self, parent):
         opFrm = ttk.LabelFrame(parent, text="Options")
-        opFrm.grid(row=1, column=2, sticky="nsew")
+        opFrm.grid(row=2, column=2, rowspan=1, sticky="nsew")
 
         opFrm.columnconfigure(1, weight=1)
 
@@ -1186,7 +1183,7 @@ class IB(Frame):
 
     def addPlotFrm(self, parent):
         plotFrm = ttk.LabelFrame(parent, text="Plot")
-        plotFrm.grid(row=0, column=1, sticky="nsew")
+        plotFrm.grid(row=1, column=1, sticky="nsew")
         plotFrm.columnconfigure(0, weight=1)
         plotFrm.rowconfigure(0, weight=1)
 
@@ -1367,14 +1364,16 @@ class IB(Frame):
             "Avg. Temperature",
         ]
         tblFrm = ttk.LabelFrame(parent, text="Result Table")
-        tblFrm.grid(row=1, column=1, sticky="nsew")
+        tblFrm.grid(row=2, column=1, sticky="nsew")
 
         tblFrm.columnconfigure(0, weight=1)
         tblFrm.rowconfigure(1, weight=1)
 
         # configure the numerical
 
-        self.tv = ttk.Treeview(tblFrm, selectmode="browse", height=7)
+        self.tv = ttk.Treeview(
+            tblFrm, selectmode="browse", height=7
+        )  # this set the nbr. of values
         self.tv.grid(row=1, column=0, sticky="nsew")
 
         self.tv["columns"] = columnList
@@ -1577,6 +1576,24 @@ class IB(Frame):
         self.updateGeomPlot()
 
 
+def center(win):
+    """
+    centers a tkinter window
+    :param win: the main window or Toplevel window to center
+    """
+    win.update_idletasks()
+    width = win.winfo_width()
+    frm_width = win.winfo_rootx() - win.winfo_x()
+    win_width = width + 2 * frm_width
+    height = win.winfo_height()
+    titlebar_height = win.winfo_rooty() - win.winfo_y()
+    win_height = height + titlebar_height + frm_width
+    x = win.winfo_screenwidth() // 2 - win_width // 2
+    y = win.winfo_screenheight() // 2 - win_height // 2
+    win.geometry("{}x{}+{}+{}".format(width, height, x, y))
+    win.deiconify()
+
+
 if __name__ == "__main__":
     # this tells windows that our program will handle scaling ourselves
     windll.shcore.SetProcessDpiAwareness(1)
@@ -1635,10 +1652,6 @@ if __name__ == "__main__":
 
     ibPanel = IB(root, dpi)
 
-    # set up widgets here, do your grid/pack/place
-    # root.geometry() will return '1x1+0+0' here
-    root.update()
-    # now root.geometry() returns valid size/placement
+    center(root)
     root.minsize(root.winfo_width(), root.winfo_height())
-
     root.mainloop()
