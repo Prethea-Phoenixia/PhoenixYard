@@ -118,21 +118,20 @@ geomPlotTxt = " ".join(
 ldftext = " ".join(
     (
         "Percentage of chamber volume filled by",
-        "the outlines of the grain. Value of",
-        "0-100 % (not inclusive) are supported,",
-        "although it is highly unlikely that",
-        "values greater than 60% could be",
-        "achieved in practice, due to packing",
-        "behaviour when loading the cartridge,",
-        "with realistic grain sizes and geometry.",
+        "the outlines of the grain, also known",
+        "as 'packing density'. Value of 0-100 % ",
+        "(not inclusive) are supported, although",
+        "it is highly unlikely that values greater",
+        "than 60% could be achieved in practice,",
+        "due to packing behaviour when loading the",
+        "cartridg.\n",
         "A high value is also undesirable for",
         "causing excessive peak pressure as well",
         "as moving the pressure spike closer to",
         "the breech.\n",
-        'This is different from the usual "loading',
-        'density" quoted as the geometrical limit',
-        "imposed by grain shape is already taken",
-        "into account.",
+        "Only internal voids are accounted for,",
+        "thus this is not simply the usually quoted",
+        "'load fraction' which is by weight.",
     )
 )
 arcText = " ".join(
@@ -171,22 +170,22 @@ diaText = " ".join(("Specify the diameter of the propellant grain.",))
 
 perfLRtext = " ".join(
     (
-        "Length to diameter ratio of the grain, usually",
-        "around 2-2.5. A higher value facilitate progressive",
+        "Length to diameter ratio of the grain, for standard",
+        "mutli perforated grains this is usually in the range of"
+        " 1.82 to 3.57. A higher value facilitate progressive",
         "burning. If this is too low its possible for",
         "propellant to exhibit regressive burning behaviour,",
         "as the primary mode will be axial burning instead.",
-        "Length can be limited by propellant strength",
-        "during the casting process.",
+        "Longer grains tends to suffer from premature fracture",
+        "due to mechanical stress.",
     )
 )
 
 cylLRtext = " ".join(
     (
-        "Length to diameter ratio of the grain, usually",
-        "around 2-2.5.\n",
-        "A higher value tends to reduce the regressiveness",
-        "of burning.",
+        "Length to diameter ratio of the grain, can be rather",
+        "long for strip or tape like propellants. A higher value",
+        "tends to reduce the regressiveness of burning.",
     )
 )
 widthText = " ".join(
@@ -204,14 +203,17 @@ ratioEntryText = " ".join(
         "Specify the geometry of propellant using",
         "ratios, scaled by the top entry. These",
         "entries are in use when Lock Geometry is",
-        "enabled.",
+        "enabled. Standard multi-perf grain tends",
+        "to come in the range of arc thickness / perf",
+        "diameter of around 1 - 2. Long, single perf",
+        "grains come to around 0.75 for the same.",
     )
 )
 tolText = " ".join(
     (
         "The maximum relative error, ε, that is allowed in the integrands",
         "for each component. Some components may have significantly less",
-        "error than specified here, as shown under each entry.",
+        "error than specified here, shown under each entry in the table.",
     )
 )
 stpText = " ".join(
@@ -221,10 +223,10 @@ stpText = " ".join(
         "the rifling resisting the drive band or",
         "shell body, the static friction of the",
         "barrel, and the cartridge case holding onto",
-        "the shot (greatly varying between 0.25-15MPa",
+        "the shot (greatly varying between 0.25 - 15MPa",
         "depending on caliber and desired RoF)\n",
-        "For large caliber guns 25-30MPa is common.",
-        "For rifles, 35-45MPa is common.",
+        "For large caliber guns 25 - 30MPa is common.",
+        "For rifles, reports range from 35 to 45MPa.",
     )
 )
 clrtext = " ".join(
@@ -232,9 +234,17 @@ clrtext = " ".join(
         "Chamber length ratio is the ratio between",
         "the length of reduced chamber (dividing",
         "the chamber volume with barrel cross",
-        "section) to the actual chamber.",
+        "section) to the actual chamber. Accounts",
+        "for the necking of the cartridge.",
     )
 )
+sampTxt = " ".join(
+    (
+        "Samples are taken equidistantly along specified domain.",
+        "Does not influence the accuracy of calculation in anyway.",
+    )
+)
+
 DEBUG = True
 
 _prefix = {
@@ -582,6 +592,8 @@ class IB(Frame):
                 * 100
             )
             self.cv.set(toSI(chamberVolume, useSN=True).strip())
+            self.ld.set(round(self.prop.maxLF * float(self.ldf.get()), 1))
+
             if DEBUG:
                 print(
                     *(
@@ -698,6 +710,7 @@ class IB(Frame):
         self.cv, _, i = self.add12Disp(
             specFrm, i, "Chamber Volume", "m³", justify="right"
         )
+        self.ld, _, i = self.add12Disp(specFrm, i, "Loading Density", "%")
 
     def addErrFrm(self, parent):
         errorFrm = ttk.LabelFrame(parent, text="Exceptions")
@@ -1086,9 +1099,7 @@ class IB(Frame):
 
         samplbl = ttk.Label(opFrm, text="Sample")
         samplbl.grid(row=2, column=0, sticky="nsew", padx=2, pady=2)
-        sampTxt = " ".join(
-            ("The amount of sample points and domain to take them.", "")
-        )
+
         CreateToolTip(samplbl, sampTxt)
         self.dropOptn = ttk.Combobox(
             opFrm, values=self.domainOptions, state="readonly", justify="center"
