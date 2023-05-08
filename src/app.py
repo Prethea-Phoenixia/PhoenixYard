@@ -51,7 +51,190 @@ FIG_CONTEXT = {
     "xtick.color": "white",
     "ytick.color": "white",
 }
+chgText = " ".join(
+    (
+        "Mass of propellant charge to be used. Chamber",
+        "volume is determined from this and load fraction.",
+    )
+)
+vinfText = " ".join(
+    (
+        "Velocity the shot would achieve if",
+        "the barrel is extended to infinite length.",
+    )
+)
+teffText = " ".join(
+    (
+        "Thermal efficiency of the gun system, i.e.",
+        "the amount of work done to both gas and",
+        "projectile over chemical potential energy",
+        "of propellant.",
+    )
+)
+beffText = " ".join(
+    (
+        "Ballistic efficiency of the gun system, i.e.",
+        "the amount of work done the projectile over",
+        "chemical potential energy of propellant.",
+    )
+)
 
+specsText = " ".join(
+    (
+        "Specify the propellant composition used.\n",
+        "Nitration used for Nitrocellulose is between",
+        "13.15%-13.25% for all preset propellants.",
+        "Up to 14.14% is possible but has not been",
+        "adopted by the industry due to cost.\n",
+        "Pure Nitrocellulose is plasticized with",
+        "Dinitrotoluene to reduce burn rate and lower",
+        "flame temperature, forming single based",
+        "propellant.\n",
+        "Double based propellant is formed when",
+        "Nitroglycerin is used as gelatinizer instead.",
+        "While more energetic, it also burns hotter",
+        "and erodes barrel more.\n",
+        "Triple base propellants contains Nitroguanidine,",
+        "with higher energy content",
+        "while keeping flame temperature low.",
+        "However, it is mechanically the weakest.",
+    )
+)
+geomPlotTxt = " ".join(
+    (
+        "Plot of σ, or burn surface area (unitless) with",
+        "respect to Z, or the linear burnt ratio. A upward",
+        "slope on this graph indicate progressive burning",
+        "while a downward slope indicate regressive burning.",
+        "Discontinuity indicate fracture of mutli-perforated",
+        "propellant.\n",
+        "Regressive burning puts the peak pressure point closer",
+        "to the breech, leading to higher peak pressure, and",
+        "vice versa for progressive burning.\n",
+        "Note, the treatment for post fracture",
+        "burn behaviour is not entirely rigorous.",
+    )
+)
+ldftext = " ".join(
+    (
+        "Percentage of chamber volume filled by",
+        "the outlines of the grain. Value of",
+        "0-100 % (not inclusive) are supported,",
+        "although it is highly unlikely that",
+        "values greater than 60% could be",
+        "achieved in practice, due to packing",
+        "behaviour when loading the cartridge,",
+        "with realistic grain sizes and geometry.",
+        "A high value is also undesirable for",
+        "causing excessive peak pressure as well",
+        "as moving the pressure spike closer to",
+        "the breech.\n",
+        'This is different from the usual "loading',
+        'density" quoted as the geometrical limit',
+        "imposed by grain shape is already taken",
+        "into account.",
+    )
+)
+arcText = " ".join(
+    (
+        "Specify the geometry of propellant grain",
+        "using dimensions.\n",
+        "Burning radially outward along the arc is",
+        "the shortest path, and therefore is the",
+        "primary geometrical determinant of burn rapidity.\n",
+        "In theory micrometer level precision",
+        "is possible. In practice, tolerance for industrial",
+        "bulk production is in the range of 0.15mm",
+        "to 1mm depending on sources.\n",
+        "Arc thickness is generally found close to 1mm",
+        "for small to intermediate calibers.",
+        "Greater web thickness will lead to a longer burn",
+        "time for the same load of propellant, giving",
+        "a more gradual rise and lower peak pressure.",
+    )
+)
+
+pDiaText = " ".join(
+    (
+        "Specify the geometry of propellant grain",
+        "using dimensions.\n",
+        "Perforations are formed by protrusions in the copper",
+        "casting die, the misalignment of which contributes",
+        "to deviations. Larger perforation diameter increase",
+        "progressiveness of burn but contributes to a lower",
+        "achievable loading density, with standard multi-perf grains",
+        "coming with a hole diameter half that of web thickness.",
+    )
+)
+
+diaText = " ".join(("Specify the diameter of the propellant grain.",))
+
+perfLRtext = " ".join(
+    (
+        "Length to diameter ratio of the grain, usually",
+        "around 2-2.5. A higher value facilitate progressive",
+        "burning. If this is too low its possible for",
+        "propellant to exhibit regressive burning behaviour,",
+        "as the primary mode will be axial burning instead.",
+        "Length can be limited by propellant strength",
+        "during the casting process.",
+    )
+)
+
+cylLRtext = " ".join(
+    (
+        "Length to diameter ratio of the grain, usually",
+        "around 2-2.5.\n",
+        "A higher value tends to reduce the regressiveness",
+        "of burning.",
+    )
+)
+widthText = " ".join(
+    (
+        "Specify the width of propellant rod or flake.\n",
+        "This value is used to scale all other dimension",
+        "for rod or flake like propellants. Does not have",
+        "to be the smallest dimension.",
+    )
+)
+heightText = " ".join(("Specify the height of propellant rod or flake.",))
+lengthRtext = " ".join(("Height to width ratio of the rod or flake.",))
+ratioEntryText = " ".join(
+    (
+        "Specify the geometry of propellant using",
+        "ratios, scaled by the top entry. These",
+        "entries are in use when Lock Geometry is",
+        "enabled.",
+    )
+)
+tolText = " ".join(
+    (
+        "The maximum relative error, ε, that is allowed in the integrands",
+        "for each component. Some components may have significantly less",
+        "error than specified here, as shown under each entry.",
+    )
+)
+stpText = " ".join(
+    (
+        "Peak pressure that initially resists",
+        "the movement of shot. This is made up of",
+        "the rifling resisting the drive band or",
+        "shell body, the static friction of the",
+        "barrel, and the cartridge case holding onto",
+        "the shot (greatly varying between 0.25-15MPa",
+        "depending on caliber and desired RoF)\n",
+        "For large caliber guns 25-30MPa is common.",
+        "For rifles, 35-45MPa is common.",
+    )
+)
+clrtext = " ".join(
+    (
+        "Chamber length ratio is the ratio between",
+        "the length of reduced chamber (dividing",
+        "the chamber volume with barrel cross",
+        "section) to the actual chamber.",
+    )
+)
 DEBUG = True
 
 _prefix = {
@@ -495,12 +678,7 @@ class IB(Frame):
         specFrm.grid(row=0, column=0, rowspan=3, sticky="nsew")
         specFrm.columnconfigure(0, weight=1)
         i = 0
-        vinfText = " ".join(
-            (
-                "Velocity the shot would achieve if",
-                "the barrel is extended to infinite length.",
-            )
-        )
+
         self.va, _, i = self.add12Disp(
             specFrm,
             i,
@@ -509,24 +687,11 @@ class IB(Frame):
             justify="right",
             infotext=vinfText,
         )
-        teffText = " ".join(
-            (
-                "Thermal efficiency of the gun system, i.e.",
-                "the amount of work done to both gas and",
-                "projectile over chemical potential energy",
-                "of propellant.",
-            )
-        )
+
         self.te, _, i = self.add12Disp(
             specFrm, i, "Thermal Eff.", "%", infotext=teffText
         )
-        beffText = " ".join(
-            (
-                "Ballistic efficiency of the gun system, i.e.",
-                "the amount of work done the projectile over",
-                "chemical potential energy of propellant.",
-            )
-        )
+
         self.be, _, i = self.add12Disp(
             specFrm, i, "Ballistic Eff.", "%", infotext=beffText
         )
@@ -572,12 +737,6 @@ class IB(Frame):
             parFrm, i, "Shot Mass", "kg", "1.0", validationNN
         )
 
-        chgText = " ".join(
-            (
-                "Mass of propellant charge to be used. Chamber",
-                "volume is determined from this and load fraction.",
-            )
-        )
         self.chgkg, _, i = self.add3Input(
             parFrm,
             i,
@@ -631,27 +790,6 @@ class IB(Frame):
         self.specs.grid(row=1, column=0, sticky="nsew", pady=2)
         specScroll.config(command=self.specs.yview)
 
-        specsText = " ".join(
-            (
-                "Specify the propellant composition used.\n",
-                "Nitration used for Nitrocellulose is between",
-                "13.15%-13.25% for all preset propellants.",
-                "Up to 14.14% is possible but has not been",
-                "adopted by the industry due to cost.\n",
-                "Pure Nitrocellulose is plasticized with",
-                "Dinitrotoluene to reduce burn rate and lower",
-                "flame temperature, forming single based",
-                "propellant.\n",
-                "Double based propellant is formed when",
-                "Nitroglycerin is used as gelatinizer instead.",
-                "While more energetic, it also burns hotter",
-                "and erodes barrel more.\n",
-                "Triple base propellants contains Nitroguanidine,",
-                "with higher energy content",
-                "while keeping flame temperature low.",
-                "However, it is mechanically the weakest.",
-            )
-        )
         """
         DNT coating can act to retard initial burning and 
         reduce the sensitivity of propellant behaviour to 
@@ -745,45 +883,9 @@ class IB(Frame):
         geomPlotFrm.rowconfigure(0, weight=1)
         geomPlotFrm.columnconfigure(0, weight=1)
 
-        geomPlotTxt = " ".join(
-            (
-                "Plot of σ, or burn surface area (unitless) with",
-                "respect to Z, or the linear burnt ratio. A upward",
-                "slope on this graph indicate progressive burning",
-                "while a downward slope indicate regressive burning.",
-                "Discontinuity indicate fracture of mutli-perforated",
-                "propellant.\n",
-                "Regressive burning puts the peak pressure point closer",
-                "to the breech, leading to higher peak pressure, and",
-                "vice versa for progressive burning.\n",
-                "Note, the treatment for post fracture",
-                "burn behaviour is not entirely rigorous.",
-            )
-        )
         CreateToolTip(geomPlotFrm, geomPlotTxt)
 
         i += 1
-
-        ldftext = " ".join(
-            (
-                "Percentage of chamber volume filled by",
-                "the outlines of the grain. Value of",
-                "0-100 % (not inclusive) are supported,",
-                "although it is highly unlikely that",
-                "values greater than 60% could be",
-                "achieved in practice, due to packing",
-                "behaviour when loading the cartridge,",
-                "with realistic grain sizes and geometry.",
-                "A high value is also undesirable for",
-                "causing excessive peak pressure as well",
-                "as moving the pressure spike closer to",
-                "the breech.\n",
-                'This is different from the usual "loading',
-                'density" quoted as the geometrical limit',
-                "imposed by grain shape is already taken",
-                "into account.",
-            )
-        )
 
         self.ldf, _, i = self.add3Input(
             parFrm,
@@ -795,31 +897,8 @@ class IB(Frame):
             infotext=ldftext,
         )
 
-        clrtext = " ".join(
-            (
-                "Chamber length ratio is the ratio between",
-                "the length of reduced chamber (dividing",
-                "the chamber volume with barrel cross",
-                "section) to the actual chamber.",
-            )
-        )
-
         self.clr, _, i = self.add3Input(
             parFrm, i, "Chamber L.R.", "", "1.1", validationNN, infotext=clrtext
-        )
-
-        stpText = " ".join(
-            (
-                "Peak pressure that initially resists",
-                "the movement of shot. This is made up of",
-                "the rifling resisting the drive band or",
-                "shell body, the static friction of the",
-                "barrel, and the cartridge case holding onto",
-                "the shot (greatly varying between 0.25-15MPa",
-                "depending on caliber and desired RoF)\n",
-                "For large caliber guns 25-30MPa is common.",
-                "For rifles, 35-45MPa is common.",
-            )
         )
 
         self.stpMPa, _, i = self.add3Input(
@@ -884,84 +963,6 @@ class IB(Frame):
     def updateGeom(self, *inp):
         self.configEntry()
         geom = self.geometries[self.dropGeom.get()]
-        arcText = " ".join(
-            (
-                "Specify the geometry of propellant grain",
-                "using dimensions.\n",
-                "Burning radially outward along the arc is",
-                "the shortest path, and therefore is the",
-                "primary geometrical determinant of burn rapidity.\n",
-                "In theory micrometer level precision",
-                "is possible. In practice, tolerance for industrial",
-                "bulk production is in the range of 0.15mm",
-                "to 1mm depending on sources.\n",
-                "Arc thickness is generally found close to 1mm",
-                "for small to intermediate calibers.",
-                "Greater web thickness will lead to a longer burn",
-                "time for the same load of propellant, giving",
-                "a more gradual rise and lower peak pressure.",
-            )
-        )
-
-        pDiaText = " ".join(
-            (
-                "Specify the geometry of propellant grain",
-                "using dimensions.\n",
-                "Perforations are formed by protrusions in the copper",
-                "casting die, the misalignment of which contributes",
-                "to deviations. Larger perforation diameter increase",
-                "progressiveness of burn but contributes to a lower",
-                "achievable loading density, with standard multi-perf grains",
-                "coming with a hole diameter half that of web thickness.",
-            )
-        )
-
-        diaText = " ".join(("Specify the diameter of the propellant grain.",))
-
-        perfLRtext = " ".join(
-            (
-                "Length to diameter ratio of the grain, usually",
-                "around 2-2.5. A higher value facilitate progressive",
-                "burning. If this is too low its possible for",
-                "propellant to exhibit regressive burning behaviour,",
-                "as the primary mode will be axial burning instead.",
-                "Length can be limited by propellant strength",
-                "during the casting process.",
-            )
-        )
-
-        cylLRtext = " ".join(
-            (
-                "Length to diameter ratio of the grain, usually",
-                "around 2-2.5.\n",
-                "A higher value tends to reduce the regressiveness",
-                "of burning.",
-            )
-        )
-
-        widthText = " ".join(
-            (
-                "Specify the width of propellant rod or flake.\n",
-                "This value is used to scale all other dimension",
-                "for rod or flake like propellants. Does not have",
-                "to be the smallest dimension.",
-            )
-        )
-
-        heightText = " ".join(
-            ("Specify the height of propellant rod or flake.",)
-        )
-
-        lengthRtext = " ".join(("Height to width ratio of the rod or flake.",))
-
-        ratioEntryText = " ".join(
-            (
-                "Specify the geometry of propellant using",
-                "ratios, scaled by the top entry. These",
-                "entries are in use when Lock Geometry is",
-                "enabled.",
-            )
-        )
 
         if geom == SimpleGeometry.SPHERE:
             self.lengthPrimaryAs.set("Diameter")
@@ -1112,18 +1113,11 @@ class IB(Frame):
             i,
             "",
             "steps",
-            "10",
+            "33",
             validation=validationPI,
             formatter=formatIntInput,
         )
 
-        tolText = " ".join(
-            (
-                "The maximum relative error, ε, that is allowed in the integrands",
-                "for each component. Some components may have significantly less",
-                "error than specified here, as shown under each entry.",
-            )
-        )
         self.accExp, _, i = self.add2Input(
             opFrm,
             i,
