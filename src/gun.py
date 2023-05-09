@@ -291,29 +291,29 @@ class Propellant:
         if self.geometry in MultPerfGeometry:
             arcThick, PR, LR = 1, R1, R2
 
-            self.e_1 = 0.5 * arcThick
-            self.d_0 = arcThick * PR
+            e_1 = 0.5 * arcThick
+            d_0 = arcThick * PR
 
             if propGeom == MultPerfGeometry.SEVEN_PERF_CYLINDER:
-                b, a = 3 * self.d_0 + 8 * self.e_1, 0
+                b, a = 3 * d_0 + 8 * e_1, 0
 
             elif propGeom == MultPerfGeometry.SEVEN_PERF_ROSETTE:
-                b, a = self.d_0 + 4 * self.e_1, self.d_0 + 2 * self.e_1
+                b, a = d_0 + 4 * e_1, d_0 + 2 * e_1
 
             elif propGeom == MultPerfGeometry.FOURTEEN_PERF_ROSETTE:
-                b, a = self.d_0 + 4 * self.e_1, self.d_0 + 2 * self.e_1
+                b, a = d_0 + 4 * e_1, d_0 + 2 * e_1
 
             elif propGeom == MultPerfGeometry.NINETEEN_PERF_ROSETTE:
-                b, a = self.d_0 + 4 * self.e_1, self.d_0 + 2 * self.e_1
+                b, a = d_0 + 4 * e_1, d_0 + 2 * e_1
 
             elif propGeom == MultPerfGeometry.NINETEEN_PERF_CYLINDER:
-                b, a = 5 * self.d_0 + 12 * self.e_1, 0
+                b, a = 5 * d_0 + 12 * e_1, 0
 
             elif propGeom == MultPerfGeometry.NINETEEN_PERF_HEXAGON:
-                b, a = self.d_0 + 2 * self.e_1, self.d_0 + 2 * self.e_1
+                b, a = d_0 + 2 * e_1, d_0 + 2 * e_1
 
             elif propGeom == MultPerfGeometry.NINETEEN_PERF_ROUNDED_HEXAGON:
-                b, a = self.d_0 + 2 * self.e_1, self.d_0 + 2 * self.e_1
+                b, a = d_0 + 2 * e_1, d_0 + 2 * e_1
 
             else:
                 raise ValueError(
@@ -321,21 +321,19 @@ class Propellant:
                 )
 
             A, B, C, n = propGeom.A, propGeom.B, propGeom.C, propGeom.nHole
-            S_T = 0.25 * pi * (C * a**2 + A * b**2 - B * self.d_0**2)
-            self.maxLF = S_T / (S_T + n * pi * 0.25 * self.d_0**2)
+            S_T = 0.25 * pi * (C * a**2 + A * b**2 - B * d_0**2)
+            self.maxLF = S_T / (S_T + n * pi * 0.25 * d_0**2)
 
-            D_0 = (C * a**2 + A * b**2 + (n - B) * self.d_0**2) ** 0.5
+            D_0 = (C * a**2 + A * b**2 + (n - B) * d_0**2) ** 0.5
             # effective diameter, equals to diameter for perforated cylinders
             grainLength = LR * D_0
             # derive length based on "mean"/"effective" diameter
-            self.c = 0.5 * grainLength
+            c = 0.5 * grainLength
 
-            self.rho = propGeom.rhoDiv * (self.e_1 + self.d_0 / 2)
+            rho = propGeom.rhoDiv * (e_1 + d_0 / 2)
 
-            Pi_1 = (A * b + B * self.d_0) / (2 * self.c)
-            Q_1 = (C * a**2 + A * b**2 - B * self.d_0**2) / (
-                2 * self.c
-            ) ** 2
+            Pi_1 = (A * b + B * d_0) / (2 * c)
+            Q_1 = (C * a**2 + A * b**2 - B * d_0**2) / (2 * c) ** 2
 
             """
             maximum load factor, the volume fraction of propellant
@@ -346,7 +344,7 @@ class Propellant:
             realistic grain packing behaviours
             """
 
-            beta = self.e_1 / self.c
+            beta = e_1 / c
 
             # first phase of burning rate parameters, Z from 0 to 1
             self.chi = (Q_1 + 2 * Pi_1) / Q_1 * beta
@@ -355,9 +353,7 @@ class Propellant:
             )  # deliberate misspell to prevent issues with python lambda keyword
             self.mu = -(n - 1) / (Q_1 + 2 * Pi_1) * beta**2
 
-            self.Z_b = (
-                self.e_1 + self.rho
-            ) / self.e_1  # second phase burning Z upper limit
+            self.Z_b = (e_1 + rho) / e_1  # second phase burning Z upper limit
 
             psi_s = self.chi * (1 + self.labda + self.mu)
 
@@ -388,7 +384,7 @@ class Propellant:
             elif self.geometry == SimpleGeometry.TUBE:
                 beta = 1 / R2
 
-                maxLF = 4 * (R1 + 1) / (R1 + 2) ** 2
+                self.maxLF = 4 * (R1 + 1) / (R1 + 2) ** 2
 
                 self.chi = 1 + beta
                 self.labda = -beta / (1 + beta)
@@ -461,7 +457,7 @@ class Gun:
         ):
             raise ValueError("Invalid gun parameters")
 
-        self.e_1 = 0.5 * grainSize
+        e_1 = 0.5 * grainSize
         self.S = (caliber / 2) ** 2 * pi
         self.m = shotMass
         self.propellant = propellant
@@ -499,7 +495,7 @@ class Gun:
         # this will overwrite the definition of Geometry.B
         self.B = (
             self.S**2
-            * self.e_1**2
+            * e_1**2
             / (self.f * self.phi * self.omega * self.m * self.u_1**2)
             * (self.f * self.Delta) ** (2 * (1 - self.n))
         )

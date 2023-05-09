@@ -67,8 +67,7 @@ teffText = " ".join(
     (
         "Thermal efficiency of the gun system, i.e.",
         "the amount of work done to both gas and",
-        "projectile over chemical potential energy",
-        "of propellant.",
+        "projectile over potential from propellant",
     )
 )
 beffText = " ".join(
@@ -140,8 +139,8 @@ arcText = " ".join(
         "primary geometrical determinant of burn rapidity.\n",
         "In theory micrometer level precision",
         "is possible. In practice, tolerance for industrial",
-        "bulk production is in the range of 0.15mm",
-        "to 1mm depending on sources.\n",
+        "bulk production is in the range of 1μm - 0.15mm",
+        " - 1mm depending on sources.\n",
         "Arc thickness is generally found close to 1mm",
         "for small to intermediate calibers.",
     )
@@ -149,24 +148,19 @@ arcText = " ".join(
 
 pDiaRText = " ".join(
     (
-        "Specify diameter of perforation over width.\n",
+        "Specify diameter of perforation over arc width.\n",
         "Perforations are formed by protrusions in the",
         "copper casting die. Standard multi-perf grain tends",
-        "to come in the range of 0.5-1, whereas single perf",
-        "grains come to around 1.33 for the same.",
+        "to come in the range of 0.5-1, whereas longer, single",
+        "perf, or tubular grains come to around 1.33 for the same.",
     )
 )
 
-diaText = " ".join(
-    (
-        "Specify the diameter of the propellant grain.",
-        "All other geometrical entires are scaled by this.",
-    )
-)
+diaText = " ".join(("Specify the diameter of the propellant grain.",))
 
 perfLRtext = " ".join(
     (
-        "Length to diameter ratio of the grain, for standard",
+        "Specify length to diameter ratio of the grain, for",
         "mutli perforated grains this is usually in the range of"
         " 1.82 to 3.57. A higher value facilitate progressive",
         "burning. If this is too low its possible for",
@@ -179,11 +173,18 @@ perfLRtext = " ".join(
 
 cylLRtext = " ".join(
     (
-        "Length to diameter ratio of the grain, can be rather",
-        "long for strip or tape like propellants. A higher value",
-        "tends to reduce the regressiveness of burning.",
+        "Specify length to diameter ratio of the grain.",
+        "Cylindrical or tubular propellant can be made rather long",
     )
 )
+
+rodRtext = " ".join(
+    (
+        "Specify the length to width ratio of propellant rod or flake.",
+        "Can be quite long for tape like propellant.",
+    )
+)
+
 widthText = " ".join(
     (
         "Specify the width of propellant rod or flake.\n",
@@ -192,8 +193,10 @@ widthText = " ".join(
         "to be the smallest dimension.",
     )
 )
-heightRtext = " ".join(("Specify the height of propellant rod or flake.",))
-lengthRtext = " ".join(("Height to width ratio of the rod or flake.",))
+heightRtext = " ".join(
+    ("Specify the height to width ratio of propellant rod or flake.",)
+)
+
 
 tolText = " ".join(
     (
@@ -533,8 +536,6 @@ class IB(Frame):
         self.geoOptions = tuple(self.geometries.keys())
         self.domainOptions = (DOMAIN_TIME, DOMAIN_LENG)
 
-        self.geoLocked = IntVar()
-
         parent.columnconfigure(1, weight=1)
         parent.rowconfigure(0, weight=1)
 
@@ -545,17 +546,18 @@ class IB(Frame):
         self.addTblFrm(parent)
         self.addOpsFrm(parent)
 
-        parent.update()
+        parent.update_idletasks()
         self.addGeomPlot()
 
-        parent.update()
+        parent.update_idletasks()
         self.addFigPlot()
 
-        self.wrapup()
-
-        parent.bind("<Configure>", self.resizeFigPlot)
+        self.updateSpec(None, None, None)
+        self.updateGeom(None, None, None)
 
         # parent.bind("<Return>", self.calculate)
+
+        parent.bind("<Configure>", self.resizeFigPlot)
 
     def calculate(self, event=None):
         # force an immediate redraw after calculation
@@ -584,14 +586,14 @@ class IB(Frame):
             if DEBUG:
                 print(
                     *(
-                        float(self.calmm.get()) / 1000,
+                        float(self.calmm.get()) * 1e-3,
                         float(self.shtkg.get()),
                         self.prop,
                         float(self.chgkg.get()),
-                        float(self.arcmm.get()) / 1000,
+                        float(self.arcmm.get()) * 1e-3,
                         chamberVolume,
                         float(self.stpMPa.get()) * 1e6,
-                        float(self.tblmm.get()) / 1000,
+                        float(self.tblmm.get()) * 1e-3,
                         float(self.clr.get()),
                     ),
                     sep=","
@@ -662,17 +664,11 @@ class IB(Frame):
             )
 
             self.tv.move(str(i + 1), str(i), "end")
-            # self.tv.move(str(i + 2), str(i), "end")
+
             i += 2
 
         self.updateError()
         self.updateFigPlot()
-
-    def updateError(self):
-        self.errorText.delete("1.0", "end")
-        for line in self.errorLst:
-            self.errorText.insert("end", line + "\n")
-        self.errorLst = []
 
     def addSpecFrm(self, parent):
         specFrm = ttk.LabelFrame(parent, text="Design Summary")
@@ -730,26 +726,38 @@ class IB(Frame):
 
         i = 0
         self.calmm, _, i = self.add3Input(
-            parFrm, i, "Caliber", "mm", "50.0", validationNN
+            parent=parFrm,
+            rowIndex=i,
+            labelText="Caliber",
+            unitText="mm",
+            default="50.0",
+            validation=validationNN,
         )
         self.tblmm, _, i = self.add3Input(
-            parFrm, i, "Tube Length", "mm", "3500.0", validationNN
+            parent=parFrm,
+            rowIndex=i,
+            labelText="Tube Length",
+            unitText="mm",
+            default="3500.0",
+            validation=validationNN,
         )
         self.shtkg, _, i = self.add3Input(
-            parFrm, i, "Shot Mass", "kg", "1.0", validationNN
+            parent=parFrm,
+            rowIndex=i,
+            labelText="Shot Mass",
+            unitText="kg",
+            default="1.0",
+            validation=validationNN,
         )
-
         self.chgkg, _, i = self.add3Input(
-            parFrm,
-            i,
-            "Charge Mass",
-            "kg",
-            "1.0",
-            validationNN,
+            parent=parFrm,
+            rowIndex=i,
+            labelText="Charge Mass",
+            unitText="kg",
+            default="1.0",
+            validation=validationNN,
             infotext=chgText,
         )
-
-        specVal = parent.register(self.updateSpec)
 
         parFrm.rowconfigure(i, weight=1)
 
@@ -761,13 +769,12 @@ class IB(Frame):
         propFrm.rowconfigure(1, weight=1)
         propFrm.columnconfigure(0, weight=1)
 
+        self.currProp = StringVar()
         self.dropProp = ttk.Combobox(
             propFrm,
+            textvariable=self.currProp,
             values=self.propOptions,
-            # textvariable=dp,
             state="readonly",
-            validate="focusin",
-            validatecommand=(specVal, "%P"),
             justify="center",
         )
         self.dropProp.option_add("*TCombobox*Listbox.Justify", "center")
@@ -791,12 +798,6 @@ class IB(Frame):
         )
         self.specs.grid(row=1, column=0, sticky="nsew", pady=2)
         specScroll.config(command=self.specs.yview)
-
-        """
-        DNT coating can act to retard initial burning and 
-        reduce the sensitivity of propellant behaviour to 
-        initial manufacturing deviations"""
-
         CreateToolTip(propFrm, specsText)
 
         i += 1
@@ -805,22 +806,22 @@ class IB(Frame):
         grainFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
-
         grainFrm.rowconfigure(1, weight=1)
         grainFrm.columnconfigure(0, weight=1)
 
         j = 0
 
-        geomVal = parent.register(self.updateGeom)
+        # geomVal = parent.register(self.updateGeom)
 
         # Create Dropdown menu
+        self.currGeom = StringVar()
+
         self.dropGeom = ttk.Combobox(
             grainFrm,
+            textvariable=self.currGeom,
             values=self.geoOptions,
             state="readonly",
             justify="center",
-            validate="focusin",
-            validatecommand=(geomVal, "%P"),
         )
 
         self.dropGeom.option_add("*TCombobox*Listbox.Justify", "center")
@@ -836,24 +837,24 @@ class IB(Frame):
 
         j += 1
         self.arcmm, _, j = self.add3Input(
-            grainFrm,
-            j,
-            self.lengthPrimaryAs,
+            parent=grainFrm,
+            rowIndex=j,
+            labelText=self.lengthPrimaryAs,
             # "Arc Thickness",
-            "mm",
-            "1.0",
-            validationNN,
+            unitText="mm",
+            default="1.0",
+            validation=validationNN,
             infotext=self.lengthPrimaryTip,
         )
 
         self.ratioAs = StringVar()
         self.lengthSecondaryTip = StringVar()
         self.grdR, self.grdRw, j = self.add3Input(
-            grainFrm,
-            j,
-            self.ratioAs,
-            "",
-            "1.0",
+            parent=grainFrm,
+            rowIndex=j,
+            labelText=self.ratioAs,
+            unitText="",
+            default="1.0",
             validation=validationNN,
             infotext=self.lengthSecondaryTip,
         )
@@ -862,12 +863,12 @@ class IB(Frame):
         self.lengthRatioTip = StringVar()
 
         self.grlR, self.grlRw, j = self.add3Input(
-            grainFrm,
-            j,
-            self.lengthRatioAs,
-            "",
-            "2.5",
-            validationNN,
+            parent=grainFrm,
+            rowIndex=j,
+            labelText=self.lengthRatioAs,
+            unitText="",
+            default="2.5",
+            validation=validationNN,
             infotext=self.lengthRatioTip,
         )
 
@@ -880,21 +881,19 @@ class IB(Frame):
             padx=2,
             pady=2,
         )
-
         geomPlotFrm.rowconfigure(0, weight=1)
         geomPlotFrm.columnconfigure(0, weight=1)
-
         CreateToolTip(geomPlotFrm, geomPlotTxt)
 
         i += 1
 
         self.ldf, _, i = self.add3Input(
-            parFrm,
-            i,
-            "Load Factor",
-            "%",
-            "50.0",
-            validationNN,
+            parent=parFrm,
+            rowIndex=i,
+            labelText="Load Factor",
+            unitText="%",
+            default="50.0",
+            validation=validationNN,
             infotext=ldftext,
         )
 
@@ -903,15 +902,17 @@ class IB(Frame):
         )
 
         self.stpMPa, _, i = self.add3Input(
-            parFrm,
-            i,
-            "Start Pressure",
-            "MPa",
-            "10",
-            validationNN,
+            parent=parFrm,
+            rowIndex=i,
+            labelText="Start Pressure",
+            unitText="MPa",
+            default="10",
+            validation=validationNN,
             infotext=stpText,
         )
 
+        self.currProp.trace_add("write", self.updateSpec)
+        self.currGeom.trace_add("write", self.updateGeom)
         self.grdR.trace_add("write", self.arccallback)
         self.grlR.trace_add("write", self.arccallback)
 
@@ -951,88 +952,6 @@ class IB(Frame):
                 row=0, column=0, padx=0, pady=0, sticky="ne"
             )
 
-    def updateSpec(self, *inp):
-        self.specs.config(state="normal")
-        compo = self.compositions[self.dropProp.get()]
-        self.specs.delete("1.0", "end")
-        for line in compo.desc.split(","):
-            self.specs.insert("end", line + "\n")
-        self.specs.config(state="disabled")
-        # this updates the specification description
-
-        self.arccallback(None, None, None)
-
-        return True
-
-    def updateGeom(self, *inp):
-        self.configEntry()
-        geom = self.geometries[self.dropGeom.get()]
-
-        if geom == SimpleGeometry.SPHERE:
-            self.lengthPrimaryAs.set("Diameter")
-
-            self.lengthRatioAs.set("")
-            self.ratioAs.set("")
-
-            self.lengthPrimaryTip.set(diaText)
-            self.lengthRatioTip.set("")
-            self.lengthSecondaryTip.set("")
-
-        elif geom == SimpleGeometry.ROD:
-            self.lengthPrimaryAs.set("Width")
-            self.lengthRatioAs.set("Length/Width")
-            self.ratioAs.set("Height/W.")
-
-            self.lengthPrimaryTip.set(widthText)
-
-            self.lengthRatioTip.set(cylLRtext)
-            self.lengthSecondaryTip.set(heightRtext)
-
-        elif geom == SimpleGeometry.CYLINDER:
-            self.lengthPrimaryAs.set("Diameter")
-
-            self.lengthRatioAs.set("Grain L/D")
-            self.ratioAs.set("")
-
-            self.lengthPrimaryTip.set(diaText)
-            self.lengthRatioTip.set(cylLRtext)
-            self.lengthSecondaryTip.set("")
-
-        else:
-            self.lengthPrimaryAs.set("Arc Thickness")
-            self.lengthRatioAs.set("Grain L/D")
-            self.ratioAs.set("Perf. Dia./Arc")
-
-            self.lengthPrimaryTip.set(arcText)
-            self.lengthRatioTip.set(perfLRtext)
-            self.lengthSecondaryTip.set(pDiaRText)
-
-        return True
-
-    def updateGeomPlot(self):
-        with mpl.rc_context(GEOM_CONTEXT):
-            N = 100
-            prop = self.prop
-            self.geomAx.cla()
-            if prop is not None:
-                xs = [i / (N - 1) * prop.Z_b for i in range(N)]
-                ys = [prop.f_sigma_Z(x) for x in xs]
-                self.geomAx.plot(xs, ys, color="#215d9c")
-                self.geomAx.grid(
-                    which="major", color="grey", linestyle="dotted"
-                )
-                # self.geomAx.minorticks_on()
-                self.geomAx.set_xlim(left=0, right=prop.Z_b)
-                self.geomAx.xaxis.set_ticks(
-                    [i * 0.2 for i in range(ceil(prop.Z_b / 0.2) + 1)]
-                )
-                self.geomAx.set_ylim(bottom=0, top=max(ys))
-                self.geomAx.yaxis.set_ticks(
-                    [i * 0.2 for i in range(ceil(max(ys) / 0.2) + 1)]
-                )
-
-            self.geomCanvas.draw()
-
     def addOpsFrm(self, parent):
         opFrm = ttk.LabelFrame(parent, text="Options")
         opFrm.grid(row=2, column=2, rowspan=1, sticky="nsew")
@@ -1066,20 +985,20 @@ class IB(Frame):
         validationPI = parent.register(validatePI)
 
         self.steps, _, i = self.add3Input(
-            opFrm,
-            i,
-            "",
-            "steps",
-            "7",
+            parent=opFrm,
+            rowIndex=i,
+            labelText="",
+            unitText="steps",
+            default="7",
             validation=validationPI,
             formatter=formatIntInput,
         )
 
         self.accExp, _, i = self.add2Input(
-            opFrm,
-            i,
-            0,
-            "-log10(ε)",
+            parent=opFrm,
+            rowIndex=i,
+            colIndex=0,
+            labelText="-log10(ε)",
             default="3",
             validation=validationPI,
             formatter=formatIntInput,
@@ -1098,24 +1017,6 @@ class IB(Frame):
 
         opFrm.rowconfigure(i, weight=1)
         CreateToolTip(calButton, "Integrate system using RKF7(8) integrator")
-
-    def configEntry(self):
-        geom = self.geometries[self.dropGeom.get()]
-        if geom == SimpleGeometry.SPHERE:
-            self.grdRw.config(state="disabled")
-            self.grlRw.config(state="disabled")
-
-        elif geom == SimpleGeometry.CYLINDER:
-            self.grdRw.config(state="disabled")
-            self.grlRw.config(state="normal")
-
-        else:
-            if self.geoLocked.get() == 0:
-                self.grdRw.config(state="disabled")
-            else:
-                self.grdRw.config(state="normal")
-
-            self.grlRw.config(state="normal")
 
     def addPlotFrm(self, parent):
         plotFrm = ttk.LabelFrame(parent, text="Plot")
@@ -1285,10 +1186,6 @@ class IB(Frame):
 
             self.pltCanvas.draw()
 
-    def wrapup(self):
-        self.updateSpec()
-        self.updateGeom()
-
     def addTblFrm(self, parent):
         columnList = [
             "Event",
@@ -1352,6 +1249,136 @@ class IB(Frame):
             yscrollcommand=vertscroll.set, xscrollcommand=horzscroll.set
         )  # assign the scrollbar to the Treeview Widget
 
+    def updateSpec(self, var, index, mode):
+        self.specs.config(state="normal")
+        compo = self.compositions[self.dropProp.get()]
+        self.specs.delete("1.0", "end")
+        for line in compo.desc.split(","):
+            self.specs.insert("end", line + "\n")
+        self.specs.config(state="disabled")
+        # this updates the specification description
+
+        self.arccallback(None, None, None)
+
+        return True
+
+    def updateGeom(self, var, index, mode):
+        geom = self.geometries[self.dropGeom.get()]
+        if geom == SimpleGeometry.SPHERE:
+            self.grdRw.config(state="disabled")
+            self.grlRw.config(state="disabled")
+
+        elif geom == SimpleGeometry.CYLINDER:
+            self.grdRw.config(state="disabled")
+            self.grlRw.config(state="normal")
+
+        else:
+            self.grdRw.config(state="normal")
+            self.grlRw.config(state="normal")
+
+        if geom == SimpleGeometry.SPHERE:
+            self.lengthPrimaryAs.set("Diameter")
+
+            self.lengthRatioAs.set("")
+            self.ratioAs.set("")
+
+            self.lengthPrimaryTip.set(diaText)
+            self.lengthRatioTip.set("")
+            self.lengthSecondaryTip.set("")
+
+        elif geom == SimpleGeometry.ROD:
+            self.lengthPrimaryAs.set("Width")
+            self.lengthRatioAs.set("Length/Width")
+            self.ratioAs.set("Height/Width")
+
+            self.lengthPrimaryTip.set(widthText)
+            self.lengthRatioTip.set(rodRtext)
+            self.lengthSecondaryTip.set(heightRtext)
+
+        elif geom == SimpleGeometry.CYLINDER:
+            self.lengthPrimaryAs.set("Diameter")
+
+            self.lengthRatioAs.set("Grain L/D")
+            self.ratioAs.set("")
+
+            self.lengthPrimaryTip.set(diaText)
+            self.lengthRatioTip.set(cylLRtext)
+            self.lengthSecondaryTip.set("")
+
+        else:
+            self.lengthPrimaryAs.set("Arc Thickness")
+            self.lengthRatioAs.set("Grain L/D")
+            self.ratioAs.set("Perf. Dia./Arc")
+
+            self.lengthPrimaryTip.set(arcText)
+            self.lengthRatioTip.set(perfLRtext)
+            self.lengthSecondaryTip.set(pDiaRText)
+
+        self.arccallback(None, None, None)
+
+        return True
+
+    def updateGeomPlot(self):
+        with mpl.rc_context(GEOM_CONTEXT):
+            N = 100
+            prop = self.prop
+            self.geomAx.cla()
+            if prop is not None:
+                xs = [i / (N - 1) * prop.Z_b for i in range(N)]
+                ys = [prop.f_sigma_Z(x) for x in xs]
+                self.geomAx.plot(xs, ys, color="#215d9c")
+                self.geomAx.grid(
+                    which="major", color="grey", linestyle="dotted"
+                )
+                # self.geomAx.minorticks_on()
+                self.geomAx.set_xlim(left=0, right=prop.Z_b)
+                self.geomAx.xaxis.set_ticks(
+                    [i * 0.2 for i in range(ceil(prop.Z_b / 0.2) + 1)]
+                )
+                self.geomAx.set_ylim(bottom=0, top=max(ys))
+                self.geomAx.yaxis.set_ticks(
+                    [i * 0.2 for i in range(ceil(max(ys) / 0.2) + 1)]
+                )
+
+            self.geomCanvas.draw()
+
+    def updateError(self):
+        self.errorText.delete("1.0", "end")
+        for line in self.errorLst:
+            self.errorText.insert("end", line + "\n")
+        self.errorLst = []
+
+    def arccallback(self, var, index, mode):
+        """
+        updates the propellant object on write to the ratio entry fields
+        and, on changing the propellant or geometrical specification.
+
+        Double calling is due value validation, no workaround has been found
+        at this time!
+        """
+        # print("called", var, index, mode)
+
+        geom = self.geometries[self.dropGeom.get()]
+        compo = self.compositions[self.dropProp.get()]
+
+        try:
+            self.prop = Propellant(
+                compo,
+                geom,
+                float(self.grdR.get()),
+                float(self.grlR.get()),
+            )
+            self.updateGeomPlot()
+
+        except Exception as e:
+            self.prop = None
+            if DEBUG:
+                self.errorLst.append("".join(traceback.format_exception(e)))
+            else:
+                self.errorLst.append(str(e))
+
+        self.updateError()
+
     def add2Input(
         self,
         parent,
@@ -1396,8 +1423,8 @@ class IB(Frame):
         self,
         parent,
         rowIndex,
-        labelText,
-        unitText,
+        labelText="",
+        unitText="",
         default="0.0",
         validation=None,
         entryWidth=10,
@@ -1457,35 +1484,6 @@ class IB(Frame):
             CreateToolTip(lb, infotext)
 
         return e, en, rowIndex + 2
-
-    def arccallback(self, var, index, mode):
-        print("called", var, index, mode)
-        """
-        This is called on every write event to the related widgets.
-        Since this is handled before the user <FocusOut>, we need to
-        deal with partial inputs as well.
-        """
-
-        geom = self.geometries[self.dropGeom.get()]
-        compo = self.compositions[self.dropProp.get()]
-
-        try:
-            self.prop = Propellant(
-                compo,
-                geom,
-                float(self.grdR.get()),
-                float(self.grlR.get()),
-            )
-            self.updateGeomPlot()
-
-        except Exception as e:
-            self.prop = None
-            if DEBUG:
-                self.errorLst.append("".join(traceback.format_exception(e)))
-            else:
-                self.errorLst.append(str(e))
-
-        self.updateError()
 
 
 def center(win):
