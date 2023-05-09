@@ -407,9 +407,9 @@ class Propellant:
 
     def f_sigma_Z(self, Z):
         # is the first derivative of psi(Z)
-        if Z < 1:
+        if Z <= 1:
             return self.chi * (1 + 2 * self.labda * Z + 3 * self.mu * Z**2)
-        elif Z < self.Z_b:
+        elif Z <= self.Z_b:
             return 1 + 2 * self.labda_s * Z
         else:
             return 0
@@ -417,9 +417,9 @@ class Propellant:
     def f_psi_Z(self, Z):
         if Z < 0:
             return 0
-        elif Z < 1.0:
+        elif Z <= 1.0:
             return self.chi * Z * (1 + self.labda * Z + self.mu * Z**2)
-        elif Z < self.Z_b:
+        elif Z <= self.Z_b:
             return self.chi_s * Z * (1 + self.labda_s * Z)
         else:
             return 1.0
@@ -536,7 +536,7 @@ class Gun:
     def _ode_t(self, t_bar, Z, l_bar, v_bar):
         """time domain ode of internal ballistics"""
         p_bar = self._fp_bar(Z, l_bar, v_bar)
-        if Z < self.Z_b:
+        if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_bar**self.n  # dt_bar
         else:
             dZ = 0
@@ -550,7 +550,7 @@ class Gun:
         the 1/v_bar pose a starting problem that prevent us from using it from
         initial condition."""
         p_bar = self._fp_bar(Z, l_bar, v_bar)
-        if Z < self.Z_b:
+        if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_bar**self.n / v_bar
         else:
             dZ = 0
@@ -561,7 +561,7 @@ class Gun:
     def _ode_Z(self, Z, t_bar, l_bar, v_bar):
         """burnout domain ode of internal ballistics"""
         p_bar = self._fp_bar(Z, l_bar, v_bar)
-        if Z < self.Z_b:
+        if Z <= self.Z_b:
             dt_bar = (2 * self.B / self.theta) ** 0.5 * p_bar**-self.n
             dl_bar = v_bar * (2 * self.B / self.theta) ** 0.5 * p_bar**-self.n
             dv_bar = (self.B * self.theta * 0.5) ** 0.5 * p_bar ** (1 - self.n)
@@ -575,7 +575,7 @@ class Gun:
 
     def _ode_v(self, v_bar, t_bar, Z, l_bar):
         p_bar = self._fp_bar(Z, l_bar, v_bar)
-        if Z < self.Z_b:
+        if Z <= self.Z_b:
             dZ = (2 / (self.B * self.theta)) ** 0.5 * p_bar ** (self.n - 1)
         else:
             dZ = 0
@@ -686,6 +686,8 @@ class Gun:
                     "Numerical accuracy exhausted in search of exit/burnout point."
                 )
             try:
+                if Z_j > self.Z_b:
+                    Z_j = self.Z_b
                 t_bar_j, l_bar_j, v_bar_j = RKF78(
                     self._ode_Z,
                     (t_bar_i, l_bar_i, v_bar_i),
@@ -712,8 +714,8 @@ class Gun:
                     "Numerical integration stalled in search of exit/burnout point."
                 )
 
-            if l_bar_j > l_g_bar:
-                if abs(l_bar_i - l_g_bar) > tol**0.5 or l_bar_i == 0:
+            if l_bar_j >= l_g_bar:
+                if abs(l_bar_i - l_g_bar) / (l_g_bar) > tol or l_bar_i == 0:
                     N *= 2
                     Z_j = Z_i + Delta_Z / N
                 else:
@@ -726,8 +728,6 @@ class Gun:
                 as a group.
                 """
                 Z_j += Delta_Z / N
-                if Z_j > self.Z_b:
-                    Z_j = self.Z_b
 
         if t_bar_i == 0:
             raise ValueError("exit/burnout point found to be at the origin.")
@@ -1083,14 +1083,14 @@ if __name__ == "__main__":
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(10, 1e-3, dom="time")[0],
+            test.integrate(100, 1e-3, dom="time")[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(10, 1e-3, dom="length")[0],
+            test.integrate(100, 1e-3, dom="length")[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )

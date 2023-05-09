@@ -230,7 +230,8 @@ clrtext = " ".join(
 sampTxt = " ".join(
     (
         "Samples are taken equidistantly along specified domain.",
-        "Does not influence the accuracy of calculation in anyway.",
+        "Sampling is done after the system has been solved and thus",
+        "does not influence the accuracy of calculation in anyway.",
     )
 )
 
@@ -367,7 +368,7 @@ def validateNN(inp):
     in the latter case, the empty field will be handled by tracing
     change in variable.
     """
-    if inp == "":
+    if inp == "" or inp ==".":
         return True
     try:
         if float(inp) >= 0:
@@ -566,8 +567,7 @@ class IB(Frame):
         # the requisite object
         geom = self.geometries[self.dropGeom.get()]
 
-        self.tableData = []
-        self.errorData = []
+        
 
         if self.prop is None:
             return
@@ -634,7 +634,10 @@ class IB(Frame):
                 self.te.set(round(te * 100, 1))
                 self.be.set(round(te / self.gun.phi * 100, 1))
             except Exception as e:
-                self.errorLst.append("Exception while solving numerically:")
+                self.gun = None
+                self.tableData = []
+                self.errorData = []
+                self.errorLst.append("Exception while solving gun system:")
                 if DEBUG:
                     self.errorLst.append("".join(traceback.format_exception(e)))
                 else:
@@ -677,25 +680,42 @@ class IB(Frame):
         i = 0
 
         self.va, _, i = self.add12Disp(
-            specFrm,
-            i,
-            "Asymptotic Vel.",
-            "m/s",
+            parent=specFrm,
+            rowIndex=i,
+            labelText="Asymptotic Vel.",
+            unitText="m/s",
             justify="right",
             infotext=vinfText,
         )
 
         self.te, _, i = self.add12Disp(
-            specFrm, i, "Thermal Eff.", "%", infotext=teffText
+            parent=specFrm,
+            rowIndex=i,
+            labelText="Thermal Eff.",
+            unitText="%",
+            infotext=teffText,
         )
 
         self.be, _, i = self.add12Disp(
-            specFrm, i, "Ballistic Eff.", "%", infotext=beffText
+            parent=specFrm,
+            rowIndex=i,
+            labelText="Ballistic Eff.",
+            unitText="%",
+            infotext=beffText,
         )
         self.cv, _, i = self.add12Disp(
-            specFrm, i, "Chamber Volume", "m³", justify="right"
+            parent=specFrm,
+            rowIndex=i,
+            labelText="Chamber Volume",
+            unitText="m³",
+            justify="right",
         )
-        self.ld, _, i = self.add12Disp(specFrm, i, "Loading Density", "%")
+        self.ld, _, i = self.add12Disp(
+            parent=specFrm,
+            rowIndex=i,
+            labelText="Loading Density",
+            unitText="%",
+        )
 
     def addErrFrm(self, parent):
         errorFrm = ttk.LabelFrame(parent, text="Exceptions")
@@ -717,9 +737,9 @@ class IB(Frame):
     def addParFrm(self, parent):
         parFrm = ttk.LabelFrame(parent, text="Parameters")
         parFrm.grid(row=0, column=2, rowspan=2, sticky="nsew")
-        parFrm.columnconfigure(0, weight=3)
-        parFrm.columnconfigure(1, weight=3)
-        parFrm.columnconfigure(2, weight=1)
+        parFrm.columnconfigure(0, weight=1)
+        #parFrm.columnconfigure(1, weight=1)
+        # parFrm.columnconfigure(2, weight=1)
 
         # validation
         validationNN = parent.register(validateNN)
@@ -768,6 +788,7 @@ class IB(Frame):
 
         propFrm.rowconfigure(1, weight=1)
         propFrm.columnconfigure(0, weight=1)
+        #propFrm.columnconfigure(1, weight=1)
 
         self.currProp = StringVar()
         self.dropProp = ttk.Combobox(
@@ -779,7 +800,7 @@ class IB(Frame):
         )
         self.dropProp.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropProp.current(0)
-        self.dropProp.configure(width=10)
+        #self.dropProp.configure(width=10)
         self.dropProp.grid(row=0, column=0, columnspan=2, sticky="nsew", pady=2)
 
         specScroll = ttk.Scrollbar(propFrm, orient="vertical")
@@ -793,7 +814,7 @@ class IB(Frame):
             propFrm,
             wrap=WORD,
             height=5,
-            width=33,
+            width=0,
             yscrollcommand=specScroll.set,
         )
         self.specs.grid(row=1, column=0, sticky="nsew", pady=2)
@@ -806,8 +827,9 @@ class IB(Frame):
         grainFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
-        grainFrm.rowconfigure(1, weight=1)
+        # grainFrm.rowconfigure(1, weight=0)
         grainFrm.columnconfigure(0, weight=1)
+        #grainFrm.columnconfigure(1, weight=1)
 
         j = 0
 
@@ -826,7 +848,7 @@ class IB(Frame):
 
         self.dropGeom.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropGeom.current(0)
-        self.dropGeom.configure(width=10)
+        self.dropGeom.configure(width=30)
 
         self.dropGeom.grid(
             row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
@@ -859,6 +881,16 @@ class IB(Frame):
             infotext=self.lengthSecondaryTip,
         )
 
+        self.perfmm = StringVar()
+        ttk.Entry(
+            grainFrm,
+            textvariable=self.perfmm,
+            state="disabled",
+            justify="center"
+        ).grid(row=j, column=0, columnspan = 3,sticky="nsew", padx=2, pady=2)
+
+        j += 1
+
         self.lengthRatioAs = StringVar()
         self.lengthRatioTip = StringVar()
 
@@ -872,7 +904,18 @@ class IB(Frame):
             infotext=self.lengthRatioTip,
         )
 
-        geomPlotFrm = ttk.LabelFrame(grainFrm, text="σ(Z)", width=100)
+        self.lenmm = StringVar()
+        ttk.Entry(
+            grainFrm,
+            textvariable=self.lenmm,
+            state="disabled",
+            justify="center"
+        ).grid(row=j, column=0,columnspan = 3, sticky="nsew", padx=2, pady=2)
+        
+
+        j += 1
+
+        geomPlotFrm = ttk.LabelFrame(grainFrm, text="σ(Z)")
         geomPlotFrm.grid(
             row=j,
             column=0,
@@ -913,8 +956,11 @@ class IB(Frame):
 
         self.currProp.trace_add("write", self.updateSpec)
         self.currGeom.trace_add("write", self.updateGeom)
-        self.grdR.trace_add("write", self.arccallback)
-        self.grlR.trace_add("write", self.arccallback)
+
+
+        self.grdR.trace_add("write", self.callback)
+        self.grlR.trace_add("write", self.callback)
+        self.arcmm.trace_add("write", self.callback)
 
         self.parFrm = parFrm
         self.geomPlotFrm = geomPlotFrm
@@ -956,43 +1002,52 @@ class IB(Frame):
         opFrm = ttk.LabelFrame(parent, text="Options")
         opFrm.grid(row=2, column=2, rowspan=1, sticky="nsew")
 
+        opFrm.columnconfigure(0, weight=1)
         opFrm.columnconfigure(1, weight=1)
 
         validationNN = parent.register(validateNN)
+        validationPI = parent.register(validatePI)
 
         i = 0
 
-        samplbl = ttk.Label(opFrm, text="Sample")
-        samplbl.grid(row=i, column=0, sticky="nsew", padx=2, pady=2)
+        sampleFrm = ttk.LabelFrame(opFrm, text="Sampling")
+        sampleFrm.grid(row=i, column=0, columnspan=2,sticky="nsew", padx=2, pady=2)
 
-        CreateToolTip(samplbl, sampTxt)
+        j = 0
+
+        sampleFrm.columnconfigure(0,weight=1)
+        sampleFrm.columnconfigure(1,weight=1)
         self.dropOptn = ttk.Combobox(
-            opFrm, values=self.domainOptions, state="readonly", justify="center"
+            sampleFrm,
+            values=self.domainOptions,
+            state="readonly",
+            justify="center",
         )
+
         self.dropOptn.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropOptn.current(0)
         self.dropOptn.grid(
-            row=i, column=1, columnspan=1, sticky="nsew", padx=2, pady=2
+            row=j, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
-        self.dropOptn.configure(width=5)
+        #self.dropOptn.configure(width=0)
 
-        ttk.Label(opFrm, text="domain").grid(
-            row=i, column=2, sticky="nsew", padx=2, pady=2
-        )
+        j += 1
 
-        i += 1
-
-        validationPI = parent.register(validatePI)
-
-        self.steps, _, i = self.add3Input(
-            parent=opFrm,
-            rowIndex=i,
-            labelText="",
-            unitText="steps",
+        self.steps, _, j = self.add2Input(
+            parent=sampleFrm,
+            rowIndex=j,
+            colIndex=0,
+            labelText="Steps",
             default="7",
             validation=validationPI,
             formatter=formatIntInput,
+            reverse=True,
+            anchor="center"
         )
+
+        CreateToolTip(sampleFrm, sampTxt)
+
+        i += 1
 
         self.accExp, _, i = self.add2Input(
             parent=opFrm,
@@ -1004,6 +1059,7 @@ class IB(Frame):
             formatter=formatIntInput,
             color="red",
             infotext=tolText,
+           
         )
 
         calButton = ttk.Button(
@@ -1258,7 +1314,7 @@ class IB(Frame):
         self.specs.config(state="disabled")
         # this updates the specification description
 
-        self.arccallback(None, None, None)
+        self.callback(None, None, None)
 
         return True
 
@@ -1288,8 +1344,8 @@ class IB(Frame):
 
         elif geom == SimpleGeometry.ROD:
             self.lengthPrimaryAs.set("Width")
-            self.lengthRatioAs.set("Length/Width")
-            self.ratioAs.set("Height/Width")
+            self.lengthRatioAs.set("Length / Width")
+            self.ratioAs.set("Height / Width")
 
             self.lengthPrimaryTip.set(widthText)
             self.lengthRatioTip.set(rodRtext)
@@ -1298,7 +1354,7 @@ class IB(Frame):
         elif geom == SimpleGeometry.CYLINDER:
             self.lengthPrimaryAs.set("Diameter")
 
-            self.lengthRatioAs.set("Grain L/D")
+            self.lengthRatioAs.set("Length / Dia.")
             self.ratioAs.set("")
 
             self.lengthPrimaryTip.set(diaText)
@@ -1307,14 +1363,14 @@ class IB(Frame):
 
         else:
             self.lengthPrimaryAs.set("Arc Thickness")
-            self.lengthRatioAs.set("Grain L/D")
-            self.ratioAs.set("Perf. Dia./Arc")
+            self.lengthRatioAs.set("Length / Dia.")
+            self.ratioAs.set("P.Dia. / A.Th.")
 
             self.lengthPrimaryTip.set(arcText)
             self.lengthRatioTip.set(perfLRtext)
             self.lengthSecondaryTip.set(pDiaRText)
 
-        self.arccallback(None, None, None)
+        self.callback(None, None, None)
 
         return True
 
@@ -1348,7 +1404,7 @@ class IB(Frame):
             self.errorText.insert("end", line + "\n")
         self.errorLst = []
 
-    def arccallback(self, var, index, mode):
+    def callback(self, var, index, mode):
         """
         updates the propellant object on write to the ratio entry fields
         and, on changing the propellant or geometrical specification.
@@ -1362,6 +1418,8 @@ class IB(Frame):
         compo = self.compositions[self.dropProp.get()]
 
         try:
+            self.perfmm.set(toSI(float(self.grdR.get()) * float(self.arcmm.get())*1e-3,unit="m") )
+            self.lenmm.set(toSI(float(self.grlR.get()) * float(self.arcmm.get())*1e-3,unit="m") )
             self.prop = Propellant(
                 compo,
                 geom,
@@ -1391,13 +1449,15 @@ class IB(Frame):
         formatter=formatFloatInput,
         color=None,
         infotext=None,
+        anchor="w",
+        reverse = False
     ):
         if isinstance(labelText, StringVar):
-            lb = ttk.Label(parent, textvariable=labelText)
+            lb = ttk.Label(parent, textvariable=labelText,anchor=anchor)
         else:
-            lb = ttk.Label(parent, text=labelText)
+            lb = ttk.Label(parent, text=labelText,anchor=anchor)
 
-        lb.grid(row=rowIndex, column=colIndex, sticky="nsew", padx=2, pady=2)
+        lb.grid(row=rowIndex, column=colIndex + (1 if reverse else 0), sticky="nsew", padx=2, pady=2)
         if infotext is not None:
             CreateToolTip(lb, infotext)
         parent.rowconfigure(rowIndex, weight=0)
@@ -1414,7 +1474,7 @@ class IB(Frame):
         )
         en.default = default
         en.grid(
-            row=rowIndex, column=colIndex + 1, sticky="nsew", padx=2, pady=2
+            row=rowIndex, column=colIndex + (0 if reverse else 1), sticky="nsew", padx=2, pady=2
         )
         en.bind("<FocusOut>", formatter)
         return e, en, rowIndex + 1
@@ -1454,8 +1514,9 @@ class IB(Frame):
         self,
         parent,
         rowIndex,
-        labelText,
-        unitText,
+        colIndex=0,
+        labelText="",
+        unitText="",
         default="0.0",
         entryWidth=5,
         justify="center",
@@ -1463,7 +1524,12 @@ class IB(Frame):
     ):
         lb = ttk.Label(parent, text=labelText)
         lb.grid(
-            row=rowIndex, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
+            row=rowIndex,
+            column=colIndex,
+            columnspan=2,
+            sticky="nsew",
+            padx=2,
+            pady=2,
         )
         e = StringVar(parent)
         e.default = default
@@ -1476,9 +1542,11 @@ class IB(Frame):
             state="disabled",
             justify=justify,
         )
-        en.grid(row=rowIndex + 1, column=0, sticky="nsew", padx=2, pady=2)
+        en.grid(
+            row=rowIndex + 1, column=colIndex, sticky="nsew", padx=2, pady=2
+        )
         ttk.Label(parent, text=unitText).grid(
-            row=rowIndex + 1, column=1, sticky="nsew", padx=2, pady=2
+            row=rowIndex + 1, column=colIndex + 1, sticky="nsew", padx=2, pady=2
         )
         if infotext is not None:
             CreateToolTip(lb, infotext)
