@@ -904,9 +904,9 @@ class Gun:
         """
         try:
             if dom == DOMAIN_TIME:
+                Z_j, l_bar_j, v_bar_j, t_bar_j = self.Z_0, 0, 0, 0
                 for j in range(steps):
-                    t_bar_j = t_bar_e / (steps + 1) * (j + 1)
-                    Z_j, l_bar_j, v_bar_j = self.Z_0, 0, 0
+                    t_bar_k = t_bar_e / (steps + 1) * (j + 1)
                     (Z_j, l_bar_j, v_bar_j), (
                         Z_err,
                         l_bar_err,
@@ -914,11 +914,11 @@ class Gun:
                     ) = RKF78(
                         self._ode_t,
                         (Z_j, l_bar_j, v_bar_j),
-                        0,
                         t_bar_j,
+                        t_bar_k,
                         tol=tol,
                     )
-
+                    t_bar_j = t_bar_k
                     updBarData(
                         tag="",
                         t_bar=t_bar_j,
@@ -930,6 +930,7 @@ class Gun:
                         Z_err=Z_err,
                         v_bar_err=v_bar_err,
                     )
+
             else:
                 """
                 Due to two issues, i.e. 1.the length domain ODE
@@ -1083,7 +1084,7 @@ if __name__ == "__main__":
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(100, 1e-3, dom="time")[0],
+            test.integrate(100, 1e-3, dom=DOMAIN_TIME)[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )

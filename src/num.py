@@ -413,13 +413,15 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
         )  # local truncation error, or difference per step
 
         Rs = tuple(
-            abs(e * (x_1 - x_0) / h) for e in te
+            abs(e / h) * (abs(x_1 - x) + absTol) for e in te
         )  # extrapolate local truncation error to global error by multiplying step nbr
 
         """
+
         Rs = tuple(
-            abs(e * (x_1 - x_0) / h) for e in te
+            abs(e * (abs(x - x_0) + absTol) / abs(h)) for e in te
         )  # extrapolate local truncation error to global error by multiplying step nbr
+        
 
         R = max(r / (absTol + tol * abs(y)) for r, y in zip(Rs, y_this))
         # or
@@ -476,9 +478,13 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
                 in which case the error should be independent of the step size
                 Therefore we aggressively increase the step size to seek forward.
                 """
-                delta = 4
+                delta = 2
         # print("Delta:", delta)
-        h *= min(max(delta, 0.125), 4)  # to ensure that this does not jump
+        h *= min(max(delta, 0.25), 2)
+        """
+        The step size cannot be allowed to jump too much as that would in theory, invalidate
+        the assumption made to allow us to extrapolate a global error given local.
+        """
 
     if abs((x - x_1) / (x_1 - x_0)) > tol:
         raise ValueError(
