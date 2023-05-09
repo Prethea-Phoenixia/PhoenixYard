@@ -243,35 +243,29 @@ class GrainComp:
 
 class Propellant:
     # assumed to be multi-holed propellants
-    def __init__(self, composition, propGeom, length, R1, R2):
+    def __init__(self, composition, propGeom, R1, R2):
         """
-        length:
-            interpreted as:
-                arc thickness
-                for perforated cylinders
-
-                primary length
-                for rectangular rods
-
+        given e_1 as the maximum burn depth.
         R1: ratio w.r.t arc thickness
             interpreted as:
                 Perf diameter to arc thickness ratio
-                for perforated cylinders
+                for perforated cylinders, d_0/(2*e_1)
+
+                Single perf cylinder, d_0/(2*e_1)
 
                 Secondary length to primary length ratio
-                for rectangular rod shape
+                for rectangular rod shape (2*b)/(2*e_1) = 1/alpha
 
         R2: ratio w.r.t arc thickness
             interpreted as:
                 Length to "effective diameter" ratio
-                for perforated cylinders
+                for perforated cylinders, 2*c/(2*e_1) =  1/beta
 
                 teritary length to primary length ratio
-                for rectangular rod shapes
+                for rectangular rod shapes, 2*c/(2*e_1)
 
 
         Requried attributes:
-        .e_1, shortest burn path
         .maxLF, geometrical volume fraction
 
         for geometries where burning is single phase
@@ -288,19 +282,14 @@ class Propellant:
         .labda_s
 
         """
-
-        if length <= 0:
-            raise ValueError("grain width/height/arc input must be >0")
-        if R2 == 0:
-            raise ValueError("grain length must be >0")
-        if R1 == 0 and composition == SimpleGeometry.ROD:
-            raise ValueError("grain width/height input must be >0")
+        if any((R1 < 0, R2 < 0)):
+            raise ValueError("Geometry is impossible")
 
         self.composition = composition
         self.geometry = propGeom
 
         if self.geometry in MultPerfGeometry:
-            arcThick, PR, LR = length, R1, R2
+            arcThick, PR, LR = 1, R1, R2
 
             self.e_1 = 0.5 * arcThick
             self.d_0 = arcThick * PR
@@ -382,54 +371,34 @@ class Propellant:
             self.Z_b = 1  # this will prevent the running of post fracture code
 
             if self.geometry == SimpleGeometry.SPHERE:
-                D_0, PR, LR = length, R1, R2
-
-                self.e_1 = 0.5 * D_0
                 self.maxLF = 1
                 self.chi = 3
                 self.labda = -1
                 self.mu = 1 / 3
 
             elif self.geometry == SimpleGeometry.CYLINDER:
-                D_0, LR = length, R2
-
-                self.e_1 = 0.5 * D_0
-                self.c = 0.5 * D_0 * LR
                 self.maxLF = 1
 
-                beta = self.e_1 / self.c
+                beta = 1 / R2
 
                 self.chi = 2 + beta
                 self.labda = -(1 + 2 * beta) / self.chi
                 self.mu = beta / self.chi
 
             elif self.geometry == SimpleGeometry.TUBE:
-                arcThick, PR, LR = length, R1, R2
+                beta = 1 / R2
 
-                self.e_1 = 0.5 * arcThick
-                self.d_0 = arcThick * PR
-                D_0 = self.d_0 + self.e_1 * 4
-                self.c = 0.5 * D_0 * LR
-
-                beta = self.e_1 / self.c
-
-                S_T = 0.25 * pi * (D_0**2 - self.d_0**2)
-                self.maxLF = S_T / (S_T + pi * 0.25 * self.d_0**2)
+                maxLF = 4 * (R1 + 1) / (R1 + 2) ** 2
 
                 self.chi = 1 + beta
                 self.labda = -beta / (1 + beta)
                 self.mu = 0
 
             elif self.geometry == SimpleGeometry.ROD:
-                AR, LR = R1, R2
-                self.e_1, self.b, self.c = sorted(
-                    (0.5 * length, 0.5 * length * AR, 0.5 * length * LR)
-                )
-
-                alpha = self.e_1 / self.b  # only used for rods
-                beta = self.e_1 / self.c
-
                 self.maxLF = 1
+                beta, alpha = sorted(
+                    (1 / R1, 1 / R2)
+                )  # ensure that alpha > beta, ascending order
 
                 self.chi = 1 + alpha + beta
                 self.labda = -(alpha + beta + alpha * beta) / self.chi
@@ -472,6 +441,7 @@ class Gun:
         caliber,
         shotMass,
         propellant,
+        grainSize,
         chargeMass,
         chamberVolume,
         startPressure,
@@ -483,12 +453,15 @@ class Gun:
                 caliber <= 0,
                 shotMass <= 0,
                 chargeMass <= 0,
+                grainSize <= 0,
                 chamberVolume <= 0,
                 lengthGun <= 0,
                 chamberExpansion <= 0,
             )
         ):
             raise ValueError("Invalid gun parameters")
+
+        self.e_1 = 0.5 * grainSize
         self.S = (caliber / 2) ** 2 * pi
         self.m = shotMass
         self.propellant = propellant
@@ -1095,19 +1068,20 @@ if __name__ == "__main__":
     GrainComp.check(compositions.values())
     M17 = compositions["M17"]
 
-    M17SHC = Propellant(M17, SimpleGeometry.ROD, 0.1e-3, 2, 2.5)
+    M17SHC = Propellant(M17, SimpleGeometry.ROD, 2, 2.5)
 
     lf = 0.5
     print("DELTA:", lf * M17SHC.maxLF)
     test = Gun(
-        0.050,
-        1.0,
-        M17SHC,
-        1.0,
-        1.0 / M17SHC.rho_p / M17SHC.maxLF / lf,
-        30000000.0,
-        3.5,
-        1.1,
+        caliber=0.050,
+        shotMass=1.0,
+        propellant=M17SHC,
+        grainSize=1e-3,
+        chargeMass=1,
+        chamberVolume=1.0 / M17SHC.rho_p / M17SHC.maxLF / lf,
+        startPressure=30000000.0,
+        lengthGun=3.5,
+        chamberExpansion=1.1,
     )
     # try:
     print("\nnumerical: time")

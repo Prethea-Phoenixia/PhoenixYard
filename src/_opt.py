@@ -108,10 +108,7 @@ def searchChargeMass(context, chargeMass):
             while 2**-m > arcTol / (grainArcMax - grainArcMin):
                 for n in range(0, 2**m):
                     if n % 2 != 0:
-                        v = (
-                            n * (grainArcMax - grainArcMin) / 2**m
-                            + grainArcMin
-                        )
+                        v = n * (grainArcMax - grainArcMin) / 2**m + grainArcMin
 
                         if maxValida > v > minValida:
                             continue
@@ -235,9 +232,7 @@ def constrained(
     """
 
     if loadFractionMax >= 1 or loadFractionMin <= 0:
-        raise ValueError(
-            "The specified load fraction is impractical. (<=0.01/>=0.99)"
-        )
+        raise ValueError("The specified load fraction is impractical. (<=0.01/>=0.99)")
 
     aSpace = []
     lSpace = []
@@ -277,9 +272,7 @@ def constrained(
     """
 
     with multiprocessing.Pool() as pool:
-        tabuleau = flatten(
-            pool.starmap(searchChargeMass, ((context, y) for y in ys))
-        )
+        tabuleau = flatten(pool.starmap(searchChargeMass, ((context, y) for y in ys)))
 
     from tabulate import tabulate
 

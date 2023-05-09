@@ -177,8 +177,7 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
             K2 = tuple(
                 k * h
                 for k in dFunc(
-                    x + 2 / 27 * h,
-                    *(y + 2 / 27 * k1 for y, k1 in zip(y_this, *allK))
+                    x + 2 / 27 * h, *(y + 2 / 27 * k1 for y, k1 in zip(y_this, *allK))
                 )
             )
             allK.append(K2)
@@ -187,10 +186,7 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
                 k * h
                 for k in dFunc(
                     x + 1 / 9 * h,
-                    *(
-                        y + 1 / 36 * k1 + 1 / 12 * k2
-                        for y, k1, k2 in zip(y_this, *allK)
-                    )
+                    *(y + 1 / 36 * k1 + 1 / 12 * k2 for y, k1, k2 in zip(y_this, *allK))
                 )
             )
             allK.append(K3)
@@ -252,11 +248,7 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
                 for k in dFunc(
                     x + 1 / 6 * h,
                     *(
-                        y
-                        + 31 / 300 * k1
-                        + 61 / 225 * k5
-                        - 2 / 9 * k6
-                        + 13 / 900 * k7
+                        y + 31 / 300 * k1 + 61 / 225 * k5 - 2 / 9 * k6 + 13 / 900 * k7
                         for y, k1, k2, k3, k4, k5, k6, k7 in zip(y_this, *allK)
                     )
                 )
@@ -275,9 +267,7 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
                         - 107 / 9 * k6
                         + 67 / 90 * k7
                         + 3 * k8
-                        for y, k1, k2, k3, k4, k5, k6, k7, k8 in zip(
-                            y_this, *allK
-                        )
+                        for y, k1, k2, k3, k4, k5, k6, k7, k8 in zip(y_this, *allK)
                     )
                 )
             )
@@ -296,9 +286,7 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
                         - 19 / 60 * k7
                         + 17 / 6 * k8
                         - 1 / 12 * k9
-                        for y, k1, k2, k3, k4, k5, k6, k7, k8, k9 in zip(
-                            y_this, *allK
-                        )
+                        for y, k1, k2, k3, k4, k5, k6, k7, k8, k9 in zip(y_this, *allK)
                     )
                 )
             )
@@ -431,8 +419,7 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
             x += h
             Rm = tuple(max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs))
             if any(
-                cv > pv if pv is not None else False
-                for cv, pv in zip(y_this, termAbv)
+                cv > pv if pv is not None else False for cv, pv in zip(y_this, termAbv)
             ):  # premature terminating cond. is met
                 return y_this, Rm
             if R != 0:  # sometimes the error can be estimated to be 0
@@ -482,12 +469,8 @@ def cubic(a, b, c, d):
     Delta_0 = b**2 - 3 * a * c
     Delta_1 = 2 * b**3 - 9 * a * b * c + 27 * a**2 * d
 
-    C_1 = (0.5 * (Delta_1 + (Delta_1**2 - 4 * Delta_0**3) ** 0.5)) ** (
-        1 / 3
-    )
-    C_2 = (0.5 * (Delta_1 - (Delta_1**2 - 4 * Delta_0**3) ** 0.5)) ** (
-        1 / 3
-    )
+    C_1 = (0.5 * (Delta_1 + (Delta_1**2 - 4 * Delta_0**3) ** 0.5)) ** (1 / 3)
+    C_2 = (0.5 * (Delta_1 - (Delta_1**2 - 4 * Delta_0**3) ** 0.5)) ** (1 / 3)
 
     xs = []
     if any(C != 0 for C in (C_1, C_2)):
@@ -509,8 +492,7 @@ def cubic(a, b, c, d):
     else:
         # one real and 2 imaginary roots.
         xs = list(
-            z.real if abs(z.imag) == min(abs(z.imag) for z in xs) else z
-            for z in xs
+            z.real if abs(z.imag) == min(abs(z.imag) for z in xs) else z for z in xs
         )
     # put the first real solution at first.
     xs.sort(key=lambda z: 1 if isinstance(z, complex) else 0)
