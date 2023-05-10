@@ -138,7 +138,9 @@ def gss(f, a, b, tol=1e-9, findMin=True):
         return (c, b)
 
 
-def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
+def RKF78(
+    dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None, record=None
+):
     """
     use Runge Kutta Fehlberg of 7(8)th power to solve the System of Equation
 
@@ -147,8 +149,10 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
         iniVal  : initial values for (y1, y2, y3...)
         x_0, x_1: integration
         tol     : relative tolerance, per component
-        absTol  : absolute tolerance, per component
-        termAbv : premature termination condition
+        absTol  : optional, absolute tolerance, per component
+        termAbv : optional, premature termination condition
+
+        record  : optional, if supplied will record all committed datapoints
 
     Returns:
         (y1, y2, y3...)|x = x_1, (e1, e2, e3....)
@@ -169,8 +173,11 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
         to accept the computed value at the ith step using the step size h, but change the step size 
         to beta h for the (i + 1)st step.
     """
-    h = 0.1 * (x_1 - x_0)  # initial step size
+    h = x_1 - x_0  # initial step size
     Rm = tuple(0 for _ in iniVal)
+    if record is not None:
+        record.append((x, *(y for y in y_this)))
+
     while (h > 0 and x < x_1) or (h < 0 and x > x_1):
         if (x + h) == x:
             break  # catch the error using the final lines
@@ -412,63 +419,41 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
             )
         )  # local truncation error, or difference per step
 
-        Rs = tuple(
-            abs(e / h) * (abs(x_1 - x) + absTol) for e in te
-        )  # extrapolate local truncation error to global error by multiplying step nbr
-
         """
-
-        Rs = tuple(
-            abs(e * (abs(x - x_0) + absTol) / abs(h)) for e in te
-        )  # extrapolate local truncation error to global error by multiplying step nbr
-        
-
-        R = max(r / (absTol + tol * abs(y)) for r, y in zip(Rs, y_this))
-        # or
-        R = max(
-            r / (absTol + tol * (abs(y) + abs(k1)))
-            for r, y, k1 in zip(Rs, y_this, K1)
-        )
-        
-        # construct a ratio to tolerable error using both relative error
-        # specification (tol) and absolute error specification (absTol),
-        # the latter considers both the value at point and first derivative
-        
-        # alternative error criteria
-        R = max(abs(e) / (absTol + tol * abs(y)) for e, y in zip(te, y_next))
-        print("Rm:", Rm)
-        print("Rs:", Rs)
-        print("y1", y_this)
-        print("y2", y_next)
-        print("te", te)
+        Extrapolating global error from local truncation error.
+        Using the entire range is considered more conservative (results in larger error)
+        than scaling using the remaining.
         """
-
+        Rs = tuple(abs(e) * (x_1 - x_0) / h for e in te)
         """
-        R = max(abs(e) / (absTol + tol * abs(y)) for e, y in zip(te, y_next))
+        Construct a relative error specification, comparing the global extrapolated
+        error to the smaller of current and next values.
         """
         R = max(
             abs(r) / (absTol + tol * min(abs(y1), abs(y2)))
             for r, y1, y2 in zip(Rs, y_this, y_next)
         )
-        # print("R:", R, "\n")
 
         delta = 1
 
         if R >= 1:  # error is greater than acceptable
-            # print("not accepted", R)
             delta = beta * abs(1 / R) ** (1 / 8)
 
         else:  # error is acceptable
-            # print("accepted", R)
-            # print(*Rs)
             y_this = y_next
             x += h
             Rm = tuple(max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs))
+            if record is not None:
+                record.append((x, *(v for v in y_this)))
+
             if any(
                 cv > pv if pv is not None else False
                 for cv, pv in zip(y_this, termAbv)
             ):  # premature terminating cond. is met
-                return y_this, Rm
+                if record is None:
+                    return y_this, Rm
+                else:
+                    return y_this, Rm, record
             if R != 0:  # sometimes the error can be estimated to be 0
                 delta = beta * abs(1 / R) ** (1 / 7)
 
@@ -479,7 +464,6 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
                 Therefore we aggressively increase the step size to seek forward.
                 """
                 delta = 2
-        # print("Delta:", delta)
         h *= min(max(delta, 0.25), 2)
         """
         The step size cannot be allowed to jump too much as that would in theory, invalidate
@@ -492,7 +476,10 @@ def RKF78(dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None):
             + " x at {}, h at {}.".format(x, h)
         )
 
-    return y_this, Rm
+    if record is None:
+        return y_this, Rm
+    else:
+        return y_this, Rm, record
 
 
 def cubic(a, b, c, d):

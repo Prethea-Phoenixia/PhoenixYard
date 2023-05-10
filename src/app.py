@@ -33,6 +33,7 @@ GEOM_CONTEXT = {
     "text.color": "white",
     "xtick.color": "white",
     "ytick.color": "white",
+    "lines.markersize": 2,
 }
 
 FIG_CONTEXT = {
@@ -50,6 +51,7 @@ FIG_CONTEXT = {
     "text.color": "white",
     "xtick.color": "white",
     "ytick.color": "white",
+    "lines.markersize": 4,
 }
 chgText = " ".join(
     (
@@ -368,7 +370,7 @@ def validateNN(inp):
     in the latter case, the empty field will be handled by tracing
     change in variable.
     """
-    if inp == "" or inp ==".":
+    if inp == "" or inp == ".":
         return True
     try:
         if float(inp) >= 0:
@@ -567,8 +569,6 @@ class IB(Frame):
         # the requisite object
         geom = self.geometries[self.dropGeom.get()]
 
-        
-
         if self.prop is None:
             return
 
@@ -738,7 +738,7 @@ class IB(Frame):
         parFrm = ttk.LabelFrame(parent, text="Parameters")
         parFrm.grid(row=0, column=2, rowspan=2, sticky="nsew")
         parFrm.columnconfigure(0, weight=1)
-        #parFrm.columnconfigure(1, weight=1)
+        # parFrm.columnconfigure(1, weight=1)
         # parFrm.columnconfigure(2, weight=1)
 
         # validation
@@ -788,7 +788,7 @@ class IB(Frame):
 
         propFrm.rowconfigure(1, weight=1)
         propFrm.columnconfigure(0, weight=1)
-        #propFrm.columnconfigure(1, weight=1)
+        # propFrm.columnconfigure(1, weight=1)
 
         self.currProp = StringVar()
         self.dropProp = ttk.Combobox(
@@ -800,7 +800,7 @@ class IB(Frame):
         )
         self.dropProp.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropProp.current(0)
-        #self.dropProp.configure(width=10)
+        # self.dropProp.configure(width=10)
         self.dropProp.grid(row=0, column=0, columnspan=2, sticky="nsew", pady=2)
 
         specScroll = ttk.Scrollbar(propFrm, orient="vertical")
@@ -829,7 +829,7 @@ class IB(Frame):
         )
         # grainFrm.rowconfigure(1, weight=0)
         grainFrm.columnconfigure(0, weight=1)
-        #grainFrm.columnconfigure(1, weight=1)
+        # grainFrm.columnconfigure(1, weight=1)
 
         j = 0
 
@@ -886,8 +886,8 @@ class IB(Frame):
             grainFrm,
             textvariable=self.perfmm,
             state="disabled",
-            justify="center"
-        ).grid(row=j, column=0, columnspan = 3,sticky="nsew", padx=2, pady=2)
+            justify="center",
+        ).grid(row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
 
         j += 1
 
@@ -909,9 +909,8 @@ class IB(Frame):
             grainFrm,
             textvariable=self.lenmm,
             state="disabled",
-            justify="center"
-        ).grid(row=j, column=0,columnspan = 3, sticky="nsew", padx=2, pady=2)
-        
+            justify="center",
+        ).grid(row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
 
         j += 1
 
@@ -956,7 +955,6 @@ class IB(Frame):
 
         self.currProp.trace_add("write", self.updateSpec)
         self.currGeom.trace_add("write", self.updateGeom)
-
 
         self.grdR.trace_add("write", self.callback)
         self.grlR.trace_add("write", self.callback)
@@ -1011,12 +1009,14 @@ class IB(Frame):
         i = 0
 
         sampleFrm = ttk.LabelFrame(opFrm, text="Sampling")
-        sampleFrm.grid(row=i, column=0, columnspan=2,sticky="nsew", padx=2, pady=2)
+        sampleFrm.grid(
+            row=i, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
+        )
 
         j = 0
 
-        sampleFrm.columnconfigure(0,weight=1)
-        sampleFrm.columnconfigure(1,weight=1)
+        sampleFrm.columnconfigure(0, weight=1)
+        sampleFrm.columnconfigure(1, weight=1)
         self.dropOptn = ttk.Combobox(
             sampleFrm,
             values=self.domainOptions,
@@ -1029,7 +1029,7 @@ class IB(Frame):
         self.dropOptn.grid(
             row=j, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
-        #self.dropOptn.configure(width=0)
+        # self.dropOptn.configure(width=0)
 
         j += 1
 
@@ -1038,11 +1038,11 @@ class IB(Frame):
             rowIndex=j,
             colIndex=0,
             labelText="Steps",
-            default="7",
+            default="50",
             validation=validationPI,
             formatter=formatIntInput,
             reverse=True,
-            anchor="center"
+            anchor="center",
         )
 
         CreateToolTip(sampleFrm, sampTxt)
@@ -1059,7 +1059,6 @@ class IB(Frame):
             formatter=formatIntInput,
             color="red",
             infotext=tolText,
-           
         )
 
         calButton = ttk.Button(
@@ -1188,13 +1187,28 @@ class IB(Frame):
                 self.axP.spines.right.set_position(("data", xs[maxIndex]))
 
                 (pv,) = self.axv.plot(
-                    xs, vs, "tab:blue", label="Shot Velocity m/s"
+                    xs,
+                    vs,
+                    "tab:blue",
+                    label="Shot Velocity",
+                    linestyle="--",
+                    marker="o",
                 )
                 (pP,) = self.axP.plot(
-                    xs, Ps, "tab:green", label="Avg. Pressure MPa"
+                    xs,
+                    Ps,
+                    "tab:green",
+                    label="Avg. Pressure",
+                    linestyle="--",
+                    marker="o",
                 )
                 (ppsi,) = self.ax.plot(
-                    xs, psis, "tab:red", label="Volume Burnup"
+                    xs,
+                    psis,
+                    "tab:red",
+                    label="Volume Burnup",
+                    linestyle="--",
+                    marker="o",
                 )
 
                 (ref,) = self.ax.plot(
@@ -1376,7 +1390,7 @@ class IB(Frame):
 
     def updateGeomPlot(self):
         with mpl.rc_context(GEOM_CONTEXT):
-            N = 100
+            N = 50
             prop = self.prop
             self.geomAx.cla()
             if prop is not None:
@@ -1418,8 +1432,18 @@ class IB(Frame):
         compo = self.compositions[self.dropProp.get()]
 
         try:
-            self.perfmm.set(toSI(float(self.grdR.get()) * float(self.arcmm.get())*1e-3,unit="m") )
-            self.lenmm.set(toSI(float(self.grlR.get()) * float(self.arcmm.get())*1e-3,unit="m") )
+            self.perfmm.set(
+                toSI(
+                    float(self.grdR.get()) * float(self.arcmm.get()) * 1e-3,
+                    unit="m",
+                )
+            )
+            self.lenmm.set(
+                toSI(
+                    float(self.grlR.get()) * float(self.arcmm.get()) * 1e-3,
+                    unit="m",
+                )
+            )
             self.prop = Propellant(
                 compo,
                 geom,
@@ -1450,14 +1474,20 @@ class IB(Frame):
         color=None,
         infotext=None,
         anchor="w",
-        reverse = False
+        reverse=False,
     ):
         if isinstance(labelText, StringVar):
-            lb = ttk.Label(parent, textvariable=labelText,anchor=anchor)
+            lb = ttk.Label(parent, textvariable=labelText, anchor=anchor)
         else:
-            lb = ttk.Label(parent, text=labelText,anchor=anchor)
+            lb = ttk.Label(parent, text=labelText, anchor=anchor)
 
-        lb.grid(row=rowIndex, column=colIndex + (1 if reverse else 0), sticky="nsew", padx=2, pady=2)
+        lb.grid(
+            row=rowIndex,
+            column=colIndex + (1 if reverse else 0),
+            sticky="nsew",
+            padx=2,
+            pady=2,
+        )
         if infotext is not None:
             CreateToolTip(lb, infotext)
         parent.rowconfigure(rowIndex, weight=0)
@@ -1474,7 +1504,11 @@ class IB(Frame):
         )
         en.default = default
         en.grid(
-            row=rowIndex, column=colIndex + (0 if reverse else 1), sticky="nsew", padx=2, pady=2
+            row=rowIndex,
+            column=colIndex + (0 if reverse else 1),
+            sticky="nsew",
+            padx=2,
+            pady=2,
         )
         en.bind("<FocusOut>", formatter)
         return e, en, rowIndex + 1

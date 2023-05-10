@@ -841,15 +841,22 @@ class Gun:
             )[0]
             return self._fp_bar(Z, l_bar, v_bar)
 
-        # tolerance is specified a bit differently for gold section search
+        """
+            tolerance is specified a bit differently for gold section search
+            GSS tol is the length between the upper bound and lower bound
+            of the maxima/minima, thus by our definition of tolerance (one sided),
+            a division by 2 is necessary in the following section.
+        """
 
-        t_bar_tol = min(t for t in (t_bar_e, t_bar_b, t_bar_f) if t is not None)
+        t_bar_tol = tol * min(
+            t for t in (t_bar_e, t_bar_b, t_bar_f) if t is not None
+        )
 
         t_bar_p_1, t_bar_p_2 = gss(
             f,
             0,
             t_bar_e if t_bar_b is None else t_bar_b,
-            tol=tol * (t_bar_e if t_bar_b is None else t_bar_b),
+            tol=t_bar_tol,
             findMin=False,
         )
 
@@ -919,6 +926,7 @@ class Gun:
                         tol=tol,
                     )
                     t_bar_j = t_bar_k
+
                     updBarData(
                         tag="",
                         t_bar=t_bar_j,
@@ -943,17 +951,17 @@ class Gun:
                  of value by subscipt i will not guarantee burning is still
                  ongoing).
                 """
-                t_bar_s = 0.5 * t_bar_i
-                Z_s, l_bar_s, v_bar_s = RKF78(
+                t_bar_j = 0.5 * t_bar_i
+                Z_j, l_bar_j, v_bar_j = RKF78(
                     self._ode_t,
                     (self.Z_0, 0, 0),
                     0,
-                    t_bar_s,
+                    t_bar_j,
                     tol=tol,
                 )[0]
 
                 for j in range(steps):
-                    l_bar_j = l_g_bar / (steps + 1) * (j + 1)
+                    l_bar_k = l_g_bar / (steps + 1) * (j + 1)
 
                     (t_bar_j, Z_j, v_bar_j), (
                         t_bar_err,
@@ -961,11 +969,12 @@ class Gun:
                         v_bar_err,
                     ) = RKF78(
                         self._ode_l,
-                        (t_bar_s, Z_s, v_bar_s),
-                        l_bar_s,
+                        (t_bar_j, Z_j, v_bar_j),
                         l_bar_j,
+                        l_bar_k,
                         tol=tol,
                     )
+                    l_bar_j = l_bar_k
 
                     updBarData(
                         tag="",
@@ -1084,14 +1093,14 @@ if __name__ == "__main__":
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(100, 1e-3, dom=DOMAIN_TIME)[0],
+            test.integrate(200, 1e-3, dom=DOMAIN_TIME)[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(100, 1e-3, dom="length")[0],
+            test.integrate(200, 1e-3, dom="length")[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )
