@@ -1396,7 +1396,11 @@ class IB(Frame):
             if prop is not None:
                 xs = [i / (N - 1) * prop.Z_b for i in range(N)]
                 ys = [prop.f_sigma_Z(x) for x in xs]
-                self.geomAx.plot(xs, ys, color="#215d9c")
+                self.geomAx.plot(
+                    xs,
+                    ys,
+                    color="#215d9c",
+                )
                 self.geomAx.grid(
                     which="major", color="grey", linestyle="dotted"
                 )

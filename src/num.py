@@ -175,8 +175,6 @@ def RKF78(
     """
     h = x_1 - x_0  # initial step size
     Rm = tuple(0 for _ in iniVal)
-    if record is not None:
-        record.append((x, *(y for y in y_this)))
 
     while (h > 0 and x < x_1) or (h < 0 and x > x_1):
         if (x + h) == x:
@@ -429,6 +427,7 @@ def RKF78(
         Construct a relative error specification, comparing the global extrapolated
         error to the smaller of current and next values.
         """
+        # print(*Rs)
         R = max(
             abs(r) / (absTol + tol * min(abs(y1), abs(y2)))
             for r, y1, y2 in zip(Rs, y_this, y_next)
@@ -443,17 +442,16 @@ def RKF78(
             y_this = y_next
             x += h
             Rm = tuple(max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs))
-            if record is not None:
-                record.append((x, *(v for v in y_this)))
 
             if any(
                 cv > pv if pv is not None else False
                 for cv, pv in zip(y_this, termAbv)
             ):  # premature terminating cond. is met
-                if record is None:
-                    return y_this, Rm
-                else:
-                    return y_this, Rm, record
+                return y_this, Rm
+
+            if record is not None:
+                record.append((x, *(v for v in y_this), Rs))
+
             if R != 0:  # sometimes the error can be estimated to be 0
                 delta = beta * abs(1 / R) ** (1 / 7)
 
@@ -464,6 +462,7 @@ def RKF78(
                 Therefore we aggressively increase the step size to seek forward.
                 """
                 delta = 2
+
         h *= min(max(delta, 0.25), 2)
         """
         The step size cannot be allowed to jump too much as that would in theory, invalidate
@@ -476,10 +475,7 @@ def RKF78(
             + " x at {}, h at {}.".format(x, h)
         )
 
-    if record is None:
-        return y_this, Rm
-    else:
-        return y_this, Rm, record
+    return y_this, Rm
 
 
 def cubic(a, b, c, d):

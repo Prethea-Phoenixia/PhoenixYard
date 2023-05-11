@@ -407,7 +407,7 @@ class Propellant:
 
     def f_sigma_Z(self, Z):
         # is the first derivative of psi(Z)
-        if Z <= 1:
+        if Z <= 1.0:
             return self.chi * (1 + 2 * self.labda * Z + 3 * self.mu * Z**2)
         elif Z <= self.Z_b:
             return 1 + 2 * self.labda_s * Z
@@ -415,9 +415,7 @@ class Propellant:
             return 0
 
     def f_psi_Z(self, Z):
-        if Z < 0:
-            return 0
-        elif Z <= 1.0:
+        if Z <= 1.0:
             return self.chi * Z * (1 + self.labda * Z + self.mu * Z**2)
         elif Z <= self.Z_b:
             return self.chi_s * Z * (1 + self.labda_s * Z)
@@ -613,6 +611,7 @@ class Gun:
         """
 
         l_g_bar = self.l_g / self.l_0
+
         bar_data = []
         bar_err = []
 
@@ -672,6 +671,8 @@ class Gun:
         Z_j = Z_i + Delta_Z / N
         t_bar_i, l_bar_i, v_bar_i = 0, 0, 0
 
+        isBurnOutContained = True
+
         """
         Instead of letting the integrator handle the heavy lifting, we
         partition Z and integrate upwards until either barrel exit or
@@ -680,6 +681,8 @@ class Gun:
         i within or on the muzzle, with the propellant either still
         burning or right on the burnout point..
         """
+        ztlv_record = []
+
         while Z_i < self.Z_b:  # terminates if burnout is achieved
             if Z_j == Z_i:
                 raise ValueError(
@@ -695,6 +698,7 @@ class Gun:
                     Z_j,
                     tol=tol,
                     termAbv=(None, l_g_bar, None),
+                    record=ztlv_record,
                 )[0]
 
             except ValueError as e:
@@ -719,7 +723,9 @@ class Gun:
                     N *= 2
                     Z_j = Z_i + Delta_Z / N
                 else:
+                    isBurnOutContained = False
                     break  # l_bar_i is solved to within a tol of l_bar_g
+
             else:
                 t_bar_i, l_bar_i, v_bar_i = t_bar_j, l_bar_j, v_bar_j
                 Z_i = Z_j
@@ -733,19 +739,61 @@ class Gun:
             raise ValueError("exit/burnout point found to be at the origin.")
 
         """
+        Although cludge, this is necessary as the discontinuity of the SoE
+        around Z = Z_b is hard to reconcile unless we specifically, manually
+        set the Z past the point. 
+        """
+        if isBurnOutContained:
+            Z_i = self.Z_b + tol
+
+        print(isBurnOutContained)
+
+        record = [
+            (
+                t_bar,
+                l_bar,
+                self.f_psi_Z(Z),
+                v_bar,
+                self._fp_bar(Z, l_bar, v_bar),
+                h,
+            )
+            for (Z, t_bar, l_bar, v_bar, h) in ztlv_record
+        ]
+
+        print(*record, sep="\n")
+        print("---------------")
+
+        """
         Subscript e indicate exit condition.
         At this point, since its guaranteed that point i will be further
         towards the chamber of the firearm than point e, we do not have
         to worry about the dependency of the correct behaviour of this ODE
         on the positive direction of integration.
         """
+        ltzv_record = []
         (t_bar_e, Z_e, v_bar_e), (t_bar_err, Z_err, v_bar_err) = RKF78(
             self._ode_l,
             (t_bar_i, Z_i, v_bar_i),
             l_bar_i,
             l_g_bar,
             tol=tol,
+            record=ltzv_record,
         )
+
+        record.extend(
+            (
+                t_bar,
+                l_bar,
+                self.f_psi_Z(Z),
+                v_bar,
+                self._fp_bar(Z, l_bar, v_bar),
+                h,
+            )
+            for (l_bar, t_bar, Z, v_bar, h) in ltzv_record
+        )
+
+        record.sort(key=lambda line: line[0])
+        print(*record, sep="\n")
 
         updBarData(
             tag=POINT_EXIT,
@@ -760,7 +808,9 @@ class Gun:
         )
 
         t_bar_f = None
-        if self.Z_b > 1 and Z_e >= 1:  # fracture point exist and is contained
+        if (
+            self.Z_b > 1.0 and Z_e >= 1.0
+        ):  # fracture point exist and is contained
             """
             Subscript f indicate fracture condition
             ODE w.r.t Z is integrated from Z_0 to 1, from onset of projectile
