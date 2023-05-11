@@ -595,7 +595,7 @@ class Gun:
 
         return self.S * p * (l + l_psi) / (self.omega * psi * self.R)
 
-    def integrate(self, steps=10, tol=1e-5, dom="time"):
+    def integrate(self, steps=10, tol=1e-5, dom=DOMAIN_TIME, record=None):
         """
         Runs a full numerical solution for the gun in the specified domain sampled
         evenly at specified number of steps, using a scaled numerical tolerance as
@@ -610,10 +610,16 @@ class Gun:
         errors.
         """
 
+        if any((steps < 0, tol < 0)):
+            raise ValueError("Invalid integration specification")
+
         l_g_bar = self.l_g / self.l_0
 
         bar_data = []
         bar_err = []
+
+        tScale = self.l_0 / self.v_j
+        pScale = self.f * self.Delta
 
         def updBarData(
             tag,
@@ -664,11 +670,14 @@ class Gun:
             v_bar_err=0,
         )
 
+        if record is not None:
+            record.append((0, 0, self.psi_0, 0, self.p_0 / pScale))
+
+        Z_i = self.Z_0
+        Z_j = self.Z_b
         N = 1
         Delta_Z = self.Z_b - self.Z_0
-        Z_i = self.Z_0
 
-        Z_j = Z_i + Delta_Z / N
         t_bar_i, l_bar_i, v_bar_i = 0, 0, 0
 
         isBurnOutContained = True
@@ -684,6 +693,7 @@ class Gun:
         ztlv_record = []
 
         while Z_i < self.Z_b:  # terminates if burnout is achieved
+            ztlv_record_i = []
             if Z_j == Z_i:
                 raise ValueError(
                     "Numerical accuracy exhausted in search of exit/burnout point."
@@ -698,7 +708,7 @@ class Gun:
                     Z_j,
                     tol=tol,
                     termAbv=(None, l_g_bar, None),
-                    record=ztlv_record,
+                    record=ztlv_record_i,
                 )[0]
 
             except ValueError as e:
@@ -727,6 +737,7 @@ class Gun:
                     break  # l_bar_i is solved to within a tol of l_bar_g
 
             else:
+                ztlv_record.extend(ztlv_record_i)
                 t_bar_i, l_bar_i, v_bar_i = t_bar_j, l_bar_j, v_bar_j
                 Z_i = Z_j
                 """
@@ -739,30 +750,25 @@ class Gun:
             raise ValueError("exit/burnout point found to be at the origin.")
 
         """
-        Although cludge, this is necessary as the discontinuity of the SoE
-        around Z = Z_b is hard to reconcile unless we specifically, manually
-        set the Z past the point. 
+        Cludge code to force the SoE past the discontinuity at Z = Z_b, since 
+        we wrote the SoE to be be piecewise continous from (0, Z_b] and (Z_b, +inf)
+        it is necessary to do this to prevent the RKF integrator coming up with 
+        irreducible error estimates and driving the step size to 0 around Z = Z_b
         """
         if isBurnOutContained:
             Z_i = self.Z_b + tol
 
-        print(isBurnOutContained)
-
-        record = [
-            (
-                t_bar,
-                l_bar,
-                self.f_psi_Z(Z),
-                v_bar,
-                self._fp_bar(Z, l_bar, v_bar),
-                h,
+        if record is not None:
+            record.extend(
+                (
+                    t_bar,
+                    l_bar,
+                    self.f_psi_Z(Z),
+                    v_bar,
+                    self._fp_bar(Z, l_bar, v_bar),
+                )
+                for (Z, t_bar, l_bar, v_bar) in ztlv_record
             )
-            for (Z, t_bar, l_bar, v_bar, h) in ztlv_record
-        ]
-
-        print(*record, sep="\n")
-        print("---------------")
-
         """
         Subscript e indicate exit condition.
         At this point, since its guaranteed that point i will be further
@@ -770,6 +776,9 @@ class Gun:
         to worry about the dependency of the correct behaviour of this ODE
         on the positive direction of integration.
         """
+        if record is not None:
+            print(*record, sep="\n")
+
         ltzv_record = []
         (t_bar_e, Z_e, v_bar_e), (t_bar_err, Z_err, v_bar_err) = RKF78(
             self._ode_l,
@@ -780,20 +789,23 @@ class Gun:
             record=ltzv_record,
         )
 
-        record.extend(
-            (
-                t_bar,
-                l_bar,
-                self.f_psi_Z(Z),
-                v_bar,
-                self._fp_bar(Z, l_bar, v_bar),
-                h,
+        if record is not None:
+            record.extend(
+                (
+                    t_bar,
+                    l_bar,
+                    self.f_psi_Z(Z),
+                    v_bar,
+                    self._fp_bar(Z, l_bar, v_bar),
+                )
+                for (l_bar, t_bar, Z, v_bar) in ltzv_record
             )
-            for (l_bar, t_bar, Z, v_bar, h) in ltzv_record
-        )
 
-        record.sort(key=lambda line: line[0])
-        print(*record, sep="\n")
+            # record.sort(key=lambda line: line[0])
+
+        if record is not None:
+            print("------------------------------------------------")
+            print(*record, sep="\n")
 
         updBarData(
             tag=POINT_EXIT,
@@ -841,7 +853,7 @@ class Gun:
             )
 
         t_bar_b = None
-        if Z_e >= self.Z_b:
+        if isBurnOutContained:
             """
             Subscript b indicated burnout condition
             ODE w.r.t Z is integrated from Z_0 to Z_b, from onset of projectile
@@ -1058,6 +1070,7 @@ class Gun:
 
         data = []
         error = []
+
         for bar_dataLine, bar_errorLine in zip(bar_data, bar_err):
             dtag, t_bar, l_bar, Z, v_bar, p_bar = bar_dataLine
             (
@@ -1069,12 +1082,11 @@ class Gun:
                 p_bar_err,
             ) = bar_errorLine
 
-            tScale = self.l_0 / self.v_j
             t, t_err = (t_bar * tScale, t_bar_err * tScale)
             l, l_err = (l_bar * self.l_0, l_bar_err * self.l_0)
             psi, psi_err = (self.f_psi_Z(Z), abs(self.f_sigma_Z(Z) * Z_err))
             v, v_err = v_bar * self.v_j, v_bar_err * self.v_j
-            pScale = self.f * self.Delta
+
             p, p_err = p_bar * pScale, p_bar_err * pScale
 
             T = self._T(psi, l, p)
@@ -1094,6 +1106,19 @@ class Gun:
             )
             data.append((dtag, t, l, psi, v, p, T))
             error.append((etag, t_err, l_err, psi_err, v_err, p_err, T_err))
+
+        """
+        scale the records too
+        """
+        if record is not None:
+            for i, (t_bar, l_bar, psi, v_bar, p_bar) in enumerate(record):
+                record[i] = (
+                    t_bar * tScale,
+                    l_bar * self.l_0,
+                    psi,
+                    v_bar * self.v_j,
+                    p_bar * pScale,
+                )
 
         return data, error
 

@@ -11,7 +11,7 @@ def sign(x):
         return -1
 
 
-def intg(f, l, u, tol=1e-3):
+def intg(f, l, u, relTol=1e-3):
     """
     To apply the quadrature procedure, first the problem is transformed on interval to:
 
@@ -57,7 +57,7 @@ def intg(f, l, u, tol=1e-3):
     tolerance before submitting the result as a good enough estimate for the integral.
     """
 
-    tol = abs(tol)
+    relTol = abs(relTol)
 
     a = (u - l) / 2
     b = (u + l) / 2
@@ -78,7 +78,7 @@ def intg(f, l, u, tol=1e-3):
         I = I * 0.5 + dI
         k += 1
 
-        if d < tol:
+        if d < relTol:
             c += 1
         else:
             c = 0
@@ -90,24 +90,24 @@ invphi = (math.sqrt(5) - 1) / 2  # 1 / phi
 invphi2 = (3 - math.sqrt(5)) / 2  # 1 / phi^2
 
 
-def gss(f, a, b, tol=1e-9, findMin=True):
+def gss(f, a, b, relTol=1e-9, findMin=True):
     """Golden-section search. improved from the example
     given on wikipedia. Reuse half the evaluatins.
 
     Given a function f with a single local extremum in
     the interval [a,b], gss returns a subset interval
-    [c,d] that contains the extremum with d-c <= tol.
+    [c,d] that contains the extremum with d-c <= relTol.
 
     a----c--d----b
     """
 
     (a, b) = (min(a, b), max(a, b))
     h = b - a
-    if h <= tol:
+    if h <= relTol:
         return (a, b)
 
     # Required steps to achieve tolerance
-    n = int(math.ceil(math.log(tol / h) / math.log(invphi)))
+    n = int(math.ceil(math.log(relTol / h) / math.log(invphi)))
 
     c = a + invphi2 * h
     d = a + invphi * h
@@ -139,7 +139,15 @@ def gss(f, a, b, tol=1e-9, findMin=True):
 
 
 def RKF78(
-    dFunc, iniVal, x_0, x_1, tol, absTol=1e-14, termAbv=None, record=None
+    dFunc,
+    iniVal,
+    x_0,
+    x_1,
+    relTol,
+    absTol,
+    minTol=1e-14,
+    termAbv=None,
+    record=None,
 ):
     """
     use Runge Kutta Fehlberg of 7(8)th power to solve the System of Equation
@@ -148,9 +156,11 @@ def RKF78(
         dFunc   : d/dx|x=x(y1, y2, y3....) = dFunc(x, y1, y2, y3...)
         iniVal  : initial values for (y1, y2, y3...)
         x_0, x_1: integration
-        tol     : relative tolerance, per component
-        absTol  : optional, absolute tolerance, per component
+        relTol  : relative tolerance, per component
+        absTol  : absolute tolerance, per component
+
         termAbv : optional, premature termination condition
+        minTol  : optional, minimum magnitude of error
 
         record  : optional, if supplied will record all committed datapoints
 
@@ -428,8 +438,9 @@ def RKF78(
         error to the smaller of current and next values.
         """
         # print(*Rs)
+
         R = max(
-            abs(r) / (absTol + tol * min(abs(y1), abs(y2)))
+            abs(r) / (minTol + relTol * min(abs(y1), abs(y2)))
             for r, y1, y2 in zip(Rs, y_this, y_next)
         )
 
@@ -450,7 +461,7 @@ def RKF78(
                 return y_this, Rm
 
             if record is not None:
-                record.append((x, *(v for v in y_this), Rs))
+                record.append((x, *(v for v in y_this)))
 
             if R != 0:  # sometimes the error can be estimated to be 0
                 delta = beta * abs(1 / R) ** (1 / 7)
@@ -469,7 +480,7 @@ def RKF78(
         the assumption made to allow us to extrapolate a global error given local.
         """
 
-    if abs((x - x_1) / (x_1 - x_0)) > tol:
+    if abs((x - x_1) / (x_1 - x_0)) > relTol:
         raise ValueError(
             "Premature Termination of Integration due to vanishing step size,"
             + " x at {}, h at {}.".format(x, h)
@@ -560,7 +571,7 @@ if __name__ == "__main__":
         # y(x) = -1/(7/4*x**4+C)
         return (7 * y**2 * x**3,)
 
-    v, e = RKF78(df1, (3,), 2, 0, tol=1e-3, absTol=1e-14)
+    v, e = RKF78(df1, (3,), 2, 0, relTol=1e-3, minTol=1e-14)
     # solution is -1/(7/4*x**4-85/3)
     print(v)
     print(e)

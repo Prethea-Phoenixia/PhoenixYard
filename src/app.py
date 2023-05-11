@@ -51,7 +51,7 @@ FIG_CONTEXT = {
     "text.color": "white",
     "xtick.color": "white",
     "ytick.color": "white",
-    "lines.markersize": 4,
+    "lines.markersize": 3,
 }
 chgText = " ".join(
     (
@@ -326,7 +326,6 @@ def toSI(v, dec=4, unit=None, useSN=False):
         if 1 <= (v / magnitude) < (nextMagnitude / magnitude):
             # allows handling of non-uniformly log10 spaced prefixes
             vstr = "{:#.{:}g}".format(v / magnitude, dec)
-
             return (
                 (" " if positive else "-")
                 + vstr
@@ -351,11 +350,11 @@ def toSI(v, dec=4, unit=None, useSN=False):
         )
     else:  # return a result in SI as a last resort
         closest = log(v, 10) // 3
-        magnitude = 10**closest
+        magnitude = 10 ** (closest * 3)
         vstr = "{:#.{:}g}".format(v / magnitude, dec)
         return (
             (" " if positive else "-")
-            + "{:#.{:}g}".format(v / magnitude, dec)
+            + vstr
             + " " * (dec + 1 - len(vstr) + vstr.find("."))
             + ("E{:<3}".format(round(log(magnitude, 10))))
             + (unit if unit is not None else "")
@@ -563,6 +562,8 @@ class IB(Frame):
         parent.bind("<Configure>", self.resizeFigPlot)
 
     def calculate(self, event=None):
+        self.intgRecord = []
+
         # force an immediate redraw after calculation
         compo = self.compositions[self.dropProp.get()]
         # lookup dictionary using the string key to get
@@ -626,6 +627,7 @@ class IB(Frame):
                     steps=int(self.steps.get()),
                     dom=self.dropOptn.get(),
                     tol=10 ** -(int(self.accExp.get())),
+                    record=self.intgRecord,
                 )
 
                 i = tuple(i[0] for i in self.tableData).index("SHOT EXIT")
@@ -1038,7 +1040,7 @@ class IB(Frame):
             rowIndex=j,
             colIndex=0,
             labelText="Steps",
-            default="50",
+            default="0",
             validation=validationPI,
             formatter=formatIntInput,
             reverse=True,
@@ -1159,6 +1161,22 @@ class IB(Frame):
             if gun is not None:
                 maxIndex = 0
                 nums = 0
+
+                for line in self.intgRecord:
+                    t, l, psi, v, p = line
+                    if dom == DOMAIN_TIME:
+                        xs.append(t * 1000)
+                    elif dom == DOMAIN_LENG:
+                        xs.append(l)
+                    vs.append(v)
+                    if nums > 0 and (p / 1e6) > Ps[-1]:
+                        maxIndex = nums
+                    Ps.append(p / 1e6)
+                    psis.append(psi)
+                    nums += 1
+
+                """
+
                 for line in self.tableData:
                     tag, t, l, psi, v, p, T = line
                     if tag == POINT_PEAK:
@@ -1171,6 +1189,7 @@ class IB(Frame):
                     Ps.append(p / 1e6)
                     psis.append(psi)
                     nums += 1
+                """
 
                 size = self.fig.get_size_inches() * self.fig.dpi
 
