@@ -441,6 +441,7 @@ class Gun:
         startPressure,
         lengthGun,
         chamberExpansion,
+        dragCoe=0,
     ):
         if any(
             (
@@ -467,7 +468,8 @@ class Gun:
         self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
         Labda = self.l_g / self.l_0
-        self.phi = 1 + self.omega / (3 * self.m) * (
+        self.phi_1 = 1 + dragCoe  # drag work coefficient
+        self.phi = self.phi_1 + self.omega / (3 * self.m) * (
             1 - (1 - 1 / self.chi_k) * 2.303 * log(Labda + 1) / Labda
         )  # extra work factor, chamberage effect averaged over entire length
         self.v_j = (
@@ -609,6 +611,7 @@ class Gun:
         usually on the order of 1e-16 - 1e-14 as compared to much larger for component
         errors.
         """
+        minTol = 1e-16  # based on experience
 
         if any((steps < 0, tol < 0)):
             raise ValueError("Invalid integration specification")
@@ -706,7 +709,9 @@ class Gun:
                     (t_bar_i, l_bar_i, v_bar_i),
                     Z_i,
                     Z_j,
-                    tol=tol,
+                    relTol=tol,
+                    absTol=tol,
+                    minTol=minTol,
                     termAbv=(None, l_g_bar, None),
                     record=ztlv_record_i,
                 )[0]
@@ -776,8 +781,6 @@ class Gun:
         to worry about the dependency of the correct behaviour of this ODE
         on the positive direction of integration.
         """
-        if record is not None:
-            print(*record, sep="\n")
 
         ltzv_record = []
         (t_bar_e, Z_e, v_bar_e), (t_bar_err, Z_err, v_bar_err) = RKF78(
@@ -785,7 +788,9 @@ class Gun:
             (t_bar_i, Z_i, v_bar_i),
             l_bar_i,
             l_g_bar,
-            tol=tol,
+            relTol=tol,
+            absTol=tol,
+            minTol=minTol,
             record=ltzv_record,
         )
 
@@ -802,10 +807,6 @@ class Gun:
             )
 
             # record.sort(key=lambda line: line[0])
-
-        if record is not None:
-            print("------------------------------------------------")
-            print(*record, sep="\n")
 
         updBarData(
             tag=POINT_EXIT,
@@ -837,7 +838,9 @@ class Gun:
                 (0, 0, 0),
                 self.Z_0,
                 1,
-                tol=tol,
+                relTol=tol,
+                absTol=tol,
+                minTol=minTol,
             )
 
             updBarData(
@@ -869,7 +872,9 @@ class Gun:
                 (0, 0, 0),
                 self.Z_0,
                 self.Z_b,
-                tol=tol,
+                relTol=tol,
+                absTol=tol,
+                minTol=minTol,
             )
 
             updBarData(
@@ -899,7 +904,9 @@ class Gun:
                 (self.Z_0, 0, 0),
                 0,
                 t,
-                tol=tol,
+                relTol=tol,
+                absTol=tol,
+                minTol=minTol,
             )[0]
             return self._fp_bar(Z, l_bar, v_bar)
 
@@ -953,7 +960,15 @@ class Gun:
                 Z_err_p,
                 l_bar_err_p,
                 v_bar_err_p,
-            ) = RKF78(self._ode_t, (self.Z_0, 0, 0), 0, t_bar_p, tol=t_bar_tol)
+            ) = RKF78(
+                self._ode_t,
+                (self.Z_0, 0, 0),
+                0,
+                t_bar_p,
+                relTol=tol,
+                absTol=tol,
+                minTol=minTol,
+            )
             t_bar_err_p = 0.5 * t_bar_tol
 
         updBarData(
@@ -985,7 +1000,9 @@ class Gun:
                         (Z_j, l_bar_j, v_bar_j),
                         t_bar_j,
                         t_bar_k,
-                        tol=tol,
+                        relTol=tol,
+                        absTol=tol,
+                        minTol=minTol,
                     )
                     t_bar_j = t_bar_k
 
@@ -1019,7 +1036,9 @@ class Gun:
                     (self.Z_0, 0, 0),
                     0,
                     t_bar_j,
-                    tol=tol,
+                    relTol=tol,
+                    absTol=tol,
+                    minTol=minTol,
                 )[0]
 
                 for j in range(steps):
@@ -1034,7 +1053,9 @@ class Gun:
                         (t_bar_j, Z_j, v_bar_j),
                         l_bar_j,
                         l_bar_k,
-                        tol=tol,
+                        relTol=tol,
+                        absTol=tol,
+                        minTol=minTol,
                     )
                     l_bar_j = l_bar_k
 

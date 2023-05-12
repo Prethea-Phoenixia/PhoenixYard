@@ -90,7 +90,7 @@ invphi = (math.sqrt(5) - 1) / 2  # 1 / phi
 invphi2 = (3 - math.sqrt(5)) / 2  # 1 / phi^2
 
 
-def gss(f, a, b, relTol=1e-9, findMin=True):
+def gss(f, a, b, tol=1e-9, findMin=True):
     """Golden-section search. improved from the example
     given on wikipedia. Reuse half the evaluatins.
 
@@ -103,11 +103,11 @@ def gss(f, a, b, relTol=1e-9, findMin=True):
 
     (a, b) = (min(a, b), max(a, b))
     h = b - a
-    if h <= relTol:
+    if h <= tol:
         return (a, b)
 
     # Required steps to achieve tolerance
-    n = int(math.ceil(math.log(relTol / h) / math.log(invphi)))
+    n = int(math.ceil(math.log(tol / h) / math.log(invphi)))
 
     c = a + invphi2 * h
     d = a + invphi * h
@@ -145,7 +145,7 @@ def RKF78(
     x_1,
     relTol,
     absTol,
-    minTol=1e-14,
+    minTol=1e-16,
     termAbv=None,
     record=None,
 ):
@@ -440,7 +440,14 @@ def RKF78(
         # print(*Rs)
 
         R = max(
-            abs(r) / (minTol + relTol * min(abs(y1), abs(y2)))
+            abs(r)
+            / (
+                minTol
+                + min(
+                    (relTol * min(abs(y1), abs(y2))),
+                    absTol,
+                )
+            )
             for r, y1, y2 in zip(Rs, y_this, y_next)
         )
 
@@ -571,7 +578,7 @@ if __name__ == "__main__":
         # y(x) = -1/(7/4*x**4+C)
         return (7 * y**2 * x**3,)
 
-    v, e = RKF78(df1, (3,), 2, 0, relTol=1e-3, minTol=1e-14)
+    v, e = RKF78(df1, (3,), 2, 0, relTol=1e-3, absTol=1e-3, minTol=1e-14)
     # solution is -1/(7/4*x**4-85/3)
     print(v)
     print(e)

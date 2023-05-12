@@ -44,14 +44,16 @@ FIG_CONTEXT = {
     "ytick.labelsize": 8,
     "legend.fontsize": 8,
     "figure.titlesize": 12,
+    "lines.linewidth": 1,
     "axes.edgecolor": "white",
     "axes.facecolor": "#33393b",
     "axes.labelcolor": "white",
     "figure.facecolor": "#33393b",
     "text.color": "white",
     "xtick.color": "white",
+    "font.weight": "bold",
     "ytick.color": "white",
-    "lines.markersize": 3,
+    "lines.markersize": 4,
 }
 chgText = " ".join(
     (
@@ -134,8 +136,8 @@ ldftext = " ".join(
 arcText = " ".join(
     (
         "Specify the geometry of propellant grain",
-        "using dimensions. All other geometries are",
-        "scaled by this.\n",
+        "using dimensions. Also known as the web.",
+        "All other geometries are scaled by this.\n",
         "Burning radially outward along the arc is",
         "the shortest path, and therefore is the",
         "primary geometrical determinant of burn rapidity.\n",
@@ -227,6 +229,15 @@ clrtext = " ".join(
         "the chamber volume with barrel cross",
         "section) to the actual chamber. Accounts",
         "for the necking of the cartridge.",
+    )
+)
+dgctext = " ".join(
+    (
+        "Drag coefficient, or the pressure induced by barrel",
+        "friction divided by the shot base pressure. Currently",
+        "2%-7% is reported for rifled weapons, with smaller",
+        "calibers on the higher end and larger caliber shots",
+        "with driving band on the lower end.",
     )
 )
 sampTxt = " ".join(
@@ -609,6 +620,7 @@ class IB(Frame):
                 startPressure=float(self.stpMPa.get()) * 1e6,
                 lengthGun=float(self.tblmm.get()) * 1e-3,
                 chamberExpansion=float(self.clr.get()),
+                dragCoe=float(self.dgc.get()) * 1e-2,
             )
 
             self.va.set(toSI(self.gun.v_j))
@@ -883,16 +895,6 @@ class IB(Frame):
             infotext=self.lengthSecondaryTip,
         )
 
-        self.perfmm = StringVar()
-        ttk.Entry(
-            grainFrm,
-            textvariable=self.perfmm,
-            state="disabled",
-            justify="center",
-        ).grid(row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
-
-        j += 1
-
         self.lengthRatioAs = StringVar()
         self.lengthRatioTip = StringVar()
 
@@ -905,16 +907,6 @@ class IB(Frame):
             validation=validationNN,
             infotext=self.lengthRatioTip,
         )
-
-        self.lenmm = StringVar()
-        ttk.Entry(
-            grainFrm,
-            textvariable=self.lenmm,
-            state="disabled",
-            justify="center",
-        ).grid(row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
-
-        j += 1
 
         geomPlotFrm = ttk.LabelFrame(grainFrm, text="σ(Z)")
         geomPlotFrm.grid(
@@ -942,7 +934,23 @@ class IB(Frame):
         )
 
         self.clr, _, i = self.add3Input(
-            parFrm, i, "Chamber L.R.", "", "1.1", validationNN, infotext=clrtext
+            parent=parFrm,
+            rowIndex=i,
+            labelText="Chamber L.R.",
+            unitText="",
+            default="1.1",
+            validation=validationNN,
+            infotext=clrtext,
+        )
+
+        self.dgc, _, i = self.add3Input(
+            parent=parFrm,
+            rowIndex=i,
+            labelText="Drag coefficient",
+            unitText="%",
+            default="5.0",
+            validation=validationNN,
+            infotext=dgctext,
         )
 
         self.stpMPa, _, i = self.add3Input(
@@ -1040,8 +1048,8 @@ class IB(Frame):
             rowIndex=j,
             colIndex=0,
             labelText="Steps",
-            default="0",
-            validation=validationPI,
+            default="25",
+            validation=validationNN,
             formatter=formatIntInput,
             reverse=True,
             anchor="center",
@@ -1108,7 +1116,7 @@ class IB(Frame):
 
             ax.yaxis.tick_right()
             ax.set(xlabel="Domain")
-            axv.spines.right.set_position(("axes", 1.0 + 35 * dpi / 96 / width))
+            axv.spines.right.set_position(("axes", 1.0 + 40 * dpi / 96 / width))
 
             # fig.tight_layout(pad=1)
 
@@ -1138,7 +1146,7 @@ class IB(Frame):
             # print(width / dpi, height / dpi)
             self.fig.set_size_inches(width / dpi, height / dpi)
             self.axv.spines.right.set_position(
-                ("axes", 1 + 35 * dpi / 96 / width)
+                ("axes", 1 + 40 * dpi / 96 / width)
             )
 
     def updateFigPlot(self):
@@ -1159,42 +1167,40 @@ class IB(Frame):
             dom = self.dropOptn.get()
 
             if gun is not None:
-                maxIndex = 0
-                nums = 0
-
-                for line in self.intgRecord:
-                    t, l, psi, v, p = line
+                for i, (t, l, psi, v, p) in enumerate(self.intgRecord):
                     if dom == DOMAIN_TIME:
                         xs.append(t * 1000)
                     elif dom == DOMAIN_LENG:
                         xs.append(l)
                     vs.append(v)
-                    if nums > 0 and (p / 1e6) > Ps[-1]:
-                        maxIndex = nums
                     Ps.append(p / 1e6)
                     psis.append(psi)
-                    nums += 1
 
-                """
+                self.axv.scatter(xs, vs, color="tab:blue", marker="s", s=8)
 
-                for line in self.tableData:
-                    tag, t, l, psi, v, p, T = line
+                self.axP.scatter(xs, Ps, color="tab:green", marker="s", s=8)
+
+                self.ax.scatter(xs, psis, color="tab:red", marker="s", s=8)
+
+                xPeak = 0
+                for i, (tag, t, l, psi, v, p, T) in enumerate(self.tableData):
+                    if dom == DOMAIN_TIME:
+                        x = t * 1000
+                    elif dom == DOMAIN_LENG:
+                        x = l
+                    xs.append(x)
                     if tag == POINT_PEAK:
-                        maxIndex = nums
-                    if dom == DOMAIN_TIME:
-                        xs.append(t * 1000)
-                    elif dom == DOMAIN_LENG:
-                        xs.append(l)
+                        xPeak = x
                     vs.append(v)
                     Ps.append(p / 1e6)
                     psis.append(psi)
-                    nums += 1
-                """
+
+                self.axP.spines.right.set_position(("data", xPeak))
 
                 size = self.fig.get_size_inches() * self.fig.dpi
 
                 self.axv.spines.right.set_position(
-                    ("axes", 1 + 35 * dpi / 96 / size[0])
+                    ("axes", 1 + 40 * dpi / 96 / size[0])
                 )
 
                 self.ax.set_xlim(left=0, right=xs[-1])
@@ -1203,31 +1209,33 @@ class IB(Frame):
                 self.axP.set(ylim=(0, max(Ps) * 1.05))
                 self.axv.set(ylim=(0, max(vs) * 1.05))
 
-                self.axP.spines.right.set_position(("data", xs[maxIndex]))
+                (xs, vs, Ps, psis) = zip(
+                    *sorted(zip(xs, vs, Ps, psis), key=lambda line: line[0])
+                )
 
                 (pv,) = self.axv.plot(
                     xs,
                     vs,
                     "tab:blue",
-                    label="Shot Velocity",
-                    linestyle="--",
-                    marker="o",
+                    label="Shot Velocity\n m/s",
+                    marker=".",
+                    alpha=0.75,
                 )
                 (pP,) = self.axP.plot(
                     xs,
                     Ps,
                     "tab:green",
-                    label="Avg. Pressure",
-                    linestyle="--",
-                    marker="o",
+                    label="Avg. Pressure\n MPa",
+                    marker=".",
+                    alpha=0.75,
                 )
                 (ppsi,) = self.ax.plot(
                     xs,
                     psis,
                     "tab:red",
                     label="Volume Burnup",
-                    linestyle="--",
-                    marker="o",
+                    marker=".",
+                    alpha=0.75,
                 )
 
                 (ref,) = self.ax.plot(
@@ -1254,13 +1262,15 @@ class IB(Frame):
                 elif dom == DOMAIN_LENG:
                     self.ax.set(xlabel="Length - m")
 
-                sep = xs[maxIndex]
-
                 for ax, xvals in zip(
-                    (self.axP, self.axv, self.ax),
                     (
-                        (0, 0.3 * xs[-1]),
-                        (0.3 * xs[-1], 0.6 * xs[-1]),
+                        self.axP,
+                        self.ax,
+                        self.axv,
+                    ),
+                    (
+                        (0.6 * xs[-1], 1.0 * xs[-1]),
+                        (0, 0.6 * xs[-1]),
                         (0.6 * xs[-1], xs[-1]),
                     ),
                 ):
@@ -1271,6 +1281,7 @@ class IB(Frame):
                         color="white",
                         xvals=xvals,
                     )
+
                 # labelLines(, zorder=2.5, color="white")
 
             self.pltCanvas.draw()
@@ -1387,7 +1398,7 @@ class IB(Frame):
         elif geom == SimpleGeometry.CYLINDER:
             self.lengthPrimaryAs.set("Diameter")
 
-            self.lengthRatioAs.set("Length / Dia.")
+            self.lengthRatioAs.set("Length / Diameter")
             self.ratioAs.set("")
 
             self.lengthPrimaryTip.set(diaText)
@@ -1396,8 +1407,8 @@ class IB(Frame):
 
         else:
             self.lengthPrimaryAs.set("Arc Thickness")
-            self.lengthRatioAs.set("Length / Dia.")
-            self.ratioAs.set("P.Dia. / A.Th.")
+            self.lengthRatioAs.set("Length / Diameter")
+            self.ratioAs.set("Perf.Dia. / A.Th.")
 
             self.lengthPrimaryTip.set(arcText)
             self.lengthRatioTip.set(perfLRtext)
@@ -1415,6 +1426,8 @@ class IB(Frame):
             if prop is not None:
                 xs = [i / (N - 1) * prop.Z_b for i in range(N)]
                 ys = [prop.f_sigma_Z(x) for x in xs]
+                xs.append(xs[-1])
+                ys.append(0)
                 self.geomAx.plot(
                     xs,
                     ys,
@@ -1455,18 +1468,6 @@ class IB(Frame):
         compo = self.compositions[self.dropProp.get()]
 
         try:
-            self.perfmm.set(
-                toSI(
-                    float(self.grdR.get()) * float(self.arcmm.get()) * 1e-3,
-                    unit="m",
-                )
-            )
-            self.lenmm.set(
-                toSI(
-                    float(self.grlR.get()) * float(self.arcmm.get()) * 1e-3,
-                    unit="m",
-                )
-            )
             self.prop = Propellant(
                 compo,
                 geom,
