@@ -134,7 +134,6 @@ class GrainComp:
         redAdbIndex,
         detVel,
         pressureExp,
-        linBurnCoe,
         flameTemp,
     ):
         self.name = name
@@ -155,7 +154,6 @@ class GrainComp:
         self.theta = redAdbIndex
         self.u_1 = detVel
         self.n = pressureExp
-        self.u_0 = linBurnCoe
         self.T_1 = flameTemp
         self.R = self.f / self.T_1
 
@@ -184,7 +182,6 @@ class GrainComp:
                     covolume,
                     pressureExp,
                     burnRateCoe,
-                    linBurnCoe,
                     flameTemp,
                 ) = prop
 
@@ -199,7 +196,6 @@ class GrainComp:
                     float(redAdbIndex),
                     float(burnRateCoe),
                     float(pressureExp),
-                    float(linBurnCoe),
                     float(flameTemp),
                 )
 
@@ -451,7 +447,8 @@ class Gun:
                 grainSize <= 0,
                 chamberVolume <= 0,
                 lengthGun <= 0,
-                chamberExpansion <= 0,
+                chamberExpansion < 1,
+                dragCoe < 0,
             )
         ):
             raise ValueError("Invalid gun parameters")
@@ -1143,7 +1140,6 @@ class Gun:
 
         return data, error
 
-    # values
     def getEff(self, vg):
         """
         te: thermal efficiency

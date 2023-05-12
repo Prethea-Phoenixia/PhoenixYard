@@ -1217,7 +1217,7 @@ class IB(Frame):
                     xs,
                     vs,
                     "tab:blue",
-                    label="Shot Velocity\n m/s",
+                    label="Shot Velocity\nm/s",
                     marker=".",
                     alpha=0.75,
                 )
@@ -1225,9 +1225,17 @@ class IB(Frame):
                     xs,
                     Ps,
                     "tab:green",
-                    label="Avg. Pressure\n MPa",
+                    label="Avg. Pressure\nMPa",
                     marker=".",
                     alpha=0.75,
+                )
+                (ref,) = self.ax.plot(
+                    (0, xs[-1]),
+                    (1, 1),
+                    "tab:red",
+                    alpha=0.5,
+                    linestyle="dashed",
+                    label="Burnout",
                 )
                 (ppsi,) = self.ax.plot(
                     xs,
@@ -1236,15 +1244,6 @@ class IB(Frame):
                     label="Volume Burnup",
                     marker=".",
                     alpha=0.75,
-                )
-
-                (ref,) = self.ax.plot(
-                    (0, xs[-1]),
-                    (1, 1),
-                    "tab:red",
-                    alpha=0.5,
-                    linestyle="dashed",
-                    label="Burnout",
                 )
 
                 tkw = dict(size=4, width=1.5)
@@ -1269,9 +1268,9 @@ class IB(Frame):
                         self.axv,
                     ),
                     (
-                        (0.6 * xs[-1], 1.0 * xs[-1]),
-                        (0, 0.6 * xs[-1]),
-                        (0.6 * xs[-1], xs[-1]),
+                        (0.5 * xs[-1] + 0.5 * xPeak, xs[-1]),
+                        (0, xPeak),
+                        (xPeak, 0.5 * xs[-1] + 0.5 * xPeak),
                     ),
                 ):
                     labelLines(
