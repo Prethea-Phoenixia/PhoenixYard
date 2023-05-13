@@ -191,7 +191,8 @@ def RKF78(
     relTol,
     absTol,
     minTol=1e-16,
-    termAbv=None,
+    # termAbv=None,
+    abortFunc=None,
     record=None,
 ):
     """
@@ -215,8 +216,10 @@ def RKF78(
         is the estimated maximum deviation (in absolute) for that individual
         component
     """
+    """
     if termAbv is None:
         termAbv = tuple(None for _ in iniVal)
+    """
     y_this = iniVal
     x = x_0
     beta = 0.84  # "safety" factor
@@ -506,9 +509,8 @@ def RKF78(
             x += h
             Rm = tuple(max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs))
 
-            if any(
-                cv > pv if pv is not None else False
-                for cv, pv in zip(y_this, termAbv)
+            if abortFunc is not None and abortFunc(
+                x, *y_this
             ):  # premature terminating cond. is met
                 return y_this, Rm
 
@@ -634,9 +636,10 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
     for _ in range(it):
         x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
         if x_min is not None and x_2 < x_min:
-            x_2 = x_min
+            x_2 = 0.5 * (x_min + x_1)
         if x_max is not None and x_2 > x_max:
-            x_2 = x_max
+            x_2 = 0.5 * (x_max + x_1)
+
         x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, f(x_2)
         if abs(fx_1) < tol:
             return x_1, fx_1
