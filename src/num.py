@@ -138,6 +138,51 @@ def gss(f, a, b, tol=1e-9, findMin=True):
         return (c, b)
 
 
+def GSS(f, a, b, relTol=1e-9, maxIter=1000, findMin=True):
+    """
+    conduct Gold Section Search using the relative deviance of
+    the functional value as control, instead of specifying one
+    for x.
+    """
+
+    i = 0
+
+    (a, b) = (min(a, b), max(a, b))
+    h = b - a
+    c = a + invphi2 * h
+    d = a + invphi * h
+    yc = f(c)
+    yd = f(d)
+
+    while i < maxIter and abs(yc - yd) / min(abs(yc), abs(yd)) > relTol:
+        if (yc < yd and findMin) or (yc > yd and not findMin):
+            # a---c---d
+            b = d
+            d = c
+            yd = yc
+            h = invphi * h
+            c = a + invphi2 * h
+            yc = f(c)
+        else:
+            # c--d---b
+            a = c
+            c = d
+            yc = yd
+            h = invphi * h
+            d = a + invphi * h
+            yd = f(d)
+
+        i += 1
+
+    if i == maxIter:
+        raise ValueError("Exceeded maximum iteartion.")
+    else:
+        if (yc < yd and findMin) or (yc > yd and not findMin):
+            return (a, d)
+        else:
+            return (c, b)
+
+
 def RKF78(
     dFunc,
     iniVal,
@@ -569,6 +614,34 @@ def quadratic(a, b, c):
     x_2 = 0.5 * (-b - Delta**0.5) / a
 
     return (x_1, x_2)
+
+
+def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
+    """secant method that solves f(x) = 0 subjected to x in [x_min,x_max]"""
+    if x_min is not None:
+        if x_0 < x_min:
+            x_0 = x_min
+        if x_1 < x_min:
+            x_1 = x_min
+    if x_max is not None:
+        if x_0 > x_max:
+            x_0 = x_max
+        if x_1 > x_max:
+            x_1 = x_max
+
+    fx_0 = f(x_0)
+    fx_1 = f(x_1)
+    for _ in range(it):
+        x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
+        if x_min is not None and x_2 < x_min:
+            x_2 = x_min
+        if x_max is not None and x_2 > x_max:
+            x_2 = x_max
+        x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, f(x_2)
+        if abs(fx_1) < tol:
+            return x_1, fx_1
+
+    raise ValueError("Maximum iteration exceeded at ({},{})".format(x_1, fx_1))
 
 
 if __name__ == "__main__":
