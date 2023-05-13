@@ -401,6 +401,12 @@ class Propellant:
                 "unhandled propellant geometry {}".format(propGeom)
             )
 
+    def __getattr__(self, attrName):
+        try:
+            return getattr(self.composition, attrName)
+        except:
+            raise AttributeError("object has no attribute '%s'" % attrName)
+
     def f_sigma_Z(self, Z):
         # is the first derivative of psi(Z)
         if Z <= 1.0:
@@ -417,12 +423,6 @@ class Propellant:
             return self.chi_s * Z * (1 + self.labda_s * Z)
         else:
             return 1.0
-
-    def __getattr__(self, attrName):
-        try:
-            return getattr(self.composition, attrName)
-        except:
-            raise AttributeError("object has no attribute '%s'" % attrName)
 
 
 class Gun:
@@ -514,6 +514,12 @@ class Gun:
             )
 
         self.Z_0 = Zs[0]
+
+    def __getattr__(self, attrName):
+        try:
+            return getattr(self.propellant, attrName)
+        except:
+            raise AttributeError("object has no '%s'" % attrName)
 
     def _fp_bar(self, Z, l_bar, v_bar):
         psi = self.f_psi_Z(Z)
@@ -1148,12 +1154,6 @@ class Gun:
         te = (vg / self.v_j) ** 2
         be = te / self.phi
         return te, be
-
-    def __getattr__(self, attrName):
-        try:
-            return getattr(self.propellant, attrName)
-        except:
-            raise AttributeError("object has no '%s'" % attrName)
 
 
 if __name__ == "__main__":
