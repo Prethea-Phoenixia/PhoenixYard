@@ -147,11 +147,12 @@ class Constrained:
 
                 return (dt_bar, dl_bar, dv_bar, dp_bar)
 
-            def pressurePeaked(x, *ys):
+            def pressurePeaked(x, ys, dys):
                 Z = x
                 t_bar, l_bar, v_bar, p_bar = ys
-                _, _, _, dp = _ode_Z(Z, t_bar, l_bar, v_bar, p_bar)
-                return dp < 0
+                dt_bar, dl_bar, dv_abr, dp_bar = dys
+
+                return dp_bar < 0
 
             Z_i, (t_bar_i, l_bar_i, v_bar_i, p_bar_i), (_, _, _, _) = RKF78(
                 dFunc=_ode_Z,
@@ -175,7 +176,7 @@ class Constrained:
                 )
                 return p_bar
 
-            Z_b_1, Z_b_2 = GSS(_fp_Z, Z_0, self.Z_b, relTol=tol, findMin=False)
+            Z_b_1, Z_b_2 = GSS(_fp_Z, Z_0, Z_i, relTol=tol, findMin=False)
             Z_b = 0.5 * (Z_b_1 + Z_b_2)
             return _fp_Z(Z_b) - p_bar_d, (t_bar_i, l_bar_i, v_bar_i, p_bar_i)
 
@@ -195,6 +196,8 @@ class Constrained:
             tol=p_bar_d * tol,
             x_min=1e-14,
         )  # this is the e_1 that satisifies the pressure specification.
+
+        print("e_1=", e_1)
 
         """
         step 2, find the requisite muzzle length to achieve design velocity

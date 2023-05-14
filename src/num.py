@@ -227,14 +227,10 @@ def RKF78(
         is the estimated maximum deviation (in absolute) for that individual
         component
     """
-    """
-    if termAbv is None:
-        termAbv = tuple(None for _ in iniVal)
-    """
     y_this = iniVal
     x = x_0
 
-    if parFunc is not None:  # generate/enforce parasitic function
+    if parFunc is not None:  # generate/enforce parasitic parameters
         y_this = parFunc(x, *y_this)
 
     beta = 0.84  # "safety" factor
@@ -528,7 +524,7 @@ def RKF78(
                 y_this = parFunc(x, *y_this)
 
             if abortFunc is not None and abortFunc(
-                x, *y_this
+                x=x, ys=y_this, dys=K11
             ):  # premature terminating cond. is met
                 return x, y_this, Rm
 
@@ -672,7 +668,7 @@ if __name__ == "__main__":
         # y(x) = -1/(7/4*x**4+C)
         return (7 * y**2 * x**3,)
 
-    v, e = RKF78(df1, (3,), 2, 0, relTol=1e-3, absTol=1e-3, minTol=1e-14)
+    _, v, e = RKF78(df1, (3,), 2, 0, relTol=1e-3, absTol=1e-3, minTol=1e-14)
     # solution is -1/(7/4*x**4-85/3)
     print(v)
     print(e)
