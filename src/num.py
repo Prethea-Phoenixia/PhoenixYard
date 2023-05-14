@@ -191,7 +191,8 @@ def RKF78(
     relTol,
     absTol,
     minTol=1e-16,
-    termAbv=None,
+    abortFunc=None,
+    parFunc=None,
     record=None,
 ):
     """
@@ -204,10 +205,21 @@ def RKF78(
         relTol  : relative tolerance, per component
         absTol  : absolute tolerance, per component
 
-        termAbv : optional, premature termination condition
+        abortFunc
+                : optional, accepts following arguments:
+            x   : current value of integrand
+            ys  : current value of the SoE
+            dys : estimated first derivative
+                and terminates the integrator on a boolean value of True
+
+        valFunc
+                : optional, accepts the following arguments:
+
+
         minTol  : optional, minimum magnitude of error
 
         record  : optional, if supplied will record all committed datapoints
+
 
     Returns:
         (y1, y2, y3...)|x = x_1, (e1, e2, e3....)
@@ -215,10 +227,16 @@ def RKF78(
         is the estimated maximum deviation (in absolute) for that individual
         component
     """
+    """
     if termAbv is None:
         termAbv = tuple(None for _ in iniVal)
+    """
     y_this = iniVal
     x = x_0
+
+    if parFunc is not None:  # generate/enforce parasitic function
+        y_this = parFunc(x, *y_this)
+
     beta = 0.84  # "safety" factor
     """
     When beta<1: 
@@ -506,11 +524,13 @@ def RKF78(
             x += h
             Rm = tuple(max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs))
 
-            if any(
-                cv > pv if pv is not None else False
-                for cv, pv in zip(y_this, termAbv)
+            if parFunc is not None:  # generate/enforce parasitic function
+                y_this = parFunc(x, *y_this)
+
+            if abortFunc is not None and abortFunc(
+                x, *y_this
             ):  # premature terminating cond. is met
-                return y_this, Rm
+                return x, y_this, Rm
 
             if record is not None:
                 record.append((x, *(v for v in y_this)))
@@ -538,7 +558,7 @@ def RKF78(
             + " x at {}, h at {}.".format(x, h)
         )
 
-    return y_this, Rm
+    return x, y_this, Rm
 
 
 def cubic(a, b, c, d):
@@ -634,9 +654,10 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
     for _ in range(it):
         x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
         if x_min is not None and x_2 < x_min:
-            x_2 = x_min
+            x_2 = 0.5 * (x_min + x_1)
         if x_max is not None and x_2 > x_max:
-            x_2 = x_max
+            x_2 = 0.5 * (x_max + x_1)
+
         x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, f(x_2)
         if abs(fx_1) < tol:
             return x_1, fx_1
