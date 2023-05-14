@@ -66,7 +66,7 @@ class Constrained:
         )  # evaluated from left to right, guards against complex >/< float
 
         Z_0 = Zs[0]
-        """
+
         def _fp_bar(Z, l_bar, v_bar):
             psi = self.f_psi_Z(Z)
             l_psi_bar = (
@@ -81,15 +81,11 @@ class Constrained:
             ) / (self.S * l_0 * (l_bar + l_psi_bar) * self.f * Delta)
 
             return p_bar
-        """
 
         """
         step 1, find grain size that satisifies design pressure
         """
         p_bar_d = self.p_d / (self.f * Delta)  # convert to unitless
-
-        def pressurePeaked(Z, t_bar, l_bar, v_bar):
-            pass
 
         def _fp_e_1(e_1, tol):
             B = (
@@ -100,6 +96,11 @@ class Constrained:
             )
 
             # integrate this to end of burn
+
+            def _pf_Z(x, *ys):
+                Z, t_bar, l_bar, v_bar, p_bar = x, *ys
+                p_bar_prime = _fp_bar(Z, l_bar, v_bar)
+                return (*ys[:-1], p_bar_prime)
 
             def _ode_Z(Z, t_bar, l_bar, v_bar, p_bar):
                 """burnout domain ode of internal ballistics"""
@@ -146,14 +147,13 @@ class Constrained:
 
                 return (dt_bar, dl_bar, dv_bar, dp_bar)
 
-            def pressurePeaked(x, ys):
+            def pressurePeaked(x, *ys):
                 Z = x
                 t_bar, l_bar, v_bar, p_bar = ys
-
                 _, _, _, dp = _ode_Z(Z, t_bar, l_bar, v_bar, p_bar)
                 return dp < 0
 
-            Z, (t_bar, l_bar, v_bar, p_bar), (_, _, _, _) = RKF78(
+            Z_i, (t_bar_i, l_bar_i, v_bar_i, p_bar_i), (_, _, _, _) = RKF78(
                 dFunc=_ode_Z,
                 iniVal=(0, 0, 0, p_bar_0),
                 x_0=Z_0,
@@ -161,12 +161,8 @@ class Constrained:
                 relTol=tol,
                 absTol=tol,
                 abortFunc=pressurePeaked,
+                parFunc=_pf_Z,
             )
-
-            """
-            Expectantly, integrating backward may reduce the nbr.
-            of steps required.
-            """
 
             def _fp_Z(Z):
                 _, (t_bar, l_bar, v_bar, p_bar), (_, _, _, _) = RKF78(
@@ -181,7 +177,7 @@ class Constrained:
 
             Z_b_1, Z_b_2 = GSS(_fp_Z, Z_0, self.Z_b, relTol=tol, findMin=False)
             Z_b = 0.5 * (Z_b_1 + Z_b_2)
-            return _fp_Z(Z_b) - p_bar_d, (t_bar, l_bar, v_bar, p_bar)
+            return _fp_Z(Z_b) - p_bar_d, (t_bar_i, l_bar_i, v_bar_i, p_bar_i)
 
         """
         The two initial guesses are good enough for the majority of cases,
