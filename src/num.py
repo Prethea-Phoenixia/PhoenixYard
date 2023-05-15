@@ -496,17 +496,23 @@ def RKF78(
         """
         # print(*Rs)
 
-        R = max(
-            abs(r)
-            / (
-                minTol
-                + min(
-                    (relTol * min(abs(y1), abs(y2))),
-                    absTol,
-                )
+        if absTol is None:
+            R = max(
+                abs(r) / (minTol + relTol * min(abs(y1), abs(y2)))
+                for r, y1, y2 in zip(Rs, y_this, y_next)
             )
-            for r, y1, y2 in zip(Rs, y_this, y_next)
-        )
+        else:
+            R = max(
+                abs(r)
+                / (
+                    minTol
+                    + min(
+                        (relTol * min(abs(y1), abs(y2))),
+                        absTol,
+                    )
+                )
+                for r, y1, y2 in zip(Rs, y_this, y_next)
+            )
 
         delta = 1
 
@@ -517,6 +523,8 @@ def RKF78(
             y_this = y_next
             x += h
             Rm = tuple(max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs))
+
+            # print(x, *y_this)
 
             if parFunc is not None:  # generate/enforce parasitic function
                 y_this = parFunc(x, *y_this)
@@ -632,31 +640,64 @@ def quadratic(a, b, c):
 
 def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
     """secant method that solves f(x) = 0 subjected to x in [x_min,x_max]"""
-    if x_min is not None:
-        if x_0 < x_min:
-            x_0 = x_min
-        if x_1 < x_min:
-            x_1 = x_min
-    if x_max is not None:
-        if x_0 > x_max:
-            x_0 = x_max
-        if x_1 > x_max:
-            x_1 = x_max
 
     fx_0 = f(x_0)
     fx_1 = f(x_1)
-    for _ in range(it):
+    for i in range(it):
         x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
+
         if x_min is not None and x_2 < x_min:
-            x_2 = 0.5 * (x_min + x_1)
+            x_2 = 0.9 * x_min + 0.1 * x_1
         if x_max is not None and x_2 > x_max:
-            x_2 = 0.5 * (x_max + x_1)
+            x_2 = 0.9 * x_max + 0.1 * x_1
 
         x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, f(x_2)
+
+        # print(x_2, fx_1)
         if abs(fx_1) < tol:
+            print(i)
             return x_1, fx_1
 
     raise ValueError("Maximum iteration exceeded at ({},{})".format(x_1, fx_1))
+
+
+def bisect(f, x_0, x_1, yTol=1e-6, xTol=1e-4):
+    """bisection method to numerically solve for zero
+    two initial guesses must be of opposite sign.
+    The root found is guaranteed to be within the range specified.
+
+    """
+    a, b = min(x_0, x_1), max(x_0, x_1)
+    fa = f(a)
+    fb = f(b)
+
+    n = math.ceil(math.log((b - a) / xTol, 2))
+
+    if abs(fa) < yTol:
+        return a, fa
+    elif abs(fb) < yTol:
+        return b, fb
+    elif sign(fa) * sign(fb) > 0:
+        raise ValueError("Initial Guesses Must Be Of Opposite Sign")
+
+    for i in range(n + 1):
+        c = (a + b) / 2
+        fc = f(c)
+        print("a", a, "b", b)
+        print("fa", fa, "fb", fb)
+
+        if abs(f(c)) < yTol:
+            print(i)
+            return (c, fc)
+
+        if sign(f(c)) == sign(f(a)):
+            a = c
+            fa = fc
+        else:
+            b = c
+            fb = fc
+
+    raise ValueError("Maximum iteration exceeded at ({},{})".format(c, f(c)))
 
 
 if __name__ == "__main__":
