@@ -1150,8 +1150,6 @@ class IB(Frame):
             )
 
     def updateFigPlot(self):
-        dpi = self.dpi
-
         with mpl.rc_context(FIG_CONTEXT):
             gun = self.gun
 
@@ -1159,14 +1157,20 @@ class IB(Frame):
             self.axP.cla()
             self.axv.cla()
 
-            xs = []
-            vs = []
-            Ps = []
-            psis = []
-
-            dom = self.dropOptn.get()
+            dpi = self.dpi
+            size = self.fig.get_size_inches() * self.fig.dpi
+            self.axv.spines.right.set_position(
+                ("axes", 1 + 40 * dpi / 96 / size[0])
+            )
+            self.ax.set(xlabel="Domain")
 
             if gun is not None:
+                xs = []
+                vs = []
+                Ps = []
+                psis = []
+                dom = self.dropOptn.get()
+
                 for i, (t, l, psi, v, p) in enumerate(self.intgRecord):
                     if dom == DOMAIN_TIME:
                         xs.append(t * 1000)
@@ -1196,12 +1200,6 @@ class IB(Frame):
                     psis.append(psi)
 
                 self.axP.spines.right.set_position(("data", xPeak))
-
-                size = self.fig.get_size_inches() * self.fig.dpi
-
-                self.axv.spines.right.set_position(
-                    ("axes", 1 + 40 * dpi / 96 / size[0])
-                )
 
                 self.ax.set_xlim(left=0, right=xs[-1])
                 self.ax.set_ylim(bottom=0, top=1.025)

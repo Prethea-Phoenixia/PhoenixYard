@@ -890,7 +890,7 @@ class Gun:
                 )
                 for (l_bar, t_bar, Z, v_bar, p_bar) in ltzvp_record
             )
-
+            # print(*record, sep="\n")
             # record.sort(key=lambda line: line[0])
 
         updBarData(
