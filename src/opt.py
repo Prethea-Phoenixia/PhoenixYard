@@ -222,7 +222,7 @@ class Constrained:
         v_bar_d = self.v_d / v_j
 
         if v_bar_i > v_bar_d:
-            print("v > v_d")
+            return ValueError("Design velocity too low ")
         else:
             print("v < v_d")
 
