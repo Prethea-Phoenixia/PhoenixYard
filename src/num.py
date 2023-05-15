@@ -138,11 +138,10 @@ def gss(f, a, b, tol=1e-9, findMin=True):
         return (c, b)
 
 
-def GSS(f, a, b, relTol=1e-9, maxIter=1000, findMin=True):
+def GSS(f, a, b, relTol=1e-9, absTol=1e-14, findMin=True):
     """
-    conduct Gold Section Search using the relative deviance of
-    the functional value as control, instead of specifying one
-    for x.
+    conduct Gold Section Search using both the relative deviance of
+    the functional value, and the absolute deviance of x as dual-control.
     """
 
     i = 0
@@ -154,7 +153,9 @@ def GSS(f, a, b, relTol=1e-9, maxIter=1000, findMin=True):
     yc = f(c)
     yd = f(d)
 
-    while i < maxIter and abs(yc - yd) / min(abs(yc), abs(yd)) > relTol:
+    n = int(math.ceil(math.log(absTol / h) / math.log(invphi)))
+
+    while i < n and abs(yc - yd) / min(abs(yc), abs(yd)) > relTol:
         if (yc < yd and findMin) or (yc > yd and not findMin):
             # a---c---d
             b = d
@@ -174,13 +175,10 @@ def GSS(f, a, b, relTol=1e-9, maxIter=1000, findMin=True):
 
         i += 1
 
-    if i == maxIter:
-        raise ValueError("Exceeded maximum iteartion.")
+    if (yc < yd and findMin) or (yc > yd and not findMin):
+        return (a, d)
     else:
-        if (yc < yd and findMin) or (yc > yd and not findMin):
-            return (a, d)
-        else:
-            return (c, b)
+        return (c, b)
 
 
 def RKF78(

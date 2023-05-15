@@ -87,6 +87,8 @@ class Constrained:
         """
         p_bar_d = self.p_d / (self.f * Delta)  # convert to unitless
 
+        print("p_bar_d=", p_bar_d)
+
         def _fp_e_1(e_1, tol):
             B = (
                 self.S**2
@@ -176,9 +178,22 @@ class Constrained:
                 )
                 return p_bar
 
-            Z_b_1, Z_b_2 = GSS(_fp_Z, Z_0, Z_i, relTol=tol, findMin=False)
-            Z_b = 0.5 * (Z_b_1 + Z_b_2)
-            return _fp_Z(Z_b) - p_bar_d, (t_bar_i, l_bar_i, v_bar_i, p_bar_i)
+            Z_i_1, Z_i_2 = GSS(
+                _fp_Z,
+                Z_0,
+                Z_i,
+                relTol=tol,
+                findMin=False,
+                absTol=1e-14,
+            )  # find the peak pressure point.
+
+            Z_i = 0.5 * (Z_i_1 + Z_i_2)
+
+            return (
+                _fp_Z(Z_i) - p_bar_d,
+                Z_i,
+                (t_bar_i, l_bar_i, v_bar_i, p_bar_i),
+            )
 
         """
         The two initial guesses are good enough for the majority of cases,
@@ -186,7 +201,6 @@ class Constrained:
         """
 
         print(_fp_e_1(0.1e-3, tol))
-
         print(_fp_e_1(1e-3, tol))
 
         e_1, _ = secant(
@@ -197,11 +211,20 @@ class Constrained:
             x_min=1e-14,
         )  # this is the e_1 that satisifies the pressure specification.
 
+        p_bar_dev, Z_i, (t_bar_i, l_bar_i, v_bar_i, p_bar_i) = _fp_e_1(e_1, tol)
+
         print("e_1=", e_1)
+        print("p_dev=", p_bar_dev * self.f * Delta, "Pa")
 
         """
         step 2, find the requisite muzzle length to achieve design velocity
         """
+        v_bar_d = self.v_d / v_j
+
+        if v_bar_i > v_bar_d:
+            print("v > v_d")
+        else:
+            print("v < v_d")
 
         B = (
             self.S**2
@@ -210,16 +233,54 @@ class Constrained:
             * (self.f * Delta) ** (2 * (1 - self.n))
         )
 
-        def _ode_v(self, v_bar, t_bar, Z, l_bar):
-            p_bar = _fp_bar(Z, l_bar, v_bar)
+        def _pf_v(x, *ys):
+            v_bar, t_bar, Z, l_bar, p_bar = x, *ys
+            p_bar_prime = _fp_bar(Z, l_bar, v_bar)
+            return (*ys[:-1], p_bar_prime)
+
+        def _ode_v(v_bar, t_bar, Z, l_bar, p_bar):
+            # p_bar = _fp_bar(Z, l_bar, v_bar)
+            psi = self.f_psi_Z(Z)
+            dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
+            l_psi_bar = (
+                1
+                - Delta / self.rho_p
+                - Delta * (self.alpha - 1 / self.rho_p) * psi
+            )
+            # dp_bar/dt_bar
+
             if Z <= self.Z_b:
                 dZ = (2 / (B * self.theta)) ** 0.5 * p_bar ** (self.n - 1)
             else:
                 dZ = 0
             dl_bar = 2 * v_bar / (self.theta * p_bar)
             dt_bar = 2 / (self.theta * p_bar)
+            dp_bar = (
+                (
+                    (1 + p_bar * Delta * (self.alpha - 1 / self.rho_p))
+                    * dpsi
+                    * dZ
+                    / dt_bar
+                    - p_bar * v_bar * (1 + self.theta)
+                )
+                * dt_bar
+                / (l_bar + l_psi_bar)
+            )
 
-            return (dt_bar, dZ, dl_bar)
+            return (dt_bar, dZ, dl_bar, dp_bar)
+
+        v_bar_g, (t_bar_g, Z_g, l_bar_g, p_bar_g), (_, _, _, _) = RKF78(
+            dFunc=_ode_v,
+            iniVal=(t_bar_i, Z_i, l_bar_i, p_bar_i),
+            x_0=v_bar_i,
+            x_1=v_bar_d,
+            relTol=tol,
+            absTol=tol,
+            parFunc=_pf_v,
+        )
+
+        print("l_bar_g=", l_bar_g)
+        print("l_g=", l_bar_g * l_0, "m")
 
 
 if __name__ == "__main__":
@@ -237,4 +298,4 @@ if __name__ == "__main__":
         designVelocity=1200,
     )
 
-    print(test.solve(loadFraction=0.5, chargeMassRatio=0.5, tol=1e-3))
+    print(test.solve(loadFraction=0.5, chargeMassRatio=2, tol=1e-3))
