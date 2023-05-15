@@ -1,5 +1,5 @@
 from num import *
-from gun import *
+from prop import *
 
 
 class Constrained:
@@ -87,7 +87,7 @@ class Constrained:
         """
         p_bar_d = self.p_d / (self.f * Delta)  # convert to unitless
 
-        print("p_bar_d=", p_bar_d)
+        # print("p_bar_d=", p_bar_d)
 
         def _fp_e_1(e_1, tol):
             B = (
@@ -170,7 +170,7 @@ class Constrained:
             )
             Z_i, (t_bar_i, l_bar_i, v_bar_i, p_bar_i) = record[-2]
 
-            print("Z_i", Z_i, "Z_j", Z_j)
+            # print("Z_i", Z_i, "Z_j", Z_j)
 
             def _fp_Z(Z):
                 _, (t_bar, l_bar, v_bar, p_bar), (_, _, _, _) = RKF78(
@@ -194,7 +194,7 @@ class Constrained:
 
             Z_p = 0.5 * (Z_1 + Z_2)
 
-            print("Z_p", Z_p)
+            # print("Z_p", Z_p)
 
             return (
                 _fp_Z(Z_p) - p_bar_d,
@@ -206,10 +206,10 @@ class Constrained:
         The two initial guesses are good enough for the majority of cases,
         guess one: 0.1mm, guess two: 1mm
         """
-
-        # print(_fp_e_1(0.1e-3, tol))
-        # print(_fp_e_1(1e-3, tol))
-
+        """
+        print(_fp_e_1(0.1e-3, tol))
+        print(_fp_e_1(1e-3, tol))
+        """
         e_1, _ = secant(
             lambda x: _fp_e_1(x, tol)[0],
             0.1e-3,
@@ -219,9 +219,10 @@ class Constrained:
         )  # this is the e_1 that satisifies the pressure specification.
 
         p_bar_dev, Z_i, (t_bar_i, l_bar_i, v_bar_i, p_bar_i) = _fp_e_1(e_1, tol)
-
+        """
         print("e_1=", e_1)
         print("p_dev=", p_bar_dev * self.f * Delta, "Pa")
+        """
 
         """
         step 2, find the requisite muzzle length to achieve design velocity
@@ -229,9 +230,9 @@ class Constrained:
         v_bar_d = self.v_d / v_j
 
         if v_bar_i > v_bar_d:
-            return ValueError("Design velocity too low ")
+            return ValueError("Design velocity exceeded before peak pressure")
         else:
-            print("v < v_d")
+            pass
 
         B = (
             self.S**2
@@ -285,11 +286,11 @@ class Constrained:
             absTol=tol,
             parFunc=_pf_v,
         )
-
+        """
         print("l_bar_g=", l_bar_g)
         print("l_g=", l_bar_g * l_0, "m")
-
-        print("v_g", v_bar_g * v_j)
+        print("v_g=", v_bar_g * v_j)
+        """
 
 
 if __name__ == "__main__":
