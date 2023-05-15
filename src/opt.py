@@ -149,50 +149,57 @@ class Constrained:
 
                 return (dt_bar, dl_bar, dv_bar, dp_bar)
 
-            def pressurePeaked(x, ys, dys):
+            def dPL0(x, ys, dys):
                 Z = x
                 t_bar, l_bar, v_bar, p_bar = ys
                 dt_bar, dl_bar, dv_abr, dp_bar = dys
 
                 return dp_bar < 0
 
-            Z_i, (t_bar_i, l_bar_i, v_bar_i, p_bar_i), (_, _, _, _) = RKF78(
+            record = []
+            Z_j, (t_bar_j, l_bar_j, v_bar_j, p_bar_j), (_, _, _, _) = RKF78(
                 dFunc=_ode_Z,
                 iniVal=(0, 0, 0, p_bar_0),
                 x_0=Z_0,
                 x_1=self.Z_b,
                 relTol=tol,
                 absTol=tol,
-                abortFunc=pressurePeaked,
+                abortFunc=dPL0,
                 parFunc=_pf_Z,
+                record=record,
             )
+            Z_i, (t_bar_i, l_bar_i, v_bar_i, p_bar_i) = record[-2]
+
+            print("Z_i", Z_i, "Z_j", Z_j)
 
             def _fp_Z(Z):
                 _, (t_bar, l_bar, v_bar, p_bar), (_, _, _, _) = RKF78(
                     dFunc=_ode_Z,
-                    iniVal=(0, 0, 0, p_bar_0),
-                    x_0=0,
+                    iniVal=(t_bar_i, l_bar_i, v_bar_i, p_bar_i),
+                    x_0=Z_i,
                     x_1=Z,
                     relTol=tol,
                     absTol=tol,
                 )
                 return p_bar
 
-            Z_i_1, Z_i_2 = GSS(
+            Z_1, Z_2 = GSS(
                 _fp_Z,
-                Z_0,
                 Z_i,
+                Z_j,
                 relTol=tol,
                 findMin=False,
                 absTol=1e-14,
             )  # find the peak pressure point.
 
-            Z_i = 0.5 * (Z_i_1 + Z_i_2)
+            Z_p = 0.5 * (Z_1 + Z_2)
+
+            print("Z_p", Z_p)
 
             return (
-                _fp_Z(Z_i) - p_bar_d,
-                Z_i,
-                (t_bar_i, l_bar_i, v_bar_i, p_bar_i),
+                _fp_Z(Z_p) - p_bar_d,
+                Z_j,
+                (t_bar_j, l_bar_j, v_bar_j, p_bar_j),
             )
 
         """
@@ -200,8 +207,8 @@ class Constrained:
         guess one: 0.1mm, guess two: 1mm
         """
 
-        print(_fp_e_1(0.1e-3, tol))
-        print(_fp_e_1(1e-3, tol))
+        # print(_fp_e_1(0.1e-3, tol))
+        # print(_fp_e_1(1e-3, tol))
 
         e_1, _ = secant(
             lambda x: _fp_e_1(x, tol)[0],
@@ -281,6 +288,8 @@ class Constrained:
 
         print("l_bar_g=", l_bar_g)
         print("l_g=", l_bar_g * l_0, "m")
+
+        print("v_g", v_bar_g * v_j)
 
 
 if __name__ == "__main__":

@@ -527,7 +527,7 @@ def RKF78(
                 return x, y_this, Rm
 
             if record is not None:
-                record.append((x, *(v for v in y_this)))
+                record.append((x, (v for v in y_this)))
 
             if R != 0:  # sometimes the error can be estimated to be 0
                 delta = beta * abs(1 / R) ** (1 / 7)

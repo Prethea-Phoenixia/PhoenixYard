@@ -732,7 +732,7 @@ class Gun:
         )
 
         if record is not None:
-            record.append((0, 0, self.psi_0, 0, p_bar_0))
+            record.append((0, (0, self.psi_0, 0, p_bar_0)))
 
         Z_i = self.Z_0
         Z_j = self.Z_b
@@ -845,12 +845,14 @@ class Gun:
             record.extend(
                 (
                     t_bar,
-                    l_bar,
-                    self.f_psi_Z(Z),
-                    v_bar,
-                    p_bar,
+                    (
+                        l_bar,
+                        self.f_psi_Z(Z),
+                        v_bar,
+                        p_bar,
+                    ),
                 )
-                for (Z, t_bar, l_bar, v_bar, p_bar) in ztlvp_record
+                for (Z, (t_bar, l_bar, v_bar, p_bar)) in ztlvp_record
             )
 
             # print(*record, sep="\n")
@@ -883,12 +885,14 @@ class Gun:
             record.extend(
                 (
                     t_bar,
-                    l_bar,
-                    self.f_psi_Z(Z),
-                    v_bar,
-                    p_bar,
+                    (
+                        l_bar,
+                        self.f_psi_Z(Z),
+                        v_bar,
+                        p_bar,
+                    ),
                 )
-                for (l_bar, t_bar, Z, v_bar, p_bar) in ltzvp_record
+                for (l_bar, (t_bar, Z, v_bar, p_bar)) in ltzvp_record
             )
             # print(*record, sep="\n")
             # record.sort(key=lambda line: line[0])
@@ -1258,13 +1262,15 @@ class Gun:
         scale the records too
         """
         if record is not None:
-            for i, (t_bar, l_bar, psi, v_bar, p_bar) in enumerate(record):
+            for i, (t_bar, (l_bar, psi, v_bar, p_bar)) in enumerate(record):
                 record[i] = (
                     t_bar * tScale,
-                    l_bar * self.l_0,
-                    psi,
-                    v_bar * self.v_j,
-                    p_bar * pScale,
+                    (
+                        l_bar * self.l_0,
+                        psi,
+                        v_bar * self.v_j,
+                        p_bar * pScale,
+                    ),
                 )
 
         return data, error

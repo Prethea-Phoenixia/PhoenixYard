@@ -1171,7 +1171,7 @@ class IB(Frame):
                 psis = []
                 dom = self.dropOptn.get()
 
-                for i, (t, l, psi, v, p) in enumerate(self.intgRecord):
+                for i, (t, (l, psi, v, p)) in enumerate(self.intgRecord):
                     if dom == DOMAIN_TIME:
                         xs.append(t * 1000)
                     elif dom == DOMAIN_LENG:
