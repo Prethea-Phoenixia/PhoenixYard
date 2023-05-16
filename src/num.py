@@ -645,7 +645,6 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
     fx_1 = f(x_1)
     for i in range(it):
         x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
-
         if x_min is not None and x_2 < x_min:
             x_2 = 0.9 * x_min + 0.1 * x_1
         if x_max is not None and x_2 > x_max:
@@ -653,7 +652,6 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
 
         x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, f(x_2)
 
-        # print(x_2, fx_1)
         if abs(fx_1) < tol:
             print(i)
             return x_1, fx_1
@@ -661,7 +659,7 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
     raise ValueError("Maximum iteration exceeded at ({},{})".format(x_1, fx_1))
 
 
-def bisect(f, x_0, x_1, yTol=1e-6, xTol=1e-4):
+def bisect(f, x_0, x_1, tol=1e-4):
     """bisection method to numerically solve for zero
     two initial guesses must be of opposite sign.
     The root found is guaranteed to be within the range specified.
@@ -671,24 +669,16 @@ def bisect(f, x_0, x_1, yTol=1e-6, xTol=1e-4):
     fa = f(a)
     fb = f(b)
 
-    n = math.ceil(math.log((b - a) / xTol, 2))
+    n = math.ceil(math.log((b - a) / tol, 2))
 
-    if abs(fa) < yTol:
-        return a, fa
-    elif abs(fb) < yTol:
-        return b, fb
-    elif sign(fa) * sign(fb) > 0:
+    if sign(fa) * sign(fb) > 0:
         raise ValueError("Initial Guesses Must Be Of Opposite Sign")
 
-    for i in range(n + 1):
-        c = (a + b) / 2
+    for i in range(n):
+        c = 0.5 * (a + b)
         fc = f(c)
-        print("a", a, "b", b)
-        print("fa", fa, "fb", fb)
-
-        if abs(f(c)) < yTol:
-            print(i)
-            return (c, fc)
+        # print("a", a, "b", b)
+        # print("fa", fa, "fb", fb)
 
         if sign(f(c)) == sign(f(a)):
             a = c
@@ -697,7 +687,7 @@ def bisect(f, x_0, x_1, yTol=1e-6, xTol=1e-4):
             b = c
             fb = fc
 
-    raise ValueError("Maximum iteration exceeded at ({},{})".format(c, f(c)))
+    return a, b
 
 
 if __name__ == "__main__":

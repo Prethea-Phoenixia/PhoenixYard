@@ -30,7 +30,9 @@ class Constrained:
         except:
             raise AttributeError("object has no '%s'" % attrName)
 
-    def solve(self, loadFraction, chargeMassRatio, tol, minWeb=1e-6):
+    def solve(
+        self, loadFraction, chargeMassRatio, tol, minWeb=1e-6, webTol=1e-6
+    ):
         """
         minWeb  : represents minimum possible grain size
         """
@@ -91,12 +93,14 @@ class Constrained:
         p_bar_d = self.p_d / (self.f * Delta)  # convert to unitless
 
         def _fp_e_1(e_1, tol):
-            # print(e_1)
             """
             calculate either the peak pressure, given the arc thickness,
             or until the system develops 2x design pressure. The latter
             is designed to provide a flat
             """
+
+            # e_1 = round(e_1 / webTol) * webTol
+
             B = (
                 self.S**2
                 * e_1**2
@@ -194,7 +198,7 @@ class Constrained:
                 Z_j,
                 relTol=tol,
                 findMin=False,
-                absTol=1e-14,  # limitation of double.
+                absTol=1e-16,  # limitation of double.
             )  # find the peak pressure point.
 
             Z_p = 0.5 * (Z_1 + Z_2)
@@ -232,20 +236,18 @@ class Constrained:
         e_1, _ = secant(
             lambda x: _fp_e_1(x, tol)[0],
             probeWeb,  # >0
-            0.5 * probeWeb,  # ?0
+            0.1 * probeWeb,  # ?0
             tol=p_bar_d * tol,
             x_min=0.1 * probeWeb,  # <=0
         )  # this is the e_1 that satisifies the pressure specification.
-        """
 
-        e_1_i, e_1_j = bisect(
+        """
+        e_1, e_1_prime = bisect(
             lambda x: _fp_e_1(x, tol)[0],
             probeWeb,  # >0
             0.1 * probeWeb,  # <=0
-            xTol=1e-14,  # floating point concern
-            yTol=p_bar_d * tol,
+            tol=webTol,
         )
-        e_1 = 0.5 * (e_1_i + e_1_j)
         """
 
         p_bar_dev, Z_i, (t_bar_i, l_bar_i, v_bar_i, p_bar_i) = _fp_e_1(e_1, tol)
@@ -336,7 +338,7 @@ if __name__ == "__main__":
         designPressure=300e6,
         designVelocity=1200,
     )
-
+    """
     print(
         test.solve(
             loadFraction=0.3,
@@ -344,6 +346,7 @@ if __name__ == "__main__":
             tol=1e-3,
         )
     )
+    """
 
     for i in range(9):
         loadFraction = (i + 1) / 10
