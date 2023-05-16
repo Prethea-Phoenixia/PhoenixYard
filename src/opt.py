@@ -228,7 +228,7 @@ class Constrained:
             )
 
         while dp_bar_probe > 0:
-            probeWeb *= 10
+            probeWeb *= 2
             dp_bar_probe = _fp_e_1(probeWeb, tol)[0]
 
         # print("x_min=", 0.1 * probeWeb)
@@ -236,9 +236,9 @@ class Constrained:
         e_1, _ = secant(
             lambda x: _fp_e_1(x, tol)[0],
             probeWeb,  # >0
-            0.1 * probeWeb,  # ?0
+            0.5 * probeWeb,  # ?0
             tol=p_bar_d * tol,
-            x_min=0.1 * probeWeb,  # <=0
+            x_min=0.5 * probeWeb,  # <=0
         )  # this is the e_1 that satisifies the pressure specification.
 
         """
