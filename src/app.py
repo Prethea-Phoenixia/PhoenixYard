@@ -690,7 +690,7 @@ class IB(Frame):
         rightFrm = ttk.Frame(parent)
         rightFrm.grid(row=0, column=2, rowspan=3, sticky="nsew")
         rightFrm.columnconfigure(0, weight=1)
-
+        rightFrm.rowconfigure(0, weight=1)
         specFrm = ttk.LabelFrame(
             rightFrm, text="Design Summary", style="SubLabelFrame.TLabelframe"
         )
