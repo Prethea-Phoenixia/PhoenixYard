@@ -340,7 +340,7 @@ class Gun:
         """
         ztlvp_record = []
 
-        def gunLengthExceeded(x, ys, dys):
+        def gunLengthExceeded(x, ys, o_ys):
             t_bar, l_bar, v_bar, p_bar = ys
             return l_bar > l_g_bar
 

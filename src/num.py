@@ -138,7 +138,7 @@ def gss(f, a, b, tol=1e-9, findMin=True):
         return (c, b)
 
 
-def GSS(f, a, b, relTol=1e-9, absTol=1e-14, findMin=True):
+def GSS(f, a, b, yRelTol, yRef, xTol=1e-14, findMin=True):
     """
     conduct Gold Section Search using both the relative deviance of
     the functional value, and the absolute deviance of x as dual-control.
@@ -153,9 +153,9 @@ def GSS(f, a, b, relTol=1e-9, absTol=1e-14, findMin=True):
     yc = f(c)
     yd = f(d)
 
-    n = int(math.ceil(math.log(absTol / h) / math.log(invphi)))
+    n = int(math.ceil(math.log(xTol / h) / math.log(invphi)))
 
-    while i < n and abs(yc - yd) / min(abs(yc), abs(yd)) > relTol:
+    while i < n:
         if (yc < yd and findMin) or (yc > yd and not findMin):
             # a---c---d
             b = d
@@ -164,6 +164,10 @@ def GSS(f, a, b, relTol=1e-9, absTol=1e-14, findMin=True):
             h = invphi * h
             c = a + invphi2 * h
             yc = f(c)
+
+            if yc / yRef < yRelTol:
+                break
+
         else:
             # c--d---b
             a = c
@@ -172,6 +176,9 @@ def GSS(f, a, b, relTol=1e-9, absTol=1e-14, findMin=True):
             h = invphi * h
             d = a + invphi * h
             yd = f(d)
+
+            if yd / yRef < yRelTol:
+                break
 
         i += 1
 
@@ -520,6 +527,7 @@ def RKF78(
             delta = beta * abs(1 / R) ** (1 / 8)
 
         else:  # error is acceptable
+            y_last = y_this
             y_this = y_next
             x += h
             Rm = tuple(max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs))
@@ -530,7 +538,7 @@ def RKF78(
                 y_this = parFunc(x, *y_this)
 
             if abortFunc is not None and abortFunc(
-                x=x, ys=y_this, dys=K11
+                x=x, ys=y_this, o_ys=y_last
             ):  # premature terminating cond. is met
                 return x, y_this, Rm
 
@@ -653,7 +661,6 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
         x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, f(x_2)
 
         if abs(fx_1) < tol:
-            print(i)
             return x_1, fx_1
 
     raise ValueError("Maximum iteration exceeded at ({},{})".format(x_1, fx_1))

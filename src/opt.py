@@ -31,7 +31,11 @@ class Constrained:
             raise AttributeError("object has no '%s'" % attrName)
 
     def solve(
-        self, loadFraction, chargeMassRatio, tol, minWeb=1e-6, webTol=1e-6
+        self,
+        loadFraction,
+        chargeMassRatio,
+        tol,
+        minWeb=1e-6,
     ):
         """
         minWeb  : represents minimum possible grain size
@@ -99,8 +103,6 @@ class Constrained:
             is designed to provide a flat
             """
 
-            # e_1 = round(e_1 / webTol) * webTol
-
             B = (
                 self.S**2
                 * e_1**2
@@ -158,12 +160,12 @@ class Constrained:
 
                 return (dt_bar, dl_bar, dv_bar, dp_bar)
 
-            def abort(x, ys, dys):
+            def abort(x, ys, o_ys):
                 Z = x
                 t_bar, l_bar, v_bar, p_bar = ys
-                dt_bar, dl_bar, dv_abr, dp_bar = dys
+                ot_bar, ol_bar, ov_abr, op_bar = o_ys
 
-                return dp_bar < 0 or p_bar > 2 * p_bar_d
+                return p_bar < op_bar or p_bar > 2 * p_bar_d
 
             record = []
 
@@ -172,8 +174,8 @@ class Constrained:
                 iniVal=(0, 0, 0, p_bar_0),
                 x_0=Z_0,
                 x_1=self.Z_b,
-                relTol=tol,
-                absTol=tol,
+                relTol=0.09 * tol,
+                absTol=0.09 * tol,
                 abortFunc=abort,
                 parFunc=_pf_Z,
                 record=record,
@@ -187,21 +189,40 @@ class Constrained:
                     iniVal=(t_bar_i, l_bar_i, v_bar_i, p_bar_i),
                     x_0=Z_i,
                     x_1=Z,
-                    relTol=tol,
-                    absTol=tol,
+                    relTol=0.09 * tol,
+                    absTol=0.09 * tol,
+                    parFunc=_pf_Z,
                 )
+                """
+                print(
+                    "Z:",
+                    Z,
+                    "d:",
+                    _ode_Z(Z, t_bar, l_bar, v_bar, p_bar)[-1],
+                    "p:",
+                    p_bar,
+                )
+                """
                 return p_bar
 
+            """
+            find the peak pressure point.
+            The tolerance on Z must be guarded such that floating point
+            error does not become rampant
+            """
             Z_1, Z_2 = GSS(
                 _fp_Z,
                 Z_i,
                 Z_j,
-                relTol=tol,
+                yRelTol=0.3 * tol,
+                yRef=p_bar_d,
                 findMin=False,
-                absTol=1e-16,  # limitation of double.
-            )  # find the peak pressure point.
+                xTol=1e-16,
+            )
 
             Z_p = 0.5 * (Z_1 + Z_2)
+
+            # print(Z_i, Z_1, Z_p, Z_2, Z_j)
 
             return (
                 _fp_Z(Z_p) - p_bar_d,
@@ -212,12 +233,6 @@ class Constrained:
         """
         The two initial guesses are good enough for the majority of cases,
         guess one: 0.1mm, guess two: 1mm
-        """
-        """
-        if _fp_e_1(minWeb, tol)[0] < 0:
-            raise ValueError(
-                "Design pressure cannot be achieved within minimum web"
-            )
         """
         dp_bar_probe = _fp_e_1(minWeb, tol)[0]
         probeWeb = minWeb
@@ -233,6 +248,8 @@ class Constrained:
 
         # print("x_min=", 0.1 * probeWeb)
 
+        print("tol", p_bar_d * tol)
+
         e_1, _ = secant(
             lambda x: _fp_e_1(x, tol)[0],
             probeWeb,  # >0
@@ -240,15 +257,6 @@ class Constrained:
             tol=p_bar_d * tol,
             x_min=0.5 * probeWeb,  # <=0
         )  # this is the e_1 that satisifies the pressure specification.
-
-        """
-        e_1, e_1_prime = bisect(
-            lambda x: _fp_e_1(x, tol)[0],
-            probeWeb,  # >0
-            0.1 * probeWeb,  # <=0
-            tol=webTol,
-        )
-        """
 
         p_bar_dev, Z_i, (t_bar_i, l_bar_i, v_bar_i, p_bar_i) = _fp_e_1(e_1, tol)
 
@@ -261,6 +269,7 @@ class Constrained:
         v_bar_d = self.v_d / v_j
 
         if v_bar_i > v_bar_d:
+            print(v_bar_i * v_j)
             return ValueError("Design velocity exceeded before peak pressure")
         else:
             pass
@@ -338,15 +347,14 @@ if __name__ == "__main__":
         designPressure=300e6,
         designVelocity=1200,
     )
-    """
+
     print(
         test.solve(
-            loadFraction=0.3,
-            chargeMassRatio=0.8,
+            loadFraction=0.4,
+            chargeMassRatio=0.6,
             tol=1e-3,
         )
     )
-    """
 
     for i in range(9):
         loadFraction = (i + 1) / 10
