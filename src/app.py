@@ -549,15 +549,14 @@ class IB(Frame):
         self.geoOptions = tuple(self.geometries.keys())
         self.domainOptions = (DOMAIN_TIME, DOMAIN_LENG)
 
-        parent.columnconfigure(1, weight=1)
+        parent.columnconfigure(0, weight=1)
         parent.rowconfigure(0, weight=1)
 
-        self.addSpecFrm(parent)
+        self.addRightFrm(parent)
         self.addErrFrm(parent)
         self.addPlotFrm(parent)
         self.addParFrm(parent)
         self.addTblFrm(parent)
-        self.addOpsFrm(parent)
 
         parent.update_idletasks()
         self.addGeomPlot()
@@ -687,9 +686,15 @@ class IB(Frame):
         self.updateError()
         self.updateFigPlot()
 
-    def addSpecFrm(self, parent):
-        specFrm = ttk.LabelFrame(parent, text="Design Summary")
-        specFrm.grid(row=0, column=0, rowspan=3, sticky="nsew")
+    def addRightFrm(self, parent):
+        rightFrm = ttk.Frame(parent)
+        rightFrm.grid(row=0, column=2, rowspan=3, sticky="nsew")
+        rightFrm.columnconfigure(0, weight=1)
+
+        specFrm = ttk.LabelFrame(
+            rightFrm, text="Design Summary", style="SubLabelFrame.TLabelframe"
+        )
+        specFrm.grid(row=0, column=0, sticky="nsew")
         specFrm.columnconfigure(0, weight=1)
         i = 0
 
@@ -731,9 +736,89 @@ class IB(Frame):
             unitText="%",
         )
 
+        opFrm = ttk.LabelFrame(
+            rightFrm, text="Forward Calc.", style="SubLabelFrame.TLabelframe"
+        )
+        opFrm.grid(row=1, column=0, sticky="nsew")
+
+        # opFrm.columnconfigure(0, weight=1)
+        opFrm.columnconfigure(1, weight=1)
+
+        validationNN = parent.register(validateNN)
+        validationPI = parent.register(validatePI)
+
+        i = 0
+
+        sampleFrm = ttk.LabelFrame(
+            opFrm, text="Sampling", style="SubLabelFrame.TLabelframe"
+        )
+        sampleFrm.grid(
+            row=i, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
+        )
+
+        j = 0
+
+        sampleFrm.columnconfigure(0, weight=1)
+        sampleFrm.columnconfigure(1, weight=1)
+        self.dropOptn = ttk.Combobox(
+            sampleFrm,
+            values=self.domainOptions,
+            state="readonly",
+            justify="center",
+        )
+
+        self.dropOptn.option_add("*TCombobox*Listbox.Justify", "center")
+        self.dropOptn.current(0)
+        self.dropOptn.grid(
+            row=j, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
+        )
+        # self.dropOptn.configure(width=0)
+
+        j += 1
+
+        self.steps, _, j = self.add2Input(
+            parent=sampleFrm,
+            rowIndex=j,
+            colIndex=0,
+            labelText="Steps",
+            default="25",
+            validation=validationNN,
+            formatter=formatIntInput,
+            reverse=True,
+            anchor="center",
+        )
+
+        CreateToolTip(sampleFrm, sampTxt)
+
+        i += 1
+
+        self.accExp, _, i = self.add2Input(
+            parent=opFrm,
+            rowIndex=i,
+            colIndex=0,
+            labelText="-log10(ε)",
+            default="3",
+            validation=validationPI,
+            formatter=formatIntInput,
+            color="red",
+            infotext=tolText,
+        )
+
+        calButton = ttk.Button(
+            opFrm,
+            text="Calculate",
+            command=self.calculate,  # underline=0
+        )
+        calButton.grid(
+            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+        )
+
+        opFrm.rowconfigure(i, weight=1)
+        CreateToolTip(calButton, "Integrate system using RKF7(8) integrator")
+
     def addErrFrm(self, parent):
         errorFrm = ttk.LabelFrame(parent, text="Exceptions")
-        errorFrm.grid(row=2, column=1, sticky="nsew")
+        errorFrm.grid(row=2, column=0, sticky="nsew")
         errorFrm.columnconfigure(0, weight=1)
         errorFrm.rowconfigure(0, weight=1)
 
@@ -750,7 +835,7 @@ class IB(Frame):
 
     def addParFrm(self, parent):
         parFrm = ttk.LabelFrame(parent, text="Parameters")
-        parFrm.grid(row=0, column=2, rowspan=2, sticky="nsew")
+        parFrm.grid(row=0, column=1, rowspan=3, sticky="nsew")
         parFrm.columnconfigure(0, weight=1)
         # parFrm.columnconfigure(1, weight=1)
         # parFrm.columnconfigure(2, weight=1)
@@ -795,7 +880,9 @@ class IB(Frame):
 
         parFrm.rowconfigure(i, weight=1)
 
-        propFrm = ttk.LabelFrame(parFrm, text="Propellant")
+        propFrm = ttk.LabelFrame(
+            parFrm, text="Propellant", style="SubLabelFrame.TLabelframe"
+        )
         propFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
@@ -837,7 +924,9 @@ class IB(Frame):
 
         i += 1
 
-        grainFrm = ttk.LabelFrame(parFrm, text="Grain Geometry")
+        grainFrm = ttk.LabelFrame(
+            parFrm, text="Grain Geometry", style="SubLabelFrame.TLabelframe"
+        )
         grainFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
@@ -908,7 +997,9 @@ class IB(Frame):
             infotext=self.lengthRatioTip,
         )
 
-        geomPlotFrm = ttk.LabelFrame(grainFrm, text="σ(Z)")
+        geomPlotFrm = ttk.LabelFrame(
+            grainFrm, text="σ(Z)", style="SubLabelFrame.TLabelframe"
+        )
         geomPlotFrm.grid(
             row=j,
             column=0,
@@ -1006,86 +1097,9 @@ class IB(Frame):
                 row=0, column=0, padx=0, pady=0, sticky="ne"
             )
 
-    def addOpsFrm(self, parent):
-        opFrm = ttk.LabelFrame(parent, text="Options")
-        opFrm.grid(row=2, column=2, rowspan=1, sticky="nsew")
-
-        opFrm.columnconfigure(0, weight=1)
-        opFrm.columnconfigure(1, weight=1)
-
-        validationNN = parent.register(validateNN)
-        validationPI = parent.register(validatePI)
-
-        i = 0
-
-        sampleFrm = ttk.LabelFrame(opFrm, text="Sampling")
-        sampleFrm.grid(
-            row=i, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
-        )
-
-        j = 0
-
-        sampleFrm.columnconfigure(0, weight=1)
-        sampleFrm.columnconfigure(1, weight=1)
-        self.dropOptn = ttk.Combobox(
-            sampleFrm,
-            values=self.domainOptions,
-            state="readonly",
-            justify="center",
-        )
-
-        self.dropOptn.option_add("*TCombobox*Listbox.Justify", "center")
-        self.dropOptn.current(0)
-        self.dropOptn.grid(
-            row=j, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
-        )
-        # self.dropOptn.configure(width=0)
-
-        j += 1
-
-        self.steps, _, j = self.add2Input(
-            parent=sampleFrm,
-            rowIndex=j,
-            colIndex=0,
-            labelText="Steps",
-            default="25",
-            validation=validationNN,
-            formatter=formatIntInput,
-            reverse=True,
-            anchor="center",
-        )
-
-        CreateToolTip(sampleFrm, sampTxt)
-
-        i += 1
-
-        self.accExp, _, i = self.add2Input(
-            parent=opFrm,
-            rowIndex=i,
-            colIndex=0,
-            labelText="-log10(ε)",
-            default="3",
-            validation=validationPI,
-            formatter=formatIntInput,
-            color="red",
-            infotext=tolText,
-        )
-
-        calButton = ttk.Button(
-            opFrm,
-            text="Calculate",
-            command=self.calculate,  # underline=0
-        )
-        calButton.grid(
-            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
-        )
-
-        opFrm.rowconfigure(i, weight=1)
-        CreateToolTip(calButton, "Integrate system using RKF7(8) integrator")
-
     def addPlotFrm(self, parent):
         plotFrm = ttk.LabelFrame(parent, text="Plot")
-        plotFrm.grid(row=0, column=1, sticky="nsew")
+        plotFrm.grid(row=0, column=0, sticky="nsew")
         plotFrm.columnconfigure(0, weight=1)
         plotFrm.rowconfigure(0, weight=1)
 
@@ -1294,7 +1308,7 @@ class IB(Frame):
             "Avg. Temperature",
         ]
         tblFrm = ttk.LabelFrame(parent, text="Result Table")
-        tblFrm.grid(row=1, column=1, sticky="nsew")
+        tblFrm.grid(row=1, column=0, sticky="nsew")
 
         tblFrm.columnconfigure(0, weight=1)
         tblFrm.rowconfigure(1, weight=1)
@@ -1676,6 +1690,7 @@ if __name__ == "__main__":
     style.configure("Treeview.Heading", font=("Hack", 8))
     style.configure("TButton", font=("Hack", 10, "bold"))
     style.configure("TLabelframe.Label", font=("Hack", 10, "bold"))
+    style.configure("SubLabelFrame.TLabelframe.Label", font=("Hack", 9))
     style.configure("TNotebook.Tab", font=("Hack", 10))
     root.option_add("*Font", "Hack 8")
 
