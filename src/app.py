@@ -777,9 +777,9 @@ class IB(Frame):
             parent=consFrm,
             rowIndex=0,
             colIndex=0,
-            labelText="Tgt.Vel",
+            labelText="V. Tgt.",
             unitText="m/s",
-            default="0.0",
+            default="1200.0",
             validation=validationNN,
         )
 
@@ -787,9 +787,9 @@ class IB(Frame):
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
-            labelText="Max P.",
+            labelText="P. Tgt.",
             unitText="MPa",
-            default="0.0",
+            default="350.0",
             validation=validationNN,
         )
 
@@ -1262,6 +1262,15 @@ class IB(Frame):
                     marker=".",
                     alpha=0.75,
                 )
+                v_d = float(self.velTgt.get())
+                (vd,) = self.axv.plot(
+                    (0, xs[-1]),
+                    (v_d, v_d),
+                    "tab:blue",
+                    alpha=0.5,
+                    linestyle="dashed",
+                    label="V. Target",
+                )
                 (pP,) = self.axP.plot(
                     xs,
                     Ps,
@@ -1269,6 +1278,15 @@ class IB(Frame):
                     label="Avg. Pressure\nMPa",
                     marker=".",
                     alpha=0.75,
+                )
+                p_d = float(self.pressTgt.get())
+                (pd,) = self.axP.plot(
+                    (0, xs[-1]),
+                    (p_d, p_d),
+                    "tab:green",
+                    alpha=0.5,
+                    linestyle="dashed",
+                    label="P. Target",
                 )
                 (ref,) = self.ax.plot(
                     (0, xs[-1]),
