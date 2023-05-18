@@ -691,11 +691,11 @@ class IB(Frame):
         rightFrm.grid(row=0, column=2, rowspan=3, sticky="nsew")
         rightFrm.columnconfigure(0, weight=1)
         rightFrm.rowconfigure(0, weight=1)
-        specFrm = ttk.LabelFrame(
-            rightFrm, text="Design Summary", style="SubLabelFrame.TLabelframe"
-        )
+
+        specFrm = ttk.LabelFrame(rightFrm, text="Design Summary")
         specFrm.grid(row=0, column=0, sticky="nsew")
         specFrm.columnconfigure(0, weight=1)
+
         i = 0
 
         self.va, _, i = self.add12Disp(
@@ -736,9 +736,25 @@ class IB(Frame):
             unitText="%",
         )
 
-        opFrm = ttk.LabelFrame(
-            rightFrm, text="Forward Calc.", style="SubLabelFrame.TLabelframe"
+        geomPlotFrm = ttk.LabelFrame(
+            specFrm, text="σ(Z)", style="SubLabelFrame.TLabelframe"
         )
+        geomPlotFrm.grid(
+            row=i,
+            column=0,
+            columnspan=2,
+            sticky="nsew",
+            padx=2,
+            pady=2,
+        )
+        geomPlotFrm.rowconfigure(0, weight=1)
+        geomPlotFrm.columnconfigure(0, weight=1)
+        CreateToolTip(geomPlotFrm, geomPlotTxt)
+
+        self.geomParentFrm = specFrm
+        self.geomPlotFrm = geomPlotFrm
+
+        opFrm = ttk.LabelFrame(rightFrm, text="Operations")
         opFrm.grid(row=1, column=0, sticky="nsew")
 
         # opFrm.columnconfigure(0, weight=1)
@@ -749,11 +765,41 @@ class IB(Frame):
 
         i = 0
 
+        consFrm = ttk.LabelFrame(
+            opFrm, text="Constraints", style="SubLabelFrame.TLabelframe"
+        )
+        consFrm.grid(
+            row=i, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
+        )
+        j = 0
+
+        self.velTgt, _, j = self.add3Input(
+            parent=consFrm,
+            rowIndex=0,
+            colIndex=0,
+            labelText="Tgt.Vel",
+            unitText="m/s",
+            default="0.0",
+            validation=validationNN,
+        )
+
+        self.pressTgt, _, j = self.add3Input(
+            parent=consFrm,
+            rowIndex=j,
+            colIndex=0,
+            labelText="Max P.",
+            unitText="MPa",
+            default="0.0",
+            validation=validationNN,
+        )
+
+        i += 1
+
         sampleFrm = ttk.LabelFrame(
             opFrm, text="Sampling", style="SubLabelFrame.TLabelframe"
         )
         sampleFrm.grid(
-            row=i, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
+            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
 
         j = 0
@@ -930,13 +976,8 @@ class IB(Frame):
         grainFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
-        # grainFrm.rowconfigure(1, weight=0)
         grainFrm.columnconfigure(0, weight=1)
-        # grainFrm.columnconfigure(1, weight=1)
-
         j = 0
-
-        # geomVal = parent.register(self.updateGeom)
 
         # Create Dropdown menu
         self.currGeom = StringVar()
@@ -978,7 +1019,7 @@ class IB(Frame):
             parent=grainFrm,
             rowIndex=j,
             labelText=self.ratioAs,
-            unitText="",
+            unitText="x",
             default="1.0",
             validation=validationNN,
             infotext=self.lengthSecondaryTip,
@@ -991,26 +1032,11 @@ class IB(Frame):
             parent=grainFrm,
             rowIndex=j,
             labelText=self.lengthRatioAs,
-            unitText="",
+            unitText="x",
             default="2.5",
             validation=validationNN,
             infotext=self.lengthRatioTip,
         )
-
-        geomPlotFrm = ttk.LabelFrame(
-            grainFrm, text="σ(Z)", style="SubLabelFrame.TLabelframe"
-        )
-        geomPlotFrm.grid(
-            row=j,
-            column=0,
-            columnspan=3,
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        geomPlotFrm.rowconfigure(0, weight=1)
-        geomPlotFrm.columnconfigure(0, weight=1)
-        CreateToolTip(geomPlotFrm, geomPlotTxt)
 
         i += 1
 
@@ -1028,7 +1054,7 @@ class IB(Frame):
             parent=parFrm,
             rowIndex=i,
             labelText="Chamber L.R.",
-            unitText="",
+            unitText="x",
             default="1.1",
             validation=validationNN,
             infotext=clrtext,
@@ -1061,14 +1087,12 @@ class IB(Frame):
         self.grlR.trace_add("write", self.callback)
         self.arcmm.trace_add("write", self.callback)
 
-        self.parFrm = parFrm
-        self.geomPlotFrm = geomPlotFrm
-
     def addGeomPlot(self):
-        parFrm = self.parFrm
+        geomParentFrm = self.geomParentFrm
         geomPlotFrm = self.geomPlotFrm
-        _, _, width, _ = parFrm.bbox("insert")
-        width -= 12  # paddings
+        _, _, width, _ = self.geomParentFrm.bbox("insert")
+        # print(width)
+        width -= 8  # paddings
 
         """
         geomPlotFrm.config(width=width, height=width)
@@ -1096,6 +1120,11 @@ class IB(Frame):
             self.geomCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=0, pady=0, sticky="ne"
             )
+        """
+        self.geomParentFrm.update()
+        _, _, width, _ = self.geomParentFrm.bbox("insert")
+        print(width)
+        """
 
     def addPlotFrm(self, parent):
         plotFrm = ttk.LabelFrame(parent, text="Plot")
