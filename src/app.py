@@ -35,6 +35,7 @@ GEOM_CONTEXT = {
     "xtick.color": "white",
     "ytick.color": "white",
     "lines.markersize": 2,
+    "axes.axisbelow": True,
 }
 
 FIG_CONTEXT = {
@@ -52,9 +53,10 @@ FIG_CONTEXT = {
     "figure.facecolor": "#33393b",
     "text.color": "white",
     "xtick.color": "white",
-    "font.weight": "bold",
+    # "font.weight": "bold",
     "ytick.color": "white",
     "lines.markersize": 4,
+    "axes.axisbelow": False,
 }
 chgText = " ".join(
     (
@@ -581,6 +583,10 @@ class IB(Frame):
         # the requisite object
         geom = self.geometries[self.dropGeom.get()]
 
+        self.tableData = []
+        self.errorData = []
+        self.intgRecord = []
+
         if self.prop is None:
             return
 
@@ -825,7 +831,7 @@ class IB(Frame):
             colIndex=0,
             labelText="V. Tgt.",
             unitText="m/s",
-            default="1200.0",
+            default="1500.0",
             validation=validationNN,
         )
 
@@ -1257,6 +1263,9 @@ class IB(Frame):
             )
             self.ax.set(xlabel="Domain")
 
+            self.axv.set_axisbelow(False)
+            self.axP.set_axisbelow(False)
+
             if gun is not None:
                 xs = []
                 vs = []
@@ -1274,9 +1283,7 @@ class IB(Frame):
                     psis.append(psi)
 
                 self.axv.scatter(xs, vs, color="tab:blue", marker="s", s=8)
-
                 self.axP.scatter(xs, Ps, color="tab:green", marker="s", s=8)
-
                 self.ax.scatter(xs, psis, color="tab:red", marker="s", s=8)
 
                 xPeak = 0
@@ -1295,9 +1302,9 @@ class IB(Frame):
                 self.axP.spines.right.set_position(("data", xPeak))
 
                 self.ax.set_xlim(left=0, right=xs[-1])
-                self.ax.set_ylim(bottom=0, top=1.1)
+                self.ax.set_ylim(bottom=0, top=1.05)
 
-                self.axP.set(ylim=(0, max(Ps) * 1.15))
+                self.axP.set(ylim=(0, max(Ps) * 1.05))
                 self.axv.set(ylim=(0, max(vs) * 1.05))
 
                 (xs, vs, Ps, psis) = zip(
@@ -1318,7 +1325,7 @@ class IB(Frame):
                     (v_d, v_d),
                     "tab:blue",
                     alpha=0.5,
-                    linestyle="dashed",
+                    linestyle="-.",
                     label="V. Target",
                 )
                 (pP,) = self.axP.plot(
@@ -1335,7 +1342,7 @@ class IB(Frame):
                     (p_d, p_d),
                     "tab:green",
                     alpha=0.5,
-                    linestyle="dashed",
+                    linestyle="-.",
                     label="P. Target",
                 )
                 (ref,) = self.ax.plot(
@@ -1343,7 +1350,7 @@ class IB(Frame):
                     (1, 1),
                     "tab:red",
                     alpha=0.5,
-                    linestyle="dashed",
+                    linestyle="-.",
                     label="Burnout",
                 )
                 (ppsi,) = self.ax.plot(
@@ -1385,12 +1392,20 @@ class IB(Frame):
                     labelLines(
                         ax.get_lines(),
                         align=True,
-                        zorder=3.5,
                         color="white",
                         xvals=xvals,
                     )
 
                 # labelLines(, zorder=2.5, color="white")
+
+                """
+                self.ax.legend(
+                    handles=[pv, vd, pP, pd, ppsi, ref],
+                    loc="upper left",
+                    bbox_to_anchor=(0.0, 0.95),
+                    # ncol=3,
+                )
+                """
 
             self.pltCanvas.draw()
 
