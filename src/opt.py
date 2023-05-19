@@ -52,7 +52,7 @@ class Constrained:
         """
         v_j = (2 * self.f * omega / (self.theta * phi * self.m)) ** 0.5
 
-        if v_j < 0.75 * self.v_d:
+        if 0.9 * v_j < self.v_d:
             raise ValueError(
                 "Propellant load too low to achieve " "design velocity."
             )
@@ -217,7 +217,7 @@ class Constrained:
                 yRelTol=0.3 * tol,
                 yRef=p_bar_d,
                 findMin=False,
-                xTol=1e-14,  # floating point concerns
+                xTol=1e-16,  # floating point concerns
             )
 
             Z_p = 0.5 * (Z_1 + Z_2)
@@ -246,10 +246,6 @@ class Constrained:
             probeWeb *= 2
             dp_bar_probe = _fp_e_1(probeWeb, tol)[0]
 
-        # print("x_min=", 0.1 * probeWeb)
-
-        print("tol", p_bar_d * tol)
-
         e_1, _ = secant(
             lambda x: _fp_e_1(x, tol)[0],
             probeWeb,  # >0
@@ -269,7 +265,6 @@ class Constrained:
         v_bar_d = self.v_d / v_j
 
         if v_bar_i > v_bar_d:
-            print(v_bar_i * v_j)
             return ValueError("Design velocity exceeded before peak pressure")
         else:
             pass
@@ -326,11 +321,12 @@ class Constrained:
             absTol=None,
             parFunc=_pf_v,
         )
-
+        print("p_tol=", self.f * Delta * tol, " Pa")
+        print("p_dev=", self.f * Delta * p_bar_dev, " Pa")
         if abs(v_bar_g - v_bar_d) / (v_bar_d) > tol:
             raise ValueError("Velocity specification is not met")
 
-        return e_1, l_bar_g * l_0
+        return e_1 * 2, l_bar_g * l_0
 
 
 if __name__ == "__main__":

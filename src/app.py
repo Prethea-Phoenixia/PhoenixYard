@@ -3,6 +3,7 @@ from tkinter import ttk
 import tkinter.font as tkFont
 import traceback
 from gun import *
+from opt import *
 import os
 import sys
 import ctypes
@@ -583,6 +584,51 @@ class IB(Frame):
         if self.prop is None:
             return
 
+        if self.solve_W_Lg.get() == 1:
+            try:
+                constrained = Constrained(
+                    caliber=float(self.calmm.get()) * 1e-3,
+                    shotMass=float(self.shtkg.get()),
+                    propellant=self.prop,
+                    startPressure=float(self.stpMPa.get()) * 1e6,
+                    dragCoe=float(self.dgc.get()) * 1e-2,
+                    designPressure=float(self.pTgt.get()) * 1e6,
+                    designVelocity=float(self.vTgt.get()),
+                )
+
+                e_1, l_g = constrained.solve(
+                    loadFraction=1e-2 * float(self.ldf.get()),
+                    chargeMassRatio=(
+                        float(self.chgkg.get()) / float(self.shtkg.get())
+                    ),
+                    tol=10 ** -(int(self.accExp.get())),
+                )
+
+                if DEBUG:
+                    print(
+                        float(self.calmm.get()) * 1e-3,
+                        float(self.shtkg.get()),
+                        self.prop,
+                        float(self.stpMPa.get()) * 1e6,
+                        float(self.dgc.get()) * 1e-2,
+                        float(self.pTgt.get()) * 1e6,
+                        float(self.vTgt.get()),
+                    )
+                    print(
+                        1e-2 * float(self.ldf.get()),
+                        float(self.chgkg.get()) / float(self.shtkg.get()),
+                    )
+
+                self.arcmm.set(e_1 * 1000)
+                self.tblmm.set(l_g * 1000)
+
+            except Exception as e:
+                self.errorLst.append("Exception in constrained design:")
+                if DEBUG:
+                    self.errorLst.append("".join(traceback.format_exception(e)))
+                else:
+                    self.errorLst.append(str(e))
+
         try:
             chamberVolume = (
                 float(self.chgkg.get())
@@ -773,7 +819,7 @@ class IB(Frame):
         )
         j = 0
 
-        self.velTgt, _, j = self.add3Input(
+        self.vTgt, _, j = self.add3Input(
             parent=consFrm,
             rowIndex=0,
             colIndex=0,
@@ -783,7 +829,7 @@ class IB(Frame):
             validation=validationNN,
         )
 
-        self.pressTgt, _, j = self.add3Input(
+        self.pTgt, _, j = self.add3Input(
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
@@ -1249,9 +1295,9 @@ class IB(Frame):
                 self.axP.spines.right.set_position(("data", xPeak))
 
                 self.ax.set_xlim(left=0, right=xs[-1])
-                self.ax.set_ylim(bottom=0, top=1.025)
+                self.ax.set_ylim(bottom=0, top=1.1)
 
-                self.axP.set(ylim=(0, max(Ps) * 1.05))
+                self.axP.set(ylim=(0, max(Ps) * 1.15))
                 self.axv.set(ylim=(0, max(vs) * 1.05))
 
                 (xs, vs, Ps, psis) = zip(
@@ -1266,7 +1312,7 @@ class IB(Frame):
                     marker=".",
                     alpha=0.75,
                 )
-                v_d = float(self.velTgt.get())
+                v_d = float(self.vTgt.get())
                 (vd,) = self.axv.plot(
                     (0, xs[-1]),
                     (v_d, v_d),
@@ -1283,7 +1329,7 @@ class IB(Frame):
                     marker=".",
                     alpha=0.75,
                 )
-                p_d = float(self.pressTgt.get())
+                p_d = float(self.pTgt.get())
                 (pd,) = self.axP.plot(
                     (0, xs[-1]),
                     (p_d, p_d),
