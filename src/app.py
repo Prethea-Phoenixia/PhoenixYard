@@ -792,6 +792,10 @@ class IB(Frame):
             default="350.0",
             validation=validationNN,
         )
+        self.solve_W_Lg = IntVar()
+        ttk.Checkbutton(
+            consFrm, text="Constrain Design", variable=self.solve_W_Lg
+        ).grid(row=j + 1, column=0, columnspan=3)
 
         i += 1
 
@@ -1737,6 +1741,7 @@ if __name__ == "__main__":
     style.configure("Treeview.Heading", font=("Hack", 8))
     style.configure("TButton", font=("Hack", 10, "bold"))
     style.configure("TLabelframe.Label", font=("Hack", 10, "bold"))
+    style.configure("TCheckbutton", font=("Hack", 8))
     style.configure("SubLabelFrame.TLabelframe.Label", font=("Hack", 9))
     style.configure("TNotebook.Tab", font=("Hack", 10))
     root.option_add("*Font", "Hack 8")
