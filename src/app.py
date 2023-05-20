@@ -53,7 +53,7 @@ FIG_CONTEXT = {
     "figure.facecolor": "#33393b",
     "text.color": "white",
     "xtick.color": "white",
-    # "font.weight": "bold",
+    "font.weight": "bold",
     "ytick.color": "white",
     "lines.markersize": 4,
     "axes.axisbelow": False,
