@@ -7,7 +7,7 @@ from opt import *
 import os
 import sys
 import ctypes
-from math import ceil
+from math import ceil, floor, log10
 from labellines import labelLine, labelLines
 
 from matplotlib.backends.backend_tkagg import (
@@ -626,8 +626,13 @@ class IB(Frame):
                         float(self.chgkg.get()) / float(self.shtkg.get()),
                     )
 
-                self.arcmm.set(e_1 * 1000)
-                self.tblmm.set(l_g * 1000)
+                webmm = round(
+                    2000 * e_1, 3 - int(floor(log10(abs(2000 * e_1))))
+                )
+                lgmm = round(l_g * 1000, 3 - int(floor(log10(abs(l_g * 1000)))))
+                # take the 3 most significant digits.
+                self.arcmm.set(webmm)
+                self.tblmm.set(lgmm)
 
             except Exception as e:
                 self.errorLst.append("Exception in constrained design:")
@@ -1780,6 +1785,7 @@ if __name__ == "__main__":
         windll.user32.SetProcessDPIAware()
     else:
         print("Unknown release: ", release, ", skipping DPI handling")
+
     root = Tk()
     # one must supply the entire path
     loadfont(resolvepath("ui/Hack-Regular.ttf"))

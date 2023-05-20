@@ -326,7 +326,7 @@ class Constrained:
         if abs(v_bar_g - v_bar_d) / (v_bar_d) > tol:
             raise ValueError("Velocity specification is not met")
 
-        return e_1 * 2, l_bar_g * l_0
+        return e_1, l_bar_g * l_0
 
 
 if __name__ == "__main__":
