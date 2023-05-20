@@ -138,7 +138,7 @@ def gss(f, a, b, tol=1e-9, findMin=True):
         return (c, b)
 
 
-def GSS(f, a, b, yRelTol, yRef, xTol=1e-14, findMin=True):
+def GSS(f, a, b, yRelTol, yRef, xTol=0, findMin=True):
     """
     conduct Gold Section Search using both the relative deviance of
     the functional value, and the absolute deviance of x as dual-control.
@@ -153,7 +153,10 @@ def GSS(f, a, b, yRelTol, yRef, xTol=1e-14, findMin=True):
     yc = f(c)
     yd = f(d)
 
-    n = int(math.ceil(math.log(xTol / h) / math.log(invphi)))
+    if xTol != 0:
+        n = int(math.ceil(math.log(xTol / h) / math.log(invphi)))
+    else:
+        n = math.inf
 
     while i < n:
         if (yc < yd and findMin) or (yc > yd and not findMin):
@@ -164,6 +167,9 @@ def GSS(f, a, b, yRelTol, yRef, xTol=1e-14, findMin=True):
             h = invphi * h
             c = a + invphi2 * h
             yc = f(c)
+
+            if c == a:
+                break
 
             if yc / yRef < yRelTol:
                 break
@@ -176,6 +182,9 @@ def GSS(f, a, b, yRelTol, yRef, xTol=1e-14, findMin=True):
             h = invphi * h
             d = a + invphi * h
             yd = f(d)
+
+            if d == a:
+                break
 
             if yd / yRef < yRelTol:
                 break

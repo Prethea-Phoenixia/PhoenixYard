@@ -217,7 +217,7 @@ class Constrained:
                 yRelTol=0.3 * tol,
                 yRef=p_bar_d,
                 findMin=False,
-                xTol=1e-16,  # floating point concerns
+                xTol=0,
             )
 
             Z_p = 0.5 * (Z_1 + Z_2)

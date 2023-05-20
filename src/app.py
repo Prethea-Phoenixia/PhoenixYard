@@ -608,6 +608,7 @@ class IB(Frame):
                         float(self.chgkg.get()) / float(self.shtkg.get())
                     ),
                     tol=10 ** -(int(self.accExp.get())),
+                    minWeb=1e-6 * float(self.minWeb.get()),
                 )
 
                 if DEBUG:
@@ -844,6 +845,18 @@ class IB(Frame):
             default="350.0",
             validation=validationNN,
         )
+
+        self.minWeb, _, j = self.add3Input(
+            parent=consFrm,
+            rowIndex=j,
+            colIndex=0,
+            labelText="Min. W.",
+            unitText="μm",
+            default="1.0",
+            validation=validationNN,
+            color="red",
+        )
+
         self.solve_W_Lg = IntVar()
         ttk.Checkbutton(
             consFrm, text="Constrain Design", variable=self.solve_W_Lg
@@ -1216,6 +1229,7 @@ class IB(Frame):
             ax.yaxis.tick_right()
             ax.set(xlabel="Domain")
             axv.spines.right.set_position(("axes", 1.0 + 40 * dpi / 96 / width))
+            axP.spines.right.set_position(("data", 0.5))
 
             # fig.tight_layout(pad=1)
 
@@ -1261,6 +1275,7 @@ class IB(Frame):
             self.axv.spines.right.set_position(
                 ("axes", 1 + 40 * dpi / 96 / size[0])
             )
+            self.axP.spines.right.set_position(("data", 0.5))
             self.ax.set(xlabel="Domain")
 
             self.axv.set_axisbelow(False)
