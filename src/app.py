@@ -28,12 +28,6 @@ GEOM_CONTEXT = {
     "ytick.labelsize": 6,
     "legend.fontsize": 6,
     "figure.titlesize": 10,
-    "axes.edgecolor": "white",
-    "axes.facecolor": "#33393b",
-    "figure.facecolor": "#33393b",
-    "text.color": "white",
-    "xtick.color": "white",
-    "ytick.color": "white",
     "lines.markersize": 2,
     "axes.axisbelow": True,
 }
@@ -47,16 +41,10 @@ FIG_CONTEXT = {
     "legend.fontsize": 8,
     "figure.titlesize": 12,
     "lines.linewidth": 1,
-    "axes.edgecolor": "white",
-    "axes.facecolor": "#33393b",
-    "axes.labelcolor": "white",
-    "figure.facecolor": "#33393b",
-    "text.color": "white",
-    "xtick.color": "white",
     "font.weight": "bold",
-    "ytick.color": "white",
     "lines.markersize": 4,
     "axes.axisbelow": False,
+    "axes.labelweight": "bold",
 }
 chgText = " ".join(
     (
@@ -537,8 +525,39 @@ def CreateToolTip(widget, text):
 class IB(Frame):
     def __init__(self, parent, dpi):
         Frame.__init__(self, parent)
-
         self.dpi = dpi
+        self.parent = parent
+        self.forceUpdOnThemeWidget = []
+
+        menubar = Menu(parent)
+
+        themeMenu = Menu(menubar)
+        menubar.add_cascade(label="Theme", menu=themeMenu)
+
+        self.themeRadio = IntVar()
+        self.themeRadio.set(1)
+        self.useTheme()
+
+        themeMenu.add_radiobutton(
+            label="Dark",
+            variable=self.themeRadio,
+            value=1,
+            command=self.useTheme,
+        )
+        themeMenu.add_radiobutton(
+            label="Light",
+            variable=self.themeRadio,
+            value=2,
+            command=self.useTheme,
+        )
+        """
+        themeMenu.add_cascade(label="Light", command=self.useLightTheme)
+        themeMenu.add_cascade(label="Dark", command=self.useDarkTheme)
+        """
+
+        parent.config(menu=menubar)
+
+        # self.useLightTheme()
 
         self.compositions = GrainComp.readFile(
             resolvepath("data/propellants.csv")
@@ -571,6 +590,9 @@ class IB(Frame):
         self.updateGeom(None, None, None)
 
         # parent.bind("<Return>", self.calculate)
+
+        self.forceUpdOnThemeWidget.append(self.errorText)
+        self.forceUpdOnThemeWidget.append(self.specs)
 
         parent.bind("<Configure>", self.resizeFigPlot)
 
@@ -748,7 +770,7 @@ class IB(Frame):
         rightFrm = ttk.Frame(parent)
         rightFrm.grid(row=0, column=2, rowspan=3, sticky="nsew")
         rightFrm.columnconfigure(0, weight=1)
-        rightFrm.rowconfigure(0, weight=1)
+        rightFrm.rowconfigure(1, weight=1)
 
         specFrm = ttk.LabelFrame(rightFrm, text="Design Summary")
         specFrm.grid(row=0, column=0, sticky="nsew")
@@ -805,8 +827,8 @@ class IB(Frame):
             padx=2,
             pady=2,
         )
-        geomPlotFrm.rowconfigure(0, weight=1)
-        geomPlotFrm.columnconfigure(0, weight=1)
+        geomPlotFrm.rowconfigure(0, weight=0)
+        geomPlotFrm.columnconfigure(0, weight=0)
         CreateToolTip(geomPlotFrm, geomPlotTxt)
 
         self.geomParentFrm = specFrm
@@ -951,6 +973,7 @@ class IB(Frame):
             height=6,
             width=0,
         )
+
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
     def addParFrm(self, parent):
@@ -1188,6 +1211,7 @@ class IB(Frame):
             fig = Figure(
                 figsize=(width / dpi, width / dpi), dpi=96, layout="constrained"
             )
+            self.geomFig = fig
             self.geomAx = fig.add_subplot()
 
             self.geomCanvas = FigureCanvasTkAgg(fig, master=geomPlotFrm)
@@ -1215,6 +1239,8 @@ class IB(Frame):
         )  # in pixels, -2 to account for label frame border thickness
         height = plotFrm.winfo_height() - 2
 
+        # print("creation", width, height)
+
         dpi = self.dpi
 
         with mpl.rc_context(FIG_CONTEXT):
@@ -1233,9 +1259,11 @@ class IB(Frame):
 
             ax.yaxis.tick_right()
             ax.set(xlabel="Domain")
+
             axv.spines.right.set_position(("axes", 1.0 + 40 * dpi / 96 / width))
             axP.spines.right.set_position(("data", 0.5))
 
+            axP.yaxis.set_ticks(axP.get_yticks()[1:-1:])
             # fig.tight_layout(pad=1)
 
             self.ax = ax
@@ -1248,6 +1276,8 @@ class IB(Frame):
                 row=0, column=0, padx=0, pady=0, sticky="nsew"
             )
 
+        # self.update()
+
     def resizeFigPlot(self, event):
         """
         width = (
@@ -1258,6 +1288,8 @@ class IB(Frame):
         plotFrm = self.plotFrm
         _, _, width, height = plotFrm.bbox("insert")
         dpi = self.dpi
+
+        # print("bbox", width, height)
 
         with mpl.rc_context(FIG_CONTEXT):
             # print(width, height)
@@ -1270,7 +1302,7 @@ class IB(Frame):
     def updateFigPlot(self):
         with mpl.rc_context(FIG_CONTEXT):
             gun = self.gun
-
+            self.fig.canvas.draw()
             self.ax.cla()
             self.axP.cla()
             self.axv.cla()
@@ -1412,7 +1444,7 @@ class IB(Frame):
                     labelLines(
                         ax.get_lines(),
                         align=True,
-                        color="white",
+                        # color=,
                         xvals=xvals,
                     )
 
@@ -1574,7 +1606,7 @@ class IB(Frame):
                 self.geomAx.plot(
                     xs,
                     ys,
-                    color="#215d9c",
+                    # color="#215d9c",
                 )
                 self.geomAx.grid(
                     which="major", color="grey", linestyle="dotted"
@@ -1605,7 +1637,6 @@ class IB(Frame):
         Double calling is due value validation, no workaround has been found
         at this time!
         """
-        # print("called", var, index, mode)
 
         geom = self.geometries[self.dropGeom.get()]
         compo = self.compositions[self.dropProp.get()]
@@ -1754,6 +1785,81 @@ class IB(Frame):
 
         return e, en, rowIndex + 2
 
+    def useTheme(self):
+        style = ttk.Style(self)
+        if self.themeRadio.get() == 1:
+            style.theme_use("awdark")
+        else:
+            style.theme_use("awlight")
+        self.setTheme()
+
+    def setTheme(self):
+        dpi = self.dpi
+        style = ttk.Style(self)
+        # ensure that the treeview rows are roughly the same height
+        # regardless of dpi. on Windows, default is Segoe UI at 9 points
+        # so the default row height should be around 12
+
+        style.configure("Treeview", rowheight=round(12 * dpi / 72.0))
+        style.configure("Treeview.Heading", font=("Hack", 8))
+        style.configure("TButton", font=("Hack", 10, "bold"))
+        style.configure("TLabelframe.Label", font=("Hack", 10, "bold"))
+        style.configure("TCheckbutton", font=("Hack", 8))
+        style.configure("SubLabelFrame.TLabelframe.Label", font=("Hack", 9))
+        style.configure("TNotebook.Tab", font=("Hack", 10))
+
+        bgc = str(style.lookup("TFrame", "background"))
+        fgc = str(style.lookup("TFrame", "foreground"))
+        ebgc = str(style.lookup("TCombobox", "fieldbackground"))
+
+        GEOM_CONTEXT.update(
+            {
+                "xtick.color": fgc,
+                "ytick.color": fgc,
+                "axes.edgecolor": fgc,
+                "axes.facecolor": ebgc,
+                "figure.facecolor": bgc,
+            }
+        )
+
+        FIG_CONTEXT.update(
+            {
+                "figure.facecolor": bgc,
+                "axes.edgecolor": fgc,
+                "axes.facecolor": ebgc,
+                "axes.labelcolor": fgc,
+                "text.color": fgc,
+                "xtick.color": fgc,
+                "ytick.color": fgc,
+            }
+        )
+
+        self.update()
+
+        # some widgets also needs to be manually updated
+        for w in self.forceUpdOnThemeWidget:
+            w.config(background=ebgc, foreground=fgc)
+
+        try:
+            self.fig.set_facecolor(bgc)
+
+            self.geomFig.set_facecolor(bgc)
+            # self.fig.set_edgecolor(fgc)
+
+            for ax in (self.ax, self.axv, self.axP, self.geomAx):
+                ax.set_facecolor(ebgc)
+                ax.spines["top"].set_color(fgc)
+                ax.spines["bottom"].set_color(fgc)
+                ax.spines["left"].set_color(fgc)
+                ax.spines["right"].set_color(fgc)
+
+            self.updateGeomPlot()
+            self.updateFigPlot()
+
+        except AttributeError as e:
+            # print(e)
+            pass
+
 
 def center(win):
     """
@@ -1812,32 +1918,16 @@ if __name__ == "__main__":
     """
 
     # Tk was originally developed for a dpi of 72
-    root.tk.call("tk", "scaling", "-displayof", ".", dpi / 72.0)
+    # root.tk.call("tk", "scaling", "-displayof", ".", dpi / 72.0)
+    root.tk.call("tk", "scaling", dpi / 72.0)
 
-    mpl.rc("figure", dpi=dpi)
+    # mpl.rc("figure", dpi=dpi)
 
     root.tk.call("lappend", "auto_path", resolvepath("ui/awthemes-10.4.0"))
     root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
-    # root.tk.call("package", "require", "awdark")
 
-    style = ttk.Style(root)
-    style.theme_use("awdark")
-
-    # ensure that the treeview rows are roughly the same height
-    # regardless of dpi. on Windows, default is Segoe UI at 9 points
-    # so the default row height should be around 12
-
-    style.configure("Treeview", rowheight=round(12 * dpi / 72.0))
-
-    style.configure("Treeview.Heading", font=("Hack", 8))
-    style.configure("TButton", font=("Hack", 10, "bold"))
-    style.configure("TLabelframe.Label", font=("Hack", 10, "bold"))
-    style.configure("TCheckbutton", font=("Hack", 8))
-    style.configure("SubLabelFrame.TLabelframe.Label", font=("Hack", 9))
-    style.configure("TNotebook.Tab", font=("Hack", 10))
     root.option_add("*Font", "Hack 8")
-
-    # root.option_add("*TCombobox*Listbox*Font", "Hack 8")
+    root.option_add("*tearOff", FALSE)
 
     root.title("Phoenix's Internal Ballistics Solver v0.3")
 

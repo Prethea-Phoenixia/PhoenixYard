@@ -321,8 +321,8 @@ class Constrained:
             absTol=None,
             parFunc=_pf_v,
         )
-        print("p_tol=", self.f * Delta * tol, " Pa")
-        print("p_dev=", self.f * Delta * p_bar_dev, " Pa")
+        # print("p_tol=", self.f * Delta * tol, " Pa")
+        # print("p_dev=", self.f * Delta * p_bar_dev, " Pa")
         if abs(v_bar_g - v_bar_d) / (v_bar_d) > tol:
             raise ValueError("Velocity specification is not met")
 
