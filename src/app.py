@@ -1755,7 +1755,16 @@ def center(win):
 
 if __name__ == "__main__":
     # this tells windows that our program will handle scaling ourselves
-    windll.shcore.SetProcessDpiAwareness(1)
+
+    import platform
+
+    winRelease = platform.release()
+    if winRelease in ("8", "10"):
+        windll.shcore.SetProcessDpiAwareness(1)
+    elif winRelease in ("7", "Vista"):
+        windll.user32.SetProcessDPIAware()
+    else:
+        print("Unknown release: ", release, ", skipping DPI handling")
     root = Tk()
     # one must supply the entire path
     loadfont(resolvepath("ui/Hack-Regular.ttf"))
