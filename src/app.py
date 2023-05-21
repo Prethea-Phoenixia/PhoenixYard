@@ -904,7 +904,6 @@ class IB(Frame):
         geomParentFrm = self.geomParentFrm
         geomPlotFrm = self.geomPlotFrm
         _, _, width, _ = self.geomParentFrm.bbox("insert")
-        print(width)
         width -= 6  # 2+2 for padding, 1+1 for border line thickness
 
         """
@@ -924,13 +923,12 @@ class IB(Frame):
                 figsize=(width / dpi, width / dpi), dpi=96, layout="constrained"
             )
             self.geomFig = fig
-            self.geomAx = fig.add_subplot()
+            self.geomAx = fig.add_subplot(111)
 
             self.geomCanvas = FigureCanvasTkAgg(fig, master=geomPlotFrm)
             self.geomCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=0, pady=0, sticky="ne"
             )
-
         """
         self.geomParentFrm.update()
         _, _, width, _ = self.geomParentFrm.bbox("insert")
@@ -947,11 +945,11 @@ class IB(Frame):
 
     def addFigPlot(self):
         plotFrm = self.plotFrm
+
         width = (
-            plotFrm.winfo_width() - 6
+            plotFrm.winfo_width() - 2
         )  # in pixels, -2 to account for label frame border thickness
-        # -4 to account for padding
-        height = plotFrm.winfo_height() - 6
+        height = plotFrm.winfo_height() - 2
 
         # print("creation", width, height)
 
@@ -963,16 +961,16 @@ class IB(Frame):
                 dpi=96,
                 layout="constrained",
             )
-            # fig.subplots_adjust(right=0.75)
+            # fig.subplots_adjust(bottom=0.1)
 
-            axes = fig.add_subplot()
+            axes = fig.add_subplot(111)
 
             ax = axes
             axP = ax.twinx()
             axv = ax.twinx()
 
             ax.yaxis.tick_right()
-            ax.set(xlabel="Domain")
+            ax.set_xlabel("Domain")
 
             axv.spines.right.set_position(("axes", 1.0 + 40 * dpi / 96 / width))
             axP.spines.right.set_position(("data", 0.5))
@@ -987,22 +985,20 @@ class IB(Frame):
 
             self.pltCanvas = FigureCanvasTkAgg(fig, master=plotFrm)
             self.pltCanvas.get_tk_widget().grid(
-                row=0, column=0, padx=2, pady=2, sticky="nsew"
+                row=0, column=0, padx=0, pady=0, sticky="nsew"
             )
-
-        # self.update()
 
     def resizeFigPlot(self, event):
         plotFrm = self.plotFrm
+
         width = (
-            plotFrm.winfo_width() - 6
+            plotFrm.winfo_width() - 2
         )  # in pixels, -2 to account for label frame border thickness
         # furter -4 to take care of padding.
-        height = plotFrm.winfo_height() - 6
+        height = plotFrm.winfo_height() - 2
 
         # _, _, width, height = plotFrm.bbox("insert")
         dpi = self.dpi
-
         # print("bbox", width, height)
 
         with mpl.rc_context(FIG_CONTEXT):
@@ -1016,21 +1012,18 @@ class IB(Frame):
     def updateFigPlot(self):
         with mpl.rc_context(FIG_CONTEXT):
             gun = self.gun
-            self.fig.canvas.draw()
+
             self.ax.cla()
             self.axP.cla()
             self.axv.cla()
 
+            self.axv.set_axisbelow(False)
+            self.axP.set_axisbelow(False)
             dpi = self.dpi
             size = self.fig.get_size_inches() * self.fig.dpi
             self.axv.spines.right.set_position(
                 ("axes", 1 + 40 * dpi / 96 / size[0])
             )
-            self.axP.spines.right.set_position(("data", 0.5))
-            self.ax.set(xlabel="Domain")
-
-            self.axv.set_axisbelow(False)
-            self.axP.set_axisbelow(False)
 
             if gun is not None:
                 xs = []
@@ -1137,9 +1130,9 @@ class IB(Frame):
                 self.ax.tick_params(axis="x", **tkw)
 
                 if dom == DOMAIN_TIME:
-                    self.ax.set(xlabel="Time - ms")
+                    self.ax.set_xlabel("Time - ms")
                 elif dom == DOMAIN_LENG:
-                    self.ax.set(xlabel="Length - m")
+                    self.ax.set_xlabel("Length - m")
 
                 for ax, xvals in zip(
                     (
@@ -1170,6 +1163,10 @@ class IB(Frame):
                     # ncol=3,
                 )
                 """
+
+            else:
+                self.axP.spines.right.set_position(("data", 0.5))
+                self.ax.set_xlabel("Domain")
 
             self.axP.yaxis.set_ticks(self.axP.get_yticks()[1:-1:])
             self.pltCanvas.draw()
@@ -1562,9 +1559,7 @@ class IB(Frame):
 
         try:
             self.fig.set_facecolor(bgc)
-
             self.geomFig.set_facecolor(bgc)
-            # self.fig.set_edgecolor(fgc)
 
             for ax in (self.ax, self.axv, self.axP, self.geomAx):
                 ax.set_facecolor(ebgc)
