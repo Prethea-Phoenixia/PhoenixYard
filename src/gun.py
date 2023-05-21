@@ -927,3 +927,6 @@ if __name__ == "__main__":
     # cm/s/(MPa)**exponent -> m/s/Pa**exponent * 1e-2 /(1e6)**exponent
 
     # IMR ,"Single Base,*100.00% Nitrocellulose (13.15%), 1.00% Potassium Sulfate, 8.00% Dinitrotoluene, 0.70% Diphenylamine" ,1.2413 ,1620 ,989400 ,1.044e-3,
+
+    # todo: M3 propellant
+    # 155/105mm Howitzer; Charge for Zone 1-5,M1(A1) PH; M45 on M44 SPH; M126(A1) on M109 SPH; M185 on M109(A1-A4) SPH; M199 105mm,
