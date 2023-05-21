@@ -14,6 +14,19 @@ class Constrained:
         designVelocity,
     ):
         # constants for constrained designs
+
+        if any(
+            (
+                caliber <= 0,
+                shotMass <= 0,
+                startPressure <= 0,
+                dragCoe < 0,
+                designPressure <= 0,
+                designVelocity <= 0,
+            )
+        ):
+            raise ValueError("Invalid parameters for constrained design")
+
         self.S = (caliber / 2) ** 2 * pi
         self.m = shotMass
         self.propellant = propellant
@@ -37,6 +50,18 @@ class Constrained:
         tol,
         minWeb=1e-6,
     ):
+        if any(
+            (
+                minWeb <= 0,
+                tol <= 0,
+                chargeMassRatio <= 0,
+                loadFraction <= 0,
+                loadFraction > 1,
+            )
+        ):
+            raise ValueError(
+                "Invalid parameters to solve constrained design problem"
+            )
         """
         minWeb  : represents minimum possible grain size
         """
