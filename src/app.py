@@ -945,13 +945,14 @@ class IB(Frame):
 
     def addFigPlot(self):
         plotFrm = self.plotFrm
-
-        width = (
-            plotFrm.winfo_width() - 2
-        )  # in pixels, -2 to account for label frame border thickness
+        # this is necessary here because winfo_width() will return
+        # valid values with simply update_idletask()
+        width = plotFrm.winfo_width() - 2
+        # in pixels, -2 to account for label frame border thickness
         height = plotFrm.winfo_height() - 2
-
-        # print("creation", width, height)
+        # technically we also need to account for the height of the
+        # label frame text, but since its screen dependent its not
+        # really possible.
 
         dpi = self.dpi
 
@@ -976,7 +977,6 @@ class IB(Frame):
             axP.spines.right.set_position(("data", 0.5))
 
             axP.yaxis.set_ticks(axP.get_yticks()[1:-1:])
-            # fig.tight_layout(pad=1)
 
             self.ax = ax
             self.axP = axP
@@ -990,20 +990,15 @@ class IB(Frame):
 
     def resizeFigPlot(self, event):
         plotFrm = self.plotFrm
+        # we use the bbox method here so no additional
+        # accounting of the borders, etc are necessary
+        # this is guaranteed to be valid since its only
+        # called after initialization.
+        _, _, width, height = plotFrm.bbox("insert")
 
-        width = (
-            plotFrm.winfo_width() - 2
-        )  # in pixels, -2 to account for label frame border thickness
-        # furter -4 to take care of padding.
-        height = plotFrm.winfo_height() - 2
-
-        # _, _, width, height = plotFrm.bbox("insert")
         dpi = self.dpi
-        # print("bbox", width, height)
 
         with mpl.rc_context(FIG_CONTEXT):
-            # print(width, height)
-            # print(width / dpi, height / dpi)
             self.fig.set_size_inches(width / dpi, height / dpi)
             self.axv.spines.right.set_position(
                 ("axes", 1 + 40 * dpi / 96 / width)
@@ -1021,9 +1016,16 @@ class IB(Frame):
             self.axP.set_axisbelow(False)
             dpi = self.dpi
             size = self.fig.get_size_inches() * self.fig.dpi
+
             self.axv.spines.right.set_position(
                 ("axes", 1 + 40 * dpi / 96 / size[0])
             )
+
+            print(self.plotFrm.winfo_width())
+            print(self.plotFrm.winfo_height())
+
+            print(size[0])
+            print(size[1])
 
             if gun is not None:
                 xs = []
@@ -1165,7 +1167,7 @@ class IB(Frame):
                 """
 
             else:
-                self.axP.spines.right.set_position(("data", 0.5))
+                self.axP.spines.right.set_position(("axes", 0.5))
                 self.ax.set_xlabel("Domain")
 
             self.axP.yaxis.set_ticks(self.axP.get_yticks()[1:-1:])
