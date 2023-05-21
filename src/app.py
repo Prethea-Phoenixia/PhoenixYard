@@ -929,11 +929,6 @@ class IB(Frame):
             self.geomCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=0, pady=0, sticky="ne"
             )
-        """
-        self.geomParentFrm.update()
-        _, _, width, _ = self.geomParentFrm.bbox("insert")
-        print(width)
-        """
 
     def addPlotFrm(self, parent):
         plotFrm = ttk.LabelFrame(parent, text="Plot")
@@ -947,9 +942,10 @@ class IB(Frame):
         plotFrm = self.plotFrm
         # this is necessary here because winfo_width() will return
         # valid values with simply update_idletask()
-        width = plotFrm.winfo_width() - 2
+        width = plotFrm.winfo_width() - 6
         # in pixels, -2 to account for label frame border thickness
-        height = plotFrm.winfo_height() - 2
+        # additional -4 for padding
+        height = plotFrm.winfo_height() - 6
         # technically we also need to account for the height of the
         # label frame text, but since its screen dependent its not
         # really possible.
@@ -985,15 +981,13 @@ class IB(Frame):
 
             self.pltCanvas = FigureCanvasTkAgg(fig, master=plotFrm)
             self.pltCanvas.get_tk_widget().grid(
-                row=0, column=0, padx=0, pady=0, sticky="nsew"
+                row=0, column=0, padx=2, pady=2, sticky="nsew"
             )
 
     def resizeFigPlot(self, event):
         plotFrm = self.plotFrm
-        # we use the bbox method here so no additional
-        # accounting of the borders, etc are necessary
-        # this is guaranteed to be valid since its only
-        # called after initialization.
+        # we use the bbox method here as it has already accounted for padding
+        # so no adjustment here is necessary
         _, _, width, height = plotFrm.bbox("insert")
 
         dpi = self.dpi
@@ -1020,12 +1014,6 @@ class IB(Frame):
             self.axv.spines.right.set_position(
                 ("axes", 1 + 40 * dpi / 96 / size[0])
             )
-
-            print(self.plotFrm.winfo_width())
-            print(self.plotFrm.winfo_height())
-
-            print(size[0])
-            print(size[1])
 
             if gun is not None:
                 xs = []
