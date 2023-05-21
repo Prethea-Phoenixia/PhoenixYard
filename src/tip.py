@@ -204,6 +204,14 @@ useConsTxt = " ".join(
     )
 )
 
+calLxTxt = " ".join(
+    (
+        "Tube length (defined as from the base of projectile to muzzle)",
+        "measured in units of caliber. Usually expressed as  L/xx in",
+        "nomenclature.",
+    )
+)
+
 
 class ToolTip(object):
     """solution found in

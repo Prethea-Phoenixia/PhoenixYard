@@ -275,7 +275,7 @@ class IB(Frame):
         )
 
         debugMenu.add_checkbutton(
-            label="Toggle",
+            label="Enable",
             variable=self.DEBUG,
             onvalue=1,
             offvalue=0,
@@ -364,21 +364,6 @@ class IB(Frame):
                     minWeb=1e-6 * float(self.minWeb.get()),
                 )
 
-                if self.DEBUG.get():
-                    print(
-                        float(self.calmm.get()) * 1e-3,
-                        float(self.shtkg.get()),
-                        self.prop,
-                        float(self.stpMPa.get()) * 1e6,
-                        float(self.dgc.get()) * 1e-2,
-                        float(self.pTgt.get()) * 1e6,
-                        float(self.vTgt.get()),
-                    )
-                    print(
-                        1e-2 * float(self.ldf.get()),
-                        float(self.chgkg.get()) / float(self.shtkg.get()),
-                    )
-
                 webmm = round(
                     2000 * e_1, 3 - int(floor(log10(abs(2000 * e_1))))
                 )
@@ -405,21 +390,6 @@ class IB(Frame):
             self.cv.set(toSI(chamberVolume, useSN=True).strip())
             self.ld.set(round(self.prop.maxLF * float(self.ldf.get()), 1))
 
-            if self.DEBUG.get():
-                print(
-                    *(
-                        float(self.calmm.get()) * 1e-3,
-                        float(self.shtkg.get()),
-                        self.prop,
-                        float(self.chgkg.get()),
-                        float(self.arcmm.get()) * 1e-3,
-                        chamberVolume,
-                        float(self.stpMPa.get()) * 1e6,
-                        float(self.tblmm.get()) * 1e-3,
-                        float(self.clr.get()),
-                    ),
-                    sep=","
-                )
             self.gun = Gun(
                 caliber=float(self.calmm.get()) * 1e-3,
                 shotMass=float(self.shtkg.get()),
@@ -433,6 +403,7 @@ class IB(Frame):
                 dragCoe=float(self.dgc.get()) * 1e-2,
             )
 
+            self.lx.set(toSI(float(self.tblmm.get()) / float(self.calmm.get())))
             self.va.set(toSI(self.gun.v_j))
 
         except Exception as e:
@@ -509,6 +480,15 @@ class IB(Frame):
 
         i = 0
 
+        self.lx, _, i = self.add12Disp(
+            parent=specFrm,
+            rowIndex=i,
+            labelText="Tube Length Ratio",
+            unitText="Cal",
+            justify="right",
+            infotext=calLxTxt,
+        )
+
         self.va, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
@@ -546,24 +526,6 @@ class IB(Frame):
             labelText="Loading Density",
             unitText="%",
         )
-
-        geomPlotFrm = ttk.LabelFrame(
-            specFrm, text="σ(Z)", style="SubLabelFrame.TLabelframe"
-        )
-        geomPlotFrm.grid(
-            row=i,
-            column=0,
-            columnspan=2,
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        geomPlotFrm.rowconfigure(0, weight=0)
-        geomPlotFrm.columnconfigure(0, weight=0)
-        CreateToolTip(geomPlotFrm, geomPlotTxt)
-
-        self.geomParentFrm = specFrm
-        self.geomPlotFrm = geomPlotFrm
 
         opFrm = ttk.LabelFrame(rightFrm, text="Operations")
         opFrm.grid(row=1, column=0, sticky="nsew")
@@ -705,7 +667,7 @@ class IB(Frame):
             errorFrm,
             yscrollcommand=errScroll.set,
             wrap=WORD,
-            height=6,
+            height=10,
             width=0,
         )
 
@@ -792,7 +754,7 @@ class IB(Frame):
         self.specs = Text(
             propFrm,
             wrap=WORD,
-            height=5,
+            height=10,
             width=0,
             yscrollcommand=specScroll.set,
         )
@@ -809,7 +771,26 @@ class IB(Frame):
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
         grainFrm.columnconfigure(0, weight=1)
-        j = 0
+
+        geomPlotFrm = ttk.LabelFrame(
+            grainFrm, text="σ(Z)", style="SubLabelFrame.TLabelframe"
+        )
+        geomPlotFrm.grid(
+            row=0,
+            column=0,
+            columnspan=3,
+            sticky="nsew",
+            padx=2,
+            pady=2,
+        )
+        geomPlotFrm.rowconfigure(0, weight=0)
+        geomPlotFrm.columnconfigure(0, weight=0)
+        CreateToolTip(geomPlotFrm, geomPlotTxt)
+
+        self.geomParentFrm = grainFrm
+        self.geomPlotFrm = geomPlotFrm
+
+        j = 1
 
         # Create Dropdown menu
         self.currGeom = StringVar()
@@ -923,8 +904,8 @@ class IB(Frame):
         geomParentFrm = self.geomParentFrm
         geomPlotFrm = self.geomPlotFrm
         _, _, width, _ = self.geomParentFrm.bbox("insert")
-        # print(width)
-        width -= 8  # paddings
+        print(width)
+        width -= 6  # 2+2 for padding, 1+1 for border line thickness
 
         """
         geomPlotFrm.config(width=width, height=width)
@@ -936,10 +917,6 @@ class IB(Frame):
         to false (0), this will result in a correctly sized
         window, and everything would be fine, ironically.
         (in this case, dpi = dpi)
-
-        width = (
-            geomPlotFrm.winfo_width() - 2
-        )  # in pixels, -2 to account for label frame border thickness
         """
         dpi = self.dpi
         with mpl.rc_context(GEOM_CONTEXT):
@@ -953,6 +930,7 @@ class IB(Frame):
             self.geomCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=0, pady=0, sticky="ne"
             )
+
         """
         self.geomParentFrm.update()
         _, _, width, _ = self.geomParentFrm.bbox("insert")
@@ -1487,6 +1465,7 @@ class IB(Frame):
         entryWidth=5,
         justify="center",
         infotext=None,
+        reverse=False,
     ):
         lb = ttk.Label(parent, text=labelText)
         lb.grid(
@@ -1509,10 +1488,18 @@ class IB(Frame):
             justify=justify,
         )
         en.grid(
-            row=rowIndex + 1, column=colIndex, sticky="nsew", padx=2, pady=2
+            row=rowIndex + 1,
+            column=colIndex + (1 if reverse else 0),
+            sticky="nsew",
+            padx=2,
+            pady=2,
         )
         ttk.Label(parent, text=unitText).grid(
-            row=rowIndex + 1, column=colIndex + 1, sticky="nsew", padx=2, pady=2
+            row=rowIndex + 1,
+            column=colIndex + (0 if reverse else 1),
+            sticky="nsew",
+            padx=2,
+            pady=2,
         )
         if infotext is not None:
             CreateToolTip(lb, infotext)
