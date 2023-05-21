@@ -948,9 +948,10 @@ class IB(Frame):
     def addFigPlot(self):
         plotFrm = self.plotFrm
         width = (
-            plotFrm.winfo_width() - 2
+            plotFrm.winfo_width() - 6
         )  # in pixels, -2 to account for label frame border thickness
-        height = plotFrm.winfo_height() - 2
+        # -4 to account for padding
+        height = plotFrm.winfo_height() - 6
 
         # print("creation", width, height)
 
@@ -986,20 +987,20 @@ class IB(Frame):
 
             self.pltCanvas = FigureCanvasTkAgg(fig, master=plotFrm)
             self.pltCanvas.get_tk_widget().grid(
-                row=0, column=0, padx=0, pady=0, sticky="nsew"
+                row=0, column=0, padx=2, pady=2, sticky="nsew"
             )
 
         # self.update()
 
     def resizeFigPlot(self, event):
-        """
-        width = (
-            plotFrm.winfo_width() - 2
-        )  # in pixels, -2 to account for label frame border thickness
-        height = plotFrm.winfo_height() - 2
-        """
         plotFrm = self.plotFrm
-        _, _, width, height = plotFrm.bbox("insert")
+        width = (
+            plotFrm.winfo_width() - 6
+        )  # in pixels, -2 to account for label frame border thickness
+        # furter -4 to take care of padding.
+        height = plotFrm.winfo_height() - 6
+
+        # _, _, width, height = plotFrm.bbox("insert")
         dpi = self.dpi
 
         # print("bbox", width, height)
@@ -1655,5 +1656,5 @@ if __name__ == "__main__":
     ibPanel = IB(root, dpi)
 
     center(root)
-    root.minsize(root.winfo_width(), root.winfo_height())
+    # root.minsize(root.winfo_width(), root.winfo_height())
     root.mainloop()
