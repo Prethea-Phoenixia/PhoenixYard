@@ -883,9 +883,9 @@ if __name__ == "__main__":
     GrainComp.check(compositions.values())
     M17 = compositions["M17"]
 
-    M17SHC = Propellant(M17, SimpleGeometry.ROD, 2, 2.5)
+    M17SHC = Propellant(M17, SimpleGeometry.SPHERE, 2, 2.5)
 
-    lf = 0.5
+    lf = 0.75
     print("DELTA:", lf * M17SHC.maxLF)
     test = Gun(
         caliber=0.050,

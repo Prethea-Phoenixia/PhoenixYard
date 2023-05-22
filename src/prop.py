@@ -191,6 +191,15 @@ class GrainComp:
 
         return {i.name: i for i in composition}
 
+    def getLBR(self, p):
+        """
+        get linear burn rate, given a pressure supplied in Pa
+
+        linear burn rate = (pressure)^self.n * self.u_1
+        """
+
+        return self.u_1 * p**self.n
+
     def check(compositions):
         from tabulate import tabulate
 

@@ -143,7 +143,7 @@ def toSI(v, dec=4, unit=None, useSN=False):
                 + " " * (dec + 1 - len(vstr) + vstr.find("."))
                 + (
                     (
-                        "E{:<3}".format(round(log(magnitude, 10)))
+                        "E{:<+3d}".format(round(log(magnitude, 10)))
                         if magnitude != 1
                         else "    "  # 4 SPACES!
                     )
@@ -167,7 +167,7 @@ def toSI(v, dec=4, unit=None, useSN=False):
             (" " if positive else "-")
             + vstr
             + " " * (dec + 1 - len(vstr) + vstr.find("."))
-            + ("E{:<3}".format(round(log(magnitude, 10))))
+            + ("E{:<+3d}".format(round(log(magnitude, 10))))
             + (unit if unit is not None else "")
         )
 
@@ -304,7 +304,7 @@ class IB(Frame):
 
         parent.columnconfigure(0, weight=1)
         parent.rowconfigure(0, weight=1)
-
+        # parent.columnconfigure(1, weight=1)
         self.addRightFrm(parent)
         self.addErrFrm(parent)
         self.addPlotFrm(parent)
@@ -387,8 +387,19 @@ class IB(Frame):
                 / float(self.ldf.get())
                 * 100
             )
-            self.cv.set(toSI(chamberVolume, useSN=True).strip())
-            self.ld.set(round(self.prop.maxLF * float(self.ldf.get()), 1))
+            self.cv.set(toSI(chamberVolume, useSN=True))
+            self.ldp.set(round(self.prop.maxLF * float(self.ldf.get()), 1))
+
+            self.ld.set(
+                toSI(
+                    self.prop.maxLF
+                    * 1e-2
+                    * float(self.ldf.get())
+                    * self.prop.rho_p,
+                    unit=None,  # "g/cm^3",
+                    useSN=True,
+                )
+            )
 
             self.gun = Gun(
                 caliber=float(self.calmm.get()) * 1e-3,
@@ -520,11 +531,13 @@ class IB(Frame):
             unitText="m³",
             justify="right",
         )
-        self.ld, _, i = self.add12Disp(
+        self.ldp, self.ld, _, _, i = self.add122Disp(
             parent=specFrm,
             rowIndex=i,
             labelText="Loading Density",
-            unitText="%",
+            unitText_up="%",
+            unitText_dn="kg/m³",
+            justify_dn="right",
         )
 
         opFrm = ttk.LabelFrame(rightFrm, text="Operations")
@@ -742,7 +755,9 @@ class IB(Frame):
         self.dropProp.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropProp.current(0)
         # self.dropProp.configure(width=10)
-        self.dropProp.grid(row=0, column=0, columnspan=2, sticky="nsew", pady=2)
+        self.dropProp.grid(
+            row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
+        )
 
         specScroll = ttk.Scrollbar(propFrm, orient="vertical")
         specScroll.grid(
@@ -751,15 +766,26 @@ class IB(Frame):
             sticky="nsew",
             pady=2,
         )
+        specHScroll = ttk.Scrollbar(propFrm, orient="horizontal")
+        specHScroll.grid(
+            row=2,
+            column=0,
+            sticky="nsew",
+        )
+
         self.specs = Text(
             propFrm,
-            wrap=WORD,
+            # wrap=WORD,
+            wrap="none",
             height=10,
             width=0,
             yscrollcommand=specScroll.set,
+            xscrollcommand=specHScroll.set,
         )
-        self.specs.grid(row=1, column=0, sticky="nsew", pady=2)
+        self.specs.grid(row=1, column=0, sticky="nsew")
         specScroll.config(command=self.specs.yview)
+        specHScroll.config(command=self.specs.xview)
+
         CreateToolTip(propFrm, specsText)
 
         i += 1
@@ -920,7 +946,9 @@ class IB(Frame):
         dpi = self.dpi
         with mpl.rc_context(GEOM_CONTEXT):
             fig = Figure(
-                figsize=(width / dpi, width / dpi), dpi=96, layout="constrained"
+                figsize=(width / dpi, 0.5 * width / dpi),
+                dpi=96,
+                layout="constrained",
             )
             self.geomFig = fig
             self.geomAx = fig.add_subplot(111)
@@ -1228,6 +1256,26 @@ class IB(Frame):
         self.specs.config(state="normal")
         compo = self.compositions[self.dropProp.get()]
         self.specs.delete("1.0", "end")
+        t_Font = tkFont.Font(family="hack", size=8)
+        width = self.specs.winfo_width() // t_Font.measure("m")
+        self.specs.insert("end", " Adb.Temp: {:.0f} K\n".format(compo.T_1)),
+
+        self.specs.insert(
+            "end", "  Density: {:.0f} kg/m^3\n".format(compo.rho_p)
+        )
+
+        self.specs.insert("end", "Burn rate:\n")
+        for p in (100e6, 200e6, 300e6):
+            self.specs.insert(
+                "end",
+                "{:>13}".format(toSI(compo.getLBR(p), unit="m/s", dec=3))
+                + " @ {:>13}\n".format(toSI(p, unit="Pa", dec=3)),
+            )
+
+        self.specs.insert(
+            "end",
+            "-" * width + "\n",
+        )
         for line in compo.desc.split(","):
             self.specs.insert("end", line + "\n")
         self.specs.config(state="disabled")
@@ -1303,22 +1351,18 @@ class IB(Frame):
                 ys = [prop.f_sigma_Z(x) for x in xs]
                 xs.append(xs[-1])
                 ys.append(0)
-                self.geomAx.plot(
-                    xs,
-                    ys,
-                    # color="#215d9c",
-                )
+                self.geomAx.plot(xs, ys)
                 self.geomAx.grid(
                     which="major", color="grey", linestyle="dotted"
                 )
-                # self.geomAx.minorticks_on()
+                self.geomAx.minorticks_on()
                 self.geomAx.set_xlim(left=0, right=prop.Z_b)
                 self.geomAx.xaxis.set_ticks(
-                    [i * 0.2 for i in range(ceil(prop.Z_b / 0.2) + 1)]
+                    [i * 0.5 for i in range(ceil(prop.Z_b / 0.5) + 1)]
                 )
                 self.geomAx.set_ylim(bottom=0, top=max(ys))
                 self.geomAx.yaxis.set_ticks(
-                    [i * 0.2 for i in range(ceil(max(ys) / 0.2) + 1)]
+                    [i * 0.5 for i in range(ceil(max(ys) / 0.5) + 1)]
                 )
 
             self.geomCanvas.draw()
@@ -1493,6 +1537,62 @@ class IB(Frame):
             CreateToolTip(lb, infotext)
 
         return e, en, rowIndex + 2
+
+    def add122Disp(
+        self,
+        parent,
+        rowIndex,
+        colIndex=0,
+        labelText="",
+        unitText_up="",
+        unitText_dn="",
+        default_up="0.0",
+        default_dn="0.0",
+        entryWidth=5,
+        justify_up="center",
+        justify_dn="center",
+        infotext=None,
+        reverse=False,
+    ):
+        e, en, rowIndex = self.add12Disp(
+            parent=parent,
+            rowIndex=rowIndex,
+            colIndex=colIndex,
+            labelText=labelText,
+            unitText=unitText_up,
+            default=default_up,
+            entryWidth=entryWidth,
+            justify=justify_up,
+            infotext=infotext,
+            reverse=reverse,
+        )
+        e2 = StringVar(parent)
+        e2.default = default_dn
+        e2.set(default_dn)
+        parent.rowconfigure(rowIndex, weight=0)
+        en2 = ttk.Entry(
+            parent,
+            textvariable=e2,
+            width=entryWidth,
+            state="disabled",
+            justify=justify_dn,
+        )
+        en2.grid(
+            row=rowIndex + 1,
+            column=colIndex + (1 if reverse else 0),
+            sticky="nsew",
+            padx=2,
+            pady=2,
+        )
+        ttk.Label(parent, text=unitText_dn).grid(
+            row=rowIndex + 1,
+            column=colIndex + (0 if reverse else 1),
+            sticky="nsew",
+            padx=2,
+            pady=2,
+        )
+
+        return e, e2, en, en2, rowIndex + 2
 
     def useTheme(self):
         style = ttk.Style(self)
