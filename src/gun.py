@@ -376,8 +376,10 @@ class Gun:
 
             if p_bar_j > p_bar_max:
                 raise ValueError(
-                    "Unreasonably high pressure (>{:.0f} MPa) was encountered."
-                    " Nobel-Abel EoS is in general not applicable at pressures above 600MPa."
+                    "Unreasonably high pressure (>{:.0f} MPa) was encountered.".format(
+                        p_max / 1e6
+                    )
+                    + " Nobel-Abel EoS is in general not applicable at pressures above 600MPa."
                 )
 
             if any(
