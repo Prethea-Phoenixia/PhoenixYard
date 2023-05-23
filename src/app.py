@@ -379,6 +379,43 @@ class IB(Frame):
                 else:
                     self.errorLst.append(str(e))
 
+        if self.opt_lf.get() == 1:
+            try:
+                constrained = Constrained(
+                    caliber=float(self.calmm.get()) * 1e-3,
+                    shotMass=float(self.shtkg.get()),
+                    propellant=self.prop,
+                    startPressure=float(self.stpMPa.get()) * 1e6,
+                    dragCoe=float(self.dgc.get()) * 1e-2,
+                    designPressure=float(self.pTgt.get()) * 1e6,
+                    designVelocity=float(self.vTgt.get()),
+                )
+
+                lf, e_1, l_g = constrained.findMinV(
+                    chargeMassRatio=(
+                        float(self.chgkg.get()) / float(self.shtkg.get())
+                    ),
+                    tol=10 ** -(int(self.accExp.get())),
+                    minWeb=1e-6 * float(self.minWeb.get()),
+                )
+
+                webmm = round(
+                    2000 * e_1, 3 - int(floor(log10(abs(2000 * e_1))))
+                )
+                lgmm = round(l_g * 1000, 3 - int(floor(log10(abs(l_g * 1000)))))
+                lf = round(lf * 100, 3 - int(floor(log10(abs(l_g * 100)))))
+                # take the 3 most significant digits.
+                self.arcmm.set(webmm)
+                self.tblmm.set(lgmm)
+                self.ldf.set(lf)
+
+            except Exception as e:
+                self.errorLst.append("Exception in constrained design:")
+                if self.DEBUG.get():
+                    self.errorLst.append("".join(traceback.format_exception(e)))
+                else:
+                    self.errorLst.append(str(e))
+
         try:
             chamberVolume = (
                 float(self.chgkg.get())
@@ -590,14 +627,21 @@ class IB(Frame):
             color="red",
         )
 
+        j += 1
         self.solve_W_Lg = IntVar()
         useConstarint = ttk.Checkbutton(
             consFrm, text="Constrain Design", variable=self.solve_W_Lg
         )
-
-        useConstarint.grid(row=j + 1, column=0, columnspan=3)
+        useConstarint.grid(row=j, column=0, columnspan=3, sticky="nsew")
 
         CreateToolTip(useConstarint, useConsTxt)
+
+        j += 1
+        self.opt_lf = IntVar()
+        optimizeLF = ttk.Checkbutton(
+            consFrm, text="Minimize Tube Volume", variable=self.opt_lf
+        )
+        optimizeLF.grid(row=j, column=0, columnspan=3, sticky="nsew")
 
         i += 1
 
