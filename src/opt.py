@@ -1,5 +1,6 @@
 from num import *
 from prop import *
+from random import uniform
 
 
 class Constrained:
@@ -98,7 +99,11 @@ class Constrained:
             for Z in Zs
             if not isinstance(Z, complex) and (Z > 0.0 and Z < 1.0)
         )  # evaluated from left to right, guards against complex >/< float
-
+        if len(Zs) < 1:
+            raise ValueError(
+                "Propellant either could not develop enough pressure to overcome"
+                " start pressure, or has burnt to post fracture."
+            )
         Z_0 = Zs[0]
 
         def _fp_bar(Z, l_bar, v_bar):
@@ -199,8 +204,8 @@ class Constrained:
                 iniVal=(0, 0, 0, p_bar_0),
                 x_0=Z_0,
                 x_1=self.Z_b,
-                relTol=0.09 * tol,
-                absTol=0.09 * tol,
+                relTol=0.1 * tol,
+                absTol=0.1 * tol,
                 abortFunc=abort,
                 parFunc=_pf_Z,
                 record=record,
@@ -214,20 +219,10 @@ class Constrained:
                     iniVal=(t_bar_i, l_bar_i, v_bar_i, p_bar_i),
                     x_0=Z_i,
                     x_1=Z,
-                    relTol=0.09 * tol,
-                    absTol=0.09 * tol,
+                    relTol=0.01 * tol,
+                    absTol=0.01 * tol,
                     parFunc=_pf_Z,
                 )
-                """
-                print(
-                    "Z:",
-                    Z,
-                    "d:",
-                    _ode_Z(Z, t_bar, l_bar, v_bar, p_bar)[-1],
-                    "p:",
-                    p_bar,
-                )
-                """
                 return p_bar
 
             """
@@ -239,8 +234,7 @@ class Constrained:
                 _fp_Z,
                 Z_i,
                 Z_j,
-                yRelTol=0.3 * tol,
-                yRef=p_bar_d,
+                yRelTol=0.1 * tol,
                 findMin=False,
                 xTol=0,
             )
@@ -337,13 +331,17 @@ class Constrained:
 
             return (dt_bar, dZ, dl_bar, dp_bar)
 
+        """ technically, integrating from the give points would be faster,
+        but integrating from 0 improves numerical consistency, important when
+        trying to use this as a routine for other optimization duties.
+        """
         v_bar_g, (t_bar_g, Z_g, l_bar_g, p_bar_g), (_, _, _, _) = RKF78(
             dFunc=_ode_v,
-            iniVal=(t_bar_i, Z_i, l_bar_i, p_bar_i),
-            x_0=v_bar_i,
+            iniVal=(0, Z_0, 0, p_bar_0),
+            x_0=0,
             x_1=v_bar_d,
             relTol=tol,
-            absTol=None,
+            absTol=tol,
             parFunc=_pf_v,
         )
         # print("p_tol=", self.f * Delta * tol, " Pa")
@@ -352,6 +350,116 @@ class Constrained:
             raise ValueError("Velocity specification is not met")
 
         return e_1, l_bar_g * l_0
+
+    def findMinV(self, chargeMassRatio, tol, minWeb):
+        """
+        find the minimum volume solution.
+        """
+
+        """
+        Step 1, find a valid range of values for load fraction, 
+        using psuedo-bisection.
+
+        high lf -> high web
+        low lf -> low web
+        """
+
+        def f(lf, mW=minWeb):
+            omega = self.m * chargeMassRatio
+            V_0 = omega / (self.rho_p * self.maxLF * lf)
+            l_0 = V_0 / self.S
+
+            e_1, l_g = self.solve(
+                loadFraction=lf,
+                chargeMassRatio=chargeMassRatio,
+                tol=0.1 * tol,  # this is to ensure unimodality up to ~tol
+                minWeb=mW,
+            )
+            return e_1, (l_g + l_0), l_g
+
+        records = []
+        N = 5
+        for i in range(N):
+            startProbe = uniform(tol, 1 - tol)
+            try:
+                _, lt_i, lg_i = f(startProbe)
+                records.append((startProbe, lt_i))
+                break
+            except ValueError:
+                pass
+
+        if i == N - 1:
+            raise ValueError("Unable to find any valid load fraction.")
+
+        low = tol
+        probe = startProbe
+        delta_low = low - probe
+
+        web_i = minWeb
+        new_low = probe + delta_low
+
+        while abs(delta_low) > tol:
+            try:
+                web_i, lt_i, lg_i = f(new_low)
+                records.append((new_low, lt_i))
+                probe = new_low
+            except ValueError as e:
+                delta_low *= 0.5
+            finally:
+                new_low = probe + delta_low
+
+        actMinWeb = web_i
+
+        low = probe
+        high = 1 - tol
+        probe = startProbe
+        delta_high = high - probe
+        new_high = probe + delta_high
+
+        while abs(delta_high) > tol and new_high < 1:
+            try:
+                _, lt_i, lg_i = f(new_high, actMinWeb)
+                records.append((new_high, lt_i))
+                probe = new_high
+            except ValueError as e:
+                delta_high *= 0.5
+            finally:
+                new_high = probe + delta_high
+
+        high = probe
+
+        if len(records) < 3:
+            raise ValueError("No range was solved.")
+
+        records.sort(key=lambda x: x[0])
+
+        for l, m, h in zip(records[:-2], records[1:-1], records[2:]):
+            if l[1] > m[1] and h[1] > m[1]:
+                low = l[0]
+                high = h[0]
+
+        """
+        Step 2, 
+        """
+
+        lf_low, lf_high = GSS(
+            lambda x: f(x, actMinWeb)[1],
+            low,
+            high,
+            xTol=0,
+            yRelTol=tol,
+            findMin=True,
+        )
+
+        lf = 0.5 * (lf_high + lf_low)
+        """
+        lf, _ = simulated_annealing(
+            lambda x: f(x, actMinWeb)[1], low, high, 50, 0.1 * (high - low), 2
+        )
+        """
+        e_1, l_t, l_g = f(lf, actMinWeb)
+
+        return lf, e_1, l_g
 
 
 if __name__ == "__main__":
@@ -377,6 +485,7 @@ if __name__ == "__main__":
         )
     )
 
+    """
     for i in range(9):
         loadFraction = (i + 1) / 10
         for j in range(10):
@@ -392,3 +501,6 @@ if __name__ == "__main__":
                 )
             except ValueError as e:
                 print(e)
+    """
+    for i in range(5):
+        test.findMinV(chargeMassRatio=1, tol=1e-3, minWeb=1e-6)

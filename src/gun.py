@@ -63,7 +63,7 @@ class Gun:
         if self.p_0 == 0:
             raise NotImplementedError(
                 "Current implementation use exponential burn rate and does not"
-                + " allow for solving the case with 0 shot start pressure."
+                " allow for solving the case with 0 shot start pressure."
             )
         else:
             self.psi_0 = (1 / self.Delta - 1 / self.rho_p) / (
@@ -72,9 +72,9 @@ class Gun:
             if self.psi_0 <= 0:
                 raise ValueError(
                     "Initial burnup fraction is solved to be negative."
-                    + " In practice this implies a detonation of the gun breech"
-                    + " will likely occur."
-                    + " Suggest reducing load fraction."
+                    " In practice this implies a detonation of the gun breech"
+                    " will likely occur."
+                    " Suggest reducing load fraction."
                 )
         # this will overwrite the definition of Geometry.B
 
@@ -96,9 +96,8 @@ class Gun:
         )  # evaluated from left to right, guards against complex >/< float
         if len(Zs) < 1:
             raise ValueError(
-                "Propellant has burnt to fracture before start"
-                + " of shot movement. Suggest reducing starting"
-                + " pressure or specifying higher load fraction."
+                "Propellant either could not develop enough pressure to overcome"
+                " start pressure, or has burnt to post fracture."
             )
 
         self.Z_0 = Zs[0]
@@ -340,10 +339,12 @@ class Gun:
         burning or right on the burnout point..
         """
         ztlvp_record = []
+        p_max = 1e9  # 1GPa
+        p_bar_max = p_max / pScale
 
-        def gunLengthExceeded(x, ys, o_ys):
+        def abort(x, ys, o_ys):
             t_bar, l_bar, v_bar, p_bar = ys
-            return l_bar > l_g_bar
+            return l_bar > l_g_bar or p_bar > p_bar_max
 
         while Z_i < self.Z_b:  # terminates if burnout is achieved
             ztlvp_record_i = []
@@ -362,7 +363,7 @@ class Gun:
                     relTol=tol,
                     absTol=tol,
                     minTol=minTol,
-                    abortFunc=gunLengthExceeded,
+                    abortFunc=abort,
                     parFunc=self._pf_Z,
                     record=ztlvp_record_i,
                 )[1]
@@ -370,11 +371,13 @@ class Gun:
             except ValueError as e:
                 raise ValueError(
                     "Unable to integrate due to ill defined system, requiring"
-                    + " vanishingly step size. Reducing tolerance limit is generally"
-                    + " not useful. This is usually caused by excessive pressure spike."
-                    + " Reduced propellant load or energy content,"
-                    + " lower chamber load fraction, longer burn times via greater"
-                    + " geometrical size of the propellant grain is suggested."
+                    " vanishingly step size."
+                )
+
+            if p_bar_j > p_bar_max:
+                raise ValueError(
+                    "Unreasonably high pressure (>{:.0f} MPa) was encountered."
+                    " Nobel-Abel EoS is in general not applicable at pressures above 600MPa."
                 )
 
             if any(
@@ -601,7 +604,7 @@ class Gun:
             tolerance is specified a bit differently for gold section search
             GSS tol is the length between the upper bound and lower bound
             of the maxima/minima, thus by our definition of tolerance (one sided),
-            a division by 2 is necessary in the following section.
+            we take the median value.
         """
 
         t_bar_tol = tol * min(

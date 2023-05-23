@@ -1,5 +1,6 @@
 import math
 import cmath
+from random import random, gauss
 
 
 def sign(x):
@@ -138,7 +139,7 @@ def gss(f, a, b, tol=1e-9, findMin=True):
         return (c, b)
 
 
-def GSS(f, a, b, yRelTol, yRef, xTol=0, findMin=True):
+def GSS(f, a, b, yRelTol, xTol=0, findMin=True):
     """
     conduct Gold Section Search using both the relative deviance of
     the functional value, and the absolute deviance of x as dual-control.
@@ -147,6 +148,8 @@ def GSS(f, a, b, yRelTol, yRef, xTol=0, findMin=True):
     i = 0
 
     (a, b) = (min(a, b), max(a, b))
+    ya = f(a)
+    yb = f(b)
     h = b - a
     c = a + invphi2 * h
     d = a + invphi * h
@@ -163,7 +166,9 @@ def GSS(f, a, b, yRelTol, yRef, xTol=0, findMin=True):
             # a---c---d
             b = d
             d = c
+            yb = yd
             yd = yc
+
             h = invphi * h
             c = a + invphi2 * h
             yc = f(c)
@@ -171,13 +176,14 @@ def GSS(f, a, b, yRelTol, yRef, xTol=0, findMin=True):
             if c == a:
                 break
 
-            if yc / yRef < yRelTol:
+            if abs(ya - yd) / min(ya, yd) < yRelTol:
                 break
 
         else:
             # c--d---b
             a = c
             c = d
+            ya = yc
             yc = yd
             h = invphi * h
             d = a + invphi * h
@@ -186,7 +192,7 @@ def GSS(f, a, b, yRelTol, yRef, xTol=0, findMin=True):
             if d == a:
                 break
 
-            if yd / yRef < yRelTol:
+            if abs(yc - yb) / min(yc, yb) < yRelTol:
                 break
 
         i += 1
@@ -257,7 +263,11 @@ def RKF78(
         to beta h for the (i + 1)st step.
     """
     h = x_1 - x_0  # initial step size
+
     Rm = tuple(0 for _ in iniVal)
+
+    if h == 0:
+        return x, y_this, Rm
 
     while (h > 0 and x < x_1) or (h < 0 and x > x_1):
         if (x + h) == x:
@@ -705,6 +715,47 @@ def bisect(f, x_0, x_1, tol=1e-4):
 
     return a, b
 
+
+"""
+
+def simulated_annealing(
+    objective, low_bound, high_bound, n_iterations, step_size, temp
+):
+    # generate an initial point
+    best = low_bound + random() * (high_bound - low_bound)
+    # evaluate the initial point
+    best_eval = objective(best)
+    # current working solution
+    curr, curr_eval = best, best_eval
+    # run the algorithm
+    for i in range(n_iterations):
+        # take a step
+        candidate = curr + gauss(mu=0, sigma=1) * step_size
+        candidate = max(min(candidate, high_bound), low_bound)
+        # evaluate candidate point
+        candidate_eval = objective(candidate)
+        # check for new best solution
+
+        print(candidate)
+        if candidate_eval < best_eval:
+            # store new best point
+            best, best_eval = candidate, candidate_eval
+        # report progress
+        print(">%d f(%s) = %.5f" % (i, best, best_eval))
+        # difference between candidate and current point evaluation
+        diff = candidate_eval - curr_eval
+        # calculate temperature for current epoch
+        t = temp / float(i + 1)
+        # calculate metropolis acceptance criterion
+        metropolis = math.exp(-diff / t)
+        print("m:", metropolis)
+        # check if we should keep the new point
+        if diff < 0 or random() < metropolis:
+            # store the new current point
+            curr, curr_eval = candidate, candidate_eval
+
+    return best, best_eval
+"""
 
 if __name__ == "__main__":
     print(cubic(1, 1, 2, 3))
