@@ -355,59 +355,38 @@ class IB(Frame):
                     designVelocity=float(self.vTgt.get()),
                 )
 
-                e_1, l_g = constrained.solve(
-                    loadFraction=1e-2 * float(self.ldf.get()),
-                    chargeMassRatio=(
-                        float(self.chgkg.get()) / float(self.shtkg.get())
-                    ),
-                    tol=10 ** -(int(self.accExp.get())),
-                    minWeb=1e-6 * float(self.minWeb.get()),
-                )
+                if self.opt_lf.get() == 0:
+                    e_1, l_g = constrained.solve(
+                        loadFraction=1e-2 * float(self.ldf.get()),
+                        chargeMassRatio=(
+                            float(self.chgkg.get()) / float(self.shtkg.get())
+                        ),
+                        tol=10 ** -(int(self.accExp.get())),
+                        minWeb=1e-6 * float(self.minWeb.get()),
+                    )
 
-                webmm = round(
-                    2000 * e_1, 3 - int(floor(log10(abs(2000 * e_1))))
-                )
-                lgmm = round(l_g * 1000, 3 - int(floor(log10(abs(l_g * 1000)))))
-                # take the 3 most significant digits.
-                self.arcmm.set(webmm)
-                self.tblmm.set(lgmm)
-
-            except Exception as e:
-                self.errorLst.append("Exception in constrained design:")
-                if self.DEBUG.get():
-                    self.errorLst.append("".join(traceback.format_exception(e)))
                 else:
-                    self.errorLst.append(str(e))
+                    lf, e_1, l_g = constrained.findMinV(
+                        chargeMassRatio=(
+                            float(self.chgkg.get()) / float(self.shtkg.get())
+                        ),
+                        tol=10 ** -(int(self.accExp.get())),
+                        minWeb=1e-6 * float(self.minWeb.get()),
+                    )
 
-        if self.opt_lf.get() == 1:
-            try:
-                constrained = Constrained(
-                    caliber=float(self.calmm.get()) * 1e-3,
-                    shotMass=float(self.shtkg.get()),
-                    propellant=self.prop,
-                    startPressure=float(self.stpMPa.get()) * 1e6,
-                    dragCoe=float(self.dgc.get()) * 1e-2,
-                    designPressure=float(self.pTgt.get()) * 1e6,
-                    designVelocity=float(self.vTgt.get()),
-                )
-
-                lf, e_1, l_g = constrained.findMinV(
-                    chargeMassRatio=(
-                        float(self.chgkg.get()) / float(self.shtkg.get())
-                    ),
-                    tol=10 ** -(int(self.accExp.get())),
-                    minWeb=1e-6 * float(self.minWeb.get()),
-                )
+                    lfpercent = round(
+                        lf * 100, 3 - int(floor(log10(abs(l_g * 100))))
+                    )
+                    self.ldf.set(lfpercent)
 
                 webmm = round(
                     2000 * e_1, 3 - int(floor(log10(abs(2000 * e_1))))
                 )
                 lgmm = round(l_g * 1000, 3 - int(floor(log10(abs(l_g * 1000)))))
-                lf = round(lf * 100, 3 - int(floor(log10(abs(l_g * 100)))))
+
                 # take the 3 most significant digits.
                 self.arcmm.set(webmm)
                 self.tblmm.set(lgmm)
-                self.ldf.set(lf)
 
             except Exception as e:
                 self.errorLst.append("Exception in constrained design:")
