@@ -380,7 +380,10 @@ class Constrained:
         records = []
         N = 5
         for i in range(N):
-            startProbe = uniform(tol, 1 - tol)
+            if N == 0:
+                startProbe = 0.5
+            else:
+                startProbe = uniform(tol, 1 - tol)
             try:
                 _, lt_i, lg_i = f(startProbe)
                 records.append((startProbe, lt_i))
