@@ -331,14 +331,12 @@ class Constrained:
 
             return (dt_bar, dZ, dl_bar, dp_bar)
 
-        """ technically, integrating from the give points would be faster,
-        but integrating from 0 improves numerical consistency, important when
-        trying to use this as a routine for other optimization duties.
-        """
         v_bar_g, (t_bar_g, Z_g, l_bar_g, p_bar_g), (_, _, _, _) = RKF78(
             dFunc=_ode_v,
-            iniVal=(0, Z_0, 0, p_bar_0),
-            x_0=0,
+            # iniVal=(0, Z_0, 0, p_bar_0),
+            iniVal=(t_bar_i, Z_i, l_bar_i, p_bar_i),
+            # x_0=0,
+            x_0=v_bar_i,
             x_1=v_bar_d,
             relTol=tol,
             absTol=tol,
@@ -375,6 +373,7 @@ class Constrained:
                 tol=0.1 * tol,  # this is to ensure unimodality up to ~tol
                 minWeb=mW,
             )
+            # print(l_g + l_0)
             return e_1, (l_g + l_0), l_g
 
         records = []
@@ -445,6 +444,8 @@ class Constrained:
         Step 2, 
         """
 
+        print(low, high)
+
         lf_low, lf_high = GSS(
             lambda x: f(x, actMinWeb)[1],
             low,
@@ -461,6 +462,7 @@ class Constrained:
         )
         """
         e_1, l_t, l_g = f(lf, actMinWeb)
+        print(lf, e_1, l_g)
 
         return lf, e_1, l_g
 
