@@ -1731,7 +1731,12 @@ if __name__ == "__main__":
     else:
         print("Unknown release: ", release, ", skipping DPI handling")
 
+    # this allows us to set our own taskbar icon
+    myappid = "mycompany.myproduct.subproduct.version"  # arbitrary string
+    windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
     root = Tk()
+    root.iconbitmap(resolvepath("ui/logo.ico"))
     # one must supply the entire path
     loadfont(resolvepath("ui/Hack-Regular.ttf"))
     # dpi = round(root.winfo_fpixels("1i") / 96) * 96

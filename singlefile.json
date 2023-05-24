@@ -18,6 +18,14 @@
    "value": false
   },
   {
+   "optionDest": "icon_file",
+   "value": "C:/Users/Fenix/Documents/GitHub/PhoenixYard/src/ui/logo.ico"
+  },
+  {
+   "optionDest": "name",
+   "value": "Phoenix Internal Ballistics Solver"
+  },
+  {
    "optionDest": "ascii",
    "value": false
   },
@@ -39,7 +47,7 @@
   },
   {
    "optionDest": "embed_manifest",
-   "value": true
+   "value": false
   },
   {
    "optionDest": "uac_admin",
