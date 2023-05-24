@@ -437,16 +437,6 @@ class Constrained:
 
         high = probe
 
-        delta = high - low
-
-        """
-        Edge values are some times only semi-stable, i.e. when calling 
-        f() with the same value will spuriously raise value errors. Therefore
-        we conservatively shrink the range by tolerance to avoid this issue.
-        """
-        low += delta * tol
-        high -= delta * tol
-
         if abs(high - low) < tol:
             raise ValueError("No range of values satisfying constraint.")
 
@@ -456,6 +446,16 @@ class Constrained:
                 if l[1] > m[1] and h[1] > m[1]:
                     low = l[0]
                     high = h[0]
+
+        delta = high - low
+
+        """
+        Edge values are some times only semi-stable, i.e. when calling 
+        f() with the same value will spuriously raise value errors. Therefore
+        we conservatively shrink the range by tolerance to avoid this issue.
+        """
+        low += delta * tol
+        high -= delta * tol
 
         """
         Step 2, gss to min.
