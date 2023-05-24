@@ -608,19 +608,22 @@ class IB(Frame):
 
         j += 1
         self.solve_W_Lg = IntVar()
-        useConstarint = ttk.Checkbutton(
+        self.solve_W_Lg.set(0)
+        self.useConstraint = ttk.Checkbutton(
             consFrm, text="Constrain Design", variable=self.solve_W_Lg
         )
-        useConstarint.grid(row=j, column=0, columnspan=3, sticky="nsew")
+        self.useConstraint.grid(row=j, column=0, columnspan=3, sticky="nsew")
+        self.solve_W_Lg.trace_add("write", self.setCD)
 
-        CreateToolTip(useConstarint, useConsTxt)
+        CreateToolTip(self.useConstraint, useConsTxt)
 
         j += 1
         self.opt_lf = IntVar()
-        optimizeLF = ttk.Checkbutton(
+        self.optimizeLF = ttk.Checkbutton(
             consFrm, text="Minimize Tube Volume", variable=self.opt_lf
         )
-        optimizeLF.grid(row=j, column=0, columnspan=3, sticky="nsew")
+        self.optimizeLF.grid(row=j, column=0, columnspan=3, sticky="nsew")
+        self.setCD(None, None, None)
 
         i += 1
 
@@ -1425,6 +1428,12 @@ class IB(Frame):
                 self.errorLst.append(str(e))
 
         self.updateError()
+
+    def setCD(self, var, index, mode):
+        if self.solve_W_Lg.get() == 0:
+            self.optimizeLF.config(state="disabled")
+        else:
+            self.optimizeLF.config(state="normal")
 
     def add2Input(
         self,

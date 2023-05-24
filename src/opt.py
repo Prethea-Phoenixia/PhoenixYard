@@ -44,6 +44,7 @@ class Constrained:
         except:
             raise AttributeError("object has no '%s'" % attrName)
 
+    # @profile
     def solve(
         self,
         loadFraction,
@@ -378,10 +379,10 @@ class Constrained:
             return e_1, (l_g + l_0), l_g
 
         records = []
-        N = 5
+        N = 10
         for i in range(N):
             if N == 0:
-                startProbe = 0.5
+                startProbe = 0.1852
             else:
                 startProbe = uniform(tol, 1 - tol)
             try:
@@ -392,7 +393,11 @@ class Constrained:
                 pass
 
         if i == N - 1:
-            raise ValueError("Unable to find any valid load fraction.")
+            raise ValueError(
+                "Unable to find any valid load fraction with {:d} random samples.".format(
+                    N
+                )
+            )
 
         low = tol
         probe = startProbe
@@ -404,6 +409,7 @@ class Constrained:
         while abs(delta_low) > tol:
             try:
                 web_i, lt_i, lg_i = f(new_low)
+
                 records.append((new_low, lt_i))
                 probe = new_low
             except ValueError as e:
@@ -431,9 +437,17 @@ class Constrained:
 
         high = probe
 
-        print(*records, sep="\n")
+        delta = high - low
 
-        if high == low:
+        """
+        Edge values are some times only semi-stable, i.e. when calling 
+        f() with the same value will spuriously raise value errors. Therefore
+        we conservatively shrink the range by tolerance to avoid this issue.
+        """
+        low += delta * tol
+        high -= delta * tol
+
+        if abs(high - low) < tol:
             raise ValueError("No range of values satisfying constraint.")
 
         if len(records) > 3:
@@ -442,21 +456,16 @@ class Constrained:
                 if l[1] > m[1] and h[1] > m[1]:
                     low = l[0]
                     high = h[0]
-        else:
-            print("WOW")
 
         """
-        Step 2, 
+        Step 2, gss to min.
         """
 
-        print(low, high)
-
-        lf_low, lf_high = GSS(
+        lf_low, lf_high = gss(
             lambda x: f(x, actMinWeb)[1],
             low,
             high,
-            xTol=0,
-            yRelTol=tol,
+            tol=tol,
             findMin=True,
         )
 
@@ -467,7 +476,6 @@ class Constrained:
         )
         """
         e_1, l_t, l_g = f(lf, actMinWeb)
-        print(lf, e_1, l_g)
 
         return lf, e_1, l_g
 
@@ -512,5 +520,5 @@ if __name__ == "__main__":
             except ValueError as e:
                 print(e)
     """
-    for i in range(100):
-        test.findMinV(chargeMassRatio=1, tol=1e-3, minWeb=1e-6)
+
+    test.findMinV(chargeMassRatio=1, tol=1e-3, minWeb=1e-6)
