@@ -66,31 +66,47 @@ class Constrained:
         """
         minWeb  : represents minimum possible grain size
         """
-        omega = self.m * chargeMassRatio
-        V_0 = omega / (self.rho_p * self.maxLF * loadFraction)
+        m = self.m
+        rho_p = self.rho_p
+        theta = self.theta
+        f = self.f
+        chi = self.chi
+        labda = self.labda
+        mu = self.mu
+        S = self.S
+        maxLF = self.maxLF
+        phi_1 = self.phi_1
+        p_0 = self.p_0
+        v_d = self.v_d
+        p_d = self.p_d
+        u_1 = self.u_1
+        n = self.n
+        alpha = self.alpha
+        Z_b = self.Z_b
+
+        omega = m * chargeMassRatio
+        V_0 = omega / (rho_p * maxLF * loadFraction)
         Delta = omega / V_0
-        p_bar_0 = self.p_0 / (Delta * self.f)
-        l_0 = V_0 / self.S
-        phi = self.phi_1 + omega / (3 * self.m)
+        p_bar_0 = p_0 / (Delta * f)
+        l_0 = V_0 / S
+        phi = phi_1 + omega / (3 * m)
         """
         it is impossible to account for the chamberage effect given unspecified
         barrel length, in our formulation
         """
-        v_j = (2 * self.f * omega / (self.theta * phi * self.m)) ** 0.5
+        v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
 
-        if 0.9 * v_j < self.v_d:
+        if 0.9 * v_j < v_d:
             raise ValueError(
                 "Propellant load too low to achieve " "design velocity."
             )
 
-        psi_0 = (1 / Delta - 1 / self.rho_p) / (
-            self.f / self.p_0 + self.alpha - 1 / self.rho_p
-        )
+        psi_0 = (1 / Delta - 1 / rho_p) / (f / p_0 + alpha - 1 / rho_p)
 
         Zs = cubic(
-            a=self.chi * self.mu,
-            b=self.chi * self.labda,
-            c=self.chi,
+            a=chi * mu,
+            b=chi * labda,
+            c=chi,
             d=-psi_0,
         )
         # pick a valid solution between 0 and 1
@@ -108,23 +124,18 @@ class Constrained:
 
         def _fp_bar(Z, l_bar, v_bar):
             psi = self.f_psi_Z(Z)
-            l_psi_bar = (
-                1
-                - Delta / self.rho_p
-                - Delta * (self.alpha - 1 / self.rho_p) * psi
-            )
+            l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
 
             p_bar = (
-                self.f * omega * psi
-                - 0.5 * self.theta * phi * self.m * (v_bar * v_j) ** 2
-            ) / (self.S * l_0 * (l_bar + l_psi_bar) * self.f * Delta)
+                f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
+            ) / (S * l_0 * (l_bar + l_psi_bar) * f * Delta)
 
             return p_bar
 
         """
         step 1, find grain size that satisifies design pressure
         """
-        p_bar_d = self.p_d / (self.f * Delta)  # convert to unitless
+        p_bar_d = p_d / (f * Delta)  # convert to unitless
 
         def _fp_e_1(e_1, tol):
             """
@@ -134,10 +145,10 @@ class Constrained:
             """
 
             B = (
-                self.S**2
+                S**2
                 * e_1**2
-                / (self.f * phi * omega * self.m * self.u_1**2)
-                * (self.f * Delta) ** (2 * (1 - self.n))
+                / (f * phi * omega * m * u_1**2)
+                * (f * Delta) ** (2 * (1 - n))
             )
 
             # integrate this to end of burn
@@ -152,31 +163,25 @@ class Constrained:
                 psi = self.f_psi_Z(Z)
                 dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
                 l_psi_bar = (
-                    1
-                    - Delta / self.rho_p
-                    - Delta * (self.alpha - 1 / self.rho_p) * psi
+                    1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
                 )
                 # dp_bar/dt_bar
 
-                if Z <= self.Z_b:
-                    dt_bar = (
-                        2 * B / self.theta
-                    ) ** 0.5 * p_bar**-self.n  # dt_bar/dZ
+                if Z <= Z_b:
+                    dt_bar = (2 * B / theta) ** 0.5 * p_bar**-n  # dt_bar/dZ
 
                     dl_bar = (
-                        v_bar * (2 * B / self.theta) ** 0.5 * p_bar**-self.n
+                        v_bar * (2 * B / theta) ** 0.5 * p_bar**-n
                     )  # dl_bar/dZ
 
-                    dv_bar = (B * self.theta * 0.5) ** 0.5 * p_bar ** (
-                        1 - self.n
-                    )
+                    dv_bar = (B * theta * 0.5) ** 0.5 * p_bar ** (1 - n)
 
                     dp_bar = (
                         (
-                            (1 + p_bar * Delta * (self.alpha - 1 / self.rho_p))
+                            (1 + p_bar * Delta * (alpha - 1 / rho_p))
                             * dpsi
                             / dt_bar
-                            - p_bar * v_bar * (1 + self.theta)
+                            - p_bar * v_bar * (1 + theta)
                         )
                         * dt_bar
                         / (l_bar + l_psi_bar)
@@ -203,7 +208,7 @@ class Constrained:
                 dFunc=_ode_Z,
                 iniVal=(0, 0, 0, p_bar_0),
                 x_0=Z_0,
-                x_1=self.Z_b,
+                x_1=Z_b,
                 relTol=0.1 * tol,
                 absTol=0.1 * tol,
                 abortFunc=abort,
@@ -281,7 +286,7 @@ class Constrained:
         """
         step 2, find the requisite muzzle length to achieve design velocity
         """
-        v_bar_d = self.v_d / v_j
+        v_bar_d = v_d / v_j
 
         if v_bar_i > v_bar_d:
             return ValueError("Design velocity exceeded before peak pressure")
@@ -289,10 +294,10 @@ class Constrained:
             pass
 
         B = (
-            self.S**2
+            S**2
             * e_1**2
-            / (self.f * phi * omega * self.m * self.u_1**2)
-            * (self.f * Delta) ** (2 * (1 - self.n))
+            / (f * phi * omega * m * u_1**2)
+            * (f * Delta) ** (2 * (1 - n))
         )
 
         def _pf_v(x, *ys):
@@ -304,26 +309,22 @@ class Constrained:
             # p_bar = _fp_bar(Z, l_bar, v_bar)
             psi = self.f_psi_Z(Z)
             dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
-            l_psi_bar = (
-                1
-                - Delta / self.rho_p
-                - Delta * (self.alpha - 1 / self.rho_p) * psi
-            )
+            l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
             # dp_bar/dt_bar
 
-            if Z <= self.Z_b:
-                dZ = (2 / (B * self.theta)) ** 0.5 * p_bar ** (self.n - 1)
+            if Z <= Z_b:
+                dZ = (2 / (B * theta)) ** 0.5 * p_bar ** (n - 1)
             else:
                 dZ = 0
-            dl_bar = 2 * v_bar / (self.theta * p_bar)
-            dt_bar = 2 / (self.theta * p_bar)
+            dl_bar = 2 * v_bar / (theta * p_bar)
+            dt_bar = 2 / (theta * p_bar)
             dp_bar = (
                 (
-                    (1 + p_bar * Delta * (self.alpha - 1 / self.rho_p))
+                    (1 + p_bar * Delta * (alpha - 1 / rho_p))
                     * dpsi
                     * dZ
                     / dt_bar
-                    - p_bar * v_bar * (1 + self.theta)
+                    - p_bar * v_bar * (1 + theta)
                 )
                 * dt_bar
                 / (l_bar + l_psi_bar)
@@ -410,14 +411,14 @@ class Constrained:
             finally:
                 new_low = probe + delta_low
 
-        actMinWeb = web_i
-
+        actMinWeb = web_i * (1 - tol)
         low = probe
+
         high = 1 - tol
         probe = startProbe
         delta_high = high - probe
-        new_high = probe + delta_high
 
+        new_high = probe + delta_high
         while abs(delta_high) > tol and new_high < 1:
             try:
                 _, lt_i, lg_i = f(new_high, actMinWeb)
@@ -430,15 +431,19 @@ class Constrained:
 
         high = probe
 
-        if len(records) < 3:
-            raise ValueError("No range was solved.")
+        print(*records, sep="\n")
 
-        records.sort(key=lambda x: x[0])
+        if high == low:
+            raise ValueError("No range of values satisfying constraint.")
 
-        for l, m, h in zip(records[:-2], records[1:-1], records[2:]):
-            if l[1] > m[1] and h[1] > m[1]:
-                low = l[0]
-                high = h[0]
+        if len(records) > 3:
+            records.sort(key=lambda x: x[0])
+            for l, m, h in zip(records[:-2], records[1:-1], records[2:]):
+                if l[1] > m[1] and h[1] > m[1]:
+                    low = l[0]
+                    high = h[0]
+        else:
+            print("WOW")
 
         """
         Step 2, 
@@ -507,5 +512,5 @@ if __name__ == "__main__":
             except ValueError as e:
                 print(e)
     """
-    for i in range(5):
+    for i in range(100):
         test.findMinV(chargeMassRatio=1, tol=1e-3, minWeb=1e-6)
