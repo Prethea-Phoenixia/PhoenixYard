@@ -160,7 +160,7 @@ class Constrained:
             def _pf_Z(x, *ys):
                 Z, t_bar, l_bar, v_bar, p_bar = x, *ys
                 p_bar_prime = _fp_bar(Z, l_bar, v_bar)
-                return (*ys[:-1], p_bar_prime)
+                return [*ys[:-1], p_bar_prime]
 
             def _ode_Z(Z, t_bar, l_bar, v_bar, p_bar):
                 """burnout domain ode of internal ballistics"""
@@ -176,7 +176,7 @@ class Constrained:
 
                     dl_bar = v_bar * dt_bar
 
-                    dv_bar = (B * theta * 0.5) ** 0.5 * p_bar ** (1 - n)
+                    dv_bar = 0.5 * dt_bar * theta * p_bar
 
                     dp_bar = (
                         (
@@ -195,7 +195,7 @@ class Constrained:
                     dv_bar = 0
                     dp_bar = 0
 
-                return (dt_bar, dl_bar, dv_bar, dp_bar)
+                return [dt_bar, dl_bar, dv_bar, dp_bar]
 
             def abort(x, ys, o_ys):
                 Z = x

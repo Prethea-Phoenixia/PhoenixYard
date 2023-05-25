@@ -128,6 +128,98 @@ def GSS(f, a, b, yRelTol, xTol=0, findMin=True):
         return (c, b)
 
 
+a1 = 0
+a2 = 2 / 27
+a3 = 1 / 9
+a4 = 1 / 6
+a5 = 5 / 12
+a6 = 1 / 2
+a7 = 5 / 6
+a8 = 1 / 6
+a9 = 2 / 3
+a10 = 1 / 3
+a11 = 1
+a12 = 0
+a13 = 1
+
+b11 = 0
+
+b21 = 2 / 27
+
+b31 = 1 / 36
+b32 = 1 / 12
+
+b41 = 1 / 24
+b43 = 1 / 8
+
+b51 = 5 / 12
+b53 = -25 / 16
+b54 = 25 / 16
+
+b61 = 1 / 20
+b64 = 1 / 4
+b65 = 1 / 5
+
+b71 = -25 / 108
+b74 = 125 / 108
+b75 = -65 / 27
+b76 = 125 / 54
+
+b81 = 31 / 300
+b85 = 61 / 225
+b86 = -2 / 9
+b87 = 13 / 900
+
+b91 = 2
+b94 = -53 / 6
+b95 = 704 / 45
+b96 = -107 / 9
+b97 = 67 / 90
+b98 = 3
+
+b101 = -91 / 108
+b104 = 23 / 108
+b105 = -976 / 135
+b106 = 311 / 54
+b107 = -19 / 60
+b108 = 17 / 6
+b109 = -1 / 12
+
+b111 = 2383 / 4100
+b114 = -341 / 164
+b115 = 4496 / 1025
+b116 = -301 / 82
+b117 = 2133 / 4100
+b118 = 45 / 82
+b119 = 45 / 164
+b1110 = 18 / 41
+
+b121 = 3 / 205
+b126 = -6 / 41
+b127 = -3 / 205
+b128 = -3 / 41
+b129 = 3 / 41
+b1210 = 6 / 41
+
+b131 = -1777 / 4100
+b134 = -341 / 164
+b135 = 4496 / 1025
+b136 = -289 / 82
+b137 = 2193 / 4100
+b138 = 51 / 82
+b139 = 33 / 164
+b1310 = 12 / 41
+b1312 = 1
+
+c1 = 41 / 840
+c6 = 34 / 105
+c7 = 9 / 35
+c8 = 9 / 35
+c9 = 9 / 280
+c10 = 9 / 280
+c11 = 41 / 840
+
+
 def RKF78(
     dFunc,
     iniVal,
@@ -189,7 +281,7 @@ def RKF78(
     """
     h = x_1 - x_0  # initial step size
 
-    Rm = tuple(0 for _ in iniVal)
+    Rm = [0 for _ in iniVal]
 
     if h == 0:
         return x, y_this, Rm
@@ -202,202 +294,193 @@ def RKF78(
 
         try:
             allK = []
-            K1 = tuple(k * h for k in dFunc(x, *y_this))
+            K1 = [k * h for k in dFunc(x + a1 * h, *y_this)]
             allK.append(K1)
 
-            K2 = tuple(
+            K2 = [
                 k * h
                 for k in dFunc(
-                    x + 2 / 27 * h,
-                    *(y + 2 / 27 * k1 for y, k1 in zip(y_this, *allK))
+                    x + a2 * h, *[y + b21 * k1 for y, k1 in zip(y_this, *allK)]
                 )
-            )
+            ]
             allK.append(K2)
 
-            K3 = tuple(
+            K3 = [
                 k * h
                 for k in dFunc(
-                    x + 1 / 9 * h,
-                    *(
-                        y + 1 / 36 * k1 + 1 / 12 * k2
+                    x + a3 * h,
+                    *[
+                        y + b31 * k1 + b32 * k2
                         for y, k1, k2 in zip(y_this, *allK)
-                    )
+                    ]
                 )
-            )
+            ]
             allK.append(K3)
 
-            K4 = tuple(
+            K4 = [
                 k * h
                 for k in dFunc(
-                    x + 1 / 6 * h,
-                    *(
-                        y + 1 / 24 * k1 + 1 / 8 * k3
+                    x + a4 * h,
+                    *[
+                        y + b41 * k1 + b43 * k3
                         for y, k1, k2, k3 in zip(y_this, *allK)
-                    )
+                    ]
                 )
-            )
+            ]
             allK.append(K4)
 
-            K5 = tuple(
+            K5 = [
                 k * h
                 for k in dFunc(
-                    x + 5 / 12 * h,
-                    *(
-                        y + 5 / 12 * k1 - 25 / 16 * k3 + 25 / 16 * k4
+                    x + a5 * h,
+                    *[
+                        y + b51 * k1 + b53 * k3 + b54 * k4
                         for y, k1, k2, k3, k4 in zip(y_this, *allK)
-                    )
+                    ]
                 )
-            )
+            ]
             allK.append(K5)
 
-            K6 = tuple(
+            K6 = [
                 k * h
                 for k in dFunc(
-                    x + 1 / 2 * h,
-                    *(
-                        y + 1 / 20 * k1 + 1 / 4 * k4 + 1 / 5 * k5
+                    x + a6 * h,
+                    *[
+                        y + b61 * k1 + b64 * k4 + b65 * k5
                         for y, k1, k2, k3, k4, k5 in zip(y_this, *allK)
-                    )
+                    ]
                 )
-            )
+            ]
             allK.append(K6)
 
-            K7 = tuple(
+            K7 = [
                 k * h
                 for k in dFunc(
-                    x + 5 / 6 * h,
-                    *(
-                        y
-                        - 25 / 108 * k1
-                        + 125 / 108 * k4
-                        - 65 / 27 * k5
-                        + 125 / 54 * k6
+                    x + a7 * h,
+                    *[
+                        y + b71 * k1 + b74 * k4 + b75 * k5 + b76 * k6
                         for y, k1, k2, k3, k4, k5, k6 in zip(y_this, *allK)
-                    )
+                    ]
                 )
-            )
+            ]
             allK.append(K7)
 
-            K8 = tuple(
+            K8 = [
                 k * h
                 for k in dFunc(
-                    x + 1 / 6 * h,
-                    *(
-                        y
-                        + 31 / 300 * k1
-                        + 61 / 225 * k5
-                        - 2 / 9 * k6
-                        + 13 / 900 * k7
+                    x + a8 * h,
+                    *[
+                        y + b81 * k1 + b85 * k5 + b86 * k6 + b87 * k7
                         for y, k1, k2, k3, k4, k5, k6, k7 in zip(y_this, *allK)
-                    )
+                    ]
                 )
-            )
+            ]
             allK.append(K8)
 
-            K9 = tuple(
+            K9 = [
                 k * h
                 for k in dFunc(
-                    x + 2 / 3 * h,
-                    *(
+                    x + a9 * h,
+                    *[
                         y
-                        + 2 * k1
-                        - 53 / 6 * k4
-                        + 704 / 45 * k5
-                        - 107 / 9 * k6
-                        + 67 / 90 * k7
-                        + 3 * k8
+                        + b91 * k1
+                        + b94 * k4
+                        + b95 * k5
+                        + b96 * k6
+                        + b97 * k7
+                        + b98 * k8
                         for y, k1, k2, k3, k4, k5, k6, k7, k8 in zip(
                             y_this, *allK
                         )
-                    )
+                    ]
                 )
-            )
+            ]
             allK.append(K9)
 
-            K10 = tuple(
+            K10 = [
                 k * h
                 for k in dFunc(
-                    x + 1 / 3 * h,
-                    *(
+                    x + a10 * h,
+                    *[
                         y
-                        - 91 / 108 * k1
-                        + 23 / 108 * k4
-                        - 976 / 135 * k5
-                        + 311 / 54 * k6
-                        - 19 / 60 * k7
-                        + 17 / 6 * k8
-                        - 1 / 12 * k9
+                        + b101 * k1
+                        + b104 * k4
+                        + b105 * k5
+                        + b106 * k6
+                        + b107 * k7
+                        + b108 * k8
+                        + b109 * k9
                         for y, k1, k2, k3, k4, k5, k6, k7, k8, k9 in zip(
                             y_this, *allK
                         )
-                    )
+                    ]
                 )
-            )
+            ]
             allK.append(K10)
 
-            K11 = tuple(
+            K11 = [
                 k * h
                 for k in dFunc(
-                    x + h,
-                    *(
+                    x + a11 * h,
+                    *[
                         y
-                        + 2383 / 4100 * k1
-                        - 341 / 164 * k4
-                        + 4496 / 1025 * k5
-                        - 301 / 82 * k6
-                        + 2133 / 4100 * k7
-                        + 45 / 82 * k8
-                        + 45 / 164 * k9
-                        + 18 / 41 * k10
+                        + b111 * k1
+                        + b114 * k4
+                        + b115 * k5
+                        + b116 * k6
+                        + b117 * k7
+                        + b118 * k8
+                        + b119 * k9
+                        + b1110 * k10
                         for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10 in zip(
                             y_this, *allK
                         )
-                    )
+                    ]
                 )
-            )
+            ]
             allK.append(K11)
 
-            K12 = tuple(
+            K12 = [
                 k * h
                 for k in dFunc(
-                    x,
-                    *(
+                    x + a12 * h,
+                    *[
                         y
-                        + 3 / 205 * k1
-                        - 6 / 41 * k6
-                        - 3 / 205 * k7
-                        - 3 / 41 * k8
-                        + 3 / 41 * k9
-                        + 6 / 41 * k10
+                        + b121 * k1
+                        + b126 * k6
+                        + b127 * k7
+                        + b128 * k8
+                        + b129 * k9
+                        + b1210 * k10
                         for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11 in zip(
                             y_this, *allK
                         )
-                    )
+                    ]
                 )
-            )
+            ]
             allK.append(K12)
 
-            K13 = tuple(
+            K13 = [
                 k * h
                 for k in dFunc(
-                    x + h,
-                    *(
+                    x + a13 * h,
+                    *[
                         y
-                        - 1777 / 4100 * k1
-                        - 341 / 164 * k4
-                        + 4496 / 1025 * k5
-                        - 289 / 82 * k6
-                        + 2193 / 4100 * k7
-                        + 51 / 82 * k8
-                        + 33 / 164 * k9
-                        + 12 / 41 * k10
-                        + k12
+                        + b131 * k1
+                        + b134 * k4
+                        + b135 * k5
+                        + b136 * k6
+                        + b137 * k7
+                        + b138 * k8
+                        + b139 * k9
+                        + b1310 * k10
+                        + b1312 * k12
                         for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12 in zip(
                             y_this, *allK
                         )
-                    )
+                    ]
                 )
-            )
+            ]
             allK.append(K13)
 
             if any(isinstance(i, complex) for k in allK for i in k):
@@ -414,33 +497,33 @@ def RKF78(
             h *= beta
             continue
 
-        y_next = tuple(
+        y_next = [
             y
-            + 41 / 840 * k1
-            + 34 / 105 * k6
-            + 9 / 35 * k7
-            + 9 / 35 * k8
-            + 9 / 280 * k9
-            + 9 / 280 * k10
-            + 41 / 840 * k11
-            for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13 in zip(
+            + c1 * k1
+            + c6 * k6
+            + c7 * k7
+            + c8 * k8
+            + c9 * k9
+            + c10 * k10
+            + c11 * k11
+            for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, _, _ in zip(
                 y_this, *allK
             )
-        )
+        ]
 
-        te = tuple(
+        te = [
             -41 / 840 * (k1 + k11 - k12 - k13)
-            for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13 in zip(
+            for y, k1, _, _, _, _, _, _, _, _, _, k11, k12, k13 in zip(
                 y_this, *allK
             )
-        )  # local truncation error, or difference per step
+        ]  # local truncation error, or difference per step
 
         """
         Extrapolating global error from local truncation error.
         Using the entire range is considered more conservative (results in larger error)
         than scaling using the remaining.
         """
-        Rs = tuple(abs(e) * (x_1 - x_0) / h for e in te)
+        Rs = [abs(e) * (x_1 - x_0) / h for e in te]
         """
         Construct a relative error specification, comparing the global extrapolated
         error to the smaller of current and next values.
@@ -474,7 +557,7 @@ def RKF78(
             y_last = y_this
             y_this = y_next
             x += h
-            Rm = tuple(max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs))
+            Rm = [max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs)]
 
             # print(x, *y_this)
 
