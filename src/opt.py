@@ -334,12 +334,15 @@ class Constrained:
 
             return (dt_bar, dZ, dl_bar, dp_bar)
 
+        """
+        Integrating from 0 enforce consistency and improves numerical
+        stability of the result when called with inputs that are in close
+        proximity.
+        """
         v_bar_g, (t_bar_g, Z_g, l_bar_g, p_bar_g), (_, _, _, _) = RKF78(
             dFunc=_ode_v,
-            # iniVal=(0, Z_0, 0, p_bar_0),
-            iniVal=(t_bar_i, Z_i, l_bar_i, p_bar_i),
-            # x_0=0,
-            x_0=v_bar_i,
+            iniVal=(0, Z_0, 0, p_bar_0),
+            x_0=0,
             x_1=v_bar_d,
             relTol=tol,
             absTol=tol,
@@ -386,10 +389,7 @@ class Constrained:
         records = []
         N = 10
         for i in range(N):
-            if N == 0:
-                startProbe = 0.1852
-            else:
-                startProbe = uniform(tol, 1 - tol)
+            startProbe = uniform(tol, 1 - tol)
             try:
                 _, lt_i, lg_i = f(startProbe)
                 records.append((startProbe, lt_i))
@@ -411,10 +411,9 @@ class Constrained:
         web_i = minWeb
         new_low = probe + delta_low
 
-        while abs(delta_low) > tol:
+        while abs(2 * delta_low) > tol:
             try:
                 web_i, lt_i, lg_i = f(new_low)
-
                 records.append((new_low, lt_i))
                 probe = new_low
             except ValueError as e:
@@ -430,7 +429,7 @@ class Constrained:
         delta_high = high - probe
 
         new_high = probe + delta_high
-        while abs(delta_high) > tol and new_high < 1:
+        while abs(2 * delta_high) > tol and new_high < 1:
             try:
                 _, lt_i, lg_i = f(new_high, actMinWeb)
                 records.append((new_high, lt_i))
@@ -454,11 +453,10 @@ class Constrained:
 
         delta = high - low
 
-        """
-        Edge values are some times only semi-stable, i.e. when calling 
-        f() with the same value will spuriously raise value errors. Therefore
-        we conservatively shrink the range by tolerance to avoid this issue.
-        """
+        # Edge values are some times only semi-stable, i.e. when calling
+        # f() with the same value will spuriously raise value errors. Therefore
+        # we conservatively shrink the range by tolerance to avoid this issue.
+
         low += delta * tol
         high -= delta * tol
 
@@ -521,5 +519,5 @@ if __name__ == "__main__":
             except ValueError as e:
                 print(e)
     """
-    for i in range(5):
+    for i in range(50):
         test.findMinV(chargeMassRatio=1, tol=1e-3, minWeb=1e-6)
