@@ -174,9 +174,7 @@ class Constrained:
                 if Z <= Z_b:
                     dt_bar = (2 * B / theta) ** 0.5 * p_bar**-n  # dt_bar/dZ
 
-                    dl_bar = (
-                        v_bar * (2 * B / theta) ** 0.5 * p_bar**-n
-                    )  # dl_bar/dZ
+                    dl_bar = v_bar * dt_bar
 
                     dv_bar = (B * theta * 0.5) ** 0.5 * p_bar ** (1 - n)
 
