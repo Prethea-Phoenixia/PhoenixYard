@@ -464,11 +464,12 @@ class Constrained:
         Step 2, gss to min.
         """
 
-        lf_low, lf_high = gss(
+        lf_low, lf_high = GSS(
             lambda x: f(x, actMinWeb)[1],
             low,
             high,
-            tol=tol,
+            yRelTol=tol,
+            xTol=0,
             findMin=True,
         )
 
