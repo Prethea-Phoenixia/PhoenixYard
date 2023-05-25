@@ -456,12 +456,21 @@ class IB(Frame):
                 self.te.set(round(te * 100, 1))
                 self.be.set(round(te / self.gun.phi * 100, 1))
             except Exception as e:
+                # for Python 3.9 and below.
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+
                 self.gun = None
                 self.tableData = []
                 self.errorData = []
                 self.errorLst.append("Exception while solving gun system:")
                 if self.DEBUG.get():
-                    self.errorLst.append("".join(traceback.format_exception(e)))
+                    self.errorLst.append(
+                        "".join(
+                            traceback.format_exception(
+                                exc_type, exc_value, exc_traceback
+                            )
+                        )
+                    )
                 else:
                     self.errorLst.append(str(e))
 
@@ -1739,33 +1748,12 @@ if __name__ == "__main__":
     root.iconbitmap(resolvepath("ui/logo.ico"))
     # one must supply the entire path
     loadfont(resolvepath("ui/Hack-Regular.ttf"))
-    # dpi = round(root.winfo_fpixels("1i") / 96) * 96
-    dpi = root.winfo_fpixels("1i")
-    """
-    # this will return the "windows scaling factor"
-    # wsf = ctypes.windll.user32.GetDpiForWindow(root.winfo_id()) / 96
-    MM_TO_IN = 0.0393700787
-    dc = ctypes.windll.user32.GetDC(root.winfo_id())
-    # the monitor's physical width in inches
-    mw = ctypes.windll.gdi32.GetDeviceCaps(dc, 4) * MM_TO_IN
-    # the monitor's physical height in inches
-    mh = ctypes.windll.gdi32.GetDeviceCaps(dc, 6) * MM_TO_IN
-    # horizontal resolution
-    dw = ctypes.windll.gdi32.GetDeviceCaps(dc, 8)
-    # vertical resolution
-    dh = ctypes.windll.gdi32.GetDeviceCaps(dc, 10)
 
-    # get the "true, physical" DPI
-    hdpi, vdpi = dw / mw, dh / mh
-    # get the "diagonal" physical dpi
-    ddpi = (hdpi**2 + vdpi**2) ** 0.5
-    """
+    dpi = root.winfo_fpixels("1i")
 
     # Tk was originally developed for a dpi of 72
     # root.tk.call("tk", "scaling", "-displayof", ".", dpi / 72.0)
     root.tk.call("tk", "scaling", dpi / 72.0)
-
-    # mpl.rc("figure", dpi=dpi)
 
     root.tk.call("lappend", "auto_path", resolvepath("ui/awthemes-10.4.0"))
     root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
@@ -1778,5 +1766,5 @@ if __name__ == "__main__":
     ibPanel = IB(root, dpi)
 
     center(root)
-    # root.minsize(root.winfo_width(), root.winfo_height())
+    root.minsize(root.winfo_width(), root.winfo_height())
     root.mainloop()

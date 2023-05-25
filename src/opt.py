@@ -85,6 +85,9 @@ class Constrained:
         alpha = self.alpha
         Z_b = self.Z_b
 
+        f_psi_Z = self.f_psi_Z
+        f_sigma_Z = self.f_sigma_Z
+
         omega = m * chargeMassRatio
         V_0 = omega / (rho_p * maxLF * loadFraction)
         Delta = omega / V_0
@@ -124,7 +127,7 @@ class Constrained:
         Z_0 = Zs[0]
 
         def _fp_bar(Z, l_bar, v_bar):
-            psi = self.f_psi_Z(Z)
+            psi = f_psi_Z(Z)
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
 
             p_bar = (
@@ -161,8 +164,8 @@ class Constrained:
 
             def _ode_Z(Z, t_bar, l_bar, v_bar, p_bar):
                 """burnout domain ode of internal ballistics"""
-                psi = self.f_psi_Z(Z)
-                dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
+                psi = f_psi_Z(Z)
+                dpsi = f_sigma_Z(Z)  # dpsi/dZ
                 l_psi_bar = (
                     1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
                 )
@@ -308,8 +311,8 @@ class Constrained:
 
         def _ode_v(v_bar, t_bar, Z, l_bar, p_bar):
             # p_bar = _fp_bar(Z, l_bar, v_bar)
-            psi = self.f_psi_Z(Z)
-            dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
+            psi = f_psi_Z(Z)
+            dpsi = f_sigma_Z(Z)  # dpsi/dZ
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
             # dp_bar/dt_bar
 
@@ -363,13 +366,17 @@ class Constrained:
         high lf -> high web
         low lf -> low web
         """
+        omega = self.m * chargeMassRatio
+        rho_p = self.rho_p
+        maxLF = self.maxLF
+        S = self.S
+        solve = self.solve
 
         def f(lf, mW=minWeb):
-            omega = self.m * chargeMassRatio
-            V_0 = omega / (self.rho_p * self.maxLF * lf)
-            l_0 = V_0 / self.S
+            V_0 = omega / (rho_p * maxLF * lf)
+            l_0 = V_0 / S
 
-            e_1, l_g = self.solve(
+            e_1, l_g = solve(
                 loadFraction=lf,
                 chargeMassRatio=chargeMassRatio,
                 tol=0.1 * tol,  # this is to ensure unimodality up to ~tol
@@ -470,11 +477,7 @@ class Constrained:
         )
 
         lf = 0.5 * (lf_high + lf_low)
-        """
-        lf, _ = simulated_annealing(
-            lambda x: f(x, actMinWeb)[1], low, high, 50, 0.1 * (high - low), 2
-        )
-        """
+
         e_1, l_t, l_g = f(lf, actMinWeb)
 
         return lf, e_1, l_g
@@ -520,5 +523,5 @@ if __name__ == "__main__":
             except ValueError as e:
                 print(e)
     """
-
-    test.findMinV(chargeMassRatio=1, tol=1e-3, minWeb=1e-6)
+    for i in range(5):
+        test.findMinV(chargeMassRatio=1, tol=1e-3, minWeb=1e-6)
