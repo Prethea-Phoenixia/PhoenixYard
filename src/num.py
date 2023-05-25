@@ -542,7 +542,7 @@ def RKF78(
                 abs(r)
                 / (
                     minTol
-                    + min(
+                    + max(
                         (relTol * min(abs(y1), abs(y2))),
                         absTol,
                     )
@@ -585,7 +585,7 @@ def RKF78(
                 """
                 delta = 2
 
-        h *= min(max(delta, 0.25), 2)
+        h *= min(max(delta, 0.125), 2)
         """
         The step size cannot be allowed to jump too much as that would in theory, invalidate
         the assumption made to allow us to extrapolate a global error given local.

@@ -217,8 +217,15 @@ class Constrained:
                 parFunc=_pf_Z,
                 record=record,
             )
-
-            Z_i, (t_bar_i, l_bar_i, v_bar_i, p_bar_i) = record[-2]
+            if len(record) > 1:
+                Z_i, (t_bar_i, l_bar_i, v_bar_i, p_bar_i) = record[-2]
+            else:
+                Z_i, (t_bar_i, l_bar_i, v_bar_i, p_bar_i) = Z_0, (
+                    0,
+                    0,
+                    0,
+                    p_bar_0,
+                )
 
             def _fp_Z(Z):
                 _, (t_bar, l_bar, v_bar, p_bar), (_, _, _, _) = RKF78(
