@@ -302,9 +302,10 @@ class IB(Frame):
         self.geoOptions = tuple(self.geometries.keys())
         self.domainOptions = (DOMAIN_TIME, DOMAIN_LENG)
 
-        parent.columnconfigure(0, weight=1)
+        parent.columnconfigure(0, weight=3)
+        parent.columnconfigure(1, weight=1)
         parent.rowconfigure(0, weight=1)
-        # parent.columnconfigure(1, weight=1)
+
         self.addRightFrm(parent)
         self.addErrFrm(parent)
         self.addPlotFrm(parent)
@@ -325,7 +326,7 @@ class IB(Frame):
         self.forceUpdOnThemeWidget.append(self.errorText)
         self.forceUpdOnThemeWidget.append(self.specs)
 
-        parent.bind("<Configure>", self.resizeFigPlot)
+        parent.bind("<Configure>", self.resizePlot)
 
     def calculate(self, event=None):
         self.intgRecord = []
@@ -779,7 +780,8 @@ class IB(Frame):
             infotext=chgText,
         )
 
-        parFrm.rowconfigure(i, weight=1)
+        # allow propellant specification to grow
+        parFrm.rowconfigure(i, weight=3)
 
         propFrm = ttk.LabelFrame(
             parFrm, text="Propellant", style="SubLabelFrame.TLabelframe"
@@ -838,6 +840,9 @@ class IB(Frame):
 
         i += 1
 
+        # allow grain frame to grow
+        parFrm.rowconfigure(i, weight=1)
+
         grainFrm = ttk.LabelFrame(
             parFrm, text="Grain Geometry", style="SubLabelFrame.TLabelframe"
         )
@@ -845,6 +850,7 @@ class IB(Frame):
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
         grainFrm.columnconfigure(0, weight=1)
+        grainFrm.rowconfigure(0, weight=1)
 
         geomPlotFrm = ttk.LabelFrame(
             grainFrm, text="σ(Z)", style="SubLabelFrame.TLabelframe"
@@ -857,8 +863,6 @@ class IB(Frame):
             padx=2,
             pady=2,
         )
-        geomPlotFrm.rowconfigure(0, weight=0)
-        geomPlotFrm.columnconfigure(0, weight=0)
         CreateToolTip(geomPlotFrm, geomPlotTxt)
 
         self.geomParentFrm = grainFrm
@@ -977,8 +981,12 @@ class IB(Frame):
     def addGeomPlot(self):
         geomParentFrm = self.geomParentFrm
         geomPlotFrm = self.geomPlotFrm
-        _, _, width, _ = self.geomParentFrm.bbox("insert")
-        width -= 6  # 2+2 for padding, 1+1 for border line thickness
+        geomPlotFrm.columnconfigure(0, weight=1)
+        geomPlotFrm.rowconfigure(0, weight=1)
+
+        # _, _, width, height = self.geomPlotFrm.bbox("insert")
+        width = geomPlotFrm.winfo_width() - 2
+        height = geomPlotFrm.winfo_height() - 2
 
         """
         geomPlotFrm.config(width=width, height=width)
@@ -994,7 +1002,7 @@ class IB(Frame):
         dpi = self.dpi
         with mpl.rc_context(GEOM_CONTEXT):
             fig = Figure(
-                figsize=(width / dpi, 0.5 * width / dpi),
+                figsize=(width / dpi, max(height / dpi, 0.5 * width / dpi)),
                 dpi=96,
                 layout="constrained",
             )
@@ -1003,7 +1011,7 @@ class IB(Frame):
 
             self.geomCanvas = FigureCanvasTkAgg(fig, master=geomPlotFrm)
             self.geomCanvas.get_tk_widget().grid(
-                row=0, column=0, padx=0, pady=0, sticky="ne"
+                row=0, column=0, padx=0, pady=0, sticky="nsew"
             )
 
     def addPlotFrm(self, parent):
@@ -1027,7 +1035,6 @@ class IB(Frame):
         # really possible.
 
         dpi = self.dpi
-
         with mpl.rc_context(FIG_CONTEXT):
             fig = Figure(
                 figsize=(width / dpi, height / dpi),
@@ -1060,11 +1067,10 @@ class IB(Frame):
                 row=0, column=0, padx=2, pady=2, sticky="nsew"
             )
 
-    def resizeFigPlot(self, event):
-        plotFrm = self.plotFrm
+    def resizePlot(self, event):
         # we use the bbox method here as it has already accounted for padding
         # so no adjustment here is necessary
-        _, _, width, height = plotFrm.bbox("insert")
+        _, _, width, height = self.plotFrm.bbox("insert")
 
         dpi = self.dpi
 
@@ -1073,6 +1079,10 @@ class IB(Frame):
             self.axv.spines.right.set_position(
                 ("axes", 1 + 40 * dpi / 96 / width)
             )
+
+        _, _, width, height = self.geomPlotFrm.bbox("insert")
+        with mpl.rc_context(GEOM_CONTEXT):
+            self.geomFig.set_size_inches(width / dpi, height / dpi)
 
     def updateFigPlot(self):
         with mpl.rc_context(FIG_CONTEXT):
