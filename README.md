@@ -1,19 +1,24 @@
 # PhoenixYard
 A grpahical user interface for solving the internal ballistics system-of-equation made using tkinter.
 
-# Feature (Current and Planned)
-* Numerically (Runge Kutta Fehlberg 4-5 th order) integrates the internal ballistics exponential burn rate SoE.
-  - currently the burn rate is modeled as b*p^n therefore 0 shot start pressure is not yet supported.
-* (WIP) Traditional analytical solution for multi-perf propellant.
-  - optimisation with constraints planned for future.
-* Editable propellant definition.
-  - currently the geometry of the propellants are not editable, although it is believed that the ones present covers most use cases.
-  - support for simpler geometries (grain, non-perforated tubes) planned for the future.
+# Feature
+* Forward Calculation:
+  - Internal ballistic SoE in the M.E. Serebryakov formulation.
+  - Integrate up to user specified precision using adaptive Runge Kutta Fehlberg 7(8)-th order method.
+  - Propellant shape: sphere, strip, cylinder, multi-perforated cylinder/prism/rosette.
+  - Supports custom propellant definition with a x p^b burn rate-pressure relation. (Currently the propellant csv file is wrapped into the binary in the one-file mode, therefore its necessary to rebuild the program to incorporate updated data. Work is on going.) 
+* Constrained Design/Optimization:
+  - Solve the web thickness and length of gun requried to achieve a peak pressure & muzzle velocity specification
+  - Solve the web thickness, length of gun and load factor required to achieve a peak pressure & muzzle velocity specification while minimizing chamber volume.
 
-# How to Use
-custom propellants can be loaded from propellants.csv. Otherwise just run the program.
+# How-To
+* Compiled executables:
+  - clone the repository and use the compiled windows executables in /bin
+* Development setup:
+  - Install Python (>3.8)
+  - Install packages via pip: matplotlib, matplotlib-label-lines
+  - entry point is app.py in /src
 
-# Image
-![image](https://user-images.githubusercontent.com/42470911/228233534-efe123ab-ca39-4da0-bc8c-eeacad118425.png)
-
-The credit for the modern looking UI goes to the awthemes team. The font is Hack.
+# Resources Used
+* tcl theme used "awdark" & "awlight" from awthemes: https://wiki.tcl-lang.org/page/awthemes
+* Hack font, from https://github.com/source-foundry/Hack
