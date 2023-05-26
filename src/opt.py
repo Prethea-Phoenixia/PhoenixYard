@@ -394,7 +394,7 @@ class Constrained:
             return e_1, (l_g + l_0), l_g
 
         records = []
-        N = 10
+        N = 100
         for i in range(N):
             startProbe = uniform(tol, 1 - tol)
             try:
@@ -510,22 +510,5 @@ if __name__ == "__main__":
         )
     )
 
-    """
-    for i in range(9):
-        loadFraction = (i + 1) / 10
-        for j in range(10):
-            chargeMassRatio = 0.2 + j / 5
-            print("lf=", loadFraction, "c.m.=", chargeMassRatio)
-            try:
-                print(
-                    test.solve(
-                        loadFraction=loadFraction,
-                        chargeMassRatio=chargeMassRatio,
-                        tol=1e-3,
-                    )
-                )
-            except ValueError as e:
-                print(e)
-    """
     for i in range(50):
         test.findMinV(chargeMassRatio=1, tol=1e-3, minWeb=1e-6)

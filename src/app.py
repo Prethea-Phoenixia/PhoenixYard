@@ -634,6 +634,7 @@ class IB(Frame):
         self.optimizeLF.grid(row=j, column=0, columnspan=3, sticky="nsew")
         self.setCD(None, None, None)
 
+        CreateToolTip(self.optimizeLF, optLFTxt)
         i += 1
 
         sampleFrm = ttk.LabelFrame(

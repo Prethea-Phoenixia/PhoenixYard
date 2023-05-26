@@ -270,6 +270,8 @@ class Gun:
         pScale = self.f * self.Delta
 
         p_bar_0 = self.p_0 / pScale
+        Z_b = self.Z_b
+        Z_0 = self.Z_0
 
         bar_data = []
         bar_err = []
@@ -308,7 +310,7 @@ class Gun:
             tag=POINT_START,
             t_bar=0,
             l_bar=0,
-            Z=self.Z_0,
+            Z=Z_0,
             v_bar=0,
             p_bar=p_bar_0,
             t_bar_err=0,
@@ -321,10 +323,10 @@ class Gun:
         if record is not None:
             record.append((0, (0, self.psi_0, 0, p_bar_0)))
 
-        Z_i = self.Z_0
-        Z_j = self.Z_b
+        Z_i = Z_0
+        Z_j = Z_b
         N = 1
-        Delta_Z = self.Z_b - self.Z_0
+        Delta_Z = Z_b - Z_0
 
         t_bar_i, l_bar_i, v_bar_i, p_bar_i = 0, 0, 0, p_bar_0
 
@@ -346,15 +348,15 @@ class Gun:
             t_bar, l_bar, v_bar, p_bar = ys
             return l_bar > l_g_bar or p_bar > p_bar_max
 
-        while Z_i < self.Z_b:  # terminates if burnout is achieved
+        while Z_i < Z_b:  # terminates if burnout is achieved
             ztlvp_record_i = []
             if Z_j == Z_i:
                 raise ValueError(
                     "Numerical accuracy exhausted in search of exit/burnout point."
                 )
             try:
-                if Z_j > self.Z_b:
-                    Z_j = self.Z_b
+                if Z_j > Z_b:
+                    Z_j = Z_b
                 t_bar_j, l_bar_j, v_bar_j, p_bar_j = RKF78(
                     self._ode_Z,
                     (t_bar_i, l_bar_i, v_bar_i, p_bar_i),
@@ -432,7 +434,7 @@ class Gun:
         irreducible error estimates and driving the step size to 0 around Z = Z_b
         """
         if isBurnOutContained:
-            Z_i = self.Z_b + tol
+            Z_i = Z_b + tol
 
         if record is not None:
             record.extend(
@@ -505,9 +507,7 @@ class Gun:
         )
 
         t_bar_f = None
-        if (
-            self.Z_b > 1.0 and Z_e >= 1.0
-        ):  # fracture point exist and is contained
+        if Z_b > 1.0 and Z_e >= 1.0:  # fracture point exist and is contained
             """
             Subscript f indicate fracture condition
             ODE w.r.t Z is integrated from Z_0 to 1, from onset of projectile
@@ -520,7 +520,7 @@ class Gun:
             ) = RKF78(
                 self._ode_Z,
                 (0, 0, 0, p_bar_0),
-                self.Z_0,
+                Z_0,
                 1,
                 relTol=tol,
                 absTol=tol,
@@ -557,8 +557,8 @@ class Gun:
             ) = RKF78(
                 self._ode_Z,
                 (0, 0, 0, p_bar_0),
-                self.Z_0,
-                self.Z_b,
+                Z_0,
+                Z_b,
                 relTol=tol,
                 absTol=tol,
                 minTol=minTol,
@@ -569,7 +569,7 @@ class Gun:
                 tag=POINT_BURNOUT,
                 t_bar=t_bar_b,
                 l_bar=l_bar_b,
-                Z=self.Z_b,
+                Z=Z_b,
                 v_bar=v_bar_b,
                 p_bar=p_bar_b,
                 t_bar_err=t_bar_err_b,
@@ -591,7 +591,7 @@ class Gun:
         def f(t):
             Z, l_bar, v_bar, p_bar = RKF78(
                 self._ode_t,
-                (self.Z_0, 0, 0, p_bar_0),
+                (Z_0, 0, 0, p_bar_0),
                 0,
                 t,
                 relTol=tol,
@@ -639,7 +639,7 @@ class Gun:
 
         elif t_bar_b is not None and abs(t_bar_p - t_bar_b) / t_bar_p < tol:
             # peak pressure occurs sufficiently close to burnout.
-            Z_p = self.Z_b
+            Z_p = Z_b
             l_bar_p = l_bar_b
             v_bar_p = v_bar_b
             t_bar_p = t_bar_b
@@ -658,7 +658,7 @@ class Gun:
                 (Z_err_p, l_bar_err_p, v_bar_err_p, p_bar_err_p),
             ) = RKF78(
                 self._ode_t,
-                (self.Z_0, 0, 0, p_bar_0),
+                (Z_0, 0, 0, p_bar_0),
                 0,
                 t_bar_p,
                 relTol=tol,
@@ -694,7 +694,7 @@ class Gun:
                     t_bar_j,
                     p_bar_j,
                 ) = (
-                    self.Z_0,
+                    Z_0,
                     0,
                     0,
                     0,
@@ -747,7 +747,7 @@ class Gun:
                 t_bar_j = 0.5 * t_bar_i
                 Z_j, l_bar_j, v_bar_j, p_bar_j = RKF78(
                     self._ode_t,
-                    (self.Z_0, 0, 0, p_bar_0),
+                    (Z_0, 0, 0, p_bar_0),
                     0,
                     t_bar_j,
                     relTol=tol,
@@ -890,16 +890,16 @@ if __name__ == "__main__":
 
     M17SHC = Propellant(M17, SimpleGeometry.SPHERE, 2, 2.5)
 
-    lf = 0.75
+    lf = 0.1
     print("DELTA:", lf * M17SHC.maxLF)
     test = Gun(
         caliber=0.050,
         shotMass=1.0,
         propellant=M17SHC,
         grainSize=1e-3,
-        chargeMass=4,
-        chamberVolume=4.0 / M17SHC.rho_p / M17SHC.maxLF / lf,
-        startPressure=30000000.0,
+        chargeMass=1,
+        chamberVolume=1.0 / M17SHC.rho_p / M17SHC.maxLF / lf,
+        startPressure=30e6,
         lengthGun=3.5,
         chamberExpansion=1.1,
     )

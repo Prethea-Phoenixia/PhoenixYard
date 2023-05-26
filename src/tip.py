@@ -204,6 +204,13 @@ useConsTxt = " ".join(
     )
 )
 
+optLFTxt = " ".join(
+    (
+        "Optimize load fraction such that constrained design will result in",
+        "the solution that minimize tube volume (including chamber).",
+    )
+)
+
 calLxTxt = " ".join(
     (
         "Tube length (defined as from the base of projectile to muzzle)",
