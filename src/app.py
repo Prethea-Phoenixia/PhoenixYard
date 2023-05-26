@@ -1004,7 +1004,7 @@ class IB(Frame):
             fig = Figure(
                 figsize=(width / dpi, max(height / dpi, 0.5 * width / dpi)),
                 dpi=96,
-                layout="constrained",
+                # layout="constrained",
             )
             self.geomFig = fig
             self.geomAx = fig.add_subplot(111)
@@ -1013,6 +1013,7 @@ class IB(Frame):
             self.geomCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=0, pady=0, sticky="nsew"
             )
+            self.geomFig.tight_layout()
 
     def addPlotFrm(self, parent):
         plotFrm = ttk.LabelFrame(parent, text="Plot")
@@ -1039,7 +1040,7 @@ class IB(Frame):
             fig = Figure(
                 figsize=(width / dpi, height / dpi),
                 dpi=96,
-                layout="constrained",
+                # layout="constrained",
             )
             # fig.subplots_adjust(bottom=0.1)
 
@@ -1061,6 +1062,8 @@ class IB(Frame):
             self.axP = axP
             self.axv = axv
             self.fig = fig
+
+            self.fig.tight_layout()
 
             self.pltCanvas = FigureCanvasTkAgg(fig, master=plotFrm)
             self.pltCanvas.get_tk_widget().grid(
