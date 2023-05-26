@@ -431,6 +431,16 @@ class IB(Frame):
             )
 
             self.lx.set(toSI(float(self.tblmm.get()) / float(self.calmm.get())))
+            self.tlx.set(
+                toSI(
+                    (
+                        float(self.tblmm.get())
+                        + self.gun.l_0 * 1000 / float(self.clr.get())
+                    )
+                    / float(self.calmm.get())
+                )
+            )
+
             self.va.set(toSI(self.gun.v_j))
 
         except Exception as e:
@@ -516,12 +526,14 @@ class IB(Frame):
 
         i = 0
 
-        self.lx, _, i = self.add12Disp(
+        self.lx, self.tlx, _, _, i = self.add122Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText="Tube Length Ratio",
-            unitText="Cal",
-            justify="right",
+            labelText="Length Ratio",
+            unitText_up="Cal",
+            unitText_dn="Cal",
+            justify_up="right",
+            justify_dn="right",
             infotext=calLxTxt,
         )
 

@@ -213,9 +213,8 @@ optLFTxt = " ".join(
 
 calLxTxt = " ".join(
     (
-        "Tube length (defined as from the base of projectile to muzzle)",
-        "measured in units of caliber. Usually expressed as  L/xx in",
-        "nomenclature.",
+        "Tube length, commonly expressed in literature as L/xx.",
+        "Top is measured from shot start, bottom is measured from breechface.",
     )
 )
 
