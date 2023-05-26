@@ -15,7 +15,7 @@ A grpahical user interface for solving the internal ballistics system-of-equatio
 * Compiled executables:
   - clone the repository and use the compiled windows executables in /bin
 * Development setup:
-  - Install Python (>3.8)
+  - Install Python (>=3.8 tested, in 3.7 regression in tkinter affects coloring of treeview, in theory previous version would also work.)
   - Install packages via pip: matplotlib, matplotlib-label-lines
   - entry point is app.py in /src
 
