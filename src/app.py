@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter import ttk
 import tkinter.font as tkFont
+
 import traceback
 from gun import *
 from opt import *
@@ -1004,7 +1005,6 @@ class IB(Frame):
             fig = Figure(
                 figsize=(width / dpi, max(height / dpi, 0.5 * width / dpi)),
                 dpi=96,
-                # layout="constrained",
             )
             self.geomFig = fig
             self.geomAx = fig.add_subplot(111)
@@ -1040,7 +1040,6 @@ class IB(Frame):
             fig = Figure(
                 figsize=(width / dpi, height / dpi),
                 dpi=96,
-                # layout="constrained",
             )
             # fig.subplots_adjust(bottom=0.1)
 
