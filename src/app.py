@@ -871,8 +871,14 @@ class IB(Frame):
         grainFrm.rowconfigure(0, weight=1)
 
         geomPlotFrm = ttk.LabelFrame(
-            grainFrm, text="σ(Z)", style="SubLabelFrame.TLabelframe"
-        )
+            grainFrm,
+            text="σ(Z)",
+            style="SubLabelFrame.TLabelframe",
+            width=100,
+            height=100,
+        )  # set an arbitrary initial size here
+        # to prevent matplotlib giving a fit when adding geomFig.
+
         geomPlotFrm.grid(
             row=0,
             column=0,
@@ -881,6 +887,7 @@ class IB(Frame):
             padx=2,
             pady=2,
         )
+
         CreateToolTip(geomPlotFrm, geomPlotTxt)
 
         self.geomParentFrm = grainFrm
@@ -1017,6 +1024,7 @@ class IB(Frame):
         window, and everything would be fine, ironically.
         (in this case, dpi = dpi)
         """
+        # input()
         dpi = self.dpi
         with mpl.rc_context(GEOM_CONTEXT):
             fig = Figure(
