@@ -45,13 +45,7 @@ class Constrained:
             raise AttributeError("object has no '%s'" % attrName)
 
     # @profile
-    def solve(
-        self,
-        loadFraction,
-        chargeMassRatio,
-        tol,
-        minWeb=1e-6,
-    ):
+    def solve(self, loadFraction, chargeMassRatio, tol, minWeb=1e-6):
         if any(
             (
                 minWeb <= 0,
@@ -297,11 +291,11 @@ class Constrained:
         """
         v_bar_d = v_d / v_j
 
+        """
         if v_bar_i > v_bar_d:
-            return ValueError("Design velocity exceeded before peak pressure")
-        else:
-            pass
-
+            raise ValueError("Design velocity exceeded before peak pressure")
+        """
+        # TODO: find some way of making this cross constraint less troublesome.
         B = (
             S**2
             * e_1**2
