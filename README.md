@@ -6,7 +6,7 @@ A grpahical user interface for solving the internal ballistics system-of-equatio
   - Internal ballistic SoE in the M.E. Serebryakov formulation.
   - Integrate up to user specified precision using adaptive Runge Kutta Fehlberg 7(8)-th order method.
   - Propellant shape: sphere, strip, cylinder, multi-perforated cylinder/prism/rosette.
-  - Supports custom propellant definition with a x p^b burn rate-pressure relation. (Currently the propellant csv file is wrapped into the binary in the one-file mode, therefore its necessary to rebuild the program to incorporate updated data. Work is on going.) 
+  - Supports custom propellant definition with a x p^b burn rate-pressure relation. (see data/propellant.csv)
 * Constrained Design/Optimization:
   - Solve the web thickness and length of gun requried to achieve a peak pressure & muzzle velocity specification
   - Solve the web thickness, length of gun and load factor required to achieve a peak pressure & muzzle velocity specification while minimizing chamber volume.
