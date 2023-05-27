@@ -45,7 +45,14 @@ class Constrained:
             raise AttributeError("object has no '%s'" % attrName)
 
     # @profile
-    def solve(self, loadFraction, chargeMassRatio, tol, minWeb=1e-6):
+    def solve(
+        self,
+        loadFraction,
+        chargeMassRatio,
+        tol,
+        minWeb=1e-6,
+        containBurnout=True,
+    ):
         if any(
             (
                 minWeb <= 0,
@@ -291,10 +298,9 @@ class Constrained:
         """
         v_bar_d = v_d / v_j
 
-        """
-        if v_bar_i > v_bar_d:
+        if v_bar_i > v_bar_d and containBurnout:
             raise ValueError("Design velocity exceeded before peak pressure")
-        """
+
         # TODO: find some way of making this cross constraint less troublesome.
         B = (
             S**2
@@ -383,6 +389,7 @@ class Constrained:
                 chargeMassRatio=chargeMassRatio,
                 tol=0.1 * tol,  # this is to ensure unimodality up to ~tol
                 minWeb=mW,
+                containBurnout=False,
             )
             # print(l_g + l_0)
             return e_1, (l_g + l_0), l_g

@@ -31,6 +31,7 @@ GEOM_CONTEXT = {
     "ytick.labelsize": 6,
     "legend.fontsize": 6,
     "figure.titlesize": 10,
+    # "figure.autolayout": True,
     "lines.markersize": 2,
     "axes.axisbelow": True,
 }
@@ -43,6 +44,7 @@ FIG_CONTEXT = {
     "ytick.labelsize": 8,
     "legend.fontsize": 8,
     "figure.titlesize": 12,
+    # "figure.autolayout": True,
     "lines.linewidth": 1,
     "font.weight": "bold",
     "lines.markersize": 4,
@@ -391,9 +393,17 @@ class IB(Frame):
                 self.tblmm.set(lgmm)
 
             except Exception as e:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
                 self.errorLst.append("Exception in constrained design:")
                 if self.DEBUG.get():
-                    self.errorLst.append("".join(traceback.format_exception(e)))
+                    # self.errorLst.append("".join(traceback.format_exception(e)))
+                    self.errorLst.append(
+                        "".join(
+                            traceback.format_exception(
+                                exc_type, exc_value, exc_traceback
+                            )
+                        )
+                    )
                 else:
                     self.errorLst.append(str(e))
 
@@ -446,10 +456,18 @@ class IB(Frame):
             self.va.set(toSI(self.gun.v_j))
 
         except Exception as e:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
             self.gun = None
             self.errorLst.append("Exception when defining guns:")
             if self.DEBUG.get():
-                self.errorLst.append("".join(traceback.format_exception(e)))
+                # self.errorLst.append("".join(traceback.format_exception(e)))
+                self.errorLst.append(
+                    "".join(
+                        traceback.format_exception(
+                            exc_type, exc_value, exc_traceback
+                        )
+                    )
+                )
             else:
                 self.errorLst.append(str(e))
 
@@ -470,7 +488,6 @@ class IB(Frame):
             except Exception as e:
                 # for Python 3.9 and below.
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-
                 self.gun = None
                 self.tableData = []
                 self.errorData = []
@@ -1005,6 +1022,7 @@ class IB(Frame):
             fig = Figure(
                 figsize=(width / dpi, max(height / dpi, 0.5 * width / dpi)),
                 dpi=96,
+                layout="constrained",
             )
             self.geomFig = fig
             self.geomAx = fig.add_subplot(111)
@@ -1013,7 +1031,6 @@ class IB(Frame):
             self.geomCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=0, pady=0, sticky="nsew"
             )
-            self.geomFig.tight_layout()
 
     def addPlotFrm(self, parent):
         plotFrm = ttk.LabelFrame(parent, text="Plot")
@@ -1040,6 +1057,7 @@ class IB(Frame):
             fig = Figure(
                 figsize=(width / dpi, height / dpi),
                 dpi=96,
+                layout="constrained",
             )
             # fig.subplots_adjust(bottom=0.1)
 
@@ -1061,8 +1079,6 @@ class IB(Frame):
             self.axP = axP
             self.axv = axv
             self.fig = fig
-
-            self.fig.tight_layout()
 
             self.pltCanvas = FigureCanvasTkAgg(fig, master=plotFrm)
             self.pltCanvas.get_tk_widget().grid(

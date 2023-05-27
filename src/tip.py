@@ -198,9 +198,9 @@ sampTxt = " ".join(
 
 useConsTxt = " ".join(
     (
-        "Constrain the design to specified muzzle velocity and pressure",
+        "Constrain the design to specified muzzle velocity and peak pressure",
         "by varying the web thickness and tube length. Currently solved",
-        "solution is correct for chamber length ratio of 1.",
+        "solution is correct for chamber length ratio of 1.0x.",
     )
 )
 
