@@ -1815,5 +1815,6 @@ if __name__ == "__main__":
     ibPanel = IB(root, dpi)
 
     center(root)
-    root.minsize(root.winfo_width(), root.winfo_height())
+    # root.update()
+    # root.minsize(root.winfo_width(), root.winfo_height())
     root.mainloop()
