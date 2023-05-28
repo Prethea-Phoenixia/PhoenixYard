@@ -284,14 +284,7 @@ class IB(Frame):
             offvalue=0,
         )
 
-        """
-        themeMenu.add_cascade(label="Light", command=self.useLightTheme)
-        themeMenu.add_cascade(label="Dark", command=self.useDarkTheme)
-        """
-
         parent.config(menu=menubar)
-
-        # self.useLightTheme()
 
         self.compositions = GrainComp.readFile(
             resolvepath("data/propellants.csv")
@@ -308,6 +301,7 @@ class IB(Frame):
         parent.columnconfigure(0, weight=3)
         parent.columnconfigure(1, weight=1)
         parent.rowconfigure(0, weight=1)
+        # parent.rowconfigure(1, weight=1)
 
         self.addRightFrm(parent)
         self.addErrFrm(parent)
@@ -1035,7 +1029,10 @@ class IB(Frame):
             self.geomFig = fig
             self.geomAx = fig.add_subplot(111)
 
-            self.geomCanvas = FigureCanvasTkAgg(fig, master=geomPlotFrm)
+            self.geomCanvas = FigureCanvasTkAgg(
+                fig,
+                master=geomPlotFrm,
+            )
             self.geomCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=0, pady=0, sticky="nsew"
             )
@@ -1096,19 +1093,15 @@ class IB(Frame):
     def resizePlot(self, event):
         # we use the bbox method here as it has already accounted for padding
         # so no adjustment here is necessary
+
         _, _, width, height = self.plotFrm.bbox("insert")
 
         dpi = self.dpi
 
         with mpl.rc_context(FIG_CONTEXT):
-            self.fig.set_size_inches(width / dpi, height / dpi)
             self.axv.spines.right.set_position(
                 ("axes", 1 + 40 * dpi / 96 / width)
             )
-
-        _, _, width, height = self.geomPlotFrm.bbox("insert")
-        with mpl.rc_context(GEOM_CONTEXT):
-            self.geomFig.set_size_inches(width / dpi, height / dpi)
 
     def updateFigPlot(self):
         with mpl.rc_context(FIG_CONTEXT):
@@ -1816,5 +1809,5 @@ if __name__ == "__main__":
 
     center(root)
     # root.update()
-    # root.minsize(root.winfo_width(), root.winfo_height())
+    root.minsize(root.winfo_width(), root.winfo_height())
     root.mainloop()
