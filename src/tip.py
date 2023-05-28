@@ -71,7 +71,7 @@ ldftext = " ".join(
         "it is highly unlikely that values greater",
         "than 60% could be achieved in practice,",
         "due to packing behaviour when loading the",
-        "cartridg.\n",
+        "cartridge.\n",
         "A high value is also undesirable for",
         "causing excessive peak pressure as well",
         "as moving the pressure spike closer to",
@@ -252,13 +252,11 @@ class ToolTip(object):
         rx, ry, crx, cry = root.bbox()
         # bouding box coordinate is in regard to origin of widget/window
 
-        """ initalize the tooltip window to the lower right corner of the widget"""
-
         if (
             x + self.widget.winfo_rootx()
             > root.winfo_rootx() + 0.5 * root.winfo_width()
         ):
-            x = x + self.widget.winfo_rootx() - width * (columnWidth + 1)
+            x = x + self.widget.winfo_rootx() - width * (columnWidth + 2 + 1)
             y = y + self.widget.winfo_rooty()
         else:
             x = x + self.widget.winfo_rootx() + self.widget.winfo_width()
@@ -266,7 +264,11 @@ class ToolTip(object):
 
         margin = (
             y
-            + ceil(t_Font.measure(self.text) / (width * columnWidth) + 1)
+            + (
+                ceil(t_Font.measure(self.text) / (width * columnWidth))
+                + 1
+                + self.text.count("\n")
+            )
             * height
             - ry
             - root.winfo_rooty()
@@ -284,11 +286,12 @@ class ToolTip(object):
             background="#ffffe0",
             wraplength=width * columnWidth,
             relief=SOLID,
-            borderwidth=1,
+            borderwidth=0,
             font=t_Font,
         )
+
         label.config(width=columnWidth)  # characters
-        label.pack(ipadx=1)
+        label.pack(ipadx=width)
 
     def hidetip(self):
         tw = self.tipwindow

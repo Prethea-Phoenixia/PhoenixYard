@@ -325,6 +325,9 @@ class IB(Frame):
 
         parent.bind("<Configure>", self.resizePlot)
 
+        self.resized = False
+        self.timedLoop()
+
     def calculate(self, event=None):
         self.intgRecord = []
 
@@ -1103,6 +1106,14 @@ class IB(Frame):
                 ("axes", 1 + 40 * dpi / 96 / width)
             )
 
+        self.resized = True
+
+    def timedLoop(self):
+        if self.resized:
+            self.updateSpec(None, None, None)
+            self.resized = False
+        self.parent.after(100, self.timedLoop)
+
     def updateFigPlot(self):
         with mpl.rc_context(FIG_CONTEXT):
             gun = self.gun
@@ -1334,7 +1345,7 @@ class IB(Frame):
         compo = self.compositions[self.dropProp.get()]
         self.specs.delete("1.0", "end")
         t_Font = tkFont.Font(family="hack", size=8)
-        width = self.specs.winfo_width() // t_Font.measure("m")
+        width = self.specs.winfo_width() // t_Font.measure("m") - 1
         self.specs.insert("end", " Adb.Temp: {:.0f} K\n".format(compo.T_1)),
 
         self.specs.insert(
