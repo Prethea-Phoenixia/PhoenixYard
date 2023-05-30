@@ -8,7 +8,7 @@ chgText = " ".join(
         "Mass of propellant charge to be used. Lagrangian approximation",
         "is decently held up until a charge/shot mass ratio of 1. Higher",
         "ratios tends to excite pressure waves inducing large pressure",
-        "spikes. A two-phase-flow model is appropriate for that case.",
+        "spikes, requiring 1-D models to resolve.",
     )
 )
 vinfText = " ".join(
