@@ -3,7 +3,7 @@ A grpahical user interface for solving the internal ballistics system-of-equatio
 
 # Feature
 * Forward Calculation:
-  - Internal ballistic SoE in the M.E. Serebryakov formulation.
+  - 0 dimensional Internal ballistic SoE in the M.E. Serebryakov formulation.
   - Integrate up to user specified precision using adaptive Runge Kutta Fehlberg 7(8)-th order method.
   - Propellant shape: sphere, strip, cylinder, multi-perforated cylinder/prism/rosette.
   - Supports custom propellant definition with a x p^b burn rate-pressure relation. (see data/propellant.csv)
