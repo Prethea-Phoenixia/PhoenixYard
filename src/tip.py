@@ -196,18 +196,21 @@ sampTxt = " ".join(
     )
 )
 
+pTgtTxt = " ".join(
+    ("Pressure design target: length averaged, Lagrangian", "chamber pressure.")
+)
 useConsTxt = " ".join(
     (
         "Constrain the design to specified muzzle velocity and peak pressure",
-        "by varying the web thickness and tube length. Currently solved",
+        "by controlling the web thickness and tube length. Currently solved",
         "solution is correct for chamber length ratio of 1.0x.",
     )
 )
 
 optLFTxt = " ".join(
     (
-        "Optimize load fraction such that constrained design will result in",
-        "the solution that minimize tube volume (including chamber).",
+        "Find the optimum load fraction for this charge mass, minimizing",
+        "tube volume (including chamber), in addition to the above constraints.",
     )
 )
 
@@ -215,6 +218,15 @@ calLxTxt = " ".join(
     (
         "Tube length, commonly expressed in literature as L/xx.",
         "Top is measured from shot start, bottom is measured from breechface.",
+    )
+)
+
+pMaxTxt = " ".join(
+    (
+        "Peak pressure, when measured from the breech, and when measured from",
+        "the base of projectile. Breech pressure is around 1.0-1.2x of the",
+        "result of copper crusher test, with the factor usually taken to be",
+        "1.12x.",
     )
 )
 
