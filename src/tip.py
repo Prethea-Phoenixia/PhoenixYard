@@ -5,8 +5,10 @@ from math import ceil
 
 chgText = " ".join(
     (
-        "Mass of propellant charge to be used. Chamber",
-        "volume is determined from this and load fraction.",
+        "Mass of propellant charge to be used. Lagrangian approximation",
+        "is decently held up until a charge/shot mass ratio of 1. Higher",
+        "ratios tends to excite pressure waves inducing large pressure",
+        "spikes. A two-phase-flow model is appropriate for that case.",
     )
 )
 vinfText = " ".join(
@@ -223,7 +225,7 @@ calLxTxt = " ".join(
 
 pMaxTxt = " ".join(
     (
-        "Peak pressure, when measured from the breech, and when measured from",
+        "Peak pressure, when measured from the breech, and when measured at",
         "the base of projectile. Breech pressure is around 1.0-1.2x of the",
         "result of copper crusher test, with the factor usually taken to be",
         "1.12x.",
