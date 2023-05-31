@@ -31,6 +31,8 @@ import matplotlib.pyplot as mpl
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.figure import Figure
 
+from multiprocessing import Queue, Process
+
 
 GEOM_CONTEXT = {
     "font.size": 6,
@@ -254,6 +256,8 @@ def dot_aligned(matrix, units, useSN):
 class IB(Frame):
     def __init__(self, parent, dpi):
         Frame.__init__(self, parent)
+        self.queue = Queue()
+        self.process = None
         self.dpi = dpi
         self.parent = parent
         self.forceUpdOnThemeWidget = []
@@ -326,8 +330,6 @@ class IB(Frame):
         self.updateSpec(None, None, None)
         self.updateGeom(None, None, None)
 
-        # parent.bind("<Return>", self.calculate)
-
         self.forceUpdOnThemeWidget.append(self.errorText)
         self.forceUpdOnThemeWidget.append(self.specs)
 
@@ -335,214 +337,6 @@ class IB(Frame):
 
         self.resized = False
         self.timedLoop()
-
-    def calculate(self, event=None):
-        self.intgRecord = []
-
-        # force an immediate redraw after calculation
-        compo = self.compositions[self.dropProp.get()]
-        # lookup dictionary using the string key to get
-        # the requisite object
-        geom = self.geometries[self.dropGeom.get()]
-
-        self.tableData = []
-        self.errorData = []
-        self.intgRecord = []
-
-        if self.prop is None:
-            return
-
-        if self.solve_W_Lg.get() == 1:
-            try:
-                constrained = Constrained(
-                    caliber=float(self.calmm.get()) * 1e-3,
-                    shotMass=float(self.shtkg.get()),
-                    propellant=self.prop,
-                    startPressure=float(self.stpMPa.get()) * 1e6,
-                    dragCoe=float(self.dgc.get()) * 1e-2,
-                    designPressure=float(self.pTgt.get()) * 1e6,
-                    designVelocity=float(self.vTgt.get()),
-                )
-
-                if self.opt_lf.get() == 0:
-                    e_1, l_g = constrained.solve(
-                        loadFraction=1e-2 * float(self.ldf.get()),
-                        chargeMassRatio=(
-                            float(self.chgkg.get()) / float(self.shtkg.get())
-                        ),
-                        tol=10 ** -(int(self.accExp.get())),
-                        minWeb=1e-6 * float(self.minWeb.get()),
-                    )
-
-                else:
-                    lf, e_1, l_g = constrained.findMinV(
-                        chargeMassRatio=(
-                            float(self.chgkg.get()) / float(self.shtkg.get())
-                        ),
-                        tol=10 ** -(int(self.accExp.get())),
-                        minWeb=1e-6 * float(self.minWeb.get()),
-                    )
-
-                    lfpercent = round(
-                        lf * 100, 3 - int(floor(log10(abs(l_g * 100))))
-                    )
-                    self.ldf.set(lfpercent)
-
-                webmm = round(
-                    2000 * e_1, 3 - int(floor(log10(abs(2000 * e_1))))
-                )
-                lgmm = round(l_g * 1000, 3 - int(floor(log10(abs(l_g * 1000)))))
-
-                # take the 3 most significant digits.
-                self.arcmm.set(webmm)
-                self.tblmm.set(lgmm)
-
-            except Exception as e:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.errorLst.append("Exception in constrained design:")
-                if self.DEBUG.get():
-                    # self.errorLst.append("".join(traceback.format_exception(e)))
-                    self.errorLst.append(
-                        "".join(
-                            traceback.format_exception(
-                                exc_type, exc_value, exc_traceback
-                            )
-                        )
-                    )
-                else:
-                    self.errorLst.append(str(e))
-
-        try:
-            chamberVolume = (
-                float(self.chgkg.get())
-                / self.prop.rho_p
-                / self.prop.maxLF
-                / float(self.ldf.get())
-                * 100
-            )
-            self.cv.set(toSI(chamberVolume, useSN=True))
-            self.ldp.set(round(self.prop.maxLF * float(self.ldf.get()), 1))
-
-            self.ld.set(
-                toSI(
-                    self.prop.maxLF
-                    * 1e-2
-                    * float(self.ldf.get())
-                    * self.prop.rho_p,
-                    unit=None,  # "g/cm^3",
-                    useSN=True,
-                )
-            )
-
-            self.gun = Gun(
-                caliber=float(self.calmm.get()) * 1e-3,
-                shotMass=float(self.shtkg.get()),
-                propellant=self.prop,
-                grainSize=float(self.arcmm.get()) * 1e-3,
-                chargeMass=float(self.chgkg.get()),
-                chamberVolume=chamberVolume,
-                startPressure=float(self.stpMPa.get()) * 1e6,
-                lengthGun=float(self.tblmm.get()) * 1e-3,
-                chamberExpansion=float(self.clr.get()),
-                dragCoe=float(self.dgc.get()) * 1e-2,
-            )
-
-            self.lx.set(toSI(float(self.tblmm.get()) / float(self.calmm.get())))
-            self.tlx.set(
-                toSI(
-                    (
-                        float(self.tblmm.get())
-                        + self.gun.l_0 * 1000 / float(self.clr.get())
-                    )
-                    / float(self.calmm.get())
-                )
-            )
-
-            self.va.set(toSI(self.gun.v_j))
-
-        except Exception as e:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.gun = None
-            self.errorLst.append("Exception when defining guns:")
-            if self.DEBUG.get():
-                # self.errorLst.append("".join(traceback.format_exception(e)))
-                self.errorLst.append(
-                    "".join(
-                        traceback.format_exception(
-                            exc_type, exc_value, exc_traceback
-                        )
-                    )
-                )
-            else:
-                self.errorLst.append(str(e))
-
-        if self.gun is not None:
-            try:
-                self.tableData, self.errorData = self.gun.integrate(
-                    steps=int(self.steps.get()),
-                    dom=self.dropOptn.get(),
-                    tol=10 ** -(int(self.accExp.get())),
-                    record=self.intgRecord,
-                )
-
-                i = [i[0] for i in self.tableData].index("SHOT EXIT")
-                vg = self.tableData[i][4]
-                te, be = self.gun.getEff(vg)
-                self.te.set(round(te * 100, 1))
-                self.be.set(round(te / self.gun.phi * 100, 1))
-
-                i = [i[0] for i in self.tableData].index("PEAK PRESSURE")
-                _, _, lp, _, _, pp, _ = self.tableData[i]
-                self.ptm.set(toSI(self.gun.toPt(pp, lp)))
-                self.pbm.set(toSI(self.gun.toPb(pp, lp)))
-
-            except Exception as e:
-                # for Python 3.9 and below.
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.gun = None
-                self.tableData = []
-                self.errorData = []
-                self.errorLst.append("Exception while solving gun system:")
-                if self.DEBUG.get():
-                    self.errorLst.append(
-                        "".join(
-                            traceback.format_exception(
-                                exc_type, exc_value, exc_traceback
-                            )
-                        )
-                    )
-                else:
-                    self.errorLst.append(str(e))
-
-        self.tv.delete(*self.tv.get_children())
-        useSN = (False, False, False, True, False, False, True)
-        units = (None, "s", "m", None, "m/s", "Pa", "K")
-        tableData = dot_aligned(
-            self.tableData,
-            units=units,
-            useSN=useSN,
-        )
-        errorData = dot_aligned(self.errorData, units=units, useSN=useSN)
-        # negErr, posErr = arrErr(self.errorData, units=units, useSN=useSN)
-        i = 0
-        for row, erow in zip(tableData, errorData):
-            self.tv.insert(
-                "", "end", str(i), values=row, tags=(row[0], "monospace")
-            )
-            self.tv.insert(
-                str(i),
-                "end",
-                str(i + 1),
-                values=tuple("±" + e if e != erow[0] else e for e in erow),
-                tags="error",
-            )
-
-            self.tv.move(str(i + 1), str(i), "end")
-
-            i += 2
-
-        self.updateError()
-        self.updateFigPlot()
 
     def addRightFrm(self, parent):
         rightFrm = ttk.Frame(parent)
@@ -628,6 +422,13 @@ class IB(Frame):
         validationPI = parent.register(validatePI)
 
         i = 0
+
+        self.pbar = ttk.Progressbar(opFrm, mode="indeterminate")
+        self.pbar.grid(
+            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+        )
+
+        i += 1
 
         consFrm = ttk.LabelFrame(
             opFrm, text="Constraints", style="SubLabelFrame.TLabelframe"
@@ -746,17 +547,201 @@ class IB(Frame):
             infotext=tolText,
         )
 
-        calButton = ttk.Button(
+        self.calButton = ttk.Button(
             opFrm,
             text="Calculate",
-            command=self.calculate,  # underline=0
+            # command=self.calculate,  # underline=0
+            command=self.onCalculate,
         )
-        calButton.grid(
+        self.calButton.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
 
         opFrm.rowconfigure(i, weight=1)
-        CreateToolTip(calButton, "Integrate system using RKF7(8) integrator")
+        CreateToolTip(
+            self.calButton, "Integrate system using RKF7(8) integrator"
+        )
+
+    def onCalculate(self):
+        constrain = self.solve_W_Lg.get() == 1
+        optimize = self.opt_lf.get() == 1
+        debug = self.DEBUG.get() == 1
+
+        self.tableData = []
+        self.errorData = []
+        self.intgRecord = []
+        self.kwargs = {}
+        self.process = None
+
+        try:
+            chamberVolume = (
+                float(self.chgkg.get())
+                / self.prop.rho_p
+                / self.prop.maxLF
+                / float(self.ldf.get())
+                * 100
+            )
+
+            self.kwargs.update(
+                {
+                    "cal": float(self.calmm.get()) * 1e-3,
+                    "m": float(self.shtkg.get()),
+                    "prop": self.prop,
+                    "2e1": float(self.arcmm.get()) * 1e-3,
+                    "w": float(self.chgkg.get()),
+                    "cv": chamberVolume,
+                    "sp": float(self.stpMPa.get()) * 1e6,
+                    "lg": float(self.tblmm.get()) * 1e-3,
+                    "ce": float(self.clr.get()),  # chamber expansion
+                    "dc": float(self.dgc.get()) * 1e-2,  # drag coefficient
+                    "dp": float(self.pTgt.get()) * 1e6,  # design pressure
+                    "dv": float(self.vTgt.get()),  # design velocity
+                    "tol": 10 ** -int(self.accExp.get()),
+                    "mw": 1e-6 * float(self.minWeb.get()),
+                    "lf": 1e-2 * float(self.ldf.get()),
+                    "step": int(self.steps.get()),
+                    "dom": self.dropOptn.get(),
+                }
+            )
+
+            self.process = Process(
+                target=calculate,
+                args=(
+                    self.queue,
+                    constrain,
+                    optimize,
+                    self.kwargs,
+                    debug,
+                ),
+            )
+            self.calButton.config(state="disabled")
+            self.pbar.start()
+            self.process.start()
+
+        except Exception as e:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.gun = None
+            self.errorLst.append("Exception when dispatching calculation:")
+            if self.DEBUG.get():
+                self.errorLst.append(
+                    "".join(
+                        traceback.format_exception(
+                            exc_type, exc_value, exc_traceback
+                        )
+                    )
+                )
+            else:
+                self.errorLst.append(str(e))
+
+            self.tv.delete(*self.tv.get_children())
+            self.updateError()
+            self.updateFigPlot()
+
+    def getValue(self):
+        constrain = self.solve_W_Lg.get() == 1
+        optimize = self.opt_lf.get() == 1
+
+        self.kwargs = self.queue.get()
+        kwargs = self.kwargs
+
+        self.gun = self.queue.get()
+        self.intgRecord = self.queue.get()
+        self.tableData = self.queue.get()
+        self.errorData = self.queue.get()
+        self.errorLst.extend(self.queue.get())
+
+        if self.gun is not None:
+            chamberVolume = kwargs["cv"]
+
+            self.cv.set(toSI(chamberVolume, useSN=True))
+            self.ldp.set(round(self.prop.maxLF * float(self.ldf.get()), 1))
+
+            if constrain:
+                webmm = round(
+                    1e3 * kwargs["2e1"],
+                    3 - int(floor(log10(abs(1e3 * kwargs["2e1"])))),
+                )
+                self.arcmm.set(webmm)
+
+                lgmm = round(
+                    kwargs["lg"] * 1e3,
+                    3 - int(floor(log10(abs(kwargs["lg"] * 1000)))),
+                )
+
+                self.tblmm.set(lgmm)
+                if optimize:
+                    lfpercent = round(
+                        kwargs["lf"] * 100,
+                        3 - int(floor(log10(abs(kwargs["lf"] * 100)))),
+                    )
+                    self.ldf.set(lfpercent)
+
+            self.ld.set(
+                toSI(
+                    self.prop.maxLF
+                    * 1e-2
+                    * float(self.ldf.get())
+                    * self.prop.rho_p,
+                    useSN=True,
+                )
+            )
+
+            i = [i[0] for i in self.tableData].index("SHOT EXIT")
+            vg = self.tableData[i][4]
+            te, be = self.gun.getEff(vg)
+            self.te.set(round(te * 100, 1))
+            self.be.set(round(te / self.gun.phi * 100, 1))
+
+            i = [i[0] for i in self.tableData].index("PEAK PRESSURE")
+            _, _, lp, _, _, pp, _ = self.tableData[i]
+            self.ptm.set(toSI(self.gun.toPt(pp, lp)))
+            self.pbm.set(toSI(self.gun.toPb(pp, lp)))
+
+            self.lx.set(toSI(float(self.tblmm.get()) / float(self.calmm.get())))
+            self.tlx.set(
+                toSI(
+                    (
+                        float(self.tblmm.get())
+                        + self.gun.l_0 * 1000 / float(self.clr.get())
+                    )
+                    / float(self.calmm.get())
+                )
+            )
+
+            self.va.set(toSI(self.gun.v_j))
+
+        self.tv.delete(*self.tv.get_children())
+        useSN = (False, False, False, True, False, False, True)
+        units = (None, "s", "m", None, "m/s", "Pa", "K")
+        tableData = dot_aligned(
+            self.tableData,
+            units=units,
+            useSN=useSN,
+        )
+        errorData = dot_aligned(self.errorData, units=units, useSN=useSN)
+        # negErr, posErr = arrErr(self.errorData, units=units, useSN=useSN)
+        i = 0
+        for row, erow in zip(tableData, errorData):
+            self.tv.insert(
+                "", "end", str(i), values=row, tags=(row[0], "monospace")
+            )
+            self.tv.insert(
+                str(i),
+                "end",
+                str(i + 1),
+                values=tuple("±" + e if e != erow[0] else e for e in erow),
+                tags="error",
+            )
+
+            self.tv.move(str(i + 1), str(i), "end")
+            i += 2
+
+        self.updateError()
+        self.updateFigPlot()
+
+        self.pbar.stop()
+        self.calButton.config(state="normal")
+        self.process = None
 
     def addErrFrm(self, parent):
         errorFrm = ttk.LabelFrame(parent, text="Exceptions")
@@ -1138,6 +1123,9 @@ class IB(Frame):
         if self.resized:
             self.updateSpec(None, None, None)
             self.resized = False
+        if self.process is not None:  # and not self.process.is_alive():
+            self.getValue()
+
         self.parent.after(100, self.timedLoop)
 
     def updateFigPlot(self):
@@ -1793,6 +1781,106 @@ class IB(Frame):
             pass
 
         self.update()
+
+
+def calculate(
+    queue,
+    constrain,
+    optimize,
+    kwargs,
+    debug,
+):
+    tableData = []
+    errorData = []
+    errorReport = []
+    intgRecord = []
+    try:
+        if constrain:
+            constrained = Constrained(
+                caliber=kwargs["cal"],
+                shotMass=kwargs["m"],
+                propellant=kwargs["prop"],
+                startPressure=kwargs["sp"],
+                dragCoe=kwargs["dc"],
+                designPressure=kwargs["dp"],
+                designVelocity=kwargs["dv"],
+            )
+            if optimize:
+                l_f, e_1, l_g = constrained.findMinV(
+                    chargeMassRatio=kwargs["w"] / kwargs["m"],
+                    tol=kwargs["tol"],
+                    minWeb=kwargs["mw"],
+                )
+                kwargs.update(
+                    {"lf": round(l_f, 3 - int(floor(log10(abs(l_f)))))}
+                )
+
+            else:
+                e_1, l_g = constrained.solve(
+                    loadFraction=kwargs["lf"],
+                    chargeMassRatio=kwargs["w"] / kwargs["m"],
+                    tol=kwargs["tol"],
+                    minWeb=kwargs["mw"],
+                )
+
+            kwargs.update(
+                {"2e1": round(2 * e_1, 3 - int(floor(log10(abs(2 * e_1)))))}
+            )
+            kwargs.update({"lg": round(l_g, 3 - int(floor(log10(abs(l_g)))))})
+
+            chamberVolume = (
+                kwargs["w"]
+                / kwargs["prop"].rho_p
+                / kwargs["prop"].maxLF
+                / kwargs["lf"]
+            )
+
+            kwargs.update({"cv": chamberVolume})
+
+        else:
+            pass
+
+        gun = Gun(
+            caliber=kwargs["cal"],
+            shotMass=kwargs["m"],
+            propellant=kwargs["prop"],
+            grainSize=kwargs["2e1"],
+            chargeMass=kwargs["w"],
+            chamberVolume=kwargs["cv"],
+            startPressure=kwargs["sp"],
+            lengthGun=kwargs["lg"],
+            chamberExpansion=kwargs["ce"],
+            dragCoe=kwargs["dc"],
+        )
+
+        tableData, errorData = gun.integrate(
+            steps=kwargs["step"],
+            dom=kwargs["dom"],
+            tol=kwargs["tol"],
+            record=intgRecord,
+        )
+
+    except Exception as e:
+        gun = None
+        errorReport = ["Exception while calculating:"]
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        if debug:
+            errorReport.append(
+                "".join(
+                    traceback.format_exception(
+                        exc_type, exc_value, exc_traceback
+                    )
+                )
+            )
+        else:
+            errorReport.append(str(e))
+
+    queue.put(kwargs)
+    queue.put(gun)
+    queue.put(intgRecord)
+    queue.put(tableData)
+    queue.put(errorData)
+    queue.put(errorReport)
 
 
 def center(win):

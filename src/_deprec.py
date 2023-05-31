@@ -1411,3 +1411,211 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=100):
             return x_1, fx_1
 
     raise ValueError("Maximum iteration exceeded at ({},{})".format(x_1, fx_1))
+
+
+    def calculate(self):
+        self.intgRecord = []
+
+        compo = self.compositions[self.dropProp.get()]
+        # lookup dictionary using the string key to get
+        # the requisite object
+        geom = self.geometries[self.dropGeom.get()]
+
+        self.tableData = []
+        self.errorData = []
+        self.intgRecord = []
+
+        if self.prop is None:
+            return
+
+        if self.solve_W_Lg.get() == 1:
+            try:
+                constrained = Constrained(
+                    caliber=float(self.calmm.get()) * 1e-3,
+                    shotMass=float(self.shtkg.get()),
+                    propellant=self.prop,
+                    startPressure=float(self.stpMPa.get()) * 1e6,
+                    dragCoe=float(self.dgc.get()) * 1e-2,
+                    designPressure=float(self.pTgt.get()) * 1e6,
+                    designVelocity=float(self.vTgt.get()),
+                )
+
+                if self.opt_lf.get() == 0:
+                    e_1, l_g = constrained.solve(
+                        loadFraction=1e-2 * float(self.ldf.get()),
+                        chargeMassRatio=(
+                            float(self.chgkg.get()) / float(self.shtkg.get())
+                        ),
+                        tol=10 ** -(int(self.accExp.get())),
+                        minWeb=1e-6 * float(self.minWeb.get()),
+                    )
+
+                else:
+                    lf, e_1, l_g = constrained.findMinV(
+                        chargeMassRatio=(
+                            float(self.chgkg.get()) / float(self.shtkg.get())
+                        ),
+                        tol=10 ** -(int(self.accExp.get())),
+                        minWeb=1e-6 * float(self.minWeb.get()),
+                    )
+
+                    lfpercent = round(
+                        lf * 100, 3 - int(floor(log10(abs(l_g * 100))))
+                    )
+                    self.ldf.set(lfpercent)
+
+                webmm = round(
+                    2000 * e_1, 3 - int(floor(log10(abs(2000 * e_1))))
+                )
+                lgmm = round(l_g * 1000, 3 - int(floor(log10(abs(l_g * 1000)))))
+
+                # take the 3 most significant digits.
+                self.arcmm.set(webmm)
+                self.tblmm.set(lgmm)
+
+            except Exception as e:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.errorLst.append("Exception in constrained design:")
+                if self.DEBUG.get():
+                    # self.errorLst.append("".join(traceback.format_exception(e)))
+                    self.errorLst.append(
+                        "".join(
+                            traceback.format_exception(
+                                exc_type, exc_value, exc_traceback
+                            )
+                        )
+                    )
+                else:
+                    self.errorLst.append(str(e))
+
+        try:
+            chamberVolume = (
+                float(self.chgkg.get())
+                / self.prop.rho_p
+                / self.prop.maxLF
+                / float(self.ldf.get())
+                * 100
+            )
+            self.cv.set(toSI(chamberVolume, useSN=True))
+            self.ldp.set(round(self.prop.maxLF * float(self.ldf.get()), 1))
+
+            self.ld.set(
+                toSI(
+                    self.prop.maxLF
+                    * 1e-2
+                    * float(self.ldf.get())
+                    * self.prop.rho_p,
+                    unit=None,  # "g/cm^3",
+                    useSN=True,
+                )
+            )
+
+            self.gun = Gun(
+                caliber=float(self.calmm.get()) * 1e-3,
+                shotMass=float(self.shtkg.get()),
+                propellant=self.prop,
+                grainSize=float(self.arcmm.get()) * 1e-3,
+                chargeMass=float(self.chgkg.get()),
+                chamberVolume=chamberVolume,
+                startPressure=float(self.stpMPa.get()) * 1e6,
+                lengthGun=float(self.tblmm.get()) * 1e-3,
+                chamberExpansion=float(self.clr.get()),
+                dragCoe=float(self.dgc.get()) * 1e-2,
+            )
+
+            self.lx.set(toSI(float(self.tblmm.get()) / float(self.calmm.get())))
+            self.tlx.set(
+                toSI(
+                    (
+                        float(self.tblmm.get())
+                        + self.gun.l_0 * 1000 / float(self.clr.get())
+                    )
+                    / float(self.calmm.get())
+                )
+            )
+
+            self.va.set(toSI(self.gun.v_j))
+
+        except Exception as e:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.gun = None
+            self.errorLst.append("Exception when defining guns:")
+            if self.DEBUG.get():
+                # self.errorLst.append("".join(traceback.format_exception(e)))
+                self.errorLst.append(
+                    "".join(
+                        traceback.format_exception(
+                            exc_type, exc_value, exc_traceback
+                        )
+                    )
+                )
+            else:
+                self.errorLst.append(str(e))
+
+        if self.gun is not None:
+            try:
+                self.tableData, self.errorData = self.gun.integrate(
+                    steps=int(self.steps.get()),
+                    dom=self.dropOptn.get(),
+                    tol=10 ** -(int(self.accExp.get())),
+                    record=self.intgRecord,
+                )
+
+                i = [i[0] for i in self.tableData].index("SHOT EXIT")
+                vg = self.tableData[i][4]
+                te, be = self.gun.getEff(vg)
+                self.te.set(round(te * 100, 1))
+                self.be.set(round(te / self.gun.phi * 100, 1))
+
+                i = [i[0] for i in self.tableData].index("PEAK PRESSURE")
+                _, _, lp, _, _, pp, _ = self.tableData[i]
+                self.ptm.set(toSI(self.gun.toPt(pp, lp)))
+                self.pbm.set(toSI(self.gun.toPb(pp, lp)))
+
+            except Exception as e:
+                # for Python 3.9 and below.
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.gun = None
+                self.tableData = []
+                self.errorData = []
+                self.errorLst.append("Exception while solving gun system:")
+                if self.DEBUG.get():
+                    self.errorLst.append(
+                        "".join(
+                            traceback.format_exception(
+                                exc_type, exc_value, exc_traceback
+                            )
+                        )
+                    )
+                else:
+                    self.errorLst.append(str(e))
+
+        self.tv.delete(*self.tv.get_children())
+        useSN = (False, False, False, True, False, False, True)
+        units = (None, "s", "m", None, "m/s", "Pa", "K")
+        tableData = dot_aligned(
+            self.tableData,
+            units=units,
+            useSN=useSN,
+        )
+        errorData = dot_aligned(self.errorData, units=units, useSN=useSN)
+        # negErr, posErr = arrErr(self.errorData, units=units, useSN=useSN)
+        i = 0
+        for row, erow in zip(tableData, errorData):
+            self.tv.insert(
+                "", "end", str(i), values=row, tags=(row[0], "monospace")
+            )
+            self.tv.insert(
+                str(i),
+                "end",
+                str(i + 1),
+                values=tuple("±" + e if e != erow[0] else e for e in erow),
+                tags="error",
+            )
+
+            self.tv.move(str(i + 1), str(i), "end")
+
+            i += 2
+
+        self.updateError()
+        self.updateFigPlot()
