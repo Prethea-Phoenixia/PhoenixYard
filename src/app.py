@@ -1,3 +1,12 @@
+"""
+
+REMAINING ISSUES:
+    -   Matplotlib automatically updates when resizing. This causes significant CPU usage
+        when resizing the window through mouse dragging.
+
+"""
+
+
 from tkinter import *
 from tkinter import ttk
 import tkinter.font as tkFont
@@ -476,11 +485,17 @@ class IB(Frame):
                     record=self.intgRecord,
                 )
 
-                i = tuple(i[0] for i in self.tableData).index("SHOT EXIT")
+                i = [i[0] for i in self.tableData].index("SHOT EXIT")
                 vg = self.tableData[i][4]
                 te, be = self.gun.getEff(vg)
                 self.te.set(round(te * 100, 1))
                 self.be.set(round(te / self.gun.phi * 100, 1))
+
+                i = [i[0] for i in self.tableData].index("PEAK PRESSURE")
+                _, _, lp, _, _, pp, _ = self.tableData[i]
+                self.ptm.set(toSI(self.gun.toPt(pp, lp)))
+                self.pbm.set(toSI(self.gun.toPb(pp, lp)))
+
             except Exception as e:
                 # for Python 3.9 and below.
                 exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -561,6 +576,17 @@ class IB(Frame):
             infotext=vinfText,
         )
 
+        self.ptm, self.pbm, _, _, i = self.add122Disp(
+            parent=specFrm,
+            rowIndex=i,
+            labelText="Peak Pressure",
+            unitText_up="Pa",
+            unitText_dn="Pa",
+            justify_up="right",
+            justify_dn="right",
+            infotext=pMaxTxt,
+        )
+
         self.te, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
@@ -629,6 +655,7 @@ class IB(Frame):
             unitText="MPa",
             default="350.0",
             validation=validationNN,
+            infotext=pTgtTxt,
         )
 
         self.minWeb, _, j = self.add3Input(
