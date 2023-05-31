@@ -1482,9 +1482,16 @@ class IB(Frame):
             self.updateGeomPlot()
 
         except Exception as e:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
             self.prop = None
             if self.DEBUG.get():
-                self.errorLst.append("".join(traceback.format_exception(e)))
+                self.errorLst.append(
+                    "".join(
+                        traceback.format_exception(
+                            exc_type, exc_value, exc_traceback
+                        )
+                    )
+                )
             else:
                 self.errorLst.append(str(e))
 
