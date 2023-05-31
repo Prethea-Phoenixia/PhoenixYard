@@ -285,6 +285,8 @@ def RKF78(
 
     Rm = [0 for _ in iniVal]
 
+    allK = [[] for _ in range(13)]
+
     if h == 0:
         return x, y_this, Rm
 
@@ -295,17 +297,17 @@ def RKF78(
             h = x_1 - x
 
         try:
-            allK = []
             K1 = [k * h for k in dFunc(x + a1 * h, *y_this)]
-            allK.append(K1)
+            allK[0] = K1
 
             K2 = [
                 k * h
                 for k in dFunc(
-                    x + a2 * h, *[y + b21 * k1 for y, k1 in zip(y_this, *allK)]
+                    x + a2 * h,
+                    *[y + b21 * k1 for y, k1 in zip(y_this, *allK[:1])]
                 )
             ]
-            allK.append(K2)
+            allK[1] = K2
 
             K3 = [
                 k * h
@@ -313,11 +315,11 @@ def RKF78(
                     x + a3 * h,
                     *[
                         y + b31 * k1 + b32 * k2
-                        for y, k1, k2 in zip(y_this, *allK)
+                        for y, k1, k2 in zip(y_this, *allK[:2])
                     ]
                 )
             ]
-            allK.append(K3)
+            allK[2] = K3
 
             K4 = [
                 k * h
@@ -325,11 +327,11 @@ def RKF78(
                     x + a4 * h,
                     *[
                         y + b41 * k1 + b43 * k3
-                        for y, k1, k2, k3 in zip(y_this, *allK)
+                        for y, k1, k2, k3 in zip(y_this, *allK[:3])
                     ]
                 )
             ]
-            allK.append(K4)
+            allK[3] = K4
 
             K5 = [
                 k * h
@@ -337,11 +339,11 @@ def RKF78(
                     x + a5 * h,
                     *[
                         y + b51 * k1 + b53 * k3 + b54 * k4
-                        for y, k1, k2, k3, k4 in zip(y_this, *allK)
+                        for y, k1, k2, k3, k4 in zip(y_this, *allK[:4])
                     ]
                 )
             ]
-            allK.append(K5)
+            allK[4] = K5
 
             K6 = [
                 k * h
@@ -349,11 +351,11 @@ def RKF78(
                     x + a6 * h,
                     *[
                         y + b61 * k1 + b64 * k4 + b65 * k5
-                        for y, k1, k2, k3, k4, k5 in zip(y_this, *allK)
+                        for y, k1, k2, k3, k4, k5 in zip(y_this, *allK[:5])
                     ]
                 )
             ]
-            allK.append(K6)
+            allK[5] = K6
 
             K7 = [
                 k * h
@@ -361,11 +363,11 @@ def RKF78(
                     x + a7 * h,
                     *[
                         y + b71 * k1 + b74 * k4 + b75 * k5 + b76 * k6
-                        for y, k1, k2, k3, k4, k5, k6 in zip(y_this, *allK)
+                        for y, k1, k2, k3, k4, k5, k6 in zip(y_this, *allK[:6])
                     ]
                 )
             ]
-            allK.append(K7)
+            allK[6] = K7
 
             K8 = [
                 k * h
@@ -373,11 +375,13 @@ def RKF78(
                     x + a8 * h,
                     *[
                         y + b81 * k1 + b85 * k5 + b86 * k6 + b87 * k7
-                        for y, k1, k2, k3, k4, k5, k6, k7 in zip(y_this, *allK)
+                        for y, k1, k2, k3, k4, k5, k6, k7 in zip(
+                            y_this, *allK[:7]
+                        )
                     ]
                 )
             ]
-            allK.append(K8)
+            allK[7] = K8
 
             K9 = [
                 k * h
@@ -392,12 +396,12 @@ def RKF78(
                         + b97 * k7
                         + b98 * k8
                         for y, k1, k2, k3, k4, k5, k6, k7, k8 in zip(
-                            y_this, *allK
+                            y_this, *allK[:8]
                         )
                     ]
                 )
             ]
-            allK.append(K9)
+            allK[8] = K9
 
             K10 = [
                 k * h
@@ -413,12 +417,12 @@ def RKF78(
                         + b108 * k8
                         + b109 * k9
                         for y, k1, k2, k3, k4, k5, k6, k7, k8, k9 in zip(
-                            y_this, *allK
+                            y_this, *allK[:9]
                         )
                     ]
                 )
             ]
-            allK.append(K10)
+            allK[9] = K10
 
             K11 = [
                 k * h
@@ -435,12 +439,12 @@ def RKF78(
                         + b119 * k9
                         + b1110 * k10
                         for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10 in zip(
-                            y_this, *allK
+                            y_this, *allK[:10]
                         )
                     ]
                 )
             ]
-            allK.append(K11)
+            allK[10] = K11
 
             K12 = [
                 k * h
@@ -455,12 +459,12 @@ def RKF78(
                         + b129 * k9
                         + b1210 * k10
                         for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11 in zip(
-                            y_this, *allK
+                            y_this, *allK[:11]
                         )
                     ]
                 )
             ]
-            allK.append(K12)
+            allK[11] = K12
 
             K13 = [
                 k * h
@@ -478,12 +482,12 @@ def RKF78(
                         + b1310 * k10
                         + b1312 * k12
                         for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12 in zip(
-                            y_this, *allK
+                            y_this, *allK[:12]
                         )
                     ]
                 )
             ]
-            allK.append(K13)
+            allK[12] = K13
 
             if any(isinstance(i, complex) for k in allK for i in k):
                 raise TypeError

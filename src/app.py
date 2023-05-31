@@ -107,7 +107,6 @@ def loadfont(fontpath, private=True, enumerable=False):
     # https://github.com/ifwe/digsby/blob/f5fe00244744aa131e07f09348d10563f3d8fa99/digsby/src/gui/native/win/winfonts.py#L15
     # This function is written for Python 2.x. For 3.x, you
     # have to convert the isinstance checks to bytes and str
-    # For 3.x, you have to convert the isinstance checks to bytes and str
 
     if isinstance(fontpath, bytes):
         pathbuf = create_string_buffer(fontpath)
