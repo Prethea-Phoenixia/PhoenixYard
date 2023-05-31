@@ -576,7 +576,7 @@ def RKF78(
                 return x, y_this, Rm
 
             if record is not None:
-                record.append((x, (v for v in y_this)))
+                record.append([x, [*y_this]])
 
             if R != 0:  # sometimes the error can be estimated to be 0
                 delta = beta * abs(1 / R) ** (1 / 7)
@@ -786,3 +786,7 @@ if __name__ == "__main__":
     print(e[0] / v[0])
     print("expected value")
     print(-1 / (7 / 4 * 0**4 - 85 / 3))
+
+    import dis
+
+    dis.dis(RKF78)
