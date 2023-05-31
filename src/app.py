@@ -31,8 +31,12 @@ import matplotlib.pyplot as mpl
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.figure import Figure
 
-from multiprocessing import Queue, Process
+# from multiprocessing import Process
 
+from queue import Queue, Empty
+from threading import Thread
+
+# import Queue.Queue
 
 GEOM_CONTEXT = {
     "font.size": 6,
@@ -604,7 +608,7 @@ class IB(Frame):
                 }
             )
 
-            self.process = Process(
+            self.process = Thread(
                 target=calculate,
                 args=(
                     self.queue,
@@ -614,6 +618,7 @@ class IB(Frame):
                     debug,
                 ),
             )
+            self.pos = 0
             self.calButton.config(state="disabled")
             self.pbar.start()
             self.process.start()
@@ -644,11 +649,17 @@ class IB(Frame):
         self.kwargs = self.queue.get()
         kwargs = self.kwargs
 
-        self.gun = self.queue.get()
-        self.intgRecord = self.queue.get()
-        self.tableData = self.queue.get()
-        self.errorData = self.queue.get()
-        self.errorLst.extend(self.queue.get())
+        self.gun = self.queue.get(block=False)
+
+        self.intgRecord = self.queue.get(block=False)
+
+        self.tableData = self.queue.get(block=False)
+
+        self.errorData = self.queue.get(block=False)
+
+        self.errorLst.extend(self.queue.get(block=False))
+
+        self.pos = 0
 
         if self.gun is not None:
             chamberVolume = kwargs["cv"]
@@ -1123,7 +1134,8 @@ class IB(Frame):
         if self.resized:
             self.updateSpec(None, None, None)
             self.resized = False
-        if self.process is not None:  # and not self.process.is_alive():
+        # print(self.process is not None and self.process.is_alive())
+        if self.process is not None and not self.process.is_alive():
             self.getValue()
 
         self.parent.after(100, self.timedLoop)
@@ -1777,7 +1789,6 @@ class IB(Frame):
             self.updateFigPlot()
 
         except AttributeError as e:
-            # print(e)
             pass
 
         self.update()
@@ -1794,6 +1805,7 @@ def calculate(
     errorData = []
     errorReport = []
     intgRecord = []
+
     try:
         if constrain:
             constrained = Constrained(
