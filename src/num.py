@@ -128,7 +128,6 @@ def GSS(f, a, b, yRelTol, xTol=0, findMin=True):
         return (c, b)
 
 
-a1 = 0
 a2 = 2 / 27
 a3 = 1 / 9
 a4 = 1 / 6
@@ -142,7 +141,6 @@ a11 = 1
 a12 = 0
 a13 = 1
 
-b11 = 0
 
 b21 = 2 / 27
 
@@ -297,7 +295,7 @@ def RKF78(
             h = x_1 - x
 
         try:
-            K1 = [k * h for k in dFunc(x + a1 * h, *y_this)]
+            K1 = [k * h for k in dFunc(x, *y_this)]
             allK[0] = K1
 
             K2 = [
@@ -787,6 +785,5 @@ if __name__ == "__main__":
     print("expected value")
     print(-1 / (7 / 4 * 0**4 - 85 / 3))
 
-    import dis
-
-    dis.dis(RKF78)
+    # import dis
+    # dis.dis(RKF78)
