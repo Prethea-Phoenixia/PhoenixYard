@@ -180,15 +180,9 @@ class Constrained:
                     dv_bar = 0.5 * dt_bar * theta * p_bar
 
                     dp_bar = (
-                        (
-                            (1 + p_bar * Delta * (alpha - 1 / rho_p))
-                            * dpsi
-                            / dt_bar
-                            - p_bar * v_bar * (1 + theta)
-                        )
-                        * dt_bar
-                        / (l_bar + l_psi_bar)
-                    )
+                        (1 + p_bar * Delta * (alpha - 1 / rho_p)) * dpsi
+                        - p_bar * v_bar * (1 + theta) * dt_bar
+                    ) / (l_bar + l_psi_bar)
 
                 else:
                     dt_bar = 0
