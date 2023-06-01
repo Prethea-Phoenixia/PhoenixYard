@@ -314,8 +314,8 @@ class IB(Frame):
         self.geoOptions = tuple(self.geometries.keys())
         self.domainOptions = (DOMAIN_TIME, DOMAIN_LENG)
 
-        parent.columnconfigure(0, weight=3)
-        parent.columnconfigure(1, weight=1)
+        parent.columnconfigure(0, weight=1)
+        parent.columnconfigure(1, weight=0)
         parent.rowconfigure(0, weight=1)
         # parent.rowconfigure(1, weight=1)
 
@@ -620,7 +620,7 @@ class IB(Frame):
             )
             self.pos = 0
             self.calButton.config(state="disabled")
-            self.pbar.start()
+            self.pbar.start(interval=10)
             self.process.start()
 
         except Exception as e:
@@ -649,15 +649,11 @@ class IB(Frame):
         self.kwargs = self.queue.get()
         kwargs = self.kwargs
 
-        self.gun = self.queue.get(block=False)
-
-        self.intgRecord = self.queue.get(block=False)
-
-        self.tableData = self.queue.get(block=False)
-
-        self.errorData = self.queue.get(block=False)
-
-        self.errorLst.extend(self.queue.get(block=False))
+        self.gun = self.queue.get()
+        self.intgRecord = self.queue.get()
+        self.tableData = self.queue.get()
+        self.errorData = self.queue.get()
+        self.errorLst.extend(self.queue.get())
 
         self.pos = 0
 
@@ -665,7 +661,6 @@ class IB(Frame):
             chamberVolume = kwargs["cv"]
 
             self.cv.set(toSI(chamberVolume, useSN=True))
-            self.ldp.set(round(self.prop.maxLF * float(self.ldf.get()), 1))
 
             if constrain:
                 webmm = round(
@@ -687,6 +682,7 @@ class IB(Frame):
                     )
                     self.ldf.set(lfpercent)
 
+            self.ldp.set(round(self.prop.maxLF * float(self.ldf.get()), 1))
             self.ld.set(
                 toSI(
                     self.prop.maxLF
@@ -1791,7 +1787,7 @@ class IB(Frame):
         except AttributeError as e:
             pass
 
-        self.update()
+        self.update_idletasks()
 
 
 def calculate(
@@ -1805,7 +1801,6 @@ def calculate(
     errorData = []
     errorReport = []
     intgRecord = []
-
     try:
         if constrain:
             constrained = Constrained(
