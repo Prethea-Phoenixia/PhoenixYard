@@ -31,12 +31,12 @@ import matplotlib.pyplot as mpl
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.figure import Figure
 
-# from multiprocessing import Process
+#
+# from queue import Queue, Empty
+# from threading import Thread
 
-from queue import Queue, Empty
-from threading import Thread
-
-# import Queue.Queue
+from multiprocessing import Process, Queue
+from queue import Empty
 
 GEOM_CONTEXT = {
     "font.size": 6,
@@ -262,6 +262,7 @@ class IB(Frame):
         Frame.__init__(self, parent)
         self.queue = Queue()
         self.process = None
+        self.pos = 0
         self.dpi = dpi
         self.parent = parent
         self.forceUpdOnThemeWidget = []
@@ -315,9 +316,7 @@ class IB(Frame):
         self.domainOptions = (DOMAIN_TIME, DOMAIN_LENG)
 
         parent.columnconfigure(0, weight=1)
-        parent.columnconfigure(1, weight=0)
         parent.rowconfigure(0, weight=1)
-        # parent.rowconfigure(1, weight=1)
 
         self.addRightFrm(parent)
         self.addErrFrm(parent)
@@ -608,7 +607,7 @@ class IB(Frame):
                 }
             )
 
-            self.process = Thread(
+            self.process = Process(
                 target=calculate,
                 args=(
                     self.queue,
@@ -648,12 +647,30 @@ class IB(Frame):
 
         self.kwargs = self.queue.get()
         kwargs = self.kwargs
+        queue = self.queue
+        try:
+            if self.pos == 0:
+                self.gun = queue.get_nowait()
+                self.pos += 1
 
-        self.gun = self.queue.get()
-        self.intgRecord = self.queue.get()
-        self.tableData = self.queue.get()
-        self.errorData = self.queue.get()
-        self.errorLst.extend(self.queue.get())
+            if self.pos == 1:
+                self.intgRecord = queue.get_nowait()
+                self.pos += 1
+
+            if self.pos == 2:
+                self.tableData = queue.get_nowait()
+                self.pos += 1
+
+            if self.pos == 3:
+                self.errorData = queue.get_nowait()
+                self.pos += 1
+
+            if self.pos == 4:
+                self.errorLst.extend(queue.get_nowait())
+                self.pos += 1
+
+        except Empty:
+            return
 
         self.pos = 0
 
@@ -861,7 +878,7 @@ class IB(Frame):
             # wrap=WORD,
             wrap="none",
             height=10,
-            width=0,
+            width=33,
             yscrollcommand=specScroll.set,
             xscrollcommand=specHScroll.set,
         )
@@ -1131,7 +1148,7 @@ class IB(Frame):
             self.updateSpec(None, None, None)
             self.resized = False
         # print(self.process is not None and self.process.is_alive())
-        if self.process is not None and not self.process.is_alive():
+        if self.process is not None:  # and not self.process.is_alive():
             self.getValue()
 
         self.parent.after(100, self.timedLoop)
