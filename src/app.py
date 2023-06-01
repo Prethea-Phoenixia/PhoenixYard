@@ -338,7 +338,7 @@ class IB(Frame):
 
         parent.bind("<Configure>", self.resizePlot)
 
-        self.resized = False
+        # self.resized = False
         self.timedLoop()
 
     def addRightFrm(self, parent):
@@ -426,7 +426,7 @@ class IB(Frame):
 
         i = 0
 
-        self.pbar = ttk.Progressbar(opFrm, mode="indeterminate")
+        self.pbar = ttk.Progressbar(opFrm, mode="indeterminate", maximum=100)
         self.pbar.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
@@ -882,7 +882,7 @@ class IB(Frame):
             # wrap=WORD,
             wrap="none",
             height=10,
-            width=33,
+            width=36,
             yscrollcommand=specScroll.set,
             xscrollcommand=specHScroll.set,
         )
@@ -1145,12 +1145,14 @@ class IB(Frame):
                 ("axes", 1 + 40 * dpi / 96 / width)
             )
 
-        self.resized = True
+        # self.resized = True
 
     def timedLoop(self):
+        """
         if self.resized:
             self.updateSpec(None, None, None)
             self.resized = False
+        """
         # print(self.process is not None and self.process.is_alive())
         # print(self.pos)
         if self.pos >= 0:  # and not self.process.is_alive():
@@ -1389,7 +1391,7 @@ class IB(Frame):
         compo = self.compositions[self.dropProp.get()]
         self.specs.delete("1.0", "end")
         t_Font = tkFont.Font(family="hack", size=8)
-        width = self.specs.winfo_width() // t_Font.measure("m") - 1
+        width = self.specs.winfo_width() // t_Font.measure("m")
         self.specs.insert("end", " Adb.Temp: {:.0f} K\n".format(compo.T_1)),
 
         self.specs.insert(
