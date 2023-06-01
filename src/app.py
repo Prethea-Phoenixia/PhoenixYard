@@ -1152,7 +1152,7 @@ class IB(Frame):
             self.updateSpec(None, None, None)
             self.resized = False
         # print(self.process is not None and self.process.is_alive())
-        print(self.pos)
+        # print(self.pos)
         if self.pos >= 0:  # and not self.process.is_alive():
             self.getValue()
 
