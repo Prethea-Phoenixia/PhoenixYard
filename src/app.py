@@ -262,7 +262,7 @@ class IB(Frame):
         Frame.__init__(self, parent)
         self.queue = Queue()
         self.process = None
-        self.pos = 0
+        self.pos = -1
         self.dpi = dpi
         self.parent = parent
         self.forceUpdOnThemeWidget = []
@@ -645,34 +645,38 @@ class IB(Frame):
         constrain = self.solve_W_Lg.get() == 1
         optimize = self.opt_lf.get() == 1
 
-        self.kwargs = self.queue.get()
-        kwargs = self.kwargs
         queue = self.queue
+
         try:
             if self.pos == 0:
-                self.gun = queue.get_nowait()
+                self.kwargs = queue.get_nowait()
                 self.pos += 1
 
             if self.pos == 1:
-                self.intgRecord = queue.get_nowait()
+                self.gun = queue.get_nowait()
                 self.pos += 1
 
             if self.pos == 2:
-                self.tableData = queue.get_nowait()
+                self.intgRecord = queue.get_nowait()
                 self.pos += 1
 
             if self.pos == 3:
-                self.errorData = queue.get_nowait()
+                self.tableData = queue.get_nowait()
                 self.pos += 1
 
             if self.pos == 4:
+                self.errorData = queue.get_nowait()
+                self.pos += 1
+
+            if self.pos == 5:
                 self.errorLst.extend(queue.get_nowait())
                 self.pos += 1
 
         except Empty:
             return
 
-        self.pos = 0
+        self.pos = -1
+        kwargs = self.kwargs
 
         if self.gun is not None:
             chamberVolume = kwargs["cv"]
@@ -1148,7 +1152,8 @@ class IB(Frame):
             self.updateSpec(None, None, None)
             self.resized = False
         # print(self.process is not None and self.process.is_alive())
-        if self.process is not None:  # and not self.process.is_alive():
+        print(self.pos)
+        if self.pos >= 0:  # and not self.process.is_alive():
             self.getValue()
 
         self.parent.after(100, self.timedLoop)
