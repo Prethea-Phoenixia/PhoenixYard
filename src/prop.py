@@ -142,7 +142,7 @@ class GrainComp:
         self.theta = redAdbIndex
         self.u_1 = detVel
         self.n = pressureExp
-        self.T_1 = flameTemp
+        self.T_1 = flameTemp  # isochoric (const volume) adiabatic temperature
         self.R = self.f / self.T_1
 
     def readFile(fileName):
