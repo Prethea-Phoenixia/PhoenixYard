@@ -112,6 +112,8 @@ class GrainComp:
     Nitroglycerin, 7e-7 - 9e-7 m/(MPa*s)
     """
 
+    allGrainCompDict = {}
+
     def __init__(
         self,
         name,
@@ -145,7 +147,8 @@ class GrainComp:
         self.T_v = flameTemp  # isochoric (const volume) adiabatic temperature
         self.R = self.f / self.T_v
 
-    def readFile(fileName):
+    @classmethod
+    def readFile(cls, fileName):
         composition = []
         with open(fileName, newline="") as csvfile:
             propReader = csv.reader(
@@ -175,7 +178,7 @@ class GrainComp:
 
                 redAdbIndex = float(adb) - 1
 
-                newComp = GrainComp(
+                newComp = cls(
                     name,
                     desc,
                     float(propellantForce),
@@ -189,6 +192,8 @@ class GrainComp:
 
                 composition.append(newComp)
 
+        compoDict = {i.name: i for i in composition}
+        cls.allGrainCompDict.update(compoDict)
         return {i.name: i for i in composition}
 
     def getLBR(self, p):
@@ -197,13 +202,13 @@ class GrainComp:
 
         linear burn rate = (pressure)^self.n * self.u_1
         """
-
         return self.u_1 * p**self.n
 
     def getIsp(self):
         return (2 * self.f / self.theta) ** 0.5
 
-    def check(compositions):
+    @classmethod
+    def check(cls):
         from tabulate import tabulate
 
         line = [
@@ -218,7 +223,7 @@ class GrainComp:
                 "b.r.exp",
             ]
         ]
-        for comp in compositions:
+        for comp in cls.allGrainCompDict.values():
             line.append(
                 [
                     comp.name,
@@ -423,3 +428,8 @@ class Propellant:
             return self.chi_s * Z * (1 + self.labda_s * Z)
         else:
             return 1.0
+
+
+if __name__ == "__main__":
+    compositions = GrainComp.readFile("data/propellants.csv")
+    GrainComp.check()

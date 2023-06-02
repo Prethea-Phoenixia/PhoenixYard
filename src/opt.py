@@ -44,7 +44,6 @@ class Constrained:
         except:
             raise AttributeError("object has no '%s'" % attrName)
 
-    # @profile
     def solve(
         self,
         loadFraction,

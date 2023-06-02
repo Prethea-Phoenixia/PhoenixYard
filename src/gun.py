@@ -917,7 +917,7 @@ if __name__ == "__main__":
     from tabulate import tabulate
 
     compositions = GrainComp.readFile("data/propellants.csv")
-    GrainComp.check(compositions.values())
+
     M17 = compositions["M17"]
 
     M17SHC = Propellant(M17, SimpleGeometry.SPHERE, 2, 2.5)
