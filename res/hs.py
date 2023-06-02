@@ -6,8 +6,8 @@ deviaiton to the reference temperature of 2500K, assuming
 constant heat capacity between 2500K and 3000K, propellant isochoric
 adiabatic flame temperature is then calculated. 
 
-Combustion product species are assumed to involve CO, H2O, CO2, H2,
-N2, HCl , and linear equations are solved to estimate product gas 
+Combustion product species are assumed to involve CO, CO2, H2O, H2,
+N2, HCl, and linear equations are solved to estimate product gas 
 volume (the inverse of molar mass), and adiabatic ratios.
 
 Results are within few percent of accurate thermalchemical calculation
@@ -24,4 +24,6 @@ accurate thermochemcial programs like BLAKE should be consulted.
 In the absence of more sophisticated programs, the Hirschfelder
 -Sherman is an approximate, and simple method appropriate for
 propellant screening and program guidance purposes.
+
+Bd-MVP copolymer is a 90% butadiene; 10% 2-methyl-5-vinylpyridine copolymer
 """

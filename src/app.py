@@ -1392,10 +1392,17 @@ class IB(Frame):
         self.specs.delete("1.0", "end")
         t_Font = tkFont.Font(family="hack", size=8)
         width = self.specs.winfo_width() // t_Font.measure("m")
-        self.specs.insert("end", " Adb.Temp: {:.0f} K\n".format(compo.T_1)),
+        self.specs.insert(
+            "end", " Adb.Temp: {:>4.0f} K (Isochoric)\n".format(compo.T_v)
+        ),
 
         self.specs.insert(
-            "end", "  Density: {:.0f} kg/m^3\n".format(compo.rho_p)
+            "end", "  Density: {:>4.0f} kg/m^3\n".format(compo.rho_p)
+        )
+        isp = compo.getIsp()
+        self.specs.insert(
+            "end",
+            " Isp(Vac): {:>4.0f} m/s, {:>3.0f} s\n".format(isp, isp / 9.805),
         )
 
         self.specs.insert("end", "Burn rate:\n")

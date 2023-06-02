@@ -378,10 +378,10 @@ class Gun:
 
             if p_bar_j > p_bar_max:
                 raise ValueError(
-                    "Unreasonably high pressure (>{:.0f} MPa) was encountered.".format(
+                    "Nobel-Abel EoS is generally accurate enough below 600MPa. However,"
+                    " Unreasonably high pressure (>{:.0f} MPa) was encountered.".format(
                         p_max / 1e6
                     )
-                    + " Nobel-Abel EoS is in general not applicable at pressures above 600MPa."
                 )
 
             if any(
@@ -951,11 +951,6 @@ if __name__ == "__main__":
         )
     )
 
-    # except ValueError as e:
-    #    print(e)
-    #    pass
-
-    # print(*test.integrate(10, 1e-5, dom="length"), sep="\n")
     # density:  lbs/in^3 -> kg/m^3, multiply by 27680
     # covolume: in^3/lbs -> m^3/kg, divide by 27680
     # force:    ft-lbs per lb ->J/kg multiply by 2.98907
@@ -964,6 +959,5 @@ if __name__ == "__main__":
     # cm/s/(MPa)**exponent -> m/s/Pa**exponent * 1e-2 /(1e6)**exponent
 
     # IMR ,"Single Base,*100.00% Nitrocellulose (13.15%), 1.00% Potassium Sulfate, 8.00% Dinitrotoluene, 0.70% Diphenylamine" ,1.2413 ,1620 ,989400 ,1.044e-3,
-
     # todo: M3 propellant
     # 155/105mm Howitzer; Charge for Zone 1-5,M1(A1) PH; M45 on M44 SPH; M126(A1) on M109 SPH; M185 on M109(A1-A4) SPH; M199 105mm,

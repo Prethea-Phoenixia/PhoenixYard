@@ -130,10 +130,10 @@ class GrainComp:
         """
         Propellant force is related to the flame temperature
         by:
-            f = R * T_1
+            f = R * T_v
             R = R_0/M
             R_0 = 8.314... J/(K*mol)
-        where T_1 is the temeprature propellants develop when
+        where T_v is the temeprature propellants develop when
         burning in an iso-volume chamber, ignoring losses.
         M is the molar mass of the gas developed. (kg/mol)
         """
@@ -142,8 +142,8 @@ class GrainComp:
         self.theta = redAdbIndex
         self.u_1 = detVel
         self.n = pressureExp
-        self.T_1 = flameTemp  # isochoric (const volume) adiabatic temperature
-        self.R = self.f / self.T_1
+        self.T_v = flameTemp  # isochoric (const volume) adiabatic temperature
+        self.R = self.f / self.T_v
 
     def readFile(fileName):
         composition = []
@@ -200,6 +200,9 @@ class GrainComp:
 
         return self.u_1 * p**self.n
 
+    def getIsp(self):
+        return (2 * self.f / self.theta) ** 0.5
+
     def check(compositions):
         from tabulate import tabulate
 
@@ -219,7 +222,7 @@ class GrainComp:
             line.append(
                 [
                     comp.name,
-                    comp.T_1,
+                    comp.T_v,
                     round(comp.f / 2.98907e3),
                     comp.theta + 1,
                     round(comp.alpha * 27680, 2),
