@@ -204,8 +204,18 @@ class GrainComp:
         """
         return self.u_1 * p**self.n
 
-    def getIsp(self):
-        return (2 * self.f / self.theta) ** 0.5
+    def getIsp(self, pRatio=None):
+        if pRatio is None:
+            # infinite pressure ratio, basically vacuum
+            return (2 * self.f / self.theta) ** 0.5
+        else:
+            # pressure ratio is interpreted as chamber/exit
+            return (
+                2
+                * self.f
+                / self.theta
+                * (1 - pRatio ** (-self.theta / (self.theta + 1)))
+            ) ** 0.5
 
     @classmethod
     def check(cls):

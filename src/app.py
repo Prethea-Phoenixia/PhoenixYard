@@ -1402,9 +1402,15 @@ class IB(Frame):
         isp = compo.getIsp()
         self.specs.insert(
             "end",
-            " Isp(Vac): {:>4.0f} m/s, {:>3.0f} s\n".format(isp, isp / 9.805),
+            " Isp(Vac): {:>4.0f} m/s {:>3.0f} s\n".format(isp, isp / 9.805),
         )
-
+        isp = compo.getIsp(50)
+        self.specs.insert(
+            "end",
+            " Isp(Atm): {:>4.0f} m/s {:>3.0f} s (Pc:Pa=50)\n".format(
+                isp, isp / 9.805
+            ),
+        )
         self.specs.insert("end", "Burn rate:\n")
         for p in (100e6, 200e6, 300e6):
             self.specs.insert(

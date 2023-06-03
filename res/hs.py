@@ -82,6 +82,52 @@ class Ingredient:
         return ingrDict
 
     @classmethod
+    def fromElement(cls, name, C, H, O, N, HoC, alt="", u="kJ/mol"):
+        """
+        Given the molecular formula of a chemical, estimate factors necessary for
+        use in the Hirschfelder-Sherman calculation, and add the newly created
+        ingredient into the class.
+
+        Q and E should be positive for energy-releasing chemicals, HoC is the heat
+        of combustion given in absolute value.
+        """
+        # accurate molecular mass here to account for natural abundance of isotopes
+        A = 12.011 * C + 1.00784 * H + 15.999 * O + 14.0067 * N  # g/mol
+
+        # convert element nbr. into nbr. mol of element per unit mass
+        C /= A
+        H /= A
+        O /= A
+        N /= A
+
+        print(A)
+
+        if u == "kJ/mol":
+            HoC /= 4.184  # to kcal/mol
+            print(HoC)
+            HoC /= A  # to kcal/g
+            HoC *= 1000  # to cal/g
+
+        elif u == "kcal/kg":
+            pass  # kcal/kg = cal/g
+        else:
+            raise ValueError("Unknown unit ", u)
+
+        print(HoC)
+
+        invM = C + 0.5 * H + 0.5 * N
+        Cv = 1.620 * C + 3.265 * H + 5.193 * O + 3.384 * N
+        Q = HoC - 67421 * (2 * C + 0.5 * H - O)
+        E = HoC - 132771 * C - 40026 * H + 51819 * O - 6724 * N
+
+        newIngr = cls(name, alt, Q, Cv, E, invM)
+        cls.allDict.update({newIngr.name: newIngr})
+        if newIngr.alt != "":
+            cls.altDict.update({newIngr.alt: newIngr})
+
+        return newIngr
+
+    @classmethod
     def find(cls, name):
         """
         return an Ingredient object that is closest to the supplied common name,
@@ -90,8 +136,8 @@ class Ingredient:
         closeIngrs = difflib.get_close_matches(
             name,
             list(cls.allDict.keys()) + list(cls.altDict.keys()),
-            n=5,
-            cutoff=0.5,
+            n=3,
+            cutoff=0.6,
         )
         n = 0
         thisIngr = None
@@ -143,10 +189,10 @@ class Mixture:
         """
         tally the releavnt factors according to their mass fraction
         """
-        Q = 0  # heat of explosion
-        Cv = 0  # heat capacity at constant volume4
-        E = 0  # heat of formation
-        invM = 0  # gas volume, mol/g
+        Q = 0  # heat of explosion, presumably in cal/g
+        Cv = 0  # heat capacity at constant volume, presumably in cal/g K
+        E = 0  # heat of formation, also presumably in cal/g
+        invM = 0  # specific gas volume, mol/g
 
         for ingr, fraction in self.compoDict.items():
             Q += fraction * ingr.Qi
@@ -154,7 +200,6 @@ class Mixture:
             E += fraction * ingr.Ei
             invM += fraction * ingr.invMi
 
-        Cp = Cv * gamma
         M = 1 / invM  # g/mol
         Tv = 2500 + E / Cv
         if Tv > 3000:
@@ -166,20 +211,45 @@ class Mixture:
 
         gamma = 1 + 1.987 / (Cv * M)
         f = 8.314 * Tv / M * 1e3  # J/kg
+        Cp = Cv * gamma
 
         self.Tv = Tv
         self.gamma = gamma
         self.f = f
 
+    def prettyPrint(self):
+        print("Mixture: {:}".format(self.name))
+        print("Specified Composition:---------------------------")
+        for ingr, fraction in self.compoDict.items():
+            print("--{:-<30}, {:>6.1%}".format(str(ingr), fraction))
+
+        print("")
+        print("Calcualted Properties:---------------------------")
+        print("Isochoric Adb. Temp: {:>4.1f}K".format(self.Tv))
+        print("Adiabatic Index    : {:>4.3f}".format(self.gamma))
+        print("Specific Force     : {:>4.3f} MJ/kg".format(self.f / 1e6))
+
 
 if __name__ == "__main__":
     ingredients = Ingredient.readFile("hs.csv")
-    NC = Ingredient.find("Nitrocellulose 12.6%")
-    NG = Ingredient.find("NG")
-    EC = Ingredient.find("Centraltie")
+    DNT = Ingredient.fromElement(
+        "2,4-Dinitrotoluene",
+        alt="DNT",
+        C=7,
+        H=6,
+        N=2,
+        O=4,
+        HoC=3560,
+        u="kJ/mol",
+    )
+    DNT = Ingredient.find("DNT")
+    NC1315 = Ingredient.find("Nitrocellulose 13.15%")
+    DBP = Ingredient.find("Dibutyl Phthalate")
+    DPA = Ingredient.find("DPA")
 
-    testMix = Mixture("test", {NC: 0.5, NG: 0.49, EC: 0.01})
+    testMix = Mixture(
+        "M1",
+        {NC1315: 0.85, DNT: 0.10, DBP: 0.05, DPA: 0.01},
+    )
 
-    print(testMix.Tv)
-    print(testMix.gamma)
-    print(testMix.f)
+    testMix.prettyPrint()
