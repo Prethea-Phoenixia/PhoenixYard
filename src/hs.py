@@ -87,9 +87,6 @@ class Ingredient:
         Given the molecular formula of a chemical, estimate factors necessary for
         use in the Hirschfelder-Sherman calculation, and add the newly created
         ingredient into the class.
-
-        Q and E should be positive for energy-releasing chemicals, HoC is the heat
-        of combustion given in absolute value.
         """
 
         # accurate molecular mass here to account for natural abundance of isotopes
@@ -116,9 +113,15 @@ class Ingredient:
             raise ValueError("Unknown unit ", u)
 
         invM = C + 0.5 * H + 0.5 * N
+        # isochoric heat capacity from 2000-3000K
         Cv = 1.620 * C + 3.265 * H + 5.193 * O + 3.384 * N
+        # HoC: heat of combustion, +: energy is released, -: energy is consumed
+        # this is the opposite of the usual convention of enthalpy of combustion.
         Q = HoC - 67421 * (2 * C + 0.5 * H - O)
+        # heat of explosion, +: heat is released, -: heat is consumed, unknown unit.
         E = HoC - 132771 * C - 40026 * H + 51819 * O - 6724 * N
+        # heat required to bring combustion product to 2500k, +: product hotter than 2.5kK
+        # -: product cooler than 2.5kK
 
         newIngr = cls(name, alt, Q, Cv, E, invM)
         if keep:
@@ -303,7 +306,7 @@ if __name__ == "__main__":
         HoC=3560,
         u="kJ/mol",
     )
-
+    """
     NG = Ingredient.find("NG")
     NG.prettyPrint()
     NGTEST = Ingredient.fromElement(
@@ -319,6 +322,8 @@ if __name__ == "__main__":
     )
     NGTEST.prettyPrint()
 
+
+
     for f in (0.1220, 0.1260, 0.1315):
         alt = "NC{:d}".format(int(f * 10000))
         NC = Ingredient.find(alt)
@@ -327,3 +332,14 @@ if __name__ == "__main__":
         NCTEST = Ingredient.nitrocellulose(f, keep=False)
         NCTEST.prettyPrint()
         print("")
+    """
+    NC1315 = Ingredient.find("Nitrocellulose 13.15% N")
+    DBP = Ingredient.find("Dibutyl Phthalate")
+    DPA = Ingredient.find("DPA")
+
+    testMix = Mixture(
+        "M1",
+        {NC1315: 0.85, DNT: 0.10, DBP: 0.05, DPA: 0.01},
+    )
+
+    testMix.prettyPrint()
