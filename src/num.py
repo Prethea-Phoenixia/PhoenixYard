@@ -783,15 +783,15 @@ def solveMat(A, B):
     """
     print(
         *[
-            " ".join("{:^6.2g}".format(v) for v in a)
+            " ".join("{:^8.4g}".format(v) for v in a)
             + "|"
-            + " ".join("{:^6.2g}".format(v) for v in i)
+            + " ".join("{:^8.4g}".format(v) for v in i)
             for a, i in zip(A, I)
         ],
         sep="\n"
     )
+    print("")
     """
-
     h = 0  # pivot row
     k = 0  # pivot column
 
@@ -829,7 +829,7 @@ def solveMat(A, B):
                 for k in range(0, dim):
                     I[j][k] -= I[i][k] * f
 
-        # convert the leading entries to 1
+    # convert the leading entries to 1
     for i in range(dim):
         if A[i][i] != 0:
             f = 1 / A[i][i]
@@ -837,17 +837,20 @@ def solveMat(A, B):
                 A[i][j] *= f
             for j in range(0, dim):
                 I[i][j] *= f
+
     """
+
     print(
         *[
-            " ".join("{:^6.2g}".format(v) for v in a)
+            " ".join("{:^8.4g}".format(v) for v in a)
             + "|"
-            + " ".join("{:^6.2g}".format(v) for v in i)
+            + " ".join("{:^8.4g}".format(v) for v in i)
             for a, i in zip(A, I)
         ],
         sep="\n"
     )
     """
+
     # now the matrix I is converted into A^-1
     Ix = matMul(I, [[b] for b in B])
     result = [i[0] for i in Ix]
@@ -856,6 +859,7 @@ def solveMat(A, B):
 
 
 if __name__ == "__main__":
+    """
     print(cubic(1, 1, 2, 3))
 
     def df1(x, y):
@@ -869,6 +873,6 @@ if __name__ == "__main__":
     print(e[0] / v[0])
     print("expected value")
     print(-1 / (7 / 4 * 0**4 - 85 / 3))
-
-    A = [[2, -1, 0], [-1, 2, -1], [0, -1, 2]]
-    solveMat(A, [3, 4, 5])
+    """
+    A = [[2, 1, -1], [-3, -1, 2], [-2, 1, 2]]
+    print(solveMat(A, [8, -11, -3]))

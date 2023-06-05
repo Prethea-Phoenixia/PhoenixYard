@@ -32,9 +32,9 @@ N-Methyl-p-nitroaniline,,-1095,0.35808,-1625,0.07887
 Metriol trinitrate,MTN,1189,0.3052,377,0.04313
 Trimethylolethane trinitrate,TMETN,1189,0.3052,377,0.04313
 Mineral jelly,,-3302,0.5811,-475,0.1426
-Nitrocellulose 12.2% N,NC,900,0.3478,137.7,0.04127
-Nitrocellulose 12.6% N,NC+,956,0.3454,198.9,0.04040
-Nitrocellulose 13.15% N,NC++,1033,0.3421,283.1,0.03920
+Nitrocellulose 12.20% N,NC1220,900,0.3478,137.7,0.04127
+Nitrocellulose 12.60% N,NC1260,956,0.3454,198.9,0.04040
+Nitrocellulose 13.15% N,NC1315,1033,0.3421,283.1,0.03920
 2-Nitrodiphenylamine,NDPA,-1813,0.3226,-2201,0.08411
 Nitroglycerin,NG,1785,0.3438,951.9,0.03082
 Nitroguanidine,NGu,713,0.3710,-68.6,0.04808

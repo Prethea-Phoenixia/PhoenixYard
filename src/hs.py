@@ -91,16 +91,9 @@ class Ingredient:
         Q and E should be positive for energy-releasing chemicals, HoC is the heat
         of combustion given in absolute value.
         """
-        """
-        if all((HoP == None, HoC == None)):
-            raise ValueError(
-                "At least one thermalchemical property must be provided"
-                ", either the Heat of Combustion (for AMCP 706-175 method),"
-                "or Heat of Formation (for Albert O.Dekker method)."
-            )
-        """
+
         # accurate molecular mass here to account for natural abundance of isotopes
-        A = 12.011 * C + 1.00784 * H + 15.999 * O + 14.0067 * N  # g/mol
+        A = 12.01 * C + 1.008 * H + 16.00 * O + 14.008 * N  # g/mol
 
         """
         convert element nbr. (mol/mol) into nbr. mol of element per unit mass (mol/g)
@@ -117,10 +110,8 @@ class Ingredient:
         elif u == "kcal/mol":
             HoC /= A
             HoC *= 1000
-        elif u == "kcal/kg":
+        elif u == "kcal/kg" or u == "cal/g":
             pass  # kcal/kg = cal/g
-        elif u == "cal/g":
-            pass
         else:
             raise ValueError("Unknown unit ", u)
 
@@ -129,13 +120,54 @@ class Ingredient:
         Q = HoC - 67421 * (2 * C + 0.5 * H - O)
         E = HoC - 132771 * C - 40026 * H + 51819 * O - 6724 * N
 
-        print(name, invM, Cv, Q, E)
-
         newIngr = cls(name, alt, Q, Cv, E, invM)
         if keep:
             cls.allDict.update({newIngr.name: newIngr})
             if newIngr.alt != "":
                 cls.altDict.update({newIngr.alt: newIngr})
+
+        return newIngr
+
+    @classmethod
+    def nitrocellulose(cls, Nfraction, keep=True):
+        """
+        Initialize nitrocellulose ingredient with arbitrary nitrogen mass fraction,
+        by calculating the corresponding elemental makeup and heat of combustion.
+
+        If the an entry at the same nitration level is found, the keep parameter is
+        ignored and the class dictionary is not updated.
+        """
+
+        if Nfraction < 0.1150 or Nfraction > 0.1360:
+            raise ValueError(
+                "Nitrogen fraction between 11.50% and 13.50% are supported,"
+                " data is unavailable outside this range."
+            )
+        f = Nfraction
+        x = 162.14 * f / (14.008 - 45 * f)
+        C = 6
+        H = 10 - x
+        O = 5 + 2 * x
+        N = x
+
+        name = "Nitrocellulose {:.2%} N".format(f)
+        alt = "NC{:d}".format(int(f * 10000))
+
+        HoC = -4176.70 + 14126 * f  # cal/g @ 30 deg
+        newIngr = cls.fromElement(
+            name=name, alt=alt, C=C, H=H, O=O, N=N, HoC=-HoC, u="cal/g"
+        )
+        if keep and name not in cls.allDict:
+            cls.allDict.update({newIngr.name: newIngr})
+            cls.altDict.update({newIngr.alt: newIngr})
+
+        """
+        Custom, bespoke factors, extrapolated from the available NC entries at 12.20%,
+        12.60% and 13.15% nitrogen level.
+        """
+        newIngr.invMi += 0.00002
+        newIngr.Ei += (Nfraction - 0.1260) * 1075 + 13
+        newIngr.Qi += 13
 
         return newIngr
 
@@ -177,10 +209,22 @@ class Ingredient:
             print('Unknown ingredient description "{:}"'.format(name) + "\n")
             return None
 
+    @classmethod
+    def check(cls):
+        for ingr in cls.allDict.values():
+            ingr.prettyPrint()
+            print()
+
     def prettyPrint(self):
         print(str(self))
-        print("-----Thermalchemical------")
-        print("")
+
+        print("Hirschfelder-Sherman factors:--------------------")
+        print("{:>5}  {:>6}  {:>7}  {:>7}".format("Qi", "Cvi", "Ei", "1/Mi"))
+        print(
+            "{:>5.0f}  {:>6.4f}  {:>7.1f}  {:>7.5f}".format(
+                self.Qi, self.Cvi, self.Ei, self.invMi
+            )
+        )
 
     def __str__(self):
         if self.alt != "":
@@ -234,17 +278,6 @@ class Mixture:
         self.gamma = gamma
         self.f = f
 
-        A = [
-            [1, 0.5, 0, 0.5],
-            [1.620, 3.265, 5.193, 3.384],
-            [-2071, 6315.5, 15602.0, 6724],
-            [12.011, 1.00784, 15.999, 14.0067],
-        ]
-        B = [invM, Cv, Q - E, 1]
-
-        C, H, O, N = solveMat(A, B)
-        print(12.011 * C, 1.00784 * H, 15.999 * O, 14.0067 * N)
-
     def prettyPrint(self):
         print("Mixture: {:}".format(self.name))
         print("Specified Composition:---------------------------")
@@ -259,7 +292,7 @@ class Mixture:
 
 
 if __name__ == "__main__":
-    ingredients = Ingredient.readFile("hs.csv")
+    ingredients = Ingredient.readFile("data/hs.csv")
     DNT = Ingredient.fromElement(
         "2,4-Dinitrotoluene",
         alt="DNT",
@@ -270,29 +303,27 @@ if __name__ == "__main__":
         HoC=3560,
         u="kJ/mol",
     )
+
+    NG = Ingredient.find("NG")
+    NG.prettyPrint()
     NGTEST = Ingredient.fromElement(
-        "NGTest",
+        "NitroglycerinTest",
         alt="NGT",
         C=3,
         H=5,
         N=3,
         O=9,
-        HoC=365,
+        HoC=365,  # from NIST
         u="kcal/mol",
         keep=False,
     )
-    NCTEST = Ingredient.fromElement(
-        "NCTest", alt="NCT", C=6, H=8, N=2, O=9, HoC=1400, u="cal/g", keep=False
-    )
-    DNT = Ingredient.find("DNT")
-    NC1315 = Ingredient.find("Nitrocellulose 13.15%")
-    NC126 = Ingredient.find("Nitrocellulose 12.6%")
-    DBP = Ingredient.find("Dibutyl Phthalate")
-    DPA = Ingredient.find("DPA")
+    NGTEST.prettyPrint()
 
-    testMix = Mixture(
-        "M1",
-        {NC126: 1.00, DNT: 0.0, DBP: 0.00, DPA: 0.00},
-    )
+    for f in (0.1220, 0.1260, 0.1315):
+        alt = "NC{:d}".format(int(f * 10000))
+        NC = Ingredient.find(alt)
+        NC.prettyPrint()
 
-    testMix.prettyPrint()
+        NCTEST = Ingredient.nitrocellulose(f, keep=False)
+        NCTEST.prettyPrint()
+        print("")
