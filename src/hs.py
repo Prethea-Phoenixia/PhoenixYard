@@ -10,12 +10,11 @@ Combustion product species are assumed to involve CO, CO2, H2O, H2,
 N2, HCl, and linear equations are solved to estimate product gas 
 volume (the inverse of molecular weight), and adiabatic ratios.
 
-Results are within few percent of accurate thermalchemical calculation
-in the range of 2000K to 4000K. Should not be applied to cases >4000K
-where dissociation of of free radicals like -H, -OH and -Cl would happen.
-Should not be applied to propellants generating substantial amount of 
-consdensed exhaust.
-
+Results are within few (up to 3) percent of accurate thermalchemical
+calculation in the range of 2000K to 4000K. Should not be applied to
+cases >4000K where dissociation of of free radicals like -H, -OH and
+-Cl would happen. Should not be applied to propellants generating 
+substantial amount of consdensed exhaust.
 
 Significant amount of propellant research nowadays are
 published with incomplete data to be used in the inetrnal
@@ -32,6 +31,7 @@ TMETN, two entries are used to represent the two possible naming scheme.
 """
 import csv
 import difflib
+from num import *
 
 
 class Ingredient:
@@ -82,7 +82,7 @@ class Ingredient:
         return ingrDict
 
     @classmethod
-    def fromElement(cls, name, C, H, O, N, HoC, alt="", u="kJ/mol"):
+    def fromElement(cls, name, C, H, O, N, HoC, alt="", u="kJ/mol", keep=True):
         """
         Given the molecular formula of a chemical, estimate factors necessary for
         use in the Hirschfelder-Sherman calculation, and add the newly created
@@ -90,6 +90,14 @@ class Ingredient:
 
         Q and E should be positive for energy-releasing chemicals, HoC is the heat
         of combustion given in absolute value.
+        """
+        """
+        if all((HoP == None, HoC == None)):
+            raise ValueError(
+                "At least one thermalchemical property must be provided"
+                ", either the Heat of Combustion (for AMCP 706-175 method),"
+                "or Heat of Formation (for Albert O.Dekker method)."
+            )
         """
         # accurate molecular mass here to account for natural abundance of isotopes
         A = 12.011 * C + 1.00784 * H + 15.999 * O + 14.0067 * N  # g/mol
@@ -104,12 +112,15 @@ class Ingredient:
 
         if u == "kJ/mol":
             HoC /= 4.184  # to kcal/mol
-            print(HoC)
             HoC /= A  # to kcal/g
             HoC *= 1000  # to cal/g
-
+        elif u == "kcal/mol":
+            HoC /= A
+            HoC *= 1000
         elif u == "kcal/kg":
             pass  # kcal/kg = cal/g
+        elif u == "cal/g":
+            pass
         else:
             raise ValueError("Unknown unit ", u)
 
@@ -118,10 +129,13 @@ class Ingredient:
         Q = HoC - 67421 * (2 * C + 0.5 * H - O)
         E = HoC - 132771 * C - 40026 * H + 51819 * O - 6724 * N
 
+        print(name, invM, Cv, Q, E)
+
         newIngr = cls(name, alt, Q, Cv, E, invM)
-        cls.allDict.update({newIngr.name: newIngr})
-        if newIngr.alt != "":
-            cls.altDict.update({newIngr.alt: newIngr})
+        if keep:
+            cls.allDict.update({newIngr.name: newIngr})
+            if newIngr.alt != "":
+                cls.altDict.update({newIngr.alt: newIngr})
 
         return newIngr
 
@@ -162,6 +176,11 @@ class Ingredient:
         else:
             print('Unknown ingredient description "{:}"'.format(name) + "\n")
             return None
+
+    def prettyPrint(self):
+        print(str(self))
+        print("-----Thermalchemical------")
+        print("")
 
     def __str__(self):
         if self.alt != "":
@@ -215,6 +234,17 @@ class Mixture:
         self.gamma = gamma
         self.f = f
 
+        A = [
+            [1, 0.5, 0, 0.5],
+            [1.620, 3.265, 5.193, 3.384],
+            [-2071, 6315.5, 15602.0, 6724],
+            [12.011, 1.00784, 15.999, 14.0067],
+        ]
+        B = [invM, Cv, Q - E, 1]
+
+        C, H, O, N = solveMat(A, B)
+        print(12.011 * C, 1.00784 * H, 15.999 * O, 14.0067 * N)
+
     def prettyPrint(self):
         print("Mixture: {:}".format(self.name))
         print("Specified Composition:---------------------------")
@@ -240,14 +270,29 @@ if __name__ == "__main__":
         HoC=3560,
         u="kJ/mol",
     )
+    NGTEST = Ingredient.fromElement(
+        "NGTest",
+        alt="NGT",
+        C=3,
+        H=5,
+        N=3,
+        O=9,
+        HoC=365,
+        u="kcal/mol",
+        keep=False,
+    )
+    NCTEST = Ingredient.fromElement(
+        "NCTest", alt="NCT", C=6, H=8, N=2, O=9, HoC=1400, u="cal/g", keep=False
+    )
     DNT = Ingredient.find("DNT")
     NC1315 = Ingredient.find("Nitrocellulose 13.15%")
+    NC126 = Ingredient.find("Nitrocellulose 12.6%")
     DBP = Ingredient.find("Dibutyl Phthalate")
     DPA = Ingredient.find("DPA")
 
     testMix = Mixture(
         "M1",
-        {NC1315: 0.85, DNT: 0.10, DBP: 0.05, DPA: 0.01},
+        {NC126: 1.00, DNT: 0.0, DBP: 0.00, DPA: 0.00},
     )
 
     testMix.prettyPrint()

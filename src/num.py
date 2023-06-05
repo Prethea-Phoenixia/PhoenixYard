@@ -728,10 +728,44 @@ def bisect(f, x_0, x_1, tol=1e-4):
     return a, b
 
 
-def solveMat(A, x, B):
+def matMul(A, B):
+    dimA = len(A), len(A[0])
+    if any(len(row) != dimA[1] for row in A):
+        raise ValueError("Matrix A is not consistent")
+    dimB = len(B), len(B[0])
+    if any(len(row) != dimB[1] for row in B):
+        raise ValueError("Matrix B is not consistent")
+    if dimA[1] != dimB[0]:
+        raise ValueError("Dimension mistmatch for matrix A and B")
+
+    R = [[0 for _ in range(dimB[1])] for _ in range(dimA[0])]
+    BT = [*zip(*B)]
+
+    i = 0
+    for rowA in A:
+        j = 0
+        for columnB in BT:
+            R[i][j] = sum(a * b for a, b in zip(rowA, columnB))
+            j += 1
+        i += 1
+    return R
+
+
+def solveMat(A, B):
+    """
+    Solve the linear system defined by Ax = B,
+    where A is given in nested lists with the inner list representing the
+    row entries, and B given in a flattened list representing the only column
+    in the result vectory. A flattened list respresenting the x vector is
+    returned.
+
+    Specifically, we use Gauss-Jordanian elimination to calculate A^-1,
+    and left multiply it such that A^-1*A*x = A^-1*B.
+
+    """
     dim = len(A)
 
-    if dim != len(B) or dim != len(x):
+    if dim != len(B):
         raise ValueError("Dimension mismatch between A,x and B")
 
     if any(len(row) != dim for row in A):
@@ -746,6 +780,7 @@ def solveMat(A, x, B):
         A[i], I[i] = rowJ
         A[j], I[j] = rowI
 
+    """
     print(
         *[
             " ".join("{:^6.2g}".format(v) for v in a)
@@ -755,6 +790,7 @@ def solveMat(A, x, B):
         ],
         sep="\n"
     )
+    """
 
     h = 0  # pivot row
     k = 0  # pivot column
@@ -801,7 +837,7 @@ def solveMat(A, x, B):
                 A[i][j] *= f
             for j in range(0, dim):
                 I[i][j] *= f
-
+    """
     print(
         *[
             " ".join("{:^6.2g}".format(v) for v in a)
@@ -811,7 +847,12 @@ def solveMat(A, x, B):
         ],
         sep="\n"
     )
+    """
     # now the matrix I is converted into A^-1
+    Ix = matMul(I, [[b] for b in B])
+    result = [i[0] for i in Ix]
+
+    return result
 
 
 if __name__ == "__main__":
@@ -830,4 +871,4 @@ if __name__ == "__main__":
     print(-1 / (7 / 4 * 0**4 - 85 / 3))
 
     A = [[2, -1, 0], [-1, 2, -1], [0, -1, 2]]
-    solveMat(A, [1, 2, 3], [3, 4, 5])
+    solveMat(A, [3, 4, 5])
