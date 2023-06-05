@@ -728,56 +728,100 @@ def bisect(f, x_0, x_1, tol=1e-4):
     return a, b
 
 
-"""
+def solveMat(A, x, B):
+    dim = len(A)
 
-def simulated_annealing(
-    objective, low_bound, high_bound, n_iterations, step_size, temp
-):
-    # generate an initial point
-    best = low_bound + random() * (high_bound - low_bound)
-    # evaluate the initial point
-    best_eval = objective(best)
-    # current working solution
-    curr, curr_eval = best, best_eval
-    # run the algorithm
-    for i in range(n_iterations):
-        # take a step
-        candidate = curr + gauss(mu=0, sigma=1) * step_size
-        candidate = max(min(candidate, high_bound), low_bound)
-        # evaluate candidate point
-        candidate_eval = objective(candidate)
-        # check for new best solution
+    if dim != len(B) or dim != len(x):
+        raise ValueError("Dimension mismatch between A,x and B")
 
-        print(candidate)
-        if candidate_eval < best_eval:
-            # store new best point
-            best, best_eval = candidate, candidate_eval
-        # report progress
-        print(">%d f(%s) = %.5f" % (i, best, best_eval))
-        # difference between candidate and current point evaluation
-        diff = candidate_eval - curr_eval
-        # calculate temperature for current epoch
-        t = temp / float(i + 1)
-        # calculate metropolis acceptance criterion
-        metropolis = math.exp(-diff / t)
-        print("m:", metropolis)
-        # check if we should keep the new point
-        if diff < 0 or random() < metropolis:
-            # store the new current point
-            curr, curr_eval = candidate, candidate_eval
+    if any(len(row) != dim for row in A):
+        raise ValueError("Matrix A is not square")
 
-    return best, best_eval
-"""
+    I = [[1 if i == j else 0 for i in range(dim)] for j in range(dim)]
+
+    def swapRow(i, j):
+        rowI = A[i], I[i]
+        rowJ = A[j], I[j]
+
+        A[i], I[i] = rowJ
+        A[j], I[j] = rowI
+
+    print(
+        *[
+            " ".join("{:^6.2g}".format(v) for v in a)
+            + "|"
+            + " ".join("{:^6.2g}".format(v) for v in i)
+            for a, i in zip(A, I)
+        ],
+        sep="\n"
+    )
+
+    h = 0  # pivot row
+    k = 0  # pivot column
+
+    while h < dim and k < dim:
+        # choose the largest possible absolute value as partial pivot
+        imax = max(
+            ((A[i][k], i) for i in range(h, dim)),
+            key=lambda x: x[0],
+        )[1]
+
+        if A[imax][k] == 0:
+            # no pivot in this column
+            k += 1
+        else:
+            swapRow(h, imax)
+            for i in range(h + 1, dim):
+                f = A[i][k] / A[h][k]
+                A[i][k] = 0  # fill the lower part of pivot column
+                # do for all remaining elements in current row
+                for j in range(k + 1, dim):
+                    A[i][j] -= A[h][j] * f
+
+                for j in range(0, dim):
+                    # apply the same operation to the identity matrix.
+                    I[i][j] -= I[h][j] * f
+
+            h += 1
+            k += 1
+
+    for i in range(dim - 1, -1, -1):
+        if A[i][i] != 0:
+            for j in range(i):
+                f = A[j][i] / A[i][i]
+                A[j][i] = 0
+                for k in range(0, dim):
+                    I[j][k] -= I[i][k] * f
+
+        # convert the leading entries to 1
+    for i in range(dim):
+        if A[i][i] != 0:
+            f = 1 / A[i][i]
+            for j in range(i, dim):
+                A[i][j] *= f
+            for j in range(0, dim):
+                I[i][j] *= f
+
+    print(
+        *[
+            " ".join("{:^6.2g}".format(v) for v in a)
+            + "|"
+            + " ".join("{:^6.2g}".format(v) for v in i)
+            for a, i in zip(A, I)
+        ],
+        sep="\n"
+    )
+    # now the matrix I is converted into A^-1
+
 
 if __name__ == "__main__":
     print(cubic(1, 1, 2, 3))
 
     def df1(x, y):
-        # y(x) = -1/(7/4*x**4+C)
         return (7 * y**2 * x**3,)
 
     _, v, e = RKF78(df1, (3,), 2, 0, relTol=1e-3, absTol=1e-3, minTol=1e-14)
-    # solution is -1/(7/4*x**4-85/3)
+
     print(v)
     print(e)
 
@@ -785,5 +829,5 @@ if __name__ == "__main__":
     print("expected value")
     print(-1 / (7 / 4 * 0**4 - 85 / 3))
 
-    # import dis
-    # dis.dis(RKF78)
+    A = [[2, -1, 0], [-1, 2, -1], [0, -1, 2]]
+    solveMat(A, [1, 2, 3], [3, 4, 5])

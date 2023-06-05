@@ -94,13 +94,13 @@ class Ingredient:
         # accurate molecular mass here to account for natural abundance of isotopes
         A = 12.011 * C + 1.00784 * H + 15.999 * O + 14.0067 * N  # g/mol
 
-        # convert element nbr. into nbr. mol of element per unit mass
+        """
+        convert element nbr. (mol/mol) into nbr. mol of element per unit mass (mol/g)
+        """
         C /= A
         H /= A
         O /= A
         N /= A
-
-        print(A)
 
         if u == "kJ/mol":
             HoC /= 4.184  # to kcal/mol
@@ -112,8 +112,6 @@ class Ingredient:
             pass  # kcal/kg = cal/g
         else:
             raise ValueError("Unknown unit ", u)
-
-        print(HoC)
 
         invM = C + 0.5 * H + 0.5 * N
         Cv = 1.620 * C + 3.265 * H + 5.193 * O + 3.384 * N
