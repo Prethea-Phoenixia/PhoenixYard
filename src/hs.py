@@ -46,6 +46,11 @@ Nitrocellulose 12.20% N      ,NC1220      ,0.3478 ,137.7  ,0.04127,  ,  , ,  ,
 Nitrocellulose 12.60% N      ,NC1260      ,0.3454 ,198.9  ,0.04040,  ,  , ,  ,        
 Nitrocellulose 13.15% N      ,NC1315      ,0.3421 ,283.1  ,0.03920,  ,  , ,  , 
 
+These entries are removed due to large mismatch between values computed from 
+composition and tabulated ones.
+Metriol trinitrate,MTN,0.3052,377,0.04313,5,9,3,9,
+Trimethylolethane trinitrate,TMETN,0.3052,377,0.04313,5,9,3,9,
+
 
 """
 import csv
@@ -76,9 +81,6 @@ class Ingredient:
         self.Ext = Ext
 
         A = 12.01 * C + 1.008 * H + 14.008 * N + 16.00 * O + Ext  # g/mol
-        # Ci, Oi = C / A, O / A
-        # estimated covolume, from the work of Cook
-        # self.b = 1e-3 * (1.18 + 6.9 * Ci - 11.5 * Oi)
         self.A = A
 
     @classmethod
