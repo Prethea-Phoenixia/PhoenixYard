@@ -122,7 +122,7 @@ class Constrained:
         if len(Zs) < 1:
             raise ValueError(
                 "Propellant either could not develop enough pressure to overcome"
-                " start pressure, or has burnt to post fracture."
+                + " start pressure, or has burnt to post fracture."
             )
         Z_0 = Zs[0]
 

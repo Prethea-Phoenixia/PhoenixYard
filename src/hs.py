@@ -127,13 +127,24 @@ class Ingredient:
         return ingrDict
 
     @classmethod
-    def fromElement(cls, name, C, H, N, O, HoC, alt="", u="kJ/mol", keep=True):
+    def fromElement(
+        cls,
+        name,
+        C=0,
+        H=0,
+        N=0,
+        O=0,
+        HoC=0,
+        # Q=None,
+        alt="",
+        u="kJ/mol",
+        keep=True,
+    ):
         """
         Given the molecular formula of a chemical, estimate factors necessary for
         use in the Hirschfelder-Sherman calculation, and add the newly created
         ingredient into the class.
         """
-
         # accurate molecular mass here to account for natural abundance of isotopes
         A = 12.01 * C + 1.008 * H + 14.008 * N + 16.00 * O  # g/mol
 
@@ -145,10 +156,13 @@ class Ingredient:
         Ni = N / A
         Oi = O / A
 
+        # if HoC is not None:
         if u == "kJ/mol":
             HoC /= 4.184  # to kcal/mol
             HoC /= A  # to kcal/g
             HoC *= 1000  # to cal/g
+        elif u == "kJ/kg":
+            Q /= 4.184  # to kcal/kg
         elif u == "kcal/mol":
             HoC /= A
             HoC *= 1000
@@ -319,7 +333,7 @@ class Ingredient:
             )
         )
 
-        print("Estimated Covolume: {:} m^3/kg".format(self.b))
+        # print("Estimated Covolume: {:} m^3/kg".format(self.b))
 
     def __str__(self):
         if self.alt != "":
@@ -377,37 +391,181 @@ class Mixture:
         self.Tv = Tv
         self.gamma = gamma
         self.f = f
-        self.b = 1e-3 * (1.18 + 6.9 * Ci - 11.5 * Oi)
+        # self.b = 1e-3 * (1.18 + 6.9 * Ci - 11.5 * Oi)
+        """
+        self.b = 1e-3 * (
+            1.3372800285521016 + 15.00623286 * Ci - 20.81820076 * Oi
+        )
+        self.b = 1e-3 * (
+            -15.125770768899
+            + 202.80374114 * Ci
+            + 27.53266578 * Hi
+            + 222.42131159 * Ni
+            + 242.02396858 * Oi
+        )
+        """
+        #  A = 12.01 * C + 1.008 * H + 14.008 * N + 16.00 * O  # g/mol
+        self.C = Ci * 12.01
+        self.H = Hi * 1.008
+        self.O = Oi * 16.00
+        self.N = Ni * 14.008
 
     def prettyPrint(self):
         print("Mixture: {:}".format(self.name))
         print("Specified Composition:---------------------------")
         for ingr, fraction in self.compoDict.items():
-            print("--{:-<30}, {:>6.1%}".format(str(ingr), fraction))
+            print("--{:-<30}, {:>6.2%}".format(str(ingr), fraction))
 
         print("")
-        print("Calcualted Properties:---------------------------")
+        print("Elemental Fractions:-----------------------------")
+        print(
+            "C {:.2%} H {:.2%} N {:.2%} O {:.2%}".format(
+                self.C, self.H, self.N, self.O
+            )
+        )
+
+        print("")
+        print("Hirschfelder-Sherman Estimations:----------------")
         print("Isochoric Adb. Temp: {:>4.1f}K".format(self.Tv))
         print("Adiabatic Index    : {:>4.3f}".format(self.gamma))
-        print("Specific Force     : {:>4.3f} MJ/kg".format(self.f / 1e6))
-        print("Nobel-Abel Covolume: {:>4.3g} m^3/kg".format(self.b))
+        print("Specific Force     : {:>4.4f} MJ/kg".format(self.f / 1e6))
+        print("")
 
+
+# cc/(gm.mol)
+negDeltaTable = [
+    [1600, 34.2, 490],
+    [1700, 33.8, 460],
+    [1800, 33.5, 435],
+    [1900, 33.2, 410],
+    [2000, 33.0, 390],
+    [2100, 32.8, 370],
+    [2200, 32.6, 355],
+    [2300, 32.5, 340],
+    [2400, 32.4, 325],
+    [2500, 32.2, 310],
+    [2600, 32.1, 300],
+    [2700, 32.0, 290],
+    [2800, 31.9, 280],
+    [2900, 31.8, 270],
+    [3000, 31.7, 260],
+    [3100, 31.6, 255],
+    [3200, 31.5, 245],
+    [3300, 31.4, 235],
+    [3400, 31.4, 230],
+    [3500, 31.3, 225],
+    [3600, 31.2, 215],
+    [3700, 31.1, 210],
+    [3800, 31.1, 205],
+    [3900, 31.0, 200],
+    [4000, 30.9, 195],
+]
+
+EquilibriumKT = [[1000, 0.7185, 3e-11, 1e-14, 8e-21, 2e-10, 3e-9, 5e-16]]
 
 if __name__ == "__main__":
     ingredients = Ingredient.readFile("data/hs.csv")
 
-    DNT = Ingredient.find("DNT")
-    PC = Ingredient.find("Picrite")
+    NC1260 = Ingredient.nitrocellulose(0.1260)
+    RDX = Ingredient.find("RDX")
+    NG = Ingredient.find("NG")
+    C = Ingredient.find("Graphite")
 
-    NC1315 = Ingredient.nitrocellulose(0.1315)
-    DBP = Ingredient.find("Dibutyl Phthalate")
-    DPA = Ingredient.find("DPA")
-
-    testMix = Mixture(
-        "M1",
-        {NC1315: 0.85, DNT: 0.10, DBP: 0.05, DPA: 0.01},
+    EtNENA = Ingredient.fromElement(
+        name="2-(ethylnitroamino)ethyl nitrate",
+        alt="Ethyl NENA",
+        C=4,
+        H=9,
+        N=3,
+        O=5,
+        HoC=644.43,
+        u="kcal/mol",
     )
 
-    testMix.prettyPrint()
+    MeNENA = Ingredient.fromElement(
+        name="2-(methylnitroamino)ethyl nitrate",
+        alt="Methyl NENA",
+        C=3,
+        H=7,
+        N=3,
+        O=5,
+        HoC=485.46,
+        u="kcal/mol",
+    )
+    UREA = Ingredient.fromElement(
+        name="Akardite II",
+        alt="Urea",
+        C=14,
+        H=14,
+        N=2,
+        O=1,
+        HoC=1784.2,
+        u="kcal/mol",
+    )
 
-    Ingredient.check()
+    PRD20 = Mixture(
+        name="ATK RPD20",
+        compoDict={
+            NC1260: 0.4190,
+            RDX: 0.2571,
+            MeNENA: 0.14,
+            EtNENA: 0.10,
+            NG: 0.0769,
+            UREA: 0.0070,
+        },
+    )
+    PRD20.prettyPrint()
+
+    PRD21 = Mixture(
+        name="ATK RPD(S)21",
+        compoDict={
+            NC1260: 0.3648,
+            RDX: 0.3033,
+            MeNENA: 0.1344,
+            EtNENA: 0.0957,
+            NG: 0.0946,
+            UREA: 0.0072,
+        },
+    )
+    PRD21.prettyPrint()
+
+    PRD22 = Mixture(
+        name="ATK RPD(S)22",
+        compoDict={
+            NC1260: 0.3111,
+            RDX: 0.3408,
+            MeNENA: 0.1257,
+            EtNENA: 0.0894,
+            NG: 0.1258,
+            UREA: 0.0072,
+        },
+    )
+    PRD22.prettyPrint()
+
+    # Ingredient.check()
+
+    NC1320 = Ingredient.nitrocellulose(0.1320)
+    # NC1320.prettyPrint()
+    DEGDN = Ingredient.find("DEGDN")
+
+    JA2 = Mixture(
+        name="JA2",
+        compoDict={
+            NC1320: 0.5950,
+            DEGDN: 0.2480,
+            NG: 0.1490,
+            UREA: 0.0070,
+            C: 0.0010,
+        },
+    )
+    JA2.prettyPrint()
+
+    NC1315 = Ingredient.nitrocellulose(0.1315)
+    DNT = Ingredient.find("DNT")
+    DBP = Ingredient.find("Dibutylphathalate")
+    DPA = Ingredient.find("Diphenlyamine")
+    M1 = Mixture(
+        name="M1",
+        compoDict={NC1315: 0.8500, DNT: 0.1000, DBP: 0.0500, DPA: 0.01},
+    )
+    M1.prettyPrint()

@@ -63,7 +63,7 @@ class Gun:
         if self.p_0 == 0:
             raise NotImplementedError(
                 "Current implementation use exponential burn rate and does not"
-                " allow for solving the case with 0 shot start pressure."
+                + " allow for solving the case with 0 shot start pressure."
             )
         else:
             self.psi_0 = (1 / self.Delta - 1 / self.rho_p) / (
@@ -72,9 +72,9 @@ class Gun:
             if self.psi_0 <= 0:
                 raise ValueError(
                     "Initial burnup fraction is solved to be negative."
-                    " In practice this implies a detonation of the gun breech"
-                    " will likely occur."
-                    " Suggest reducing load fraction."
+                    + " In practice this implies a detonation of the gun breech"
+                    + " will likely occur."
+                    + " Suggest reducing load fraction."
                 )
         # this will overwrite the definition of Geometry.B
 
@@ -97,7 +97,7 @@ class Gun:
         if len(Zs) < 1:
             raise ValueError(
                 "Propellant either could not develop enough pressure to overcome"
-                " start pressure, or has burnt to post fracture."
+                + " start pressure, or has burnt to post fracture."
             )
 
         self.Z_0 = Zs[0]
@@ -373,13 +373,13 @@ class Gun:
             except ValueError as e:
                 raise ValueError(
                     "Unable to integrate due to ill defined system, requiring"
-                    " vanishingly step size."
+                    + " vanishingly step size."
                 )
 
             if p_bar_j > p_bar_max:
                 raise ValueError(
                     "Nobel-Abel EoS is generally accurate enough below 600MPa. However,"
-                    " Unreasonably high pressure (>{:.0f} MPa) was encountered.".format(
+                    + " Unreasonably high pressure (>{:.0f} MPa) was encountered.".format(
                         p_max / 1e6
                     )
                 )
