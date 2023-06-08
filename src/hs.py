@@ -391,11 +391,15 @@ class Mixture:
         self.Tv = Tv
         self.gamma = gamma
         self.f = f
-        # self.b = 1e-3 * (1.18 + 6.9 * Ci - 11.5 * Oi)
         """
+        covolume estimate suggested by Cook:
+        self.b = 1e-3 * (1.18 + 6.9 * Ci - 11.5 * Oi)
+        
+        linear regression fit from original data:
         self.b = 1e-3 * (
             1.3372800285521016 + 15.00623286 * Ci - 20.81820076 * Oi
         )
+        linear regression fit from original data using all elements:
         self.b = 1e-3 * (
             -15.125770768899
             + 202.80374114 * Ci
@@ -403,8 +407,10 @@ class Mixture:
             + 222.42131159 * Ni
             + 242.02396858 * Oi
         )
+
+        These aren't good enough, esp. not for the modern propellants like JA2,
+        the deviaiton is up to 0.2 (0.89 vs 0.98)
         """
-        #  A = 12.01 * C + 1.008 * H + 14.008 * N + 16.00 * O  # g/mol
         self.C = Ci * 12.01
         self.H = Hi * 1.008
         self.O = Oi * 16.00
@@ -432,7 +438,11 @@ class Mixture:
         print("")
 
 
-# cc/(gm.mol)
+"""
+TABLE 2.07 from Hunt
+T in Kelvin, B in cc/(gm.mol), C in (cc/(gm.mol))^2
+"""
+
 negDeltaTable = [
     [1600, 34.2, 490],
     [1700, 33.8, 460],
@@ -460,7 +470,10 @@ negDeltaTable = [
     [3900, 31.0, 200],
     [4000, 30.9, 195],
 ]
-
+"""
+TABLE 2.04 from Hunt
+T in Kelvin, K0(T)..... K6(T)
+"""
 EquilibriumKT = [
     [1000, 0.7185, 3e-11, 1e-14, 8e-21, 2e-10, 3e-9, 5e-16],
     [1200, 1.406, 7e-9, 1e-11, 2e-16, 3e-8, 2e-7, 7e-13],
@@ -491,6 +504,91 @@ EquilibriumKT = [
     [3900, 8.037, 1.260, 0.1599, 0.2478, 1.257, 1.380, 0.0480],
     [4000, 8.082, 1.556, 0.2073, 0.3663, 1.531, 1.648, 0.0637],
 ]
+""" TABLE 2.06 from Hunt
+            B                    C
+T in K, H2, N2/CO, CO2, H2O, H2, N2/CO, CO2, H2O
+"""
+BC = [
+    [1600, 16.4, 32.1, 45.7, -4.2, 20, 210, 1385, 220],
+    [1700, 16.3, 32.3, 47.3, -2.5, 20, 200, 1305, 210],
+    [1800, 16.2, 32.4, 48.7, -1.1, 20, 190, 1235, 195],
+    [1900, 16.1, 32.6, 49.9, 0.2, 20, 180, 1170, 185],
+    [2000, 16.0, 32.6, 50.9, 1.2, 15, 170, 1110, 175],
+    [2100, 15.9, 32.7, 51.8, 2.2, 15, 160, 1055, 170],
+    [2200, 15.8, 32.7, 52.6, 3.0, 15, 155, 1010, 160],
+    [2300, 15.7, 32.8, 53.2, 3.7, 15, 150, 965, 155],
+    [2400, 15.6, 32.8, 53.8, 4.4, 15, 140, 925, 145],
+    [2500, 15.6, 32.8, 54.4, 5.0, 15, 135, 885, 140],
+    [2600, 15.5, 32.7, 54.8, 5.5, 15, 130, 855, 135],
+    [2700, 15.4, 32.7, 55.3, 6.0, 15, 125, 825, 130],
+    [2800, 15.3, 32.7, 55.6, 6.4, 10, 120, 795, 125],
+    [2900, 15.3, 32.6, 56.0, 6.8, 10, 120, 765, 120],
+    [3000, 15.2, 32.6, 56.2, 7.1, 10, 115, 740, 120],
+    [3100, 15.1, 32.6, 56.5, 7.5, 10, 110, 720, 115],
+    [3200, 15.0, 32.5, 56.7, 7.7, 10, 105, 695, 110],
+    [3300, 15.0, 32.4, 56.9, 8.0, 10, 105, 675, 105],
+    [3400, 14.9, 32.4, 57.1, 8.3, 10, 100, 650, 105],
+    [3500, 14.8, 32.3, 57.3, 8.5, 10, 95, 635, 100],
+    [3600, 14.8, 32.3, 57.4, 8.7, 10, 95, 615, 100],
+    [3700, 14.7, 32.2, 57.5, 8.9, 10, 90, 600, 95],
+    [3800, 14.7, 32.2, 57.6, 9.1, 10, 90, 585, 95],
+    [3900, 14.6, 32.1, 57.7, 9.3, 10, 85, 570, 90],
+    [4000, 14.5, 32.0, 57.8, 9.4, 10, 85, 555, 90],
+]
+
+
+"""
+(X): nbr. molecule per unit mass of propellant
+{Y}: nbr. atom per unit mass of propellant
+
+unless otherwise stated, mol/gram is assumed for
+propellant work derived form Hunt.
+
+Eq. 2.04
+(CO) * (H2O) / [(CO2) * (H2)] = K0
+
+Eq. 2.06
+(N2)                    = 0.5 * {N}
+(CO)+(CO2)              = {C}
+(H2)+(H2O)              = 0.5 * {H}
+(CO) + 2(CO2) + (H2O)   = {O}
+
+From Eq.2.06 and Eq.2.04
+Major                                   Minor
+(CO)    = {C} - (CO2)                   |
+(H2O)   = {O} - {C} - (CO2)             | - (OH) - (NO) - 2 [ (O2) + .5 (O) ]
+(H2)    = 0.5 * {H} + (CO2) + {C} - {O} | - 2 (H)
+
+i.e.
+
+a = (K0-1)
+b = K0 * ( 0.5 * {H} + {C} - {O} ) + {O}
+c = {C}^2 - {C} * {O}
+
+a * (CO2)^2 + b * (CO2) + c = 0 
+
+only positive real root is (CO2)
+
+n = {C} + 0.5 * {H} + 0.5 * {N}        | + (OH) + (H) + (NO) + (O2) + (O) + (N)
+   CO/CO2     H2O/H2        N2
+
+dissociaiton considered ,in descending order of significance:
+
+2 H2O <-> 2 OH + H2             (OH)
+H2 <-> 2 H                      (H)
+2 H2O + N2 <-> 2 H2 + 2 NO      (NO)
+2 H2O <-> 2 H2 + O2             (O2)
+O2 <-> 2 O                      (O)
+N2 <-> 2 N                      (N)
+
+"""
+
+
+def balance(
+    T, Ci, Hi, Oi, Ni, n=None, CO2j=None, OHj=0, Hj=0, NOj=0, O2j=0, Oj=0, Nj=0
+):
+    pass
+
 
 if __name__ == "__main__":
     ingredients = Ingredient.readFile("data/hs.csv")
