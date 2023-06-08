@@ -617,7 +617,8 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):  # in kelvin  # mol/g
 
     Covolume is is suitably invariant over typical internal ballistic tempearture,
     range, however it varies not-insignificantly by load density in test chambers,
-    with reference to the actual gas density achieved gun system.
+    and thus must be chosen with reference to gas density achieved in actual gun
+    system.
 
     n: number of gram-molecules per unit mass of gas, in mol/g
     """
