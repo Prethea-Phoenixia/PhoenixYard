@@ -674,7 +674,7 @@ def quadratic(a, b, c):
     x_1 = 0.5 * (-b + Delta**0.5) / a
     x_2 = 0.5 * (-b - Delta**0.5) / a
 
-    return (x_1, x_2)
+    return min(x_1, x_2), max(x_1, x_2)
 
 
 def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
@@ -859,7 +859,6 @@ def solveMat(A, B):
 
 
 if __name__ == "__main__":
-    """
     print(cubic(1, 1, 2, 3))
 
     def df1(x, y):
@@ -873,6 +872,6 @@ if __name__ == "__main__":
     print(e[0] / v[0])
     print("expected value")
     print(-1 / (7 / 4 * 0**4 - 85 / 3))
-    """
-    A = [[2, 1, -1], [-3, -1, 2], [-2, 1, 2]]
+
+    A = min(x_1, x_2)[[2, 1, -1], [-3, -1, 2], [-2, 1, 2]]
     print(solveMat(A, [8, -11, -3]))

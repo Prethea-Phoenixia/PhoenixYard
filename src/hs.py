@@ -56,6 +56,7 @@ Trimethylolethane trinitrate,TMETN,0.3052,377,0.04313,5,9,3,9,
 import csv
 import difflib
 from num import *
+from math import exp, log10
 
 
 class Ingredient:
@@ -391,6 +392,8 @@ class Mixture:
         self.Tv = Tv
         self.gamma = gamma
         self.f = f
+
+        self.speciesList, self.b = balance(Tv, Ci, Hi, Oi, Ni)
         """
         covolume estimate suggested by Cook:
         self.b = 1e-3 * (1.18 + 6.9 * Ci - 11.5 * Oi)
@@ -432,15 +435,27 @@ class Mixture:
 
         print("")
         print("Hirschfelder-Sherman Estimations:----------------")
-        print("Isochoric Adb. Temp: {:>4.1f}K".format(self.Tv))
-        print("Adiabatic Index    : {:>4.3f}".format(self.gamma))
-        print("Specific Force     : {:>4.4f} MJ/kg".format(self.f / 1e6))
+        print("Isochoric Adb. Temp: {:>6.1f}K".format(self.Tv))
+        print("Adiabatic Index    : {:>6.3f}".format(self.gamma))
+        print("Specific Force     : {:>6.4f} MJ/kg".format(self.f / 1e6))
+        print("")
+
+        print("Species--%wt.---%mol-----------------------------")
+        print(
+            *("{:^5}  {:>6.2%}  {:>6.2%}".format(*v) for v in self.speciesList),
+            sep="\n"
+        )
+        print("")
+        print("Further thermalchemical Calculations:------------")
+        print("Temperature        : {:>6.1f} K".format(self.Tv))
+        print("Load Density       : {:>6.3g} g/cc".format(0.1))
+        print("Covolume           : {:>6.4g} cc/g".format(self.b))
         print("")
 
 
 """
 TABLE 2.07 from Hunt
-T in Kelvin, B in cc/(gm.mol), C in (cc/(gm.mol))^2
+T in Kelvin, -DeltaB in cc/(gm.mol), -DeltaC/2 in (cc/(gm.mol))^2
 """
 
 negDeltaTable = [
@@ -474,7 +489,7 @@ negDeltaTable = [
 TABLE 2.04 from Hunt
 T in Kelvin, K0(T)..... K6(T)
 """
-EquilibriumKT = [
+equilibriumKT = [
     [1000, 0.7185, 3e-11, 1e-14, 8e-21, 2e-10, 3e-9, 5e-16],
     [1200, 1.406, 7e-9, 1e-11, 2e-16, 3e-8, 2e-7, 7e-13],
     [1400, 2.212, 3e-7, 1e-9, 2e-13, 1e-6, 5e-6, 1e-10],
@@ -508,7 +523,7 @@ EquilibriumKT = [
             B                    C
 T in K, H2, N2/CO, CO2, H2O, H2, N2/CO, CO2, H2O
 """
-BC = [
+BCTable = [
     [1600, 16.4, 32.1, 45.7, -4.2, 20, 210, 1385, 220],
     [1700, 16.3, 32.3, 47.3, -2.5, 20, 200, 1305, 210],
     [1800, 16.2, 32.4, 48.7, -1.1, 20, 190, 1235, 195],
@@ -549,27 +564,20 @@ Eq. 2.04
 
 Eq. 2.06
 (N2)                    = 0.5 * {N}
-(CO)+(CO2)              = {C}
-(H2)+(H2O)              = 0.5 * {H}
+(CO) + (CO2)            = {C}
+(H2) + (H2O)            = 0.5 * {H}
 (CO) + 2(CO2) + (H2O)   = {O}
 
 From Eq.2.06 and Eq.2.04
 Major                                   Minor
+(N2)    = 0.5  {N}                      | - 0.5 (N) - 0.5 (NO)
 (CO)    = {C} - (CO2)                   |
 (H2O)   = {O} - {C} - (CO2)             | - (OH) - (NO) - 2 [ (O2) + .5 (O) ]
-(H2)    = 0.5 * {H} + (CO2) + {C} - {O} | - 2 (H)
+(H2)    = 0.5  {H} + {C} - {O} + (CO2)  | - 0.5 (H) + 2 (O2) + (o) + (NO) + 0.5 (OH)
 
-i.e.
 
-a = (K0-1)
-b = K0 * ( 0.5 * {H} + {C} - {O} ) + {O}
-c = {C}^2 - {C} * {O}
 
-a * (CO2)^2 + b * (CO2) + c = 0 
-
-only positive real root is (CO2)
-
-n = {C} + 0.5 * {H} + 0.5 * {N}        | + (OH) + (H) + (NO) + (O2) + (O) + (N)
+n = {C} + 0.5 * {H} + 0.5 * {N}         | + (OH) + (H) + (NO) + (O2) + (O) + (N)
    CO/CO2     H2O/H2        N2
 
 dissociaiton considered ,in descending order of significance:
@@ -584,15 +592,131 @@ N2 <-> 2 N                      (N)
 """
 
 
-def balance(
-    T, Ci, Hi, Oi, Ni, n=None, CO2j=None, OHj=0, Hj=0, NOj=0, O2j=0, Oj=0, Nj=0
-):
-    pass
+def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):  # in kelvin  # mol/g
+    """
+    Ci, Hi, Oi, Ni are in mol/g.
+    Consequently,
+    CO2j, OHj, Hj, NOj, O2j, Oj, Nj are also in mol/g
+
+    T: temperature in Kelvin
+    V: volume per unit mass of gas, in cc/g
+    usually 1/V = 0.2 g/cc = 200 kg/m^3 for IB purposes.
+
+    However, calculated values indicate that a value of 0.1g/cc will
+    result in values closer to the tabulated ones in modern sources.
+
+    n: number of gram-molecules per unit mass of gas, in mol/g
+    """
+    if T > 4000 or T < 1000:
+        raise ValueError("T Not supported")
+    for i in range(len(negDeltaTable) - 1):
+        Tlow, negDeltaBlow, neghalfDeltaClow = negDeltaTable[i]
+        Thigh, negDeltaBhigh, neghalfDeltaChigh = negDeltaTable[i + 1]
+        if Tlow <= T <= Thigh:
+            k = (T - Tlow) / (Thigh - Tlow)
+            negDeltaB = negDeltaBlow * (1 - k) + negDeltaBhigh * k
+            neghalfDeltaC = neghalfDeltaClow * (1 - k) + neghalfDeltaChigh * k
+            break
+
+    for i in range(len(equilibriumKT) - 1):
+        Tlow, *Klow = equilibriumKT[i]
+        Thigh, *Khigh = equilibriumKT[i + 1]
+        if Tlow <= T <= Thigh:
+            k = (1 / T - 1 / Tlow) / (1 / Thigh - 1 / Tlow)
+            K = [
+                10 ** (log10(Ki) * (1 - k) + log10(Kj) * k)
+                for Ki, Kj in zip(Klow, Khigh)
+            ]
+            break
+
+    for i in range(len(BCTable) - 1):
+        Tlow, *BClow = BCTable[i]
+        Thigh, *BChigh = BCTable[i + 1]
+        if Tlow <= T <= Thigh:
+            k = (T - Tlow) / (Thigh - Tlow)
+            BC = [vi * (1 - k) + vj * k for vi, vj in zip(BClow, BChigh)]
+            break
+
+    BH2, BN2CO, BCO2, BH2O, CH2, CN2CO, CCO2, CH2O = BC
+
+    R = 82.06  # in cc atm /(K mol)
+    sqrtVdivRT = (V / (R * T)) ** 0.5
+
+    OHj, Hj, NOj, O2j, Oj, Nj = 0, 0, 0, 0, 0, 0
+
+    G = Ci
+    H = Oi - Ci
+    I = 0.5 * Hi + Ci - Oi
+
+    oldCO2j = -1
+    CO2j = 0.5 * (
+        min(G, H) - I
+    )  # initiate with a value that would not result in a negative fraction
+
+    while True:
+        n = Ci + 0.5 * Hi + 0.5 * Ni + OHj + Hj + NOj + O2j + Oj + Nj
+
+        N2j = 0.5 * Ni - 0.5 * Nj - 0.5 * NOj
+        G = Ci
+        COj = G - CO2j
+        H = Oi - Ci - OHj - NOj - 2 * O2j - Oj
+        H2Oj = H - CO2j
+        I = 0.5 * Hi + Ci - Oi - 0.5 * Hj + 2 * O2j + Oj + NOj + 0.5 * OHj
+        H2j = I + CO2j
+
+        K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
+        oldCO2j = CO2j
+        CO2j = quadratic((1 - K0), -(G + H + K0 * I), G * H)[1]
+        CO2j = max(CO2j, 0)
+
+        if abs(oldCO2j - CO2j) * 12.01 < tol:
+            break
+
+        OHj = H2Oj / (H2j) ** 0.5 * sqrtVdivRT * K[1] * exp(-20 * n / V)
+        Hj = H2j**0.5 * sqrtVdivRT * K[5]
+        NOj = H2Oj * N2j**0.5 / H2j * sqrtVdivRT * K[2] * exp(-20 * n / V)
+        O2j = (H2Oj / H2j) ** 2 * sqrtVdivRT**2 * K[3]
+        Oj = O2j**0.5 * sqrtVdivRT * K[4]
+        Nj = N2j**0.5 * sqrtVdivRT * K[6]
+
+    a = N2j + COj + CO2j + H2j + H2Oj + OHj + Hj + NOj + O2j + Oj + Nj
+
+    speciesList = [
+        ("N2", N2j * 28.016, N2j / a),
+        ("CO", COj * 28.01, COj / a),
+        ("CO2", CO2j * 44.01, CO2j / a),
+        ("H2", H2j * 2.016, H2j / a),
+        ("H2O", H2Oj * 18.016, H2Oj / a),
+        ("OH", OHj * 17.008, OHj / a),
+        ("H", Hj * 1.008, Hj / a),
+        ("NO", NOj * 30.008, NOj / a),
+        ("O2", O2j * 32.00, O2j / a),
+        ("O", Oj * 16.00, Oj / a),
+        ("N", Nj * 14.008, Nj / a),
+    ]
+
+    speciesList.sort(key=lambda x: x[1], reverse=True)
+
+    n0 = Ci + 0.5 * Hi + 0.5 * Ni
+
+    B = BCO2 * CO2j + BN2CO * (N2j + COj) + BH2O * H2Oj + BH2 * H2j
+    C = CCO2 * CO2j + CN2CO * (N2j + COj) + CH2O * H2Oj + CH2 * H2j
+
+    # b = V * (1 - n / n0 * (1 - B / V - n0 * C / V**2))
+
+    b = (B * V**2 + n * C * V) / (V**2 + B * V + n * C)
+    # rint("Calculated Conditions: {:>6.1f} K ".format(T))
+
+    return speciesList, b
 
 
 if __name__ == "__main__":
     ingredients = Ingredient.readFile("data/hs.csv")
-
+    """
+    for T in (1600, 2000, 2400, 2800, 3100):
+        print(balance(T=T, Ci=2232e-5, Hi=3010e-5, Ni=1046e-5, Oi=3469e-5))
+    """
+    # input()
     NC1260 = Ingredient.nitrocellulose(0.1260)
     RDX = Ingredient.find("RDX")
     NG = Ingredient.find("NG")
