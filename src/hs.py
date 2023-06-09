@@ -344,8 +344,9 @@ class Ingredient:
 
 
 class Mixture:
-    def __init__(self, name, compoDict):
+    def __init__(self, name, compoDict, Delta=0.2):
         self.name = name
+        self.Delta = Delta
         """
         Normalize the given composition such that the fractions sums to 1
         """
@@ -393,7 +394,9 @@ class Mixture:
         self.gamma = gamma
         self.f = f
 
-        self.speciesList, self.b = balance(Tv, Ci, Hi, Oi, Ni)
+        self.speciesList, self.b, self.p = balance(
+            Tv, Ci, Hi, Oi, Ni, V=1 / Delta
+        )
         """
         covolume estimate suggested by Cook:
         self.b = 1e-3 * (1.18 + 6.9 * Ci - 11.5 * Oi)
@@ -447,9 +450,11 @@ class Mixture:
         )
         print("")
         print("Further thermalchemical Calculations:------------")
-        print("Temperature        : {:>6.1f} K".format(self.Tv))
-        print("Load Density       : {:>6.3g} g/cc".format(0.1))
+
         print("Covolume           : {:>6.4g} cc/g".format(self.b))
+        print(" @Temperature      : {:>6.1f} K".format(self.Tv))
+        print(" @Load Density     : {:>6.3g} g/cc".format(self.Delta))
+        print(" @Pressure         : {:>6.4g} MPa".format(self.p))
         print("")
 
 
@@ -722,7 +727,11 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):  # in kelvin  # mol/g
     b = (B * V**2 + n * C * V) / (V**2 + B * V + n * C)
     # rint("Calculated Conditions: {:>6.1f} K ".format(T))
 
-    return speciesList, b
+    p = n * R * T / (V - b) / 9.869
+
+    # p = n * R * T / V * (1 + B / V + n * C / V**2)
+
+    return speciesList, b, p
 
 
 if __name__ == "__main__":
@@ -779,6 +788,7 @@ if __name__ == "__main__":
             NG: 0.0769,
             UREA: 0.0070,
         },
+        Delta=0.1,
     )
     PRD20.prettyPrint()
 
@@ -792,6 +802,7 @@ if __name__ == "__main__":
             NG: 0.0946,
             UREA: 0.0072,
         },
+        Delta=0.1,
     )
     PRD21.prettyPrint()
 
@@ -805,6 +816,7 @@ if __name__ == "__main__":
             NG: 0.1258,
             UREA: 0.0072,
         },
+        Delta=0.1,
     )
     PRD22.prettyPrint()
 
@@ -823,6 +835,7 @@ if __name__ == "__main__":
             UREA: 0.0070,
             C: 0.0010,
         },
+        Delta=0.1,
     )
     JA2.prettyPrint()
 
@@ -833,5 +846,6 @@ if __name__ == "__main__":
     M1 = Mixture(
         name="M1",
         compoDict={NC1315: 0.8500, DNT: 0.1000, DBP: 0.0500, DPA: 0.01},
+        Delta=0.089,
     )
     M1.prettyPrint()
