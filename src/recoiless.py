@@ -830,7 +830,7 @@ class Recoiless:
 
                 for j in range(steps):
                     l_bar_k = l_g_bar / (steps + 1) * (j + 1)
-                    print("FROM TO", l_bar_j, l_bar_k)
+
                     (
                         _,
                         (t_bar_j, Z_j, v_bar_j, p_bar_j, eta_j, tau_j),
@@ -1041,14 +1041,14 @@ if __name__ == "__main__":
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(200, 1e-6, dom=DOMAIN_TIME)[0],
+            test.integrate(20, 1e-6, dom=DOMAIN_TIME)[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(200, 1e-6, dom="length")[0],
+            test.integrate(20, 1e-6, dom="length")[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )
