@@ -76,7 +76,6 @@ class Gun:
                     + " will likely occur."
                     + " Suggest reducing load fraction."
                 )
-        # this will overwrite the definition of Geometry.B
 
         self.B = (
             self.S**2

@@ -552,6 +552,8 @@ def RKF78(
                 for r, y1, y2 in zip(Rs, y_this, y_next)
             )
 
+        print(Rs)
+        print(x, x + h)
         delta = 1
 
         if R >= 1:  # error is greater than acceptable
@@ -873,5 +875,5 @@ if __name__ == "__main__":
     print("expected value")
     print(-1 / (7 / 4 * 0**4 - 85 / 3))
 
-    A = min(x_1, x_2)[[2, 1, -1], [-3, -1, 2], [-2, 1, 2]]
+    A = [[2, 1, -1], [-3, -1, 2], [-2, 1, 2]]
     print(solveMat(A, [8, -11, -3]))
