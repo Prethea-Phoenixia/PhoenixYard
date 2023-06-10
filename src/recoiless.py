@@ -21,8 +21,7 @@ class Recoiless:
         grainSize,
         chargeMass,
         chamberVolume,
-        startPressure,
-        openPressure,
+        startopenPressure,
         lengthGun,
         nozzleExpansion,
         dragCoe=0,
@@ -50,8 +49,7 @@ class Recoiless:
         self.propellant = propellant
         self.omega = chargeMass
         self.V_0 = chamberVolume
-        self.p_0 = startPressure
-        self.p_0m = openPressure
+        self.p_0 = startopenPressure
         self.l_g = lengthGun
         self.chi_0 = nozzleEff
         self.Delta = self.omega / self.V_0

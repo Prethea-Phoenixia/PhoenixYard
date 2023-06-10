@@ -1,5 +1,5 @@
 from tkinter import *
-from gunUI import GunUI
+from IB import IB
 from misc import center, loadfont, resolvepath
 from ctypes import windll
 import platform
@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
     root.title("Phoenix's Internal Ballistics Solver v0.3")
 
-    ibPanel = GunUI(root, dpi)
+    ibPanel = IB(root, dpi)
 
     center(root)
     # root.update()

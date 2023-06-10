@@ -507,5 +507,5 @@ if __name__ == "__main__":
         )
     )
 
-    for i in range(1):
+    for i in range(50):
         test.findMinV(chargeMassRatio=1, tol=1e-3, minWeb=1e-6)

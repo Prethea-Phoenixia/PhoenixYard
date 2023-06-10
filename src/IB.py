@@ -66,7 +66,7 @@ from queue import Empty
 import sys
 
 
-class GunUI(Frame):
+class IB(Frame):
     def __init__(self, parent, dpi):
         Frame.__init__(self, parent)
         self.queue = Queue()
