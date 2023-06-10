@@ -154,7 +154,7 @@ class Recoiless:
         dl_bar = v_bar
         dv_bar = self.theta * 0.5 * p_bar
 
-        deta = self.C_A * self.S_j * p_bar / tau**0.5  # deta / dt_bar
+        deta = self.C_A * self.S_j_bar * p_bar / tau**0.5  # deta / dt_bar
         dtau = (
             (1 - tau) * dpsi * dZ - 2 * v_bar * dv_bar - self.theta * tau * deta
         ) / (
@@ -194,7 +194,7 @@ class Recoiless:
         dp_bar = tau / (l_bar + l_psi_bar) * (psi - eta) * dt_bar
 
         deta = (
-            self.C_A * self.S_j * p_bar / tau**0.5 * dt_bar
+            self.C_A * self.S_j_bar * p_bar / tau**0.5 * dt_bar
         )  # deta / dl_bar
         dtau = (
             (
@@ -232,7 +232,9 @@ class Recoiless:
             dl_bar = 0  # dl_bar/dZ
             dv_bar = 0  # dv_bar/dZ
 
-        deta = self.C_A * self.S_j * p_bar / tau**0.5 * dt_bar  # deta / dZ
+        deta = (
+            self.C_A * self.S_j_bar * p_bar / tau**0.5 * dt_bar
+        )  # deta / dZ
         dtau = (
             (
                 (1 - tau) * (dpsi / dt_bar)

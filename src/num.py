@@ -552,8 +552,6 @@ def RKF78(
                 for r, y1, y2 in zip(Rs, y_this, y_next)
             )
 
-        print(Rs)
-        print(x, x + h)
         delta = 1
 
         if R >= 1:  # error is greater than acceptable
