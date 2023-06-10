@@ -3,18 +3,6 @@ import csv
 from math import pi
 
 
-class AbortedDueToVelocity(ValueError):
-    def __init__(self, message=""):
-        self.message = message
-        super().__init__(self.message)
-
-
-class AbortedDueToLength(ValueError):
-    def __init__(self, message=""):
-        self.message = message
-        super().__init__(self.message)
-
-
 class MultPerfGeometry(Enum):
     """table 1-4 from ref[1] page 33"""
 

@@ -55,7 +55,7 @@ Trimethylolethane trinitrate,TMETN,0.3052,377,0.04313,5,9,3,9,
 """
 import csv
 import difflib
-from num import *
+from num import quadratic
 from math import exp, log10
 
 

@@ -674,7 +674,10 @@ def quadratic(a, b, c):
     x_1 = 0.5 * (-b + Delta**0.5) / a
     x_2 = 0.5 * (-b - Delta**0.5) / a
 
-    return min(x_1, x_2), max(x_1, x_2)
+    if Delta > 0:
+        return min(x_1, x_2), max(x_1, x_2)
+    else:
+        return x_1, x_2
 
 
 def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):

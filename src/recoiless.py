@@ -1,6 +1,6 @@
 from math import pi, log, exp, inf
-from num import *
-from prop import *
+from num import gss, RKF78, cubic
+from prop import GrainComp, Propellant
 
 from gun import DOMAIN_TIME, DOMAIN_LENG
 from gun import (
@@ -1019,6 +1019,7 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
 
     M17 = compositions["M17"]
+    from prop import SimpleGeometry
 
     M17SHC = Propellant(M17, SimpleGeometry.SPHERE, 2, 2.5)
 

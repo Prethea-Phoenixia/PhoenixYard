@@ -1,6 +1,7 @@
-from num import *
-from prop import *
+from num import GSS, RKF78, cubic, secant
+from prop import Propellant
 from random import uniform
+from math import pi
 
 
 class Constrained:
@@ -482,6 +483,8 @@ class Constrained:
 
 
 if __name__ == "__main__":
+    from prop import GrainComp, MultPerfGeometry
+
     compositions = GrainComp.readFile("data/propellants.csv")
     JA2 = compositions["JA2"]
     JA2SHC = Propellant(JA2, MultPerfGeometry.SEVEN_PERF_CYLINDER, 2, 2.5)
@@ -504,5 +507,5 @@ if __name__ == "__main__":
         )
     )
 
-    for i in range(50):
+    for i in range(1):
         test.findMinV(chargeMassRatio=1, tol=1e-3, minWeb=1e-6)
