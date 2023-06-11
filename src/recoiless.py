@@ -321,7 +321,7 @@ class Recoiless:
             Z_err=0,
             v_bar_err=0,
             eta_err=0,
-            tau_err=1,
+            tau_err=0,
         )
 
         if record is not None:
