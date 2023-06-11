@@ -891,7 +891,7 @@ class Recoiless:
                 p_bar_err if isinstance(p_bar_err, str) else p_bar_err * pScale
             )
             T = tau * self.T_v
-            T_err = "N/A"
+            T_err = tau_err * self.T_v
             data.append((dtag, t, l, psi, v, p, T))
             error.append((etag, t_err, l_err, psi_err, v_err, p_err, T_err))
 
