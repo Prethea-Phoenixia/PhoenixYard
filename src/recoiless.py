@@ -878,8 +878,8 @@ class Recoiless:
                 Z_err,
                 v_bar_err,
                 p_bar_err,
-                eta,
-                tau,
+                eta_err,
+                tau_err,
             ) = bar_errorLine
 
             t, t_err = (t_bar * tScale, t_bar_err * tScale)
@@ -890,8 +890,7 @@ class Recoiless:
             p, p_err = p_bar * pScale, (
                 p_bar_err if isinstance(p_bar_err, str) else p_bar_err * pScale
             )
-
-            T = "N/A"
+            T = tau * self.T_v
             T_err = "N/A"
             data.append((dtag, t, l, psi, v, p, T))
             error.append((etag, t_err, l_err, psi_err, v_err, p_err, T_err))
@@ -995,32 +994,32 @@ if __name__ == "__main__":
 
     M17SHC = Propellant(M17, SimpleGeometry.SPHERE, 2, 2.5)
 
-    lf = 0.5
+    lf = 0.3
     print("DELTA:", lf * M17SHC.maxLF)
     test = Recoiless(
         caliber=0.082,
-        shotMass=1.0,
+        shotMass=2,
         propellant=M17SHC,
-        grainSize=1e-4,
-        chargeMass=1,
-        chamberVolume=1.0 / M17SHC.rho_p / M17SHC.maxLF / lf,
+        grainSize=1e-5,
+        chargeMass=0.3,
+        chamberVolume=0.3 / M17SHC.rho_p / M17SHC.maxLF / lf,
         startopenPressure=30e6,
         lengthGun=3.5,
-        nozzleExpansion=2,
+        nozzleExpansion=2.0,
     )
     record = []
 
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(100, 1e-3, dom=DOMAIN_TIME)[0],
+            test.integrate(100, 1e-6, dom=DOMAIN_TIME)[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(100, 1e-3, dom="length")[0],
+            test.integrate(100, 1e-6, dom="length")[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )
