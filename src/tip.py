@@ -163,13 +163,14 @@ stpText = " ".join(
     (
         "Peak pressure that initially resists",
         "the movement of shot. This is made up of",
-        "the rifling resisting the drive band or",
+        "the rifling engraving the driving band or",
         "shell body, the static friction of the",
-        "barrel, and the cartridge case holding onto",
-        "the shot (greatly varying between 0.25 - 15MPa",
+        "barrel, and the cartridge case crimping onto",
+        "the shot (greatly varying between 0.25 - 100MPa",
         "depending on caliber and desired RoF)\n",
-        "For large caliber guns 25 - 30MPa is common.",
-        "For rifles, reports range from 35 to 45MPa.",
+        "For recoiless weapon, the nozzle open pressure",
+        "is also taken to be this value, such that the",
+        "balance of momentum is always conserved.",
     )
 )
 clrtext = " ".join(

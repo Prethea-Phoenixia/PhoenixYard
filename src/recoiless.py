@@ -38,12 +38,13 @@ class Recoiless:
                 nozzleExpansion < 1,
                 nozzleEff > 1,
                 dragCoe < 0,
-                openPressure < 0,
+                startopenPressure < 0,
             )
         ):
             raise ValueError("Invalid gun parameters")
 
         e_1 = 0.5 * grainSize
+        self.chi_k = 1
         self.S = (caliber / 2) ** 2 * pi
         self.m = shotMass
         self.propellant = propellant
@@ -154,7 +155,9 @@ class Recoiless:
 
         deta = self.C_A * self.S_j_bar * p_bar / tau**0.5  # deta / dt_bar
         dtau = (
-            (1 - tau) * dpsi * dZ - 2 * v_bar * dv_bar - self.theta * tau * deta
+            (1 - tau) * (dpsi * dZ)
+            - 2 * v_bar * dv_bar
+            - self.theta * tau * deta
         ) / (
             psi - eta
         )  # dtau/dt_bar
@@ -196,7 +199,7 @@ class Recoiless:
         )  # deta / dl_bar
         dtau = (
             (
-                (1 - tau) * dpsi * (dZ / dt_bar)  # dZ/dt_bar
+                (1 - tau) * (dpsi * dZ / dt_bar)  # dpsi/dt_bar
                 - 2 * v_bar * (dv_bar / dt_bar)  # dv_bar/dt_bar
                 - self.theta * tau * (deta / dt_bar)
             )
@@ -1024,14 +1027,13 @@ if __name__ == "__main__":
     lf = 0.5
     print("DELTA:", lf * M17SHC.maxLF)
     test = Recoiless(
-        caliber=0.050,
+        caliber=0.082,
         shotMass=1.0,
         propellant=M17SHC,
         grainSize=1e-3,
         chargeMass=1,
         chamberVolume=1.0 / M17SHC.rho_p / M17SHC.maxLF / lf,
-        startPressure=30e6,
-        openPressure=10e6,
+        startopenPressure=30e6,
         lengthGun=3.5,
         nozzleExpansion=2,
     )
@@ -1040,14 +1042,15 @@ if __name__ == "__main__":
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(20, 1e-6, dom=DOMAIN_TIME)[0],
+            test.integrate(100, 1e-3, dom=DOMAIN_TIME)[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(20, 1e-6, dom="length")[0],
+            test.integrate(100, 1e-3, dom="length")[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )
+    print(test.getEff(942))

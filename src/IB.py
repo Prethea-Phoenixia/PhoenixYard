@@ -36,6 +36,7 @@ import traceback
 
 from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
 from gun import POINT_PEAK, POINT_BURNOUT, POINT_FRACTURE
+from recoiless import Recoiless
 from prop import Propellant, GrainComp, GEOMETRIES, SimpleGeometry
 from opt import Constrained
 from tip import *
@@ -64,6 +65,9 @@ from multiprocessing import Process, Queue
 from queue import Empty
 
 import sys
+
+RECOILESS = "Recoiless Gun"
+CONVENTIONAL = "Conventional Gun"
 
 
 class IB(Frame):
@@ -125,7 +129,9 @@ class IB(Frame):
         self.domainOptions = (DOMAIN_TIME, DOMAIN_LENG)
 
         parent.columnconfigure(0, weight=1)
-        parent.rowconfigure(0, weight=1)
+        parent.rowconfigure(1, weight=1)
+
+        self.addTopBar(parent)
 
         self.addRightFrm(parent)
         self.addErrFrm(parent)
@@ -150,9 +156,17 @@ class IB(Frame):
         # self.resized = False
         self.timedLoop()
 
+    def addTopBar(self, parent):
+        topFrm = ttk.Frame(parent)
+        topFrm.grid(row=0, column=0, sticky="nsew")
+        topFrm.columnconfigure(0, weight=1)
+
+        self.summary = ttk.Entry(topFrm, justify="right", state="disabled")
+        self.summary.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
+
     def addRightFrm(self, parent):
         rightFrm = ttk.Frame(parent)
-        rightFrm.grid(row=0, column=2, rowspan=3, sticky="nsew")
+        rightFrm.grid(row=0, column=2, rowspan=4, sticky="nsew")
         rightFrm.columnconfigure(0, weight=1)
         rightFrm.rowconfigure(0, weight=1)
 
@@ -378,6 +392,7 @@ class IB(Frame):
         constrain = self.solve_W_Lg.get() == 1
         optimize = self.opt_lf.get() == 1
         debug = self.DEBUG.get() == 1
+        gunType = self.typeOptn.get()
 
         self.tableData = []
         self.errorData = []
@@ -405,6 +420,7 @@ class IB(Frame):
                     "sp": float(self.stpMPa.get()) * 1e6,
                     "lg": float(self.tblmm.get()) * 1e-3,
                     "ce": float(self.clr.get()),  # chamber expansion
+                    "ne": float(self.nozzExpw.get()),
                     "dc": float(self.dgc.get()) * 1e-2,  # drag coefficient
                     "dp": float(self.pTgt.get()) * 1e6,  # design pressure
                     "dv": float(self.vTgt.get()),  # design velocity
@@ -420,6 +436,7 @@ class IB(Frame):
                 target=calculate,
                 args=(
                     self.queue,
+                    gunType,
                     constrain,
                     optimize,
                     self.kwargs,
@@ -582,7 +599,7 @@ class IB(Frame):
 
     def addErrFrm(self, parent):
         errorFrm = ttk.LabelFrame(parent, text="Exceptions")
-        errorFrm.grid(row=2, column=0, sticky="nsew")
+        errorFrm.grid(row=3, column=0, sticky="nsew")
         errorFrm.columnconfigure(0, weight=1)
         errorFrm.rowconfigure(0, weight=1)
 
@@ -600,7 +617,7 @@ class IB(Frame):
 
     def addParFrm(self, parent):
         parFrm = ttk.LabelFrame(parent, text="Parameters")
-        parFrm.grid(row=0, column=1, rowspan=3, sticky="nsew")
+        parFrm.grid(row=0, column=1, rowspan=4, sticky="nsew")
         parFrm.columnconfigure(0, weight=1)
         # parFrm.columnconfigure(1, weight=1)
         # parFrm.columnconfigure(2, weight=1)
@@ -609,6 +626,21 @@ class IB(Frame):
         validationNN = parent.register(validateNN)
 
         i = 0
+        self.gunType = StringVar()
+        self.typeOptn = ttk.Combobox(
+            parFrm,
+            textvariable=self.gunType,
+            values=(CONVENTIONAL, RECOILESS),
+            state="readonly",
+            justify="center",
+        )
+        self.typeOptn.option_add("*TCombobox*Listbox.Justify", "center")
+        self.typeOptn.current(0)
+        self.typeOptn.grid(
+            row=i, column=0, sticky="nsew", padx=2, pady=2, columnspan=3
+        )
+
+        i += 1
         self.calmm, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
@@ -841,12 +873,25 @@ class IB(Frame):
             infotext=stpText,
         )
 
+        self.nozzExp, self.nozzExpw, i = self.add3Input(
+            parent=parFrm,
+            rowIndex=i,
+            labelText="Nozzle Expansion",
+            unitText="x",
+            default="2",
+            validation=validationNN,
+            infotext="",
+        )
+
         self.currProp.trace_add("write", self.updateSpec)
         self.currGeom.trace_add("write", self.updateGeom)
 
         self.grdR.trace_add("write", self.callback)
         self.grlR.trace_add("write", self.callback)
         self.arcmm.trace_add("write", self.callback)
+
+        self.gunType.trace_add("write", self.typeCallback)
+        self.typeCallback(None, None, None)
 
     def addGeomPlot(self):
         geomParentFrm = self.geomParentFrm
@@ -890,7 +935,7 @@ class IB(Frame):
 
     def addPlotFrm(self, parent):
         plotFrm = ttk.LabelFrame(parent, text="Plot")
-        plotFrm.grid(row=0, column=0, sticky="nsew")
+        plotFrm.grid(row=1, column=0, sticky="nsew")
         plotFrm.columnconfigure(0, weight=1)
         plotFrm.rowconfigure(0, weight=1)
 
@@ -1143,7 +1188,7 @@ class IB(Frame):
             "Avg. Temperature",
         ]
         tblFrm = ttk.LabelFrame(parent, text="Result Table")
-        tblFrm.grid(row=1, column=0, sticky="nsew")
+        tblFrm.grid(row=2, column=0, sticky="nsew")
 
         tblFrm.columnconfigure(0, weight=1)
         tblFrm.rowconfigure(1, weight=1)
@@ -1365,6 +1410,13 @@ class IB(Frame):
                 self.errorLst.append(str(e))
 
         self.updateError()
+
+    def typeCallback(self, var, index, mode):
+        gunType = self.gunType.get()
+        if gunType == CONVENTIONAL:
+            self.nozzExpw.config(state="disabled")
+        else:
+            self.nozzExpw.config(state="normal")
 
     def setCD(self, var, index, mode):
         if self.solve_W_Lg.get() == 0:
@@ -1638,6 +1690,7 @@ class IB(Frame):
 
 def calculate(
     queue,
+    gunType,
     constrain,
     optimize,
     kwargs,
@@ -1693,18 +1746,33 @@ def calculate(
         else:
             pass
 
-        gun = Gun(
-            caliber=kwargs["cal"],
-            shotMass=kwargs["m"],
-            propellant=kwargs["prop"],
-            grainSize=kwargs["2e1"],
-            chargeMass=kwargs["w"],
-            chamberVolume=kwargs["cv"],
-            startPressure=kwargs["sp"],
-            lengthGun=kwargs["lg"],
-            chamberExpansion=kwargs["ce"],
-            dragCoe=kwargs["dc"],
-        )
+        if gunType == CONVENTIONAL:
+            gun = Gun(
+                caliber=kwargs["cal"],
+                shotMass=kwargs["m"],
+                propellant=kwargs["prop"],
+                grainSize=kwargs["2e1"],
+                chargeMass=kwargs["w"],
+                chamberVolume=kwargs["cv"],
+                startPressure=kwargs["sp"],
+                lengthGun=kwargs["lg"],
+                chamberExpansion=kwargs["ce"],
+                dragCoe=kwargs["dc"],
+            )
+        else:
+            gun = Recoiless(
+                caliber=kwargs["cal"],
+                shotMass=kwargs["m"],
+                propellant=kwargs["prop"],
+                grainSize=kwargs["2e1"],
+                chargeMass=kwargs["w"],
+                chamberVolume=kwargs["cv"],
+                startopenPressure=kwargs["sp"],
+                lengthGun=kwargs["lg"],
+                nozzleExpansion=kwargs["ne"],
+                # chamberExpansion=kwargs["ce"],
+                dragCoe=kwargs["dc"],
+            )
 
         tableData, errorData = gun.integrate(
             steps=kwargs["step"],
