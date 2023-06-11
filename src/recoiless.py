@@ -927,6 +927,8 @@ class Recoiless:
         """
         Convert average chamber pressure at a certain travel to the shot bass
         pressure.
+
+        TODO: CORRECT THIS TO RECOILESS GUN CASE
         """
         theta_0 = self.V_0 / (self.V_0 + self.S * L)
         epsilon_prime = self.omega / (self.phi_1 * self.m)
@@ -945,6 +947,8 @@ class Recoiless:
         A_1: barrel cross section   L_1: shot travel
 
         A_0 = A_1 * chi_k <- chamber expansion factor
+
+        TODO: CORRECT THIS TO RECOILESS GUN CASE
         """
 
         theta_0 = self.V_0 / (self.V_0 + self.S * L)
