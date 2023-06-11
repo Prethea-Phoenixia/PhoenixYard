@@ -229,8 +229,8 @@ def RKF78(
     absTol,
     minTol=1e-16,
     abortFunc=None,
-    parFunc=None,
     record=None,
+    show=False,
 ):
     """
     use Runge Kutta Fehlberg of 7(8)th power to solve the System of Equation
@@ -258,6 +258,7 @@ def RKF78(
         record  : optional, if supplied will record all committed datapoints
 
 
+
     Returns:
         (y1, y2, y3...)|x = x_1, (e1, e2, e3....)
         where e1, e2, e3...
@@ -266,9 +267,6 @@ def RKF78(
     """
     y_this = iniVal
     x = x_0
-
-    if parFunc is not None:  # generate/enforce parasitic parameters
-        y_this = parFunc(x, *y_this)
 
     beta = 0.84  # "safety" factor
     """
@@ -560,16 +558,16 @@ def RKF78(
         else:  # error is acceptable
             y_last = y_this
             y_this = y_next
+            ox = x
             x += h
             Rm = [max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs)]
 
             # print(x, *y_this)
 
-            if parFunc is not None:  # generate/enforce parasitic function
-                y_this = parFunc(x, *y_this)
-
+            if show:
+                print(x, y_this)
             if abortFunc is not None and abortFunc(
-                x=x, ys=y_this, o_ys=y_last
+                x=x, ys=y_this, o_x=ox, o_ys=y_last
             ):  # premature terminating cond. is met
                 return x, y_this, Rm
 

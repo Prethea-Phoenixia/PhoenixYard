@@ -109,6 +109,20 @@ class Gun:
 
     def _fp_bar(self, Z, l_bar, v_bar):
         psi = self.f_psi_Z(Z)
+
+        l_psi_bar = 1 - self.Delta * ((1 - psi) / self.rho_p + self.alpha * psi)
+
+        p_bar = (
+            self.f * self.omega * psi
+            - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
+        ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
+
+        return p_bar
+
+    def _ode_t(self, t_bar, Z, l_bar, v_bar):
+        psi = self.f_psi_Z(Z)
+        dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
+
         l_psi_bar = (
             1
             - self.Delta / self.rho_p
@@ -120,18 +134,6 @@ class Gun:
             - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
         ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
 
-        return p_bar
-
-    def _ode_t(self, t_bar, Z, l_bar, v_bar, p_bar):
-        psi = self.f_psi_Z(Z)
-        dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
-
-        l_psi_bar = (
-            1
-            - self.Delta / self.rho_p
-            - self.Delta * (self.alpha - 1 / self.rho_p) * psi
-        )
-
         if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_bar**self.n
         else:
@@ -139,21 +141,9 @@ class Gun:
         dl_bar = v_bar
         dv_bar = self.theta * 0.5 * p_bar
 
-        dp_bar = (
-            (1 + p_bar * self.Delta * (self.alpha - 1 / self.rho_p)) * dpsi * dZ
-            - p_bar * v_bar * (1 + self.theta)
-        ) / (
-            l_bar + l_psi_bar
-        )  # dp_bar/dt_bar
+        return (dZ, dl_bar, dv_bar)
 
-        return (dZ, dl_bar, dv_bar, dp_bar)
-
-    def _pf_t(self, x, *ys):
-        t_bar, Z, l_bar, v_bar, p_bar = x, *ys
-        p_bar_prime = self._fp_bar(Z, l_bar, v_bar)
-        return (*ys[:-1], p_bar_prime)
-
-    def _ode_l(self, l_bar, t_bar, Z, v_bar, p_bar):
+    def _ode_l(self, l_bar, t_bar, Z, v_bar):
         """length domain ode of internal ballistics
         the 1/v_bar pose a starting problem that prevent us from using it from
         initial condition."""
@@ -167,6 +157,11 @@ class Gun:
             - self.Delta * (self.alpha - 1 / self.rho_p) * psi
         )
 
+        p_bar = (
+            self.f * self.omega * psi
+            - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
+        ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
+
         if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_bar**self.n / v_bar
         else:
@@ -174,26 +169,9 @@ class Gun:
         dv_bar = self.theta * 0.5 * p_bar / v_bar  # dv_bar / dl_bar
         dt_bar = 1 / v_bar  # dt_bar / dl_bar
 
-        dp_bar = (
-            (
-                (1 + p_bar * self.Delta * (self.alpha - 1 / self.rho_p))
-                * dpsi
-                * dZ
-                / dt_bar
-                - p_bar * v_bar * (1 + self.theta)
-            )
-            / (l_bar + l_psi_bar)
-            * dt_bar
-        )
+        return (dt_bar, dZ, dv_bar)
 
-        return (dt_bar, dZ, dv_bar, dp_bar)
-
-    def _pf_l(self, x, *ys):
-        l_bar, t_bar, Z, v_bar, p_bar = x, *ys
-        p_bar_prime = self._fp_bar(Z, l_bar, v_bar)
-        return (*ys[:-1], p_bar_prime)
-
-    def _ode_Z(self, Z, t_bar, l_bar, v_bar, p_bar):
+    def _ode_Z(self, Z, t_bar, l_bar, v_bar):
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
 
@@ -203,33 +181,22 @@ class Gun:
             - self.Delta * (self.alpha - 1 / self.rho_p) * psi
         )
 
+        p_bar = (
+            self.f * self.omega * psi
+            - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
+        ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
+
         if Z <= self.Z_b:
             dt_bar = (2 * self.B / self.theta) ** 0.5 * p_bar**-self.n
             dl_bar = v_bar * (2 * self.B / self.theta) ** 0.5 * p_bar**-self.n
             dv_bar = (self.B * self.theta * 0.5) ** 0.5 * p_bar ** (1 - self.n)
-            dp_bar = (
-                (
-                    (1 + p_bar * self.Delta * (self.alpha - 1 / self.rho_p))
-                    * dpsi
-                    / dt_bar
-                    - p_bar * v_bar * (1 + self.theta)
-                )
-                / (l_bar + l_psi_bar)
-                * dt_bar
-            )  # dp_bar/dZ
         else:
             # technically speaking it is undefined in this area
             dt_bar = 0  # dt_bar/dZ
             dl_bar = 0  # dl_bar/dZ
             dv_bar = 0  # dv_bar/dZ
-            dp_bar = 0
 
-        return (dt_bar, dl_bar, dv_bar, dp_bar)
-
-    def _pf_Z(self, x, *ys):
-        Z, t_bar, l_bar, v_bar, p_bar = x, *ys
-        p_bar_prime = self._fp_bar(Z, l_bar, v_bar)
-        return (*ys[:-1], p_bar_prime)
+        return (dt_bar, dl_bar, dv_bar)
 
     def _T(self, psi, l, p):
         """
@@ -243,6 +210,28 @@ class Gun:
         )
 
         return self.S * p * (l + l_psi) / (self.omega * psi * self.R)
+
+    def _dPdZ(self, Z, l_bar, v_bar):
+        psi = self.f_psi_Z(Z)
+        p_bar = self._fp_bar(Z, l_bar, v_bar)
+        if Z <= self.Z_b:
+            dZ = (0.5 * self.theta / self.B) ** 0.5 * p_bar**self.n
+        else:
+            return 0
+
+        l_psi_bar = 1 - self.Delta * ((1 - psi) / self.rho_p + self.alpha * psi)
+        dp_bar = (
+            (
+                (1 + p_bar * self.Delta * (self.alpha - 1 / self.rho_p))
+                * self.f_sigma_Z(Z)  # dpsi/dZ
+                * dZ  # dZ/dt_bar
+                - p_bar * v_bar * (1 + self.theta)
+            )
+            / (l_bar + l_psi_bar)  # dp_bar/dt_bar
+            / dZ
+        )  # dp_bar/dZ
+
+        return dp_bar
 
     def integrate(self, steps=10, tol=1e-5, dom=DOMAIN_TIME, record=None):
         """
@@ -281,28 +270,18 @@ class Gun:
             l_bar,
             Z,
             v_bar,
-            p_bar,
             t_bar_err,
             l_bar_err,
             Z_err,
             v_bar_err,
-            p_bar_err,
         ):
+            p_bar = self._fp_bar(Z, l_bar, v_bar)
             bar_data.append((tag, t_bar, l_bar, Z, v_bar, p_bar))
-            """
-            Worst case scenario for pressure deviation is when:
-            Z higher than actual, l lower than actual, v lower than actual
-            more burnt propellant, less volume, lower speed of projectile.
-            """
+
+            p_bar_err = abs(self._dPdZ(Z, l_bar, v_bar) * Z_err)
+
             bar_err.append(
-                (
-                    "L",
-                    t_bar_err,
-                    l_bar_err,
-                    Z_err,
-                    v_bar_err,
-                    p_bar_err,
-                )
+                ("L", t_bar_err, l_bar_err, Z_err, v_bar_err, p_bar_err)
             )
 
         updBarData(
@@ -311,12 +290,10 @@ class Gun:
             l_bar=0,
             Z=Z_0,
             v_bar=0,
-            p_bar=p_bar_0,
             t_bar_err=0,
             l_bar_err=0,
             Z_err=0,
             v_bar_err=0,
-            p_bar_err=0,
         )
 
         if record is not None:
@@ -339,16 +316,20 @@ class Gun:
         i within or on the muzzle, with the propellant either still
         burning or right on the burnout point..
         """
-        ztlvp_record = []
+        ztlv_record = []
         p_max = 1e9  # 1GPa
         p_bar_max = p_max / pScale
 
-        def abort(x, ys, o_ys):
-            t_bar, l_bar, v_bar, p_bar = ys
+        def abort(x, ys, o_x, o_ys):
+            Z = x
+            t_bar, l_bar, v_bar = ys
+
+            p_bar = self._fp_bar(Z, l_bar, v_bar)
+
             return l_bar > l_g_bar or p_bar > p_bar_max
 
         while Z_i < Z_b:  # terminates if burnout is achieved
-            ztlvp_record_i = []
+            ztlv_record_i = []
             if Z_j == Z_i:
                 raise ValueError(
                     "Numerical accuracy exhausted in search of exit/burnout point."
@@ -356,18 +337,19 @@ class Gun:
             try:
                 if Z_j > Z_b:
                     Z_j = Z_b
-                t_bar_j, l_bar_j, v_bar_j, p_bar_j = RKF78(
+                t_bar_j, l_bar_j, v_bar_j = RKF78(
                     self._ode_Z,
-                    (t_bar_i, l_bar_i, v_bar_i, p_bar_i),
+                    (t_bar_i, l_bar_i, v_bar_i),
                     Z_i,
                     Z_j,
                     relTol=tol,
                     absTol=tol,
                     minTol=minTol,
                     abortFunc=abort,
-                    parFunc=self._pf_Z,
-                    record=ztlvp_record_i,
+                    record=ztlv_record_i,
                 )[1]
+
+                p_bar_j = self._fp_bar(Z_j, l_bar_j, v_bar_j)
 
             except ValueError as e:
                 raise ValueError(
@@ -384,12 +366,7 @@ class Gun:
                 )
 
             if any(
-                (
-                    t_bar_i == t_bar_j,
-                    l_bar_i == l_bar_j,
-                    v_bar_i == v_bar_j,
-                    p_bar_i == p_bar_j,
-                )
+                (t_bar_i == t_bar_j, l_bar_i == l_bar_j, v_bar_i == v_bar_j)
             ):
                 raise ValueError(
                     "Numerical integration stalled in search of exit/burnout point."
@@ -404,18 +381,8 @@ class Gun:
                     break  # l_bar_i is solved to within a tol of l_bar_g
 
             else:
-                ztlvp_record.extend(ztlvp_record_i)
-                (
-                    t_bar_i,
-                    l_bar_i,
-                    v_bar_i,
-                    p_bar_i,
-                ) = (
-                    t_bar_j,
-                    l_bar_j,
-                    v_bar_j,
-                    p_bar_j,
-                )
+                ztlv_record.extend(ztlv_record_i)
+                (t_bar_i, l_bar_i, v_bar_i) = (t_bar_j, l_bar_j, v_bar_j)
                 Z_i = Z_j
                 """
                 this way the group of values denoted by _i is always updated
@@ -443,10 +410,10 @@ class Gun:
                         l_bar,
                         self.f_psi_Z(Z),
                         v_bar,
-                        p_bar,
+                        self._fp_bar(Z, l_bar, v_bar),
                     ),
                 )
-                for (Z, (t_bar, l_bar, v_bar, p_bar)) in ztlvp_record
+                for (Z, (t_bar, l_bar, v_bar)) in ztlv_record
             )
 
             # print(*record, sep="\n")
@@ -458,21 +425,16 @@ class Gun:
         on the positive direction of integration.
         """
 
-        ltzvp_record = []
-        (
-            _,
-            (t_bar_e, Z_e, v_bar_e, p_bar_e),
-            (t_bar_err, Z_err, v_bar_err, p_bar_err),
-        ) = RKF78(
+        ltzv_record = []
+        _, (t_bar_e, Z_e, v_bar_e), (t_bar_err, Z_err, v_bar_err) = RKF78(
             self._ode_l,
-            (t_bar_i, Z_i, v_bar_i, p_bar_i),
+            (t_bar_i, Z_i, v_bar_i),
             l_bar_i,
             l_g_bar,
             relTol=tol,
             absTol=tol,
             minTol=minTol,
-            record=ltzvp_record,
-            parFunc=self._pf_l,
+            record=ltzv_record,
         )
 
         if record is not None:
@@ -483,10 +445,10 @@ class Gun:
                         l_bar,
                         self.f_psi_Z(Z),
                         v_bar,
-                        p_bar,
+                        self._fp_bar(Z, l_bar, v_bar),
                     ),
                 )
-                for (l_bar, (t_bar, Z, v_bar, p_bar)) in ltzvp_record
+                for (l_bar, (t_bar, Z, v_bar)) in ltzv_record
             )
             # print(*record, sep="\n")
             # record.sort(key=lambda line: line[0])
@@ -497,12 +459,10 @@ class Gun:
             l_bar=l_g_bar,
             Z=Z_e,
             v_bar=v_bar_e,
-            p_bar=p_bar_e,
             t_bar_err=t_bar_err,
             l_bar_err=0,
             Z_err=Z_err,
             v_bar_err=v_bar_err,
-            p_bar_err=p_bar_err,
         )
 
         t_bar_f = None
@@ -514,17 +474,16 @@ class Gun:
             """
             (
                 _,
-                (t_bar_f, l_bar_f, v_bar_f, p_bar_f),
-                (t_bar_err_f, l_bar_err_f, v_bar_err_f, p_bar_err_f),
+                (t_bar_f, l_bar_f, v_bar_f),
+                (t_bar_err_f, l_bar_err_f, v_bar_err_f),
             ) = RKF78(
                 self._ode_Z,
-                (0, 0, 0, p_bar_0),
+                (0, 0, 0),
                 Z_0,
                 1,
                 relTol=tol,
                 absTol=tol,
                 minTol=minTol,
-                parFunc=self._pf_Z,
             )
 
             updBarData(
@@ -533,12 +492,10 @@ class Gun:
                 l_bar=l_bar_f,
                 Z=1,
                 v_bar=v_bar_f,
-                p_bar=p_bar_f,
                 t_bar_err=t_bar_err_f,
                 l_bar_err=l_bar_err_f,
                 Z_err=0,
                 v_bar_err=v_bar_err_f,
-                p_bar_err=p_bar_err_f,
             )
 
         t_bar_b = None
@@ -551,17 +508,16 @@ class Gun:
 
             (
                 _,
-                (t_bar_b, l_bar_b, v_bar_b, p_bar_b),
-                (t_bar_err_b, l_bar_err_b, v_bar_err_b, p_bar_err_b),
+                (t_bar_b, l_bar_b, v_bar_b),
+                (t_bar_err_b, l_bar_err_b, v_bar_err_b),
             ) = RKF78(
                 self._ode_Z,
-                (0, 0, 0, p_bar_0),
+                (0, 0, 0),
                 Z_0,
                 Z_b,
                 relTol=tol,
                 absTol=tol,
                 minTol=minTol,
-                parFunc=self._pf_Z,
             )
 
             updBarData(
@@ -570,12 +526,10 @@ class Gun:
                 l_bar=l_bar_b,
                 Z=Z_b,
                 v_bar=v_bar_b,
-                p_bar=p_bar_b,
                 t_bar_err=t_bar_err_b,
                 l_bar_err=l_bar_err_b,
                 Z_err=0,
                 v_bar_err=v_bar_err_b,
-                p_bar_err=p_bar_err_b,
             )
 
         """
@@ -588,18 +542,16 @@ class Gun:
         """
 
         def f(t):
-            Z, l_bar, v_bar, p_bar = RKF78(
+            Z, l_bar, v_bar = RKF78(
                 self._ode_t,
-                (Z_0, 0, 0, p_bar_0),
+                (Z_0, 0, 0),
                 0,
                 t,
                 relTol=tol,
                 absTol=tol,
                 minTol=minTol,
-                parFunc=self._pf_t,
             )[1]
-            # return self._fp_bar(Z, l_bar, v_bar)
-            return p_bar
+            return self._fp_bar(Z, l_bar, v_bar)
 
         """
             tolerance is specified a bit differently for gold section search
@@ -628,13 +580,11 @@ class Gun:
             l_bar_p = l_bar_f
             v_bar_p = v_bar_f
             t_bar_p = t_bar_f
-            p_bar_p = p_bar_f
 
             Z_err_p = 0
             l_bar_err_p = l_bar_err_f
             v_bar_err_p = v_bar_err_f
             t_bar_err_p = t_bar_err_f
-            p_bar_err_p = p_bar_err_f
 
         elif t_bar_b is not None and abs(t_bar_p - t_bar_b) / t_bar_p < tol:
             # peak pressure occurs sufficiently close to burnout.
@@ -642,28 +592,25 @@ class Gun:
             l_bar_p = l_bar_b
             v_bar_p = v_bar_b
             t_bar_p = t_bar_b
-            p_bar_p = p_bar_b
 
             Z_err_p = 0
             l_bar_err_p = l_bar_err_b
             v_bar_err_p = v_bar_err_b
             t_bar_err_p = t_bar_err_b
-            p_bar_err_p = p_bar_err_b
 
         else:
             (
                 _,
-                (Z_p, l_bar_p, v_bar_p, p_bar_p),
-                (Z_err_p, l_bar_err_p, v_bar_err_p, p_bar_err_p),
+                (Z_p, l_bar_p, v_bar_p),
+                (Z_err_p, l_bar_err_p, v_bar_err_p),
             ) = RKF78(
                 self._ode_t,
-                (Z_0, 0, 0, p_bar_0),
+                (Z_0, 0, 0),
                 0,
                 t_bar_p,
                 relTol=tol,
                 absTol=tol,
                 minTol=minTol,
-                parFunc=self._pf_t,
             )
             t_bar_err_p = 0.5 * t_bar_tol
 
@@ -673,12 +620,10 @@ class Gun:
             l_bar=l_bar_p,
             Z=Z_p,
             v_bar=v_bar_p,
-            p_bar=p_bar_p,
             t_bar_err=t_bar_err_p,
             l_bar_err=l_bar_err_p,
             Z_err=Z_err_p,
             v_bar_err=v_bar_err_p,
-            p_bar_err=p_bar_err_p,
         )
 
         """
@@ -686,34 +631,21 @@ class Gun:
         """
         try:
             if dom == DOMAIN_TIME:
-                (
-                    Z_j,
-                    l_bar_j,
-                    v_bar_j,
-                    t_bar_j,
-                    p_bar_j,
-                ) = (
-                    Z_0,
-                    0,
-                    0,
-                    0,
-                    p_bar_0,
-                )
+                (Z_j, l_bar_j, v_bar_j, t_bar_j) = (Z_0, 0, 0, 0)
                 for j in range(steps):
                     t_bar_k = t_bar_e / (steps + 1) * (j + 1)
                     (
                         _,
-                        (Z_j, l_bar_j, v_bar_j, p_bar_j),
-                        (Z_err, l_bar_err, v_bar_err, p_bar_err),
+                        (Z_j, l_bar_j, v_bar_j),
+                        (Z_err, l_bar_err, v_bar_err),
                     ) = RKF78(
                         self._ode_t,
-                        (Z_j, l_bar_j, v_bar_j, p_bar_j),
+                        (Z_j, l_bar_j, v_bar_j),
                         t_bar_j,
                         t_bar_k,
                         relTol=tol,
                         absTol=tol,
                         minTol=minTol,
-                        parFunc=self._pf_t,
                     )
                     t_bar_j = t_bar_k
 
@@ -723,12 +655,10 @@ class Gun:
                         l_bar=l_bar_j,
                         Z=Z_j,
                         v_bar=v_bar_j,
-                        p_bar=p_bar_j,
                         t_bar_err=0,
                         l_bar_err=l_bar_err,
                         Z_err=Z_err,
                         v_bar_err=v_bar_err,
-                        p_bar_err=p_bar_err,
                     )
 
             else:
@@ -744,15 +674,14 @@ class Gun:
                  ongoing).
                 """
                 t_bar_j = 0.5 * t_bar_i
-                Z_j, l_bar_j, v_bar_j, p_bar_j = RKF78(
+                Z_j, l_bar_j, v_bar_j = RKF78(
                     self._ode_t,
-                    (Z_0, 0, 0, p_bar_0),
+                    (Z_0, 0, 0),
                     0,
                     t_bar_j,
                     relTol=tol,
                     absTol=tol,
                     minTol=minTol,
-                    parFunc=self._pf_t,
                 )[1]
 
                 for j in range(steps):
@@ -760,22 +689,16 @@ class Gun:
 
                     (
                         _,
-                        (t_bar_j, Z_j, v_bar_j, p_bar_j),
-                        (
-                            t_bar_err,
-                            Z_err,
-                            v_bar_err,
-                            p_bar_err,
-                        ),
+                        (t_bar_j, Z_j, v_bar_j),
+                        (t_bar_err, Z_err, v_bar_err),
                     ) = RKF78(
                         self._ode_l,
-                        (t_bar_j, Z_j, v_bar_j, p_bar_j),
+                        (t_bar_j, Z_j, v_bar_j),
                         l_bar_j,
                         l_bar_k,
                         relTol=tol,
                         absTol=tol,
                         minTol=minTol,
-                        parFunc=self._pf_l,
                     )
                     l_bar_j = l_bar_k
 
@@ -785,12 +708,10 @@ class Gun:
                         l_bar=l_bar_j,
                         Z=Z_j,
                         v_bar=v_bar_j,
-                        p_bar=p_bar_j,
                         t_bar_err=t_bar_err,
                         l_bar_err=0,
                         Z_err=Z_err,
                         v_bar_err=v_bar_err,
-                        p_bar_err=p_bar_err,
                     )
 
         except ValueError as e:
@@ -833,22 +754,9 @@ class Gun:
             p, p_err = p_bar * pScale, p_bar_err * pScale
 
             T = self._T(psi, l, p)
-            """
-            Since for known propellants 1/alpha, or the reciprocal of 
-            the covolume is smaller than the density, therefore the free
-            volume decrease monotically, the number of molecules increase
-            monotically.
 
-            Therefore, the worst case error for temperature is achieved by: 
-            psi lower than actual, length longer than actual, pressure higher than actual
-            According to the Nobel-Abel EoS
-            """
-            T_err = max(
-                self._T(psi - psi_err, l + l_err, p + p_err) - T,
-                T - self._T(psi + psi_err, l - l_err, p - p_err),
-            )
             data.append((dtag, t, l, psi, v, p, T))
-            error.append((etag, t_err, l_err, psi_err, v_err, p_err, T_err))
+            error.append((etag, t_err, l_err, psi_err, v_err, p_err, "N/A"))
 
         """
         scale the records too

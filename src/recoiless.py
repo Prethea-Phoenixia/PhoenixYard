@@ -117,7 +117,7 @@ class Recoiless:
 
         phi_2 = 1
         self.C_A = (
-            (self.theta * self.phi * self.m / (2 * self.omega)) ** 0.5
+            (0.5 * self.theta * self.phi * self.m / self.omega) ** 0.5
             * self.K_0
             * phi_2
         )  # flow rate value
@@ -138,13 +138,14 @@ class Recoiless:
 
         return p_bar
 
-    def _ode_t(self, t_bar, Z, l_bar, v_bar, p_bar, eta, tau):
+    def _ode_t(self, t_bar, Z, l_bar, v_bar, eta, tau):
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
 
         l_psi_bar = 1 - self.Delta * (
             (1 - psi) / self.rho_p - self.alpha * (psi - eta)
         )
+        p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
         if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_bar**self.n
@@ -162,14 +163,9 @@ class Recoiless:
             psi - eta
         )  # dtau/dt_bar
 
-        return (dZ, dl_bar, dv_bar, 0, deta, dtau)
+        return (dZ, dl_bar, dv_bar, deta, dtau)
 
-    def _pf_t(self, x, *ys):
-        t_bar, Z, l_bar, v_bar, p_bar, eta, tau = x, *ys
-        p_bar_prime = self._fp_bar(Z, l_bar, eta, tau)
-        return (Z, l_bar, v_bar, p_bar_prime, eta, tau)
-
-    def _ode_l(self, l_bar, t_bar, Z, v_bar, p_bar, eta, tau):
+    def _ode_l(self, l_bar, t_bar, Z, v_bar, eta, tau):
         """length domain ode of internal ballistics
         the 1/v_bar pose a starting problem that prevent us from using it from
         initial condition.
@@ -184,6 +180,7 @@ class Recoiless:
         l_psi_bar = 1 - self.Delta * (
             (1 - psi) / self.rho_p - self.alpha * (psi - eta)
         )
+        p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
         if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_bar**self.n / v_bar
@@ -207,20 +204,16 @@ class Recoiless:
             * dt_bar
         )  # dtau/dl_bar
 
-        return (dt_bar, dZ, dv_bar, 0, deta, dtau)
+        return (dt_bar, dZ, dv_bar, deta, dtau)
 
-    def _pf_l(self, x, *ys):
-        l_bar, t_bar, Z, v_bar, p_bar, eta, tau = x, *ys
-        p_bar_prime = self._fp_bar(Z, l_bar, eta, tau)
-        return (t_bar, Z, v_bar, p_bar_prime, eta, tau)
-
-    def _ode_Z(self, Z, t_bar, l_bar, v_bar, p_bar, eta, tau):
+    def _ode_Z(self, Z, t_bar, l_bar, v_bar, eta, tau):
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
 
         l_psi_bar = 1 - self.Delta * (
             (1 - psi) / self.rho_p - self.alpha * (psi - eta)
         )
+        p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
         if Z <= self.Z_b:
             dt_bar = (2 * self.B / self.theta) ** 0.5 * p_bar**-self.n
@@ -246,25 +239,7 @@ class Recoiless:
             * dt_bar
         )
 
-        return (dt_bar, dl_bar, dv_bar, 0, deta, dtau)
-
-    def _pf_Z(self, x, *ys):
-        Z, t_bar, l_bar, v_bar, p_bar, eta, tau = x, *ys
-        p_bar_prime = self._fp_bar(Z, l_bar, eta, tau)
-        return (t_bar, l_bar, v_bar, p_bar_prime, eta, tau)
-
-    def _T(self, psi, l, p):
-        """
-        given pressure and travel, return temperature
-        using the Nobel- Abel EOS
-        """
-        l_psi = self.l_0 * (
-            1
-            - self.Delta / self.rho_p
-            - self.Delta * (self.alpha * -1 / self.rho_p) * psi
-        )
-
-        return self.S * p * (l + l_psi) / (self.omega * psi * self.R)
+        return (dt_bar, dl_bar, dv_bar, deta, dtau)
 
     def integrate(self, steps=10, tol=1e-5, dom=DOMAIN_TIME, record=None):
         """
@@ -303,14 +278,18 @@ class Recoiless:
             l_bar,
             Z,
             v_bar,
-            p_bar,
+            eta,
+            tau,
             t_bar_err,
             l_bar_err,
             Z_err,
             v_bar_err,
-            p_bar_err,
+            eta_err,
+            tau_err,
         ):
-            bar_data.append((tag, t_bar, l_bar, Z, v_bar, p_bar))
+            p_bar = self._fp_bar(Z, l_bar, eta, tau)
+            p_bar_err = "N/A"
+            bar_data.append((tag, t_bar, l_bar, Z, v_bar, p_bar, eta, tau))
             """
             Worst case scenario for pressure deviation is when:
             Z higher than actual, l lower than actual, v lower than actual
@@ -324,6 +303,8 @@ class Recoiless:
                     Z_err,
                     v_bar_err,
                     p_bar_err,
+                    eta_err,
+                    tau_err,
                 )
             )
 
@@ -333,16 +314,18 @@ class Recoiless:
             l_bar=0,
             Z=Z_0,
             v_bar=0,
-            p_bar=p_bar_0,
+            eta=0,
+            tau=1,
             t_bar_err=0,
             l_bar_err=0,
             Z_err=0,
             v_bar_err=0,
-            p_bar_err=0,
+            eta_err=0,
+            tau_err=1,
         )
 
         if record is not None:
-            record.append((0, (0, self.psi_0, 0, p_bar_0)))
+            record.append((0, (0, self.psi_0, 0, p_bar_0, 0, 1)))
 
         Z_i = Z_0
         Z_j = Z_b
@@ -368,16 +351,19 @@ class Recoiless:
         i within or on the muzzle, with the propellant either still
         burning or right on the burnout point..
         """
-        ztlvpet_record = []
+        ztlvet_record = []
         p_max = 1e9  # 1GPa
         p_bar_max = p_max / pScale
 
-        def abort(x, ys, o_ys):
-            t_bar, l_bar, v_bar, p_bar, eta, tau = ys
+        def abort(x, ys, o_x, o_ys):
+            Z, t_bar, l_bar, v_bar, eta, tau = x, *ys
+
+            p_bar = self._fp_bar(Z, l_bar, eta, tau)
+
             return l_bar > l_g_bar or p_bar > p_bar_max
 
         while Z_i < Z_b:  # terminates if burnout is achieved
-            ztlvpet_record_i = []
+            ztlvet_record_i = []
             if Z_j == Z_i:
                 raise ValueError(
                     "Numerical accuracy exhausted in search of exit/burnout point."
@@ -385,18 +371,19 @@ class Recoiless:
             try:
                 if Z_j > Z_b:
                     Z_j = Z_b
-                t_bar_j, l_bar_j, v_bar_j, p_bar_j, eta_j, tau_j = RKF78(
+                t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j = RKF78(
                     self._ode_Z,
-                    (t_bar_i, l_bar_i, v_bar_i, p_bar_i, eta_i, tau_i),
+                    (t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i),
                     Z_i,
                     Z_j,
                     relTol=tol,
                     absTol=tol,
                     minTol=minTol,
-                    parFunc=self._pf_Z,
                     abortFunc=abort,
-                    record=ztlvpet_record_i,
+                    record=ztlvet_record_i,
                 )[1]
+
+                p_bar_j = self._fp_bar(Z_j, l_bar_j, eta_j, tau_j)
 
             except ValueError as e:
                 raise ValueError(
@@ -417,7 +404,6 @@ class Recoiless:
                     t_bar_i == t_bar_j,
                     l_bar_i == l_bar_j,
                     v_bar_i == v_bar_j,
-                    p_bar_i == p_bar_j,
                 )
             ):
                 raise ValueError(
@@ -433,19 +419,17 @@ class Recoiless:
                     break  # l_bar_i is solved to within a tol of l_bar_g
 
             else:
-                ztlvpet_record.extend(ztlvpet_record_i)
+                ztlvet_record.extend(ztlvet_record_i)
                 (
                     t_bar_i,
                     l_bar_i,
                     v_bar_i,
-                    p_bar_i,
                     eta_i,
                     tau_i,
                 ) = (
                     t_bar_j,
                     l_bar_j,
                     v_bar_j,
-                    p_bar_j,
                     eta_j,
                     tau_j,
                 )
@@ -476,13 +460,15 @@ class Recoiless:
                         l_bar,
                         self.f_psi_Z(Z),
                         v_bar,
-                        p_bar,
+                        self._fp_bar(Z, l_bar, eta, tau),
+                        eta,
+                        tau,
                     ),
                 )
                 for (
                     Z,
-                    (t_bar, l_bar, v_bar, p_bar, eta, tau),
-                ) in ztlvpet_record
+                    (t_bar, l_bar, v_bar, eta, tau),
+                ) in ztlvet_record
             )
 
             # print(*record, sep="\n")
@@ -494,21 +480,20 @@ class Recoiless:
         on the positive direction of integration.
         """
 
-        ltzvpet_record = []
+        ltzvet_record = []
         (
             _,
-            (t_bar_e, Z_e, v_bar_e, p_bar_e, eta_e, tau_e),
-            (t_bar_err, Z_err, v_bar_err, p_bar_err, eta_err, tau_err),
+            (t_bar_e, Z_e, v_bar_e, eta_e, tau_e),
+            (t_bar_err, Z_err, v_bar_err, eta_err, tau_err),
         ) = RKF78(
             self._ode_l,
-            (t_bar_i, Z_i, v_bar_i, p_bar_i, eta_i, tau_i),
+            (t_bar_i, Z_i, v_bar_i, eta_i, tau_i),
             l_bar_i,
             l_g_bar,
             relTol=tol,
             absTol=tol,
             minTol=minTol,
-            record=ltzvpet_record,
-            parFunc=self._pf_l,
+            record=ltzvet_record,
         )
 
         if record is not None:
@@ -519,13 +504,15 @@ class Recoiless:
                         l_bar,
                         self.f_psi_Z(Z),
                         v_bar,
-                        p_bar,
+                        self._fp_bar(Z, l_bar, eta, tau),
+                        eta,
+                        tau,
                     ),
                 )
                 for (
                     l_bar,
-                    (t_bar, Z, v_bar, p_bar, eta, tau),
-                ) in ltzvpet_record
+                    (t_bar, Z, v_bar, eta, tau),
+                ) in ltzvet_record
             )
             # print(*record, sep="\n")
             # record.sort(key=lambda line: line[0])
@@ -536,12 +523,14 @@ class Recoiless:
             l_bar=l_g_bar,
             Z=Z_e,
             v_bar=v_bar_e,
-            p_bar=p_bar_e,
+            eta=eta_e,
+            tau=tau_e,
             t_bar_err=t_bar_err,
             l_bar_err=0,
             Z_err=Z_err,
             v_bar_err=v_bar_err,
-            p_bar_err=p_bar_err,
+            eta_err=eta_err,
+            tau_err=tau_err,
         )
 
         t_bar_f = None
@@ -553,24 +542,22 @@ class Recoiless:
             """
             (
                 _,
-                (t_bar_f, l_bar_f, v_bar_f, p_bar_f, eta_f, tau_f),
+                (t_bar_f, l_bar_f, v_bar_f, eta_f, tau_f),
                 (
                     t_bar_err_f,
                     l_bar_err_f,
                     v_bar_err_f,
-                    p_bar_err_f,
                     eta_err_f,
                     tau_err_f,
                 ),
             ) = RKF78(
                 self._ode_Z,
-                (0, 0, 0, p_bar_0, 0, 1),
+                (0, 0, 0, 0, 1),
                 Z_0,
                 1,
                 relTol=tol,
                 absTol=tol,
                 minTol=minTol,
-                parFunc=self._pf_Z,
             )
 
             updBarData(
@@ -578,13 +565,15 @@ class Recoiless:
                 t_bar=t_bar_f,
                 l_bar=l_bar_f,
                 Z=1,
+                eta=eta_f,
+                tau=tau_f,
                 v_bar=v_bar_f,
-                p_bar=p_bar_f,
                 t_bar_err=t_bar_err_f,
                 l_bar_err=l_bar_err_f,
                 Z_err=0,
                 v_bar_err=v_bar_err_f,
-                p_bar_err=p_bar_err_f,
+                eta_err=eta_err_f,
+                tau_err=tau_err_f,
             )
 
         t_bar_b = None
@@ -597,24 +586,22 @@ class Recoiless:
 
             (
                 _,
-                (t_bar_b, l_bar_b, v_bar_b, p_bar_b, eta_b, tau_b),
+                (t_bar_b, l_bar_b, v_bar_b, eta_b, tau_b),
                 (
                     t_bar_err_b,
                     l_bar_err_b,
                     v_bar_err_b,
-                    p_bar_err_b,
                     eta_err_b,
                     tau_err_b,
                 ),
             ) = RKF78(
                 self._ode_Z,
-                (0, 0, 0, p_bar_0, 0, 1),
+                (0, 0, 0, 0, 1),
                 Z_0,
                 Z_b,
                 relTol=tol,
                 absTol=tol,
                 minTol=minTol,
-                parFunc=self._pf_Z,
             )
 
             updBarData(
@@ -623,12 +610,14 @@ class Recoiless:
                 l_bar=l_bar_b,
                 Z=Z_b,
                 v_bar=v_bar_b,
-                p_bar=p_bar_b,
+                eta=eta_b,
+                tau=tau_b,
                 t_bar_err=t_bar_err_b,
                 l_bar_err=l_bar_err_b,
                 Z_err=0,
                 v_bar_err=v_bar_err_b,
-                p_bar_err=p_bar_err_b,
+                eta_err=eta_err_b,
+                tau_err=tau_err_b,
             )
 
         """
@@ -641,17 +630,17 @@ class Recoiless:
         """
 
         def f(t):
-            _, _, _, p_bar, _, _ = RKF78(
+            Z, l_bar, v_bar, eta, tau = RKF78(
                 self._ode_t,
-                (Z_0, 0, 0, p_bar_0, 0, 1),
+                (Z_0, 0, 0, 0, 1),
                 0,
                 t,
                 relTol=tol,
                 absTol=tol,
                 minTol=minTol,
-                parFunc=self._pf_t,
             )[1]
-            return p_bar
+
+            return self._fp_bar(Z, l_bar, eta, tau)
 
         """
             tolerance is specified a bit differently for gold section search
@@ -680,7 +669,6 @@ class Recoiless:
             l_bar_p = l_bar_f
             v_bar_p = v_bar_f
             t_bar_p = t_bar_f
-            p_bar_p = p_bar_f
 
             eta_p = eta_f
             tau_p = tau_f
@@ -689,7 +677,6 @@ class Recoiless:
             l_bar_err_p = l_bar_err_f
             v_bar_err_p = v_bar_err_f
             t_bar_err_p = t_bar_err_f
-            p_bar_err_p = p_bar_err_f
 
             eta_err_p = eta_err_f
             tau_err_p = tau_err_f
@@ -700,7 +687,6 @@ class Recoiless:
             l_bar_p = l_bar_b
             v_bar_p = v_bar_b
             t_bar_p = t_bar_b
-            p_bar_p = p_bar_b
 
             eta_p = eta_b
             tau_p = tau_b
@@ -709,7 +695,6 @@ class Recoiless:
             l_bar_err_p = l_bar_err_b
             v_bar_err_p = v_bar_err_b
             t_bar_err_p = t_bar_err_b
-            p_bar_err_p = p_bar_err_b
 
             eta_err_p = eta_err_b
             tau_err_p = tau_err_b
@@ -717,24 +702,22 @@ class Recoiless:
         else:
             (
                 _,
-                (Z_p, l_bar_p, v_bar_p, p_bar_p, eta_p, tau_p),
+                (Z_p, l_bar_p, v_bar_p, eta_p, tau_p),
                 (
                     Z_err_p,
                     l_bar_err_p,
                     v_bar_err_p,
-                    p_bar_err_p,
                     eta_err_p,
                     tau_err_p,
                 ),
             ) = RKF78(
                 self._ode_t,
-                (Z_0, 0, 0, p_bar_0, 0, 1),
+                (Z_0, 0, 0, 0, 1),
                 0,
                 t_bar_p,
                 relTol=tol,
                 absTol=tol,
                 minTol=minTol,
-                parFunc=self._pf_t,
             )
             t_bar_err_p = 0.5 * t_bar_tol
 
@@ -744,25 +727,27 @@ class Recoiless:
             l_bar=l_bar_p,
             Z=Z_p,
             v_bar=v_bar_p,
-            p_bar=p_bar_p,
+            eta=eta_p,
+            tau=tau_p,
             t_bar_err=t_bar_err_p,
             l_bar_err=l_bar_err_p,
             Z_err=Z_err_p,
             v_bar_err=v_bar_err_p,
-            p_bar_err=p_bar_err_p,
+            eta_err=eta_err_p,
+            tau_err=tau_err_p,
         )
 
         """
         populate data for output purposes
         """
+
         try:
             if dom == DOMAIN_TIME:
-                (Z_j, l_bar_j, v_bar_j, t_bar_j, p_bar_j, eta_j, tau_j) = (
+                (Z_j, l_bar_j, v_bar_j, t_bar_j, eta_j, tau_j) = (
                     Z_0,
                     0,
                     0,
                     0,
-                    p_bar_0,
                     0,
                     1,
                 )
@@ -770,24 +755,16 @@ class Recoiless:
                     t_bar_k = t_bar_e / (steps + 1) * (j + 1)
                     (
                         _,
-                        (Z_j, l_bar_j, v_bar_j, p_bar_j, eta_j, tau_j),
-                        (
-                            Z_err,
-                            l_bar_err,
-                            v_bar_err,
-                            p_bar_err,
-                            eta_err,
-                            tau_err,
-                        ),
+                        (Z_j, l_bar_j, v_bar_j, eta_j, tau_j),
+                        (Z_err, l_bar_err, v_bar_err, eta_err, tau_err),
                     ) = RKF78(
                         self._ode_t,
-                        (Z_j, l_bar_j, v_bar_j, p_bar_j, eta_j, tau_j),
+                        (Z_j, l_bar_j, v_bar_j, eta_j, tau_j),
                         t_bar_j,
                         t_bar_k,
                         relTol=tol,
                         absTol=tol,
                         minTol=minTol,
-                        parFunc=self._pf_t,
                     )
                     t_bar_j = t_bar_k
 
@@ -797,12 +774,14 @@ class Recoiless:
                         l_bar=l_bar_j,
                         Z=Z_j,
                         v_bar=v_bar_j,
-                        p_bar=p_bar_j,
+                        eta=eta_j,
+                        tau=tau_j,
                         t_bar_err=0,
                         l_bar_err=l_bar_err,
                         Z_err=Z_err,
                         v_bar_err=v_bar_err,
-                        p_bar_err=p_bar_err,
+                        eta_err=eta_err,
+                        tau_err=tau_err,
                     )
 
             else:
@@ -818,15 +797,14 @@ class Recoiless:
                  ongoing).
                 """
                 t_bar_j = 0.5 * t_bar_i
-                Z_j, l_bar_j, v_bar_j, p_bar_j, eta_j, tau_j = RKF78(
+                Z_j, l_bar_j, v_bar_j, eta_j, tau_j = RKF78(
                     self._ode_t,
-                    (Z_0, 0, 0, p_bar_0, 0, 1),
+                    (Z_0, 0, 0, 0, 1),
                     0,
                     t_bar_j,
                     relTol=tol,
                     absTol=tol,
                     minTol=minTol,
-                    parFunc=self._pf_t,
                 )[1]
 
                 for j in range(steps):
@@ -834,24 +812,22 @@ class Recoiless:
 
                     (
                         _,
-                        (t_bar_j, Z_j, v_bar_j, p_bar_j, eta_j, tau_j),
+                        (t_bar_j, Z_j, v_bar_j, eta_j, tau_j),
                         (
                             t_bar_err,
                             Z_err,
                             v_bar_err,
-                            p_bar_err,
                             eta_err,
                             tau_err,
                         ),
                     ) = RKF78(
                         self._ode_l,
-                        (t_bar_j, Z_j, v_bar_j, p_bar_j, eta_j, tau_j),
+                        (t_bar_j, Z_j, v_bar_j, eta_j, tau_j),
                         l_bar_j,
                         l_bar_k,
                         relTol=tol,
                         absTol=tol,
                         minTol=minTol,
-                        parFunc=self._pf_l,
                     )
 
                     l_bar_j = l_bar_k
@@ -862,16 +838,18 @@ class Recoiless:
                         l_bar=l_bar_j,
                         Z=Z_j,
                         v_bar=v_bar_j,
-                        p_bar=p_bar_j,
+                        eta=eta_j,
+                        tau=tau_j,
                         t_bar_err=t_bar_err,
                         l_bar_err=0,
                         Z_err=Z_err,
                         v_bar_err=v_bar_err,
-                        p_bar_err=p_bar_err,
+                        eta_err=eta_err,
+                        tau_err=tau_err,
                     )
 
         except ValueError as e:
-            print(e)
+            pass
         finally:
             pass
 
@@ -892,7 +870,7 @@ class Recoiless:
         error = []
 
         for bar_dataLine, bar_errorLine in zip(bar_data, bar_err):
-            dtag, t_bar, l_bar, Z, v_bar, p_bar = bar_dataLine
+            dtag, t_bar, l_bar, Z, v_bar, p_bar, eta, tau = bar_dataLine
             (
                 etag,
                 t_bar_err,
@@ -900,6 +878,8 @@ class Recoiless:
                 Z_err,
                 v_bar_err,
                 p_bar_err,
+                eta,
+                tau,
             ) = bar_errorLine
 
             t, t_err = (t_bar * tScale, t_bar_err * tScale)
@@ -907,23 +887,12 @@ class Recoiless:
             psi, psi_err = (self.f_psi_Z(Z), abs(self.f_sigma_Z(Z) * Z_err))
             v, v_err = v_bar * self.v_j, v_bar_err * self.v_j
 
-            p, p_err = p_bar * pScale, p_bar_err * pScale
-
-            T = self._T(psi, l, p)
-            """
-            Since for known propellants 1/alpha, or the reciprocal of 
-            the covolume is smaller than the density, therefore the free
-            volume decrease monotically, the number of molecules increase
-            monotically.
-
-            Therefore, the worst case error for temperature is achieved by: 
-            psi lower than actual, length longer than actual, pressure higher than actual
-            According to the Nobel-Abel EoS
-            """
-            T_err = max(
-                self._T(psi - psi_err, l + l_err, p + p_err) - T,
-                T - self._T(psi + psi_err, l - l_err, p - p_err),
+            p, p_err = p_bar * pScale, (
+                p_bar_err if isinstance(p_bar_err, str) else p_bar_err * pScale
             )
+
+            T = "N/A"
+            T_err = "N/A"
             data.append((dtag, t, l, psi, v, p, T))
             error.append((etag, t_err, l_err, psi_err, v_err, p_err, T_err))
 
@@ -931,7 +900,9 @@ class Recoiless:
         scale the records too
         """
         if record is not None:
-            for i, (t_bar, (l_bar, psi, v_bar, p_bar)) in enumerate(record):
+            for i, (t_bar, (l_bar, psi, v_bar, p_bar, eta, tau)) in enumerate(
+                record
+            ):
                 record[i] = (
                     t_bar * tScale,
                     (
@@ -1030,7 +1001,7 @@ if __name__ == "__main__":
         caliber=0.082,
         shotMass=1.0,
         propellant=M17SHC,
-        grainSize=1e-3,
+        grainSize=1e-4,
         chargeMass=1,
         chamberVolume=1.0 / M17SHC.rho_p / M17SHC.maxLF / lf,
         startopenPressure=30e6,
