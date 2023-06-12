@@ -116,7 +116,7 @@ class Recoiless:
         if self.S_j_bar > 1:
             raise ValueError(
                 "Achieving recoiless condition necessitates"
-                + "higher nozzle expansion ratio than is specified."
+                + " higher nozzle expansion ratio than is specified."
                 + " Suggest increasing said parameter."
             )
         self.S_j = self.S_j_bar * self.S

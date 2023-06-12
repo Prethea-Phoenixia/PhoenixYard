@@ -25,6 +25,7 @@ FIG_CONTEXT = {
     "lines.markersize": 4,
     "axes.axisbelow": False,
     "axes.labelweight": "bold",
+    "yaxis.labellocation": "top",
 }
 
 from tkinter import *
@@ -161,8 +162,12 @@ class IB(Frame):
         topFrm.grid(row=0, column=0, sticky="nsew")
         topFrm.columnconfigure(0, weight=1)
 
+        self.pbar = ttk.Progressbar(topFrm, mode="indeterminate", maximum=100)
+        self.pbar.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
+        """
         self.summary = ttk.Entry(topFrm, justify="right", state="disabled")
         self.summary.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
+        """
 
     def addRightFrm(self, parent):
         rightFrm = ttk.Frame(parent)
@@ -248,13 +253,6 @@ class IB(Frame):
         validationPI = parent.register(validatePI)
 
         i = 0
-
-        self.pbar = ttk.Progressbar(opFrm, mode="indeterminate", maximum=100)
-        self.pbar.grid(
-            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
-        )
-
-        i += 1
 
         consFrm = ttk.LabelFrame(
             opFrm, text="Constraints", style="SubLabelFrame.TLabelframe"
@@ -550,8 +548,9 @@ class IB(Frame):
 
             i = [i[0] for i in self.tableData].index("PEAK PRESSURE")
             _, _, lp, _, _, pp, _ = self.tableData[i]
-            self.ptm.set(toSI(self.gun.toPt(pp, lp)))
-            self.pbm.set(toSI(self.gun.toPb(pp, lp)))
+            Pb, Pt = self.gun.toPbPt(pp, lp)
+            self.ptm.set(toSI(Pt))
+            self.pbm.set(toSI(Pb))
 
             self.lx.set(toSI(float(self.tblmm.get()) / float(self.calmm.get())))
             self.tlx.set(
@@ -1047,6 +1046,8 @@ class IB(Frame):
                 xs = []
                 vs = []
                 Ps = []
+                Pbs = []
+                Pts = []
                 psis = []
                 dom = self.dropOptn.get()
 
@@ -1057,6 +1058,9 @@ class IB(Frame):
                         xs.append(l)
                     vs.append(v)
                     Ps.append(p / 1e6)
+                    Pb, Pt = gun.toPbPt(p, l)
+                    Pbs.append(Pb / 1e6)
+                    Pts.append(Pt / 1e6)
                     psis.append(psi)
 
                 self.axv.scatter(xs, vs, color="tab:blue", marker="s", s=8)
@@ -1074,6 +1078,9 @@ class IB(Frame):
                         xPeak = x
                     vs.append(v)
                     Ps.append(p / 1e6)
+                    Pb, Pt = gun.toPbPt(p, l)
+                    Pbs.append(Pb / 1e6)
+                    Pts.append(Pt / 1e6)
                     psis.append(psi)
 
                 self.axP.spines.right.set_position(("data", xPeak))
@@ -1081,11 +1088,14 @@ class IB(Frame):
                 self.ax.set_xlim(left=0, right=xs[-1])
                 self.ax.set_ylim(bottom=0, top=1.05)
 
-                self.axP.set(ylim=(0, max(Ps) * 1.05))
+                self.axP.set(ylim=(0, max(max(Ps), max(Pbs), max(Pts)) * 1.05))
                 self.axv.set(ylim=(0, max(vs) * 1.05))
 
-                (xs, vs, Ps, psis) = zip(
-                    *sorted(zip(xs, vs, Ps, psis), key=lambda line: line[0])
+                (xs, vs, Ps, Pbs, Pts, psis) = zip(
+                    *sorted(
+                        zip(xs, vs, Ps, Pbs, Pts, psis),
+                        key=lambda line: line[0],
+                    )
                 )
 
                 (pv,) = self.axv.plot(
@@ -1094,16 +1104,24 @@ class IB(Frame):
                     "tab:blue",
                     label="Shot Velocity\nm/s",
                     marker=".",
-                    alpha=0.75,
+                    alpha=1,
                 )
-                v_d = float(self.vTgt.get())
-                (vd,) = self.axv.plot(
-                    (0, xs[-1]),
-                    (v_d, v_d),
+                vd = float(self.vTgt.get())
+                self.axv.scatter(
+                    xs[-1],
+                    vd,
+                    8**2,
                     "tab:blue",
+                    marker=5,
+                    alpha=1,
+                )
+                (pPt,) = self.axP.plot(
+                    xs,
+                    Pts,
+                    "tab:green",
+                    label="Breech Face",
+                    linestyle="dashed",
                     alpha=0.5,
-                    linestyle="-.",
-                    label="V. Target",
                 )
                 (pP,) = self.axP.plot(
                     xs,
@@ -1111,32 +1129,34 @@ class IB(Frame):
                     "tab:green",
                     label="Avg. Pressure\nMPa",
                     marker=".",
-                    alpha=0.75,
+                    alpha=1,
                 )
-                p_d = float(self.pTgt.get())
-                (pd,) = self.axP.plot(
-                    (0, xs[-1]),
-                    (p_d, p_d),
+                (pPb,) = self.axP.plot(
+                    xs,
+                    Pbs,
                     "tab:green",
+                    label="Shot Base",
+                    linestyle="dotted",
                     alpha=0.5,
-                    linestyle="-.",
+                )
+                Pd = float(self.pTgt.get())
+                self.axP.scatter(
+                    xPeak,
+                    Pd,
+                    s=8**2,
+                    c="tab:green",
+                    alpha=1,
+                    marker=5,  # caret right:5
                     label="P. Target",
                 )
-                (ref,) = self.ax.plot(
-                    (0, xs[-1]),
-                    (1, 1),
-                    "tab:red",
-                    alpha=0.5,
-                    linestyle="-.",
-                    label="Burnout",
-                )
+
                 (ppsi,) = self.ax.plot(
                     xs,
                     psis,
                     "tab:red",
                     label="Volume Burnup",
                     marker=".",
-                    alpha=0.75,
+                    alpha=1,
                 )
 
                 tkw = dict(size=4, width=1.5)
@@ -1152,20 +1172,20 @@ class IB(Frame):
                 elif dom == DOMAIN_LENG:
                     self.ax.set_xlabel("Length - m")
 
-                for ax, xvals in zip(
+                for lines, xvals in zip(
                     (
-                        self.axP,
-                        self.ax,
-                        self.axv,
+                        self.axP.get_lines(),
+                        self.ax.get_lines(),
+                        self.axv.get_lines(),
                     ),
                     (
-                        (0.5 * xs[-1] + 0.5 * xPeak, xs[-1]),
+                        (0.3 * xs[-1] + 0.7 * xPeak, xs[-1]),
                         (0, xPeak),
-                        (xPeak, 0.5 * xs[-1] + 0.5 * xPeak),
+                        (xPeak, 0.3 * xs[-1] + 0.7 * xPeak),
                     ),
                 ):
                     labelLines(
-                        ax.get_lines(),
+                        lines,
                         align=True,
                         # color=,
                         xvals=xvals,

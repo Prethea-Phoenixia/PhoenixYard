@@ -381,7 +381,7 @@ class Constrained:
             return e_1, (l_g + l_0), l_g
 
         records = []
-        N = 10
+        N = 33
         for i in range(N):
             startProbe = uniform(tol, 1 - tol)
             try:

@@ -783,37 +783,20 @@ class Gun:
         be = te / self.phi
         return te, be
 
-    def toPb(self, p, L):
+    def toPbPt(self, p, L):
         """
-        Convert average chamber pressure at a certain travel to the shot bass
-        pressure.
+        Convert average chamber pressure at a certain travel to the shot base
+        pressure, and to breech face pressure
         """
         theta_0 = self.V_0 / (self.V_0 + self.S * L)
         epsilon_prime = self.omega / (self.phi_1 * self.m)
-        factor = 1 + epsilon_prime / 3 * (
+        factor_b = 1 + epsilon_prime / 3 * (
             1 - 1.5 * theta_0**3 * (1 - self.chi_k**-2)
         )
-
-        return p / factor
-
-    def toPt(self, p, L):
-        """
-        Convert the average pressure at a certain shot travel in the gun to the
-        chamber base pressure
-
-        A_0: breech face area,      L_0: chamber size
-        A_1: barrel cross section   L_1: shot travel
-
-        A_0 = A_1 * chi_k <- chamber expansion factor
-        """
-
-        theta_0 = self.V_0 / (self.V_0 + self.S * L)
-        epsilon_prime = self.omega / (self.phi_1 * self.m)
-        factor = 1 - epsilon_prime / 6 * (
+        factor_t = 1 - epsilon_prime / 6 * (
             1 - 3 * theta_0**2 * (1 - theta_0) * (1 - self.chi_k**-2)
         )  # p/p_t
-
-        return p / factor
+        return p / factor_b, p / factor_t
 
 
 if __name__ == "__main__":
