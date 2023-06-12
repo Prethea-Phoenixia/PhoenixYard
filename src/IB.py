@@ -529,13 +529,10 @@ class IB(Frame):
                     )
                     self.ldf.set(lfpercent)
 
-            self.ldp.set(round(self.prop.maxLF * float(self.ldf.get()), 1))
+            self.ldp.set(round(self.prop.maxLF * kwargs["lf"] * 100, 1))
             self.ld.set(
                 toSI(
-                    self.prop.maxLF
-                    * 1e-2
-                    * float(self.ldf.get())
-                    * self.prop.rho_p,
+                    self.prop.maxLF * kwargs["lf"] * self.prop.rho_p,
                     useSN=True,
                 )
             )
@@ -552,17 +549,12 @@ class IB(Frame):
             self.ptm.set(toSI(Pt))
             self.pbm.set(toSI(Pb))
 
-            self.lx.set(toSI(float(self.tblmm.get()) / float(self.calmm.get())))
+            self.lx.set(toSI(kwargs["lg"] / kwargs["cal"]))
             self.tlx.set(
                 toSI(
-                    (
-                        float(self.tblmm.get())
-                        + self.gun.l_0 * 1000 / float(self.clr.get())
-                    )
-                    / float(self.calmm.get())
+                    (kwargs["lg"] + self.gun.l_0 / kwargs["ce"]) / kwargs["cal"]
                 )
             )
-
             self.va.set(toSI(self.gun.v_j))
 
         self.tv.delete(*self.tv.get_children())
@@ -849,7 +841,7 @@ class IB(Frame):
             rowIndex=i,
             labelText="Chamber L.R.",
             unitText="x",
-            default="1.1",
+            default="1.5",
             validation=validationNN,
             infotext=clrtext,
         )
