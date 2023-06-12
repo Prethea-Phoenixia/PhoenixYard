@@ -420,7 +420,9 @@ class IB(Frame):
                     "sp": float(self.stpMPa.get()) * 1e6,
                     "lg": float(self.tblmm.get()) * 1e-3,
                     "ce": float(self.clr.get()),  # chamber expansion
-                    "ne": float(self.nozzExpw.get()),
+                    "nexp": float(self.nozzExp.get()),  # nozzle expansion
+                    "neff": float(self.nozzEff.get())
+                    * 1e-2,  # nozzle efficiency
                     "dc": float(self.dgc.get()) * 1e-2,  # drag coefficient
                     "dp": float(self.pTgt.get()) * 1e6,  # design pressure
                     "dv": float(self.vTgt.get()),  # design velocity
@@ -879,6 +881,16 @@ class IB(Frame):
             labelText="Nozzle Expansion",
             unitText="x",
             default="2",
+            validation=validationNN,
+            infotext="",
+        )
+
+        self.nozzEff, self.nozzEffw, i = self.add3Input(
+            parent=parFrm,
+            rowIndex=i,
+            labelText="Nozzle Efficiency",
+            unitText="%",
+            default="92.0",
             validation=validationNN,
             infotext="",
         )
@@ -1415,8 +1427,10 @@ class IB(Frame):
         gunType = self.gunType.get()
         if gunType == CONVENTIONAL:
             self.nozzExpw.config(state="disabled")
+            self.nozzEffw.config(state="disabled")
         else:
             self.nozzExpw.config(state="normal")
+            self.nozzEffw.config(state="normal")
 
     def setCD(self, var, index, mode):
         if self.solve_W_Lg.get() == 0:
@@ -1769,7 +1783,8 @@ def calculate(
                 chamberVolume=kwargs["cv"],
                 startopenPressure=kwargs["sp"],
                 lengthGun=kwargs["lg"],
-                nozzleExpansion=kwargs["ne"],
+                nozzleExpansion=kwargs["nexp"],
+                nozzleEfficiency=kwargs["neff"],
                 # chamberExpansion=kwargs["ce"],
                 dragCoe=kwargs["dc"],
             )

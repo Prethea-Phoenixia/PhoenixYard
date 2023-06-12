@@ -25,7 +25,7 @@ class Recoiless:
         lengthGun,
         nozzleExpansion,
         dragCoe=0,
-        nozzleEff=0.92,
+        nozzleEfficiency=0.92,
     ):
         if any(
             (
@@ -36,7 +36,8 @@ class Recoiless:
                 chamberVolume <= 0,
                 lengthGun <= 0,
                 nozzleExpansion < 1,
-                nozzleEff > 1,
+                nozzleEfficiency > 1,
+                nozzleEfficiency <= 0,
                 dragCoe < 0,
                 startopenPressure < 0,
             )
@@ -52,7 +53,7 @@ class Recoiless:
         self.V_0 = chamberVolume
         self.p_0 = startopenPressure
         self.l_g = lengthGun
-        self.chi_0 = nozzleEff
+        self.chi_0 = nozzleEfficiency
         self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
         Labda = self.l_g / self.l_0
@@ -77,7 +78,6 @@ class Recoiless:
                     "Initial burnup fraction is solved to be negative."
                     + " In practice this implies a detonation of the gun breech"
                     + " will likely occur."
-                    + " Suggest reducing load fraction."
                 )
 
         self.B = (
@@ -106,9 +106,19 @@ class Recoiless:
 
         # additional calculation for recoiless weapons:
         gamma = self.theta + 1
+        """
+        Enforce the "recoiless condition" by setting the size of the
+        throat.
+        """
         self.S_j_bar = self.getCf(gamma, 1) / (
-            self.getCf(gamma, nozzleExpansion) * nozzleEff
-        )  # the "recoiless condition."
+            self.getCf(gamma, nozzleExpansion) * self.chi_0
+        )  # = S_j/S
+        if self.S_j_bar > 1:
+            raise ValueError(
+                "Achieving recoiless condition necessitates"
+                + "higher nozzle expansion ratio than is specified."
+                + " Suggest increasing said parameter."
+            )
         self.S_j = self.S_j_bar * self.S
 
         self.K_0 = (2 / (gamma + 1)) ** (
@@ -1009,7 +1019,7 @@ if __name__ == "__main__":
         chamberVolume=0.3 / M17SHC.rho_p / M17SHC.maxLF / lf,
         startopenPressure=30e6,
         lengthGun=3.5,
-        nozzleExpansion=2.0,
+        nozzleExpansion=1.0,
     )
     record = []
 

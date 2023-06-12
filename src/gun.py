@@ -74,7 +74,6 @@ class Gun:
                     "Initial burnup fraction is solved to be negative."
                     + " In practice this implies a detonation of the gun breech"
                     + " will likely occur."
-                    + " Suggest reducing load fraction."
                 )
 
         self.B = (
