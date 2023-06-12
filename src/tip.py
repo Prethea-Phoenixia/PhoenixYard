@@ -229,7 +229,9 @@ pMaxTxt = " ".join(
         "Peak pressure, when measured from the breech, and when measured at",
         "the base of projectile. Breech pressure is around 1.0-1.2x of the",
         "result of copper crusher test, with the factor usually taken to be",
-        "1.12x.",
+        "1.12x. These values are tabulated at the peak of space-averaged",
+        "pressure, which does not co-occur when the effect of chamberage is",
+        "considered (Chamber Expansion not equal to 1.0x).",
     )
 )
 
@@ -290,7 +292,7 @@ class ToolTip(object):
         )
 
         label.config(width=columnWidth)  # characters
-        label.pack(ipadx=width)
+        label.pack(ipadx=width, ipady=0.25 * height)
 
         tw.update_idletasks()
 
