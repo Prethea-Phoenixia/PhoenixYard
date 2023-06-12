@@ -277,23 +277,7 @@ class ToolTip(object):
             x = x + self.widget.winfo_rootx() + self.widget.winfo_width()
             y = y + self.widget.winfo_rooty()
 
-        margin = (
-            y
-            + (
-                ceil(t_Font.measure(self.text) / (width * columnWidth))
-                + 1
-                + self.text.count("\n")
-            )
-            * height
-            - ry
-            - root.winfo_rooty()
-            - root.winfo_height()
-        )  # ensure that tooltip does not overrun the main window
-
-        if margin > 0:
-            y -= margin
-
-        tw.wm_geometry("+%d+%d" % (x, y))
+        # tw.wm_geometry("+%d+%d" % (x, y))
         label = Label(
             tw,
             text=self.text,
@@ -307,6 +291,19 @@ class ToolTip(object):
 
         label.config(width=columnWidth)  # characters
         label.pack(ipadx=width)
+
+        tw.update_idletasks()
+
+        wheight = tw.winfo_height()
+
+        margin = (
+            y + wheight - root.winfo_rooty() - root.winfo_height()
+        )  # ensure that tooltip does not overrun the main window
+
+        if margin > 0:
+            y -= margin
+
+        tw.wm_geometry("+%d+%d" % (x, y))
 
     def hidetip(self):
         tw = self.tipwindow
