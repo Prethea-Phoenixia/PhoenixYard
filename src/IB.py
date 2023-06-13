@@ -409,6 +409,10 @@ class IB(Frame):
 
             self.kwargs.update(
                 {
+                    "opt": optimize,
+                    "con": constrain,
+                    "deb": debug,
+                    "typ": gunType,
                     "cal": float(self.calmm.get()) * 1e-3,
                     "m": float(self.shtkg.get()),
                     "prop": self.prop,
@@ -436,11 +440,7 @@ class IB(Frame):
                 target=calculate,
                 args=(
                     self.queue,
-                    gunType,
-                    constrain,
-                    optimize,
                     self.kwargs,
-                    debug,
                 ),
             )
             self.pos = 0
@@ -468,8 +468,9 @@ class IB(Frame):
             self.updateFigPlot()
 
     def getValue(self):
-        constrain = self.solve_W_Lg.get() == 1
-        optimize = self.opt_lf.get() == 1
+        constrain = self.kwargs["con"]
+        optimize = self.kwargs["con"]
+        gunType = self.kwargs["typ"]
 
         queue = self.queue
 
@@ -544,10 +545,16 @@ class IB(Frame):
             self.be.set(round(te / self.gun.phi * 100, 1))
 
             i = [i[0] for i in self.tableData].index("PEAK PRESSURE")
-            _, _, lp, _, _, pp, _ = self.tableData[i]
-            Pb, Pt = self.gun.toPbPt(pp, lp)
-            self.ptm.set(toSI(Pt))
-            self.pbm.set(toSI(Pb))
+            _, tp, lp, vp, _, pp, Tp, etap = self.tableData[i]
+
+            if gunType == CONVENTIONAL:
+                Pb, Pt = self.gun.toPbPt(lp, pp)
+                self.ptm.set(toSI(Pt))
+                self.pbm.set(toSI(Pb))
+            else:
+                Pb, P0, Px = self.gun.toPbP0Px(lp, vp, pp, Tp, etap)
+                self.ptm.set(toSI(P0))
+                self.pbm.set(toSI(Pb))
 
             self.lx.set(toSI(kwargs["lg"] / kwargs["cal"]))
             self.tlx.set(
@@ -558,8 +565,8 @@ class IB(Frame):
             self.va.set(toSI(self.gun.v_j))
 
         self.tv.delete(*self.tv.get_children())
-        useSN = (False, False, False, True, False, False, True)
-        units = (None, "s", "m", None, "m/s", "Pa", "K")
+        useSN = (False, False, False, True, False, False, True, False)
+        units = (None, "s", "m", None, "m/s", "Pa", "K", None)
         tableData = dot_aligned(
             self.tableData,
             units=units,
@@ -1020,7 +1027,7 @@ class IB(Frame):
     def updateFigPlot(self):
         with mpl.rc_context(FIG_CONTEXT):
             gun = self.gun
-
+            gunType = self.typeOptn.get()
             self.ax.cla()
             self.axP.cla()
             self.axv.cla()
@@ -1040,27 +1047,42 @@ class IB(Frame):
                 Ps = []
                 Pbs = []
                 Pts = []
+                P0s = []
+                Pxs = []
                 psis = []
+                etas = []
                 dom = self.dropOptn.get()
 
-                for i, (t, (l, psi, v, p)) in enumerate(self.intgRecord):
+                for i, (t, (l, psi, v, p, T, eta)) in enumerate(
+                    self.intgRecord
+                ):
                     if dom == DOMAIN_TIME:
                         xs.append(t * 1000)
                     elif dom == DOMAIN_LENG:
                         xs.append(l)
                     vs.append(v)
                     Ps.append(p / 1e6)
-                    Pb, Pt = gun.toPbPt(p, l)
+                    if gunType == CONVENTIONAL:
+                        Pb, Pt = gun.toPbPt(l, p)
+                        P0, Px = 0, 0
+                    else:
+                        Pb, P0, Px = gun.toPbP0Px(l, v, p, T, eta)
+                        Pt = 0
                     Pbs.append(Pb / 1e6)
                     Pts.append(Pt / 1e6)
+                    P0s.append(P0 / 1e6)
+                    Pxs.append(Px / 1e6)
                     psis.append(psi)
+                    etas.append(eta)
 
                 self.axv.scatter(xs, vs, color="tab:blue", marker="s", s=8)
                 self.axP.scatter(xs, Ps, color="tab:green", marker="s", s=8)
                 self.ax.scatter(xs, psis, color="tab:red", marker="s", s=8)
 
                 xPeak = 0
-                for i, (tag, t, l, psi, v, p, T) in enumerate(self.tableData):
+                for i, (tag, t, l, psi, v, p, T, eta) in enumerate(
+                    self.tableData
+                ):
                     if dom == DOMAIN_TIME:
                         x = t * 1000
                     elif dom == DOMAIN_LENG:
@@ -1070,10 +1092,20 @@ class IB(Frame):
                         xPeak = x
                     vs.append(v)
                     Ps.append(p / 1e6)
-                    Pb, Pt = gun.toPbPt(p, l)
+
+                    if gunType == CONVENTIONAL:
+                        Pb, Pt = gun.toPbPt(l, p)
+                        P0, Px = 0, 0
+                    else:
+                        Pb, P0, Px = gun.toPbP0Px(l, v, p, T, eta)
+                        Pt = 0
+
                     Pbs.append(Pb / 1e6)
                     Pts.append(Pt / 1e6)
+                    P0s.append(P0 / 1e6)
+                    Pxs.append(Px / 1e6)
                     psis.append(psi)
+                    etas.append(eta)
 
                 self.axP.spines.right.set_position(("data", xPeak))
 
@@ -1083,9 +1115,9 @@ class IB(Frame):
                 self.axP.set(ylim=(0, max(max(Ps), max(Pbs), max(Pts)) * 1.05))
                 self.axv.set(ylim=(0, max(vs) * 1.05))
 
-                (xs, vs, Ps, Pbs, Pts, psis) = zip(
+                (xs, vs, Ps, Pbs, Pts, psis, etas) = zip(
                     *sorted(
-                        zip(xs, vs, Ps, Pbs, Pts, psis),
+                        zip(xs, vs, Ps, Pbs, Pts, psis, etas),
                         key=lambda line: line[0],
                     )
                 )
@@ -1107,14 +1139,26 @@ class IB(Frame):
                     marker=5,
                     alpha=1,
                 )
-                (pPt,) = self.axP.plot(
-                    xs,
-                    Pts,
-                    "tab:green",
-                    label="Breech Face",
-                    linestyle="dashed",
-                    alpha=0.5,
-                )
+
+                if self.typeOptn.get() == CONVENTIONAL:
+                    self.axP.plot(
+                        xs,
+                        Pts,
+                        "tab:green",
+                        label="Breech Face",
+                        linestyle="dashed",
+                        alpha=0.5,
+                    )
+                else:
+                    self.axP.plot(
+                        xs,
+                        P0s,
+                        "tab:green",
+                        label="Stagnation",
+                        linestyle="dashed",
+                        alpha=0.5,
+                    )
+
                 (pP,) = self.axP.plot(
                     xs,
                     Ps,
@@ -1123,7 +1167,7 @@ class IB(Frame):
                     marker=".",
                     alpha=1,
                 )
-                (pPb,) = self.axP.plot(
+                self.axP.plot(
                     xs,
                     Pbs,
                     "tab:green",
@@ -1209,7 +1253,8 @@ class IB(Frame):
             "Burnup",
             "Velocity",
             "Avg. Pressure",
-            "Avg. Temperature",
+            "Avg. Temp.",
+            "Gas Escape",
         ]
         tblFrm = ttk.LabelFrame(parent, text="Result Table")
         tblFrm.grid(row=2, column=0, sticky="nsew")
@@ -1436,7 +1481,7 @@ class IB(Frame):
         self.updateError()
 
     def typeCallback(self, var, index, mode):
-        gunType = self.gunType.get()
+        gunType = self.typeOptn.get()
         if gunType == CONVENTIONAL:
             self.nozzExpw.config(state="disabled")
             self.nozzEffw.config(state="disabled")
@@ -1716,16 +1761,17 @@ class IB(Frame):
 
 def calculate(
     queue,
-    gunType,
-    constrain,
-    optimize,
     kwargs,
-    debug,
 ):
     tableData = []
     errorData = []
     errorReport = []
     intgRecord = []
+
+    gunType = kwargs["typ"]
+    constrain = kwargs["con"]
+    optimize = kwargs["opt"]
+    debug = kwargs["deb"]
     try:
         if constrain:
             constrained = Constrained(
@@ -1797,7 +1843,7 @@ def calculate(
                 lengthGun=kwargs["lg"],
                 nozzleExpansion=kwargs["nexp"],
                 nozzleEfficiency=kwargs["neff"],
-                # chamberExpansion=kwargs["ce"],
+                chamberExpansion=kwargs["ce"],
                 dragCoe=kwargs["dc"],
             )
 

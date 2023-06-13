@@ -175,11 +175,11 @@ stpText = " ".join(
 )
 clrtext = " ".join(
     (
-        "Chamber length ratio is the ratio between",
-        "the length of reduced chamber (dividing",
-        "the chamber volume with barrel cross",
-        "section) to the actual chamber. Accounts",
-        "for the necking of the cartridge.",
+        "Chamber length ratio is defined as the ratio of the actual chamber cross section",
+        "to that of the barrel, or put another way, the length a chamber would have if its",
+        "in line with the barrel to that of the actual chamber length. This parameters is",
+        "used to correct for chamberage effect, which is most significant at the start of",
+        "IB cycle.",
     )
 )
 dgctext = " ".join(

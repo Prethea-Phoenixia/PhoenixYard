@@ -23,6 +23,7 @@ class Recoiless:
         chamberVolume,
         startopenPressure,
         lengthGun,
+        chamberExpansion,
         nozzleExpansion,
         dragCoe=0,
         nozzleEfficiency=0.92,
@@ -45,7 +46,6 @@ class Recoiless:
             raise ValueError("Invalid gun parameters")
 
         e_1 = 0.5 * grainSize
-        self.chi_k = 1
         self.S = (caliber / 2) ** 2 * pi
         self.m = shotMass
         self.propellant = propellant
@@ -54,6 +54,7 @@ class Recoiless:
         self.p_0 = startopenPressure
         self.l_g = lengthGun
         self.chi_0 = nozzleEfficiency
+        self.chi_k = chamberExpansion
         self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
         Labda = self.l_g / self.l_0
@@ -113,11 +114,10 @@ class Recoiless:
         self.S_j_bar = self.getCf(gamma, 1) / (
             self.getCf(gamma, nozzleExpansion) * self.chi_0
         )  # = S_j/S
-        if self.S_j_bar > 1:
+        if self.S_j_bar > self.chi_k:
             raise ValueError(
                 "Achieving recoiless condition necessitates"
                 + " higher nozzle expansion ratio than is specified."
-                + " Suggest increasing said parameter."
             )
         self.S_j = self.S_j_bar * self.S
 
@@ -902,8 +902,10 @@ class Recoiless:
             )
             T = tau * self.T_v
             T_err = tau_err * self.T_v
-            data.append((dtag, t, l, psi, v, p, T))
-            error.append((etag, t_err, l_err, psi_err, v_err, p_err, T_err))
+            data.append((dtag, t, l, psi, v, p, T, eta))
+            error.append(
+                (etag, t_err, l_err, psi_err, v_err, p_err, T_err, eta_err)
+            )
 
         """
         scale the records too
@@ -919,6 +921,8 @@ class Recoiless:
                         psi,
                         v_bar * self.v_j,
                         p_bar * pScale,
+                        tau * self.T_v,
+                        eta,
                     ),
                 )
 
@@ -933,41 +937,23 @@ class Recoiless:
         be = te / self.phi
         return te, be
 
-    def toPb(self, p, L):
-        """
-        Convert average chamber pressure at a certain travel to the shot bass
-        pressure.
-
-        TODO: CORRECT THIS TO RECOILESS GUN CASE
-        """
-        theta_0 = self.V_0 / (self.V_0 + self.S * L)
-        epsilon_prime = self.omega / (self.phi_1 * self.m)
-        factor = 1 + epsilon_prime / 3 * (
-            1 - 1.5 * theta_0**3 * (1 - self.chi_k**-2)
+    def toPbP0Px(self, l, v, p, T, eta):
+        tau = T / self.T_v
+        y = self.omega * eta
+        m_dot = self.C_A * self.v_j * self.S * p / (self.f * tau**0.5)
+        v_x = m_dot * (self.V_0 + self.S * l) / (self.S_j * (self.omega - y))
+        H = v_x / v
+        pb = p / (
+            1 + (self.omega - y) / (3 * self.phi_1 * self.m) * (1 - 0.5 * H)
+        )  # shot base pressure
+        p0 = pb * (
+            1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 + H) ** -1
         )
+        px = pb * (
+            1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 - H)
+        )  # muzzle pressure
 
-        return p / factor
-
-    def toPt(self, p, L):
-        """
-        Convert the average pressure at a certain shot travel in the gun to the
-        chamber base pressure
-
-        A_0: breech face area,      L_0: chamber size
-        A_1: barrel cross section   L_1: shot travel
-
-        A_0 = A_1 * chi_k <- chamber expansion factor
-
-        TODO: CORRECT THIS TO RECOILESS GUN CASE
-        """
-
-        theta_0 = self.V_0 / (self.V_0 + self.S * L)
-        epsilon_prime = self.omega / (self.phi_1 * self.m)
-        factor = 1 - epsilon_prime / 6 * (
-            1 - 3 * theta_0**2 * (1 - theta_0) * (1 - self.chi_k**-2)
-        )  # p/p_t
-
-        return p / factor
+        return pb, p0, px
 
     @staticmethod
     def getCf(gamma, Sr, tol=1e-5):
@@ -1019,7 +1005,8 @@ if __name__ == "__main__":
         chamberVolume=0.3 / M17SHC.rho_p / M17SHC.maxLF / lf,
         startopenPressure=30e6,
         lengthGun=3.5,
-        nozzleExpansion=1.0,
+        nozzleExpansion=2.0,
+        chamberExpansion=1.0,
     )
     record = []
 

@@ -754,8 +754,10 @@ class Gun:
 
             T = self._T(psi, l, p)
 
-            data.append((dtag, t, l, psi, v, p, T))
-            error.append((etag, t_err, l_err, psi_err, v_err, p_err, "N/A"))
+            data.append((dtag, t, l, psi, v, p, T, 0))
+            error.append(
+                (etag, t_err, l_err, psi_err, v_err, p_err, "N/A", "N/A")
+            )
 
         """
         scale the records too
@@ -769,6 +771,8 @@ class Gun:
                         psi,
                         v_bar * self.v_j,
                         p_bar * pScale,
+                        self._T(psi, l, p),
+                        0,
                     ),
                 )
 
@@ -783,12 +787,16 @@ class Gun:
         be = te / self.phi
         return te, be
 
-    def toPbPt(self, p, L):
+    def toPbPt(
+        self,
+        l,
+        p,
+    ):
         """
         Convert average chamber pressure at a certain travel to the shot base
         pressure, and to breech face pressure
         """
-        theta_0 = self.V_0 / (self.V_0 + self.S * L)
+        theta_0 = self.V_0 / (self.V_0 + self.S * l)
         epsilon_prime = self.omega / (self.phi_1 * self.m)
         factor_b = 1 + epsilon_prime / 3 * (
             1 - 1.5 * theta_0**3 * (1 - self.chi_k**-2)
@@ -831,14 +839,14 @@ if __name__ == "__main__":
     print(
         tabulate(
             test.integrate(200, 1e-6, dom=DOMAIN_TIME)[0],
-            headers=("tag", "t", "l", "phi", "v", "p", "T"),
+            headers=("tag", "t", "l", "phi", "v", "p", "T", "eta"),
         )
     )
     print("\nnumerical: length")
     print(
         tabulate(
             test.integrate(200, 1e-6, dom="length")[0],
-            headers=("tag", "t", "l", "phi", "v", "p", "T"),
+            headers=("tag", "t", "l", "phi", "v", "p", "T", "eta"),
         )
     )
 
