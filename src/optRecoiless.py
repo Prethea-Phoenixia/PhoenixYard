@@ -133,7 +133,7 @@ class ConstrainedRecoiless:
         """
         v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
 
-        if 0.9 * v_j < v_d:
+        if v_j < v_d:
             raise ValueError(
                 "Propellant load too low to achieve design velocity."
             )

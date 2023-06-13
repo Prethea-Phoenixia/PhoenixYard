@@ -169,8 +169,9 @@ stpText = " ".join(
         "the shot (greatly varying between 0.25 - 100MPa",
         "depending on caliber and desired RoF)\n",
         "For recoiless weapon, the nozzle open pressure",
-        "is also taken to be this value, such that the",
-        "balance of momentum is always conserved.",
+        "is also taken to be this value, for simplicity,",
+        "and such that the balance of momentum is conserved",
+        "throughout.",
     )
 )
 clrtext = " ".join(
@@ -239,6 +240,27 @@ pMaxTxt = " ".join(
         "1.12x. These values are tabulated at the peak of space-averaged",
         "pressure, which does not co-occur when the effect of chamberage is",
         "considered (Chamber Expansion not equal to 1.0x).",
+    )
+)
+
+nozzExpTxt = " ".join(
+    (
+        "Area expansion ratio of the recoiless gun's rear nozzle, or the ratio",
+        "between the cross section area of the nozzle end, and the area of the",
+        "throat. This is used to size the throat, or opening, with larger nozzle",
+        "expansion ratio",
+        "resulting in more efficient nozzle, and less gas leakage, however with",
+        "quickly diminishing returns. Usually chosen to be around 4.",
+    )
+)
+
+nozzEffTxt = " ".join(
+    (
+        "Efficiency of the nozzle, accouting for the less efficient geometry used",
+        "in real nozzles to simplify production, where a short nozzle of the straight",
+        "walled type can be reasonably estimated to be within a few percent of unity,",
+        "but for the effect of high pressure gas that is usually not corrected for in",
+        "rocket theories. Therefore a more conservative estimate of 92% is adopted",
     )
 )
 

@@ -907,9 +907,9 @@ class IB(Frame):
             rowIndex=i,
             labelText="Nozzle Expansion",
             unitText="x",
-            default="2",
+            default="4",
             validation=validationNN,
-            infotext="",
+            infotext=nozzExpTxt,
         )
 
         self.nozzEff, self.nozzEffw, i = self.add3Input(
@@ -919,7 +919,7 @@ class IB(Frame):
             unitText="%",
             default="92.0",
             validation=validationNN,
-            infotext="",
+            infotext=nozzEffTxt,
         )
 
         self.currProp.trace_add("write", self.updateSpec)
@@ -1269,11 +1269,7 @@ class IB(Frame):
                         (xPeak, 0.2 * xs[-1] + 0.8 * xPeak),
                     ),
                 ):
-                    labelLines(
-                        lines,
-                        align=True,
-                        xvals=xvals,
-                    )
+                    labelLines(lines, align=True, xvals=xvals)
 
                 # labelLines(, zorder=2.5, color="white")
 
