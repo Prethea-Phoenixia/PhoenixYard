@@ -38,8 +38,10 @@ import traceback
 from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
 from gun import POINT_PEAK, POINT_BURNOUT, POINT_FRACTURE
 from recoiless import Recoiless
+
 from prop import Propellant, GrainComp, GEOMETRIES, SimpleGeometry
 from opt import Constrained
+from optRecoiless import ConstrainedRecoiless
 from tip import *
 
 from misc import (
@@ -293,6 +295,16 @@ class IB(Frame):
             validation=validationNN,
             color="red",
         )
+        self.lgmax, _, j = self.add3Input(
+            parent=consFrm,
+            rowIndex=j,
+            colIndex=0,
+            labelText="Max. Lg",
+            unitText="m",
+            default="1000.0",
+            validation=validationNN,
+            color="red",
+        )
 
         j += 1
         self.solve_W_Lg = IntVar()
@@ -438,6 +450,7 @@ class IB(Frame):
                     "designVelocity": float(self.vTgt.get()),  # design velocity
                     "tol": 10 ** -int(self.accExp.get()),
                     "minWeb": 1e-6 * float(self.minWeb.get()),
+                    "maxLength": float(self.lgmax.get()),
                     "loadFraction": 1e-2 * float(self.ldf.get()),
                     "step": int(self.steps.get()),
                     "dom": self.dropOptn.get(),
@@ -1810,9 +1823,14 @@ def calculate(
     debug = kwargs["deb"]
     try:
         if constrain:
-            constrained = Constrained(**kwargs)
+            if gunType == CONVENTIONAL:
+                constrained = Constrained(**kwargs)
+            else:
+                constrained = ConstrainedRecoiless(**kwargs)
+
             if optimize:
                 l_f, e_1, l_g = constrained.findMinV(**kwargs)
+
                 kwargs.update(
                     {
                         "loadFraction": round(

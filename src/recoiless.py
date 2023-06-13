@@ -55,6 +55,7 @@ class Recoiless:
         self.p_0 = startPressure
         self.l_g = lengthGun
         self.chi_0 = nozzleEfficiency
+        self.A_bar = nozzleExpansion
         self.chi_k = chamberExpansion
         self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
@@ -112,15 +113,6 @@ class Recoiless:
         Enforce the "recoiless condition" by setting the size of the
         throat.
         """
-        self.S_j_bar = self.getCf(gamma, 1) / (
-            self.getCf(gamma, nozzleExpansion) * self.chi_0
-        )  # = S_j/S
-        if self.S_j_bar > self.chi_k:
-            raise ValueError(
-                "Achieving recoiless condition necessitates"
-                + " higher nozzle expansion ratio than is specified."
-            )
-        self.S_j = self.S_j_bar * self.S
 
         self.K_0 = (2 / (gamma + 1)) ** (
             (gamma + 1) / (2 * (gamma - 1))
@@ -270,6 +262,17 @@ class Recoiless:
 
         if any((steps < 0, tol < 0)):
             raise ValueError("Invalid integration specification")
+
+        gamma = self.theta + 1
+        self.S_j_bar = self.getCf(gamma, 1, tol) / (
+            self.getCf(gamma, self.A_bar, tol) * self.chi_0
+        )  # = S_j/S
+        if self.S_j_bar > self.chi_k:
+            raise ValueError(
+                "Achieving recoiless condition necessitates"
+                + " higher nozzle expansion ratio than is specified."
+            )
+        self.S_j = self.S_j_bar * self.S
 
         l_g_bar = self.l_g / self.l_0
 

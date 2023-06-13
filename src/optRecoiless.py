@@ -2,9 +2,10 @@ from num import GSS, RKF78, cubic, secant
 from prop import Propellant
 from random import uniform
 from math import pi
+from recoiless import Recoiless
 
 
-class Constrained:
+class ConstrainedRecoiless:
     def __init__(
         self,
         caliber,
@@ -14,6 +15,8 @@ class Constrained:
         dragCoefficient,
         designPressure,
         designVelocity,
+        nozzleExpansion,
+        nozzleEfficiency,
         **_,
     ):
         # constants for constrained designs
@@ -26,6 +29,9 @@ class Constrained:
                 dragCoefficient < 0,
                 designPressure <= 0,
                 designVelocity <= 0,
+                nozzleExpansion < 1,
+                nozzleEfficiency > 1,
+                nozzleEfficiency <= 0,
             )
         ):
             raise ValueError("Invalid parameters for constrained design")
@@ -39,6 +45,9 @@ class Constrained:
         # design limits
         self.p_d = designPressure
         self.v_d = designVelocity
+
+        self.chi_0 = nozzleEfficiency
+        self.A_bar = nozzleExpansion
 
     def __getattr__(self, attrName):
         try:
@@ -93,12 +102,31 @@ class Constrained:
         f_psi_Z = self.f_psi_Z
         f_sigma_Z = self.f_sigma_Z
 
+        chi_0 = self.chi_0
+        A_bar = self.A_bar
+
         omega = m * chargeMassRatio
         V_0 = omega / (rho_p * maxLF * loadFraction)
         Delta = omega / V_0
         p_bar_0 = p_0 / (Delta * f)
         l_0 = V_0 / S
         phi = phi_1 + omega / (3 * m)
+
+        gamma = theta + 1
+        S_j_bar = Recoiless.getCf(gamma, 1, tol) / (
+            Recoiless.getCf(gamma, A_bar, tol) * chi_0
+        )
+        S_j = S_j_bar * S
+
+        K_0 = (2 / (gamma + 1)) ** (
+            (gamma + 1) / (2 * (gamma - 1))
+        ) * gamma**0.5
+
+        phi_2 = 1
+        C_A = (
+            (0.5 * theta * phi * m / omega) ** 0.5 * K_0 * phi_2
+        )  # flow rate value
+
         """
         it is impossible to account for the chamberage effect given unspecified
         barrel length, in our formulation
@@ -131,13 +159,10 @@ class Constrained:
             )
         Z_0 = Zs[0]
 
-        def _fp_bar(Z, l_bar, v_bar):
+        def _fp_bar(Z, l_bar, eta, tau):
             psi = f_psi_Z(Z)
-            l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
-
-            p_bar = (
-                f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
-            ) / (S * l_0 * (l_bar + l_psi_bar) * f * Delta)
+            l_psi_bar = 1 - Delta * ((1 - psi) / rho_p - alpha * (psi - eta))
+            p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
             return p_bar
 
@@ -162,42 +187,48 @@ class Constrained:
 
             # integrate this to end of burn
 
-            def _ode_Z(Z, t_bar, l_bar, v_bar):
+            def _ode_Z(Z, t_bar, l_bar, v_bar, eta, tau):
                 """burnout domain ode of internal ballistics"""
                 psi = f_psi_Z(Z)
                 dpsi = f_sigma_Z(Z)  # dpsi/dZ
 
-                l_psi_bar = (
-                    1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
+                l_psi_bar = 1 - Delta * (
+                    (1 - psi) / rho_p - alpha * (psi - eta)
                 )
-                p_bar = (
-                    f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
-                ) / (S * l_0 * (l_bar + l_psi_bar) * f * Delta)
+                p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
                 if Z <= Z_b:
-                    dt_bar = (2 * B / theta) ** 0.5 * p_bar**-n  # dt_bar/dZ
-
-                    dl_bar = v_bar * dt_bar
-
-                    dv_bar = 0.5 * dt_bar * theta * p_bar
+                    dt_bar = (2 * B / theta) ** 0.5 * p_bar**-n
+                    dl_bar = v_bar * (2 * B / theta) ** 0.5 * p_bar**-n
+                    dv_bar = (B * theta * 0.5) ** 0.5 * p_bar ** (1 - n)
 
                 else:
-                    dt_bar = 0
-                    dl_bar = 0
-                    dv_bar = 0
+                    # technically speaking it is undefined in this area
+                    dt_bar = 0  # dt_bar/dZ
+                    dl_bar = 0  # dl_bar/dZ
+                    dv_bar = 0  # dv_bar/dZ
 
-                return [dt_bar, dl_bar, dv_bar]
+                deta = C_A * S_j_bar * p_bar / tau**0.5 * dt_bar  # deta / dZ
+                dtau = (
+                    (
+                        (1 - tau) * (dpsi / dt_bar)
+                        - 2 * v_bar * (dv_bar / dt_bar)
+                        - theta * tau * (deta / dt_bar)
+                    )
+                    / (psi - eta)
+                    * dt_bar
+                )
+
+                return (dt_bar, dl_bar, dv_bar, deta, dtau)
 
             def abort(x, ys, o_x, o_ys):
-                Z = x
-                t_bar, l_bar, v_bar = ys
+                Z, t_bar, l_bar, v_bar, eta, tau = x, *ys
 
-                p_bar = _fp_bar(Z, l_bar, v_bar)
+                p_bar = _fp_bar(Z, l_bar, eta, tau)
 
-                oZ = o_x
-                ot_bar, ol_bar, ov_bar = o_ys
+                oZ, ot_bar, ol_bar, ov_bar, oeta, otau = o_x, *o_ys
 
-                op_bar = _fp_bar(oZ, ol_bar, ov_bar)
+                op_bar = _fp_bar(oZ, ol_bar, oeta, otau)
 
                 return (
                     p_bar < op_bar or p_bar > 2 * p_bar_d
@@ -205,9 +236,13 @@ class Constrained:
 
             record = []
 
-            (Z_j, (t_bar_j, l_bar_j, v_bar_j), (_, _, _)) = RKF78(
+            (
+                Z_j,
+                (t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j),
+                (_, _, _, _, _),
+            ) = RKF78(
                 dFunc=_ode_Z,
-                iniVal=(0, 0, 0),
+                iniVal=(0, 0, 0, 0, 1),
                 x_0=Z_0,
                 x_1=Z_b,
                 relTol=0.1 * tol,
@@ -216,24 +251,30 @@ class Constrained:
                 record=record,
             )
 
-            p_bar_j = _fp_bar(Z_j, l_bar_j, v_bar_j)
+            p_bar_j = _fp_bar(Z_j, l_bar_j, eta_j, tau_j)
 
             if len(record) > 1:
-                Z_i, (t_bar_i, l_bar_i, v_bar_i) = record[-2]
+                Z_i, (t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i) = record[-2]
             else:
-                Z_i, (t_bar_i, l_bar_i, v_bar_i) = Z_0, (0, 0, 0)
+                Z_i, (t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i) = Z_0, (
+                    0,
+                    0,
+                    0,
+                    0,
+                    1,
+                )
 
             def _fp_Z(Z):
-                _, (t_bar, l_bar, v_bar), (_, _, _) = RKF78(
+                _, (t_bar, l_bar, v_bar, eta, tau), (_, _, _, _, _) = RKF78(
                     dFunc=_ode_Z,
-                    iniVal=(t_bar_i, l_bar_i, v_bar_i),
+                    iniVal=(t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i),
                     x_0=Z_i,
                     x_1=Z,
                     relTol=0.01 * tol,
                     absTol=0.01 * tol,
                 )
 
-                return _fp_bar(Z, l_bar, v_bar)
+                return _fp_bar(Z, l_bar, eta, tau)
 
             """
             find the peak pressure point.
@@ -298,24 +339,33 @@ class Constrained:
             * (f * Delta) ** (2 * (1 - n))
         )
 
-        def _ode_v(v_bar, t_bar, Z, l_bar):
+        def _ode_v(v_bar, t_bar, Z, l_bar, eta, tau):
             # p_bar = _fp_bar(Z, l_bar, v_bar)
             psi = f_psi_Z(Z)
             dpsi = f_sigma_Z(Z)  # dpsi/dZ
 
-            l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
-            # dp_bar/dt_bar
-            p_bar = (
-                f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
-            ) / (S * l_0 * (l_bar + l_psi_bar) * f * Delta)
+            l_psi_bar = 1 - Delta * ((1 - psi) / rho_p - alpha * (psi - eta))
+            p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
             if Z <= Z_b:
                 dZ = (2 / (B * theta)) ** 0.5 * p_bar ** (n - 1)
             else:
                 dZ = 0
             dl_bar = 2 * v_bar / (theta * p_bar)
-            dt_bar = 2 / (theta * p_bar)
-            return (dt_bar, dZ, dl_bar)
+            dt_bar = 2 / (theta * p_bar)  # dt_bar/dv_bar
+
+            deta = C_A * S_j_bar * p_bar / tau**0.5 * dt_bar  # deta / dv_bar
+            dtau = (
+                (
+                    (1 - tau) * (dpsi * dZ / dt_bar)  # dZ/dt_bar
+                    - 2 * v_bar / dt_bar  # dv_bar/dt_bar
+                    - theta * tau * (deta / dt_bar)  # deta/dt_bar
+                )
+                / (psi - eta)
+                * dt_bar
+            )  # dtau/dt_bar
+
+            return (dt_bar, dZ, dl_bar, deta, dtau)
 
         """
         Integrating from 0 enforce consistency and improves numerical
@@ -325,12 +375,12 @@ class Constrained:
 
         def abort(x, ys, o_x, o_ys):
             v_bar = x
-            t_bar, Z, l_bar = ys
+            t_bar, Z, l_bar, eta, tau = ys
             return l_bar > l_bar_d
 
-        (v_bar_g, (t_bar_g, Z_g, l_bar_g), (_, _, _)) = RKF78(
+        (v_bar_g, (t_bar_g, Z_g, l_bar_g, eta, tau), (_, _, _, _, _)) = RKF78(
             dFunc=_ode_v,
-            iniVal=(0, Z_0, 0),
+            iniVal=(0, Z_0, 0, 0, 1),
             x_0=0,
             x_1=v_bar_d,
             relTol=tol,
@@ -343,7 +393,8 @@ class Constrained:
                     maxLength
                 )
             )
-        # print("p
+        # print("p_tol=", self.f * Delta * tol, " Pa")
+        # print("p_dev=", self.f * Delta * p_bar_dev, " Pa")
         if abs(v_bar_g - v_bar_d) / (v_bar_d) > tol:
             raise ValueError("Velocity specification is not met")
 
@@ -484,15 +535,19 @@ if __name__ == "__main__":
     S22 = compositions["ATK PRD(S)22"]
     S22S = Propellant(S22, SimpleGeometry.SPHERE, 1, 2.5)
 
-    test = Constrained(
+    test = ConstrainedRecoiless(
         caliber=50e-3,
         shotMass=1,
         propellant=S22S,
         startPressure=10e6,
         dragCoefficient=5e-2,
         designPressure=350e6,
-        designVelocity=1500,
+        designVelocity=800,
+        nozzleExpansion=2,
+        nozzleEfficiency=0.92,
     )
+
+    test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-3)
 
     for i in range(10):
         print(test.findMinV(chargeMassRatio=1, tol=1e-3, minWeb=1e-6))
