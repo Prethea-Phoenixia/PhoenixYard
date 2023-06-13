@@ -413,24 +413,32 @@ class IB(Frame):
                     "con": constrain,
                     "deb": debug,
                     "typ": gunType,
-                    "cal": float(self.calmm.get()) * 1e-3,
-                    "m": float(self.shtkg.get()),
-                    "prop": self.prop,
-                    "2e1": float(self.arcmm.get()) * 1e-3,
-                    "w": float(self.chgkg.get()),
-                    "cv": chamberVolume,
-                    "sp": float(self.stpMPa.get()) * 1e6,
-                    "lg": float(self.tblmm.get()) * 1e-3,
-                    "ce": float(self.clr.get()),  # chamber expansion
-                    "nexp": float(self.nozzExp.get()),  # nozzle expansion
-                    "neff": float(self.nozzEff.get())
+                    "caliber": float(self.calmm.get()) * 1e-3,
+                    "shotMass": float(self.shtkg.get()),
+                    "propellant": self.prop,
+                    "grainSize": float(self.arcmm.get()) * 1e-3,
+                    "chargeMass": float(self.chgkg.get()),
+                    "chargeMassRatio": float(self.chgkg.get())
+                    / float(self.shtkg.get()),
+                    "chamberVolume": chamberVolume,
+                    "startPressure": float(self.stpMPa.get()) * 1e6,
+                    "lengthGun": float(self.tblmm.get()) * 1e-3,
+                    "chamberExpansion": float(
+                        self.clr.get()
+                    ),  # chamber expansion
+                    "nozzleExpansion": float(
+                        self.nozzExp.get()
+                    ),  # nozzle expansion
+                    "nozzleEfficiency": float(self.nozzEff.get())
                     * 1e-2,  # nozzle efficiency
-                    "dc": float(self.dgc.get()) * 1e-2,  # drag coefficient
-                    "dp": float(self.pTgt.get()) * 1e6,  # design pressure
-                    "dv": float(self.vTgt.get()),  # design velocity
+                    "dragCoefficient": float(self.dgc.get())
+                    * 1e-2,  # drag coefficient
+                    "designPressure": float(self.pTgt.get())
+                    * 1e6,  # design pressure
+                    "designVelocity": float(self.vTgt.get()),  # design velocity
                     "tol": 10 ** -int(self.accExp.get()),
-                    "mw": 1e-6 * float(self.minWeb.get()),
-                    "lf": 1e-2 * float(self.ldf.get()),
+                    "minWeb": 1e-6 * float(self.minWeb.get()),
+                    "loadFraction": 1e-2 * float(self.ldf.get()),
                     "step": int(self.steps.get()),
                     "dom": self.dropOptn.get(),
                 }
@@ -506,34 +514,37 @@ class IB(Frame):
         kwargs = self.kwargs
 
         if self.gun is not None:
-            chamberVolume = kwargs["cv"]
+            chamberVolume = kwargs["chamberVolume"]
 
             self.cv.set(toSI(chamberVolume, useSN=True))
 
             if constrain:
                 webmm = round(
-                    1e3 * kwargs["2e1"],
-                    3 - int(floor(log10(abs(1e3 * kwargs["2e1"])))),
+                    1e3 * kwargs["grainSize"],
+                    3 - int(floor(log10(abs(1e3 * kwargs["grainSize"])))),
                 )
                 self.arcmm.set(webmm)
 
                 lgmm = round(
-                    kwargs["lg"] * 1e3,
-                    3 - int(floor(log10(abs(kwargs["lg"] * 1000)))),
+                    kwargs["lengthGun"] * 1e3,
+                    3 - int(floor(log10(abs(kwargs["lengthGun"] * 1000)))),
                 )
 
                 self.tblmm.set(lgmm)
                 if optimize:
                     lfpercent = round(
-                        kwargs["lf"] * 100,
-                        3 - int(floor(log10(abs(kwargs["lf"] * 100)))),
+                        kwargs["loadFraction"] * 100,
+                        3
+                        - int(floor(log10(abs(kwargs["loadFraction"] * 100)))),
                     )
                     self.ldf.set(lfpercent)
 
-            self.ldp.set(round(self.prop.maxLF * kwargs["lf"] * 100, 1))
+            self.ldp.set(
+                round(self.prop.maxLF * kwargs["loadFraction"] * 100, 1)
+            )
             self.ld.set(
                 toSI(
-                    self.prop.maxLF * kwargs["lf"] * self.prop.rho_p,
+                    self.prop.maxLF * kwargs["loadFraction"] * self.prop.rho_p,
                     useSN=True,
                 )
             )
@@ -545,7 +556,7 @@ class IB(Frame):
             self.be.set(round(te / self.gun.phi * 100, 1))
 
             i = [i[0] for i in self.tableData].index("PEAK PRESSURE")
-            _, tp, lp, vp, _, pp, Tp, etap = self.tableData[i]
+            _, tp, lp, _, vp, pp, Tp, etap = self.tableData[i]
 
             if gunType == CONVENTIONAL:
                 Pb, Pt = self.gun.toPbPt(lp, pp)
@@ -556,16 +567,20 @@ class IB(Frame):
                 self.ptm.set(toSI(P0))
                 self.pbm.set(toSI(Pb))
 
-            self.lx.set(toSI(kwargs["lg"] / kwargs["cal"]))
+            self.lx.set(toSI(kwargs["lengthGun"] / kwargs["caliber"]))
             self.tlx.set(
                 toSI(
-                    (kwargs["lg"] + self.gun.l_0 / kwargs["ce"]) / kwargs["cal"]
+                    (
+                        kwargs["lengthGun"]
+                        + self.gun.l_0 / kwargs["chamberExpansion"]
+                    )
+                    / kwargs["caliber"]
                 )
             )
             self.va.set(toSI(self.gun.v_j))
 
         self.tv.delete(*self.tv.get_children())
-        useSN = (False, False, False, True, False, False, True, False)
+        useSN = (False, False, False, True, False, False, True, True)
         units = (None, "s", "m", None, "m/s", "Pa", "K", None)
         tableData = dot_aligned(
             self.tableData,
@@ -575,6 +590,7 @@ class IB(Frame):
         errorData = dot_aligned(self.errorData, units=units, useSN=useSN)
         # negErr, posErr = arrErr(self.errorData, units=units, useSN=useSN)
         i = 0
+
         for row, erow in zip(tableData, errorData):
             self.tv.insert(
                 "", "end", str(i), values=row, tags=(row[0], "monospace")
@@ -1112,12 +1128,12 @@ class IB(Frame):
                 self.ax.set_xlim(left=0, right=xs[-1])
                 self.ax.set_ylim(bottom=0, top=1.05)
 
-                self.axP.set(ylim=(0, max(max(Ps), max(Pbs), max(Pts)) * 1.05))
+                self.axP.set(ylim=(0, max(Ps + Pbs + Pts + P0s + Pxs) * 1.05))
                 self.axv.set(ylim=(0, max(vs) * 1.05))
 
-                (xs, vs, Ps, Pbs, Pts, psis, etas) = zip(
+                (xs, vs, Ps, Pbs, Pts, P0s, Pxs, psis, etas) = zip(
                     *sorted(
-                        zip(xs, vs, Ps, Pbs, Pts, psis, etas),
+                        zip(xs, vs, Ps, Pbs, Pts, P0s, Pxs, psis, etas),
                         key=lambda line: line[0],
                     )
                 )
@@ -1144,19 +1160,27 @@ class IB(Frame):
                     self.axP.plot(
                         xs,
                         Pts,
-                        "tab:green",
+                        "seagreen",
                         label="Breech Face",
                         linestyle="dashed",
-                        alpha=0.5,
+                        alpha=0.75,
                     )
                 else:
                     self.axP.plot(
                         xs,
                         P0s,
-                        "tab:green",
+                        "seagreen",
                         label="Stagnation",
                         linestyle="dashed",
-                        alpha=0.5,
+                        alpha=0.75,
+                    )
+                    self.axP.plot(
+                        xs,
+                        Pxs,
+                        "yellowgreen",
+                        label="Nozzle Throat",
+                        linestyle="dashdot",
+                        alpha=0.75,
                     )
 
                 (pP,) = self.axP.plot(
@@ -1170,10 +1194,10 @@ class IB(Frame):
                 self.axP.plot(
                     xs,
                     Pbs,
-                    "tab:green",
+                    "olive",
                     label="Shot Base",
                     linestyle="dotted",
-                    alpha=0.5,
+                    alpha=0.75,
                 )
                 Pd = float(self.pTgt.get())
                 self.axP.scatter(
@@ -1195,6 +1219,18 @@ class IB(Frame):
                     alpha=1,
                 )
 
+                if gunType == CONVENTIONAL:
+                    pass
+                else:
+                    self.ax.plot(
+                        xs,
+                        etas,
+                        "tab:orange",
+                        label="Outflow Frac.",
+                        marker=".",
+                        alpha=0.75,
+                    )
+
                 tkw = dict(size=4, width=1.5)
 
                 self.ax.yaxis.tick_right()
@@ -1215,15 +1251,14 @@ class IB(Frame):
                         self.axv.get_lines(),
                     ),
                     (
-                        (0.3 * xs[-1] + 0.7 * xPeak, xs[-1]),
+                        (0.2 * xs[-1] + 0.8 * xPeak, xs[-1]),
                         (0, xPeak),
-                        (xPeak, 0.3 * xs[-1] + 0.7 * xPeak),
+                        (xPeak, 0.2 * xs[-1] + 0.8 * xPeak),
                     ),
                 ):
                     labelLines(
                         lines,
                         align=True,
-                        # color=,
                         xvals=xvals,
                     )
 
@@ -1254,20 +1289,20 @@ class IB(Frame):
             "Velocity",
             "Avg. Pressure",
             "Avg. Temp.",
-            "Gas Escape",
+            "Outflow Fract.",
         ]
         tblFrm = ttk.LabelFrame(parent, text="Result Table")
         tblFrm.grid(row=2, column=0, sticky="nsew")
 
         tblFrm.columnconfigure(0, weight=1)
-        tblFrm.rowconfigure(1, weight=1)
+        tblFrm.rowconfigure(0, weight=1)
 
         # configure the numerical
 
         self.tv = ttk.Treeview(
             tblFrm, selectmode="browse", height=10
         )  # this set the nbr. of values
-        self.tv.grid(row=1, column=0, sticky="nsew")
+        self.tv.grid(row=0, column=0, sticky="nsew")
 
         self.tv["columns"] = columnList
         self.tv["show"] = "headings"
@@ -1300,14 +1335,15 @@ class IB(Frame):
             tblFrm, orient="vertical"
         )  # create a scrollbar
         vertscroll.configure(command=self.tv.yview)  # make it vertical
-        vertscroll.grid(row=1, column=1, sticky="nsew")
-
+        vertscroll.grid(row=0, column=1, sticky="nsew")
+        """
         horzscroll = ttk.Scrollbar(tblFrm, orient="horizontal")
         horzscroll.configure(command=self.tv.xview)
-        horzscroll.grid(row=2, column=0, sticky="nsew")
+        horzscroll.grid(row=1, column=0, sticky="nsew")
         self.tv.configure(
             yscrollcommand=vertscroll.set, xscrollcommand=horzscroll.set
         )  # assign the scrollbar to the Treeview Widget
+        """
 
     def updateSpec(self, var, index, mode):
         self.specs.config(state="normal")
@@ -1774,78 +1810,47 @@ def calculate(
     debug = kwargs["deb"]
     try:
         if constrain:
-            constrained = Constrained(
-                caliber=kwargs["cal"],
-                shotMass=kwargs["m"],
-                propellant=kwargs["prop"],
-                startPressure=kwargs["sp"],
-                dragCoe=kwargs["dc"],
-                designPressure=kwargs["dp"],
-                designVelocity=kwargs["dv"],
-            )
+            constrained = Constrained(**kwargs)
             if optimize:
-                l_f, e_1, l_g = constrained.findMinV(
-                    chargeMassRatio=kwargs["w"] / kwargs["m"],
-                    tol=kwargs["tol"],
-                    minWeb=kwargs["mw"],
-                )
+                l_f, e_1, l_g = constrained.findMinV(**kwargs)
                 kwargs.update(
-                    {"lf": round(l_f, 3 - int(floor(log10(abs(l_f)))))}
+                    {
+                        "loadFraction": round(
+                            l_f, 3 - int(floor(log10(abs(l_f))))
+                        )
+                    }
                 )
 
             else:
-                e_1, l_g = constrained.solve(
-                    loadFraction=kwargs["lf"],
-                    chargeMassRatio=kwargs["w"] / kwargs["m"],
-                    tol=kwargs["tol"],
-                    minWeb=kwargs["mw"],
-                )
+                e_1, l_g = constrained.solve(**kwargs)
 
             kwargs.update(
-                {"2e1": round(2 * e_1, 3 - int(floor(log10(abs(2 * e_1)))))}
+                {
+                    "grainSize": round(
+                        2 * e_1, 3 - int(floor(log10(abs(2 * e_1))))
+                    )
+                }
             )
-            kwargs.update({"lg": round(l_g, 3 - int(floor(log10(abs(l_g)))))})
+            kwargs.update(
+                {"lengthGun": round(l_g, 3 - int(floor(log10(abs(l_g)))))}
+            )
 
             chamberVolume = (
-                kwargs["w"]
-                / kwargs["prop"].rho_p
-                / kwargs["prop"].maxLF
-                / kwargs["lf"]
+                kwargs["chargeMass"]
+                / kwargs["propellant"].rho_p
+                / kwargs["propellant"].maxLF
+                / kwargs["loadFraction"]
             )
 
-            kwargs.update({"cv": chamberVolume})
+            kwargs.update({"chamberVolume": chamberVolume})
 
         else:
             pass
 
         if gunType == CONVENTIONAL:
-            gun = Gun(
-                caliber=kwargs["cal"],
-                shotMass=kwargs["m"],
-                propellant=kwargs["prop"],
-                grainSize=kwargs["2e1"],
-                chargeMass=kwargs["w"],
-                chamberVolume=kwargs["cv"],
-                startPressure=kwargs["sp"],
-                lengthGun=kwargs["lg"],
-                chamberExpansion=kwargs["ce"],
-                dragCoe=kwargs["dc"],
-            )
+            gun = Gun(**kwargs)
         else:
-            gun = Recoiless(
-                caliber=kwargs["cal"],
-                shotMass=kwargs["m"],
-                propellant=kwargs["prop"],
-                grainSize=kwargs["2e1"],
-                chargeMass=kwargs["w"],
-                chamberVolume=kwargs["cv"],
-                startopenPressure=kwargs["sp"],
-                lengthGun=kwargs["lg"],
-                nozzleExpansion=kwargs["nexp"],
-                nozzleEfficiency=kwargs["neff"],
-                chamberExpansion=kwargs["ce"],
-                dragCoe=kwargs["dc"],
-            )
+            gun = Recoiless(**kwargs)
 
         tableData, errorData = gun.integrate(
             steps=kwargs["step"],

@@ -21,12 +21,13 @@ class Recoiless:
         grainSize,
         chargeMass,
         chamberVolume,
-        startopenPressure,
+        startPressure,
         lengthGun,
         chamberExpansion,
         nozzleExpansion,
-        dragCoe=0,
+        dragCoefficient=0,
         nozzleEfficiency=0.92,
+        **_,
     ):
         if any(
             (
@@ -39,8 +40,8 @@ class Recoiless:
                 nozzleExpansion < 1,
                 nozzleEfficiency > 1,
                 nozzleEfficiency <= 0,
-                dragCoe < 0,
-                startopenPressure < 0,
+                dragCoefficient < 0,
+                startPressure < 0,
             )
         ):
             raise ValueError("Invalid gun parameters")
@@ -51,14 +52,14 @@ class Recoiless:
         self.propellant = propellant
         self.omega = chargeMass
         self.V_0 = chamberVolume
-        self.p_0 = startopenPressure
+        self.p_0 = startPressure
         self.l_g = lengthGun
         self.chi_0 = nozzleEfficiency
         self.chi_k = chamberExpansion
         self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
         Labda = self.l_g / self.l_0
-        self.phi_1 = 1 + dragCoe  # drag work coefficient
+        self.phi_1 = 1 + dragCoefficient  # drag work coefficient
         self.phi = self.phi_1 + self.omega / (3 * self.m)
         # chamberage effect is explicitly not accounted for.
         self.v_j = (
@@ -942,7 +943,13 @@ class Recoiless:
         y = self.omega * eta
         m_dot = self.C_A * self.v_j * self.S * p / (self.f * tau**0.5)
         v_x = m_dot * (self.V_0 + self.S * l) / (self.S_j * (self.omega - y))
-        H = v_x / v
+        if l == 0:
+            H = inf
+        else:
+            H = v_x / v
+
+        H = min(H, 2 * self.phi_1 * self.m / (self.omega - y) + 1)
+
         pb = p / (
             1 + (self.omega - y) / (3 * self.phi_1 * self.m) * (1 - 0.5 * H)
         )  # shot base pressure
@@ -952,7 +959,6 @@ class Recoiless:
         px = pb * (
             1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 - H)
         )  # muzzle pressure
-
         return pb, p0, px
 
     @staticmethod
@@ -1003,7 +1009,7 @@ if __name__ == "__main__":
         grainSize=1e-5,
         chargeMass=0.3,
         chamberVolume=0.3 / M17SHC.rho_p / M17SHC.maxLF / lf,
-        startopenPressure=30e6,
+        startPressure=30e6,
         lengthGun=3.5,
         nozzleExpansion=2.0,
         chamberExpansion=1.0,

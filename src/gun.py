@@ -24,7 +24,8 @@ class Gun:
         startPressure,
         lengthGun,
         chamberExpansion,
-        dragCoe=0,
+        dragCoefficient=0,
+        **_,
     ):
         if any(
             (
@@ -35,7 +36,7 @@ class Gun:
                 chamberVolume <= 0,
                 lengthGun <= 0,
                 chamberExpansion < 1,
-                dragCoe < 0,
+                dragCoefficient < 0,
             )
         ):
             raise ValueError("Invalid gun parameters")
@@ -52,7 +53,7 @@ class Gun:
         self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
         Labda = self.l_g / self.l_0
-        self.phi_1 = 1 + dragCoe  # drag work coefficient
+        self.phi_1 = 1 + dragCoefficient  # drag work coefficient
         self.phi = self.phi_1 + self.omega / (3 * self.m) * (
             1 - (1 - 1 / self.chi_k) * 2.303 * log(Labda + 1) / Labda
         )  # extra work factor, chamberage effect averaged over entire length

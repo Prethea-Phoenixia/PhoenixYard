@@ -11,9 +11,10 @@ class Constrained:
         shotMass,
         propellant,
         startPressure,
-        dragCoe,
+        dragCoefficient,
         designPressure,
         designVelocity,
+        **_,
     ):
         # constants for constrained designs
 
@@ -22,7 +23,7 @@ class Constrained:
                 caliber <= 0,
                 shotMass <= 0,
                 startPressure <= 0,
-                dragCoe < 0,
+                dragCoefficient < 0,
                 designPressure <= 0,
                 designVelocity <= 0,
             )
@@ -33,7 +34,7 @@ class Constrained:
         self.m = shotMass
         self.propellant = propellant
         self.p_0 = startPressure
-        self.phi_1 = 1 + dragCoe
+        self.phi_1 = 1 + dragCoefficient
 
         # design limits
         self.p_d = designPressure
@@ -53,6 +54,7 @@ class Constrained:
         minWeb=1e-6,
         containBurnout=True,
         maxLength=1e3,
+        **_,
     ):
         if any(
             (
@@ -348,7 +350,7 @@ class Constrained:
 
         return e_1, l_bar_g * l_0
 
-    def findMinV(self, chargeMassRatio, tol, minWeb):
+    def findMinV(self, chargeMassRatio, tol, minWeb, **_):
         """
         find the minimum volume solution.
         """
