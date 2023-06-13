@@ -1056,7 +1056,7 @@ class IB(Frame):
     def updateFigPlot(self):
         with mpl.rc_context(FIG_CONTEXT):
             gun = self.gun
-            gunType = self.typeOptn.get()
+            gunType = self.kwargs["typ"]
             self.ax.cla()
             self.axP.cla()
             self.axv.cla()

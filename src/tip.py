@@ -179,7 +179,8 @@ clrtext = " ".join(
         "to that of the barrel, or put another way, the length a chamber would have if its",
         "in line with the barrel to that of the actual chamber length. This parameters is",
         "used to correct for chamberage effect, which is most significant at the start of",
-        "IB cycle.",
+        "IB cycle. Currently the chamberage correction for conventional guns employ a length",
+        "averaged approach. Recoiless guns are (currenlty) not corrected for chamberage effect.",
     )
 )
 dgctext = " ".join(
@@ -195,7 +196,9 @@ sampTxt = " ".join(
     (
         "Samples are taken equidistantly along specified domain.",
         "Sampling is done after the system has been solved and thus",
-        "does not influence the accuracy of calculation in anyway.",
+        "does not influence the accuracy of characteristc points.",
+        "This can be used to sanity-check and validate calculations",
+        "made to an accuracy specification.",
     )
 )
 
@@ -214,6 +217,10 @@ optLFTxt = " ".join(
     (
         "Find the optimum load fraction for this charge mass, minimizing",
         "tube volume (including chamber), in addition to the above constraints.",
+        "The minimum volume solution is not necessarily appropriate for indirect",
+        "fire guns, as the proximity of burnout point with the muzzle end tends",
+        "to exacerbate velocity dispersion due to uneven burning, and the effect",
+        "of ambient temperature on propellant force.",
     )
 )
 

@@ -3,9 +3,10 @@ from IB import IB
 from misc import center, loadfont, resolvepath
 from ctypes import windll
 import platform
-
+import multiprocessing
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     # this tells windows that our program will handle scaling ourselves
     winRelease = platform.release()
     if winRelease in ("8", "10"):
@@ -36,7 +37,7 @@ if __name__ == "__main__":
     root.option_add("*Font", "Hack 8")
     root.option_add("*tearOff", FALSE)
 
-    root.title("Phoenix's Internal Ballistics Solver v0.3")
+    root.title("PIBS Phoenix's Internal Ballistics Solver v0.3")
 
     ibPanel = IB(root, dpi)
 
