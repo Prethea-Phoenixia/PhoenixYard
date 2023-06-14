@@ -1359,14 +1359,13 @@ class IB(Frame):
         )  # create a scrollbar
         vertscroll.configure(command=self.tv.yview)  # make it vertical
         vertscroll.grid(row=0, column=1, sticky="nsew")
-        """
+
         horzscroll = ttk.Scrollbar(tblFrm, orient="horizontal")
         horzscroll.configure(command=self.tv.xview)
         horzscroll.grid(row=1, column=0, sticky="nsew")
         self.tv.configure(
             yscrollcommand=vertscroll.set, xscrollcommand=horzscroll.set
         )  # assign the scrollbar to the Treeview Widget
-        """
 
     def updateSpec(self, var, index, mode):
         self.specs.config(state="normal")
