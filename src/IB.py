@@ -56,13 +56,12 @@ from misc import (
 from math import ceil, floor, log10
 
 import matplotlib.pyplot as mpl
-from matplotlib.backend_bases import key_press_handler
 from matplotlib.figure import Figure
 from labellines import labelLine, labelLines
-from matplotlib.backends.backend_tkagg import (
-    FigureCanvasTkAgg,
-    NavigationToolbar2Tk,
-)
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.widgets import Cursor
+
+# import mplcursors
 
 from multiprocessing import Process, Queue
 from queue import Empty
@@ -1252,6 +1251,13 @@ class IB(Frame):
                 self.axP.tick_params(axis="y", colors=pP.get_color(), **tkw)
                 self.ax.tick_params(axis="x", **tkw)
 
+                """
+                This would be heavily appreciated, however the mplcursors library
+                currently has issues with highlighted lines getting deleted.
+
+                # mplcursors.cursor(ppsi, highlight=True)
+                """
+
                 if dom == DOMAIN_TIME:
                     self.ax.set_xlabel("Time - ms")
                 elif dom == DOMAIN_LENG:
@@ -1285,9 +1291,17 @@ class IB(Frame):
             else:
                 self.axP.spines.right.set_position(("axes", 0.5))
                 self.ax.set_xlabel("Domain")
-
+            """
+            self.figCursor = Cursor(
+                self.axP,
+                horizOn=True,
+                vertOn=False,
+                color="white",
+                linewidth=1.0,
+            )
+            """
             self.axP.yaxis.set_ticks(self.axP.get_yticks()[1:-1:])
-            self.pltCanvas.draw()
+            self.pltCanvas.draw_idle()
 
     def addTblFrm(self, parent):
         columnList = [
@@ -1480,7 +1494,7 @@ class IB(Frame):
                     [i * 0.5 for i in range(ceil(max(ys) / 0.5) + 1)]
                 )
 
-            self.geomCanvas.draw()
+            self.geomCanvas.draw_idle()
 
     def updateError(self):
         self.errorText.delete("1.0", "end")
