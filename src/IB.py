@@ -61,7 +61,6 @@ from labellines import labelLine, labelLines
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.widgets import Cursor
 
-# import mplcursors
 
 from multiprocessing import Process, Queue
 from queue import Empty
@@ -147,8 +146,8 @@ class IB(Frame):
         parent.update_idletasks()
         self.addFigPlot()
 
-        self.updateSpec(None, None, None)
-        self.updateGeom(None, None, None)
+        self.updateSpec()
+        self.updateGeom()
 
         self.forceUpdOnThemeWidget.append(self.errorText)
         self.forceUpdOnThemeWidget.append(self.specs)
@@ -159,12 +158,62 @@ class IB(Frame):
         self.timedLoop()
 
     def addTopBar(self, parent):
-        topFrm = ttk.Frame(parent)
+        topFrm = ttk.LabelFrame(parent, text="Plot Option")
         topFrm.grid(row=0, column=0, sticky="nsew")
-        topFrm.columnconfigure(0, weight=1)
+        topFrm.columnconfigure(7, weight=1)
 
         self.pbar = ttk.Progressbar(topFrm, mode="indeterminate", maximum=100)
-        self.pbar.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
+        self.pbar.grid(
+            row=0, column=0, columnspan=8, sticky="nsew", padx=2, pady=2
+        )
+
+        self.plotAvgP = IntVar(value=1)
+
+        ttk.Checkbutton(
+            topFrm, text="Length Avg. P.", variable=self.plotAvgP
+        ).grid(row=1, column=0, sticky="nsew")
+        self.plotBaseP = IntVar(value=1)
+        ttk.Checkbutton(
+            topFrm, text="Shot Base P.", variable=self.plotBaseP
+        ).grid(row=1, column=1, sticky="nsew")
+
+        self.plotBreechNozzleP = IntVar(value=1)
+        ttk.Checkbutton(
+            topFrm, text="Breech/Nozzle P.", variable=self.plotBreechNozzleP
+        ).grid(row=1, column=2, sticky="nsew")
+
+        self.plotStagP = IntVar(value=1)
+        ttk.Checkbutton(
+            topFrm, text="Stagnation P.", variable=self.plotStagP
+        ).grid(row=1, column=3, sticky="nsew")
+
+        self.plotVel = IntVar(value=1)
+        ttk.Checkbutton(topFrm, text="Shot Vel.", variable=self.plotVel).grid(
+            row=1, column=4, sticky="nsew"
+        )
+
+        self.plotNozzleV = IntVar(value=1)
+        ttk.Checkbutton(
+            topFrm, text="Nozzle Throat Vel.", variable=self.plotNozzleV
+        ).grid(row=1, column=5, sticky="nsew")
+
+        self.plotBurnup = IntVar(value=1)
+        ttk.Checkbutton(topFrm, text="Burnup", variable=self.plotBurnup).grid(
+            row=1, column=6, sticky="nsew"
+        )
+        self.plotEta = IntVar(value=1)
+        ttk.Checkbutton(topFrm, text="Escape", variable=self.plotEta).grid(
+            row=1, column=7, sticky="nsew"
+        )
+
+        self.plotAvgP.trace_add("write", self.updateFigPlot)
+        self.plotBaseP.trace_add("write", self.updateFigPlot)
+        self.plotBreechNozzleP.trace_add("write", self.updateFigPlot)
+        self.plotStagP.trace_add("write", self.updateFigPlot)
+        self.plotEta.trace_add("write", self.updateFigPlot)
+        self.plotNozzleV.trace_add("write", self.updateFigPlot)
+        self.plotBurnup.trace_add("write", self.updateFigPlot)
+        self.plotVel.trace_add("write", self.updateFigPlot)
         """
         self.summary = ttk.Entry(topFrm, justify="right", state="disabled")
         self.summary.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
@@ -322,7 +371,7 @@ class IB(Frame):
             consFrm, text="Minimize Tube Volume", variable=self.opt_lf
         )
         self.optimizeLF.grid(row=j, column=0, columnspan=3, sticky="nsew")
-        self.setCD(None, None, None)
+        self.setCD()
 
         CreateToolTip(self.optimizeLF, optLFTxt)
         i += 1
@@ -406,7 +455,13 @@ class IB(Frame):
         self.tableData = []
         self.errorData = []
         self.intgRecord = []
-        self.kwargs = {}
+        self.kwargs = {
+            "opt": optimize,
+            "con": constrain,
+            "deb": debug,
+            "typ": gunType,
+            "dom": self.dropOptn.get(),
+        }
         self.process = None
 
         try:
@@ -420,10 +475,6 @@ class IB(Frame):
 
             self.kwargs.update(
                 {
-                    "opt": optimize,
-                    "con": constrain,
-                    "deb": debug,
-                    "typ": gunType,
                     "caliber": float(self.calmm.get()) * 1e-3,
                     "shotMass": float(self.shtkg.get()),
                     "propellant": self.prop,
@@ -452,7 +503,6 @@ class IB(Frame):
                     "maxLength": float(self.lgmax.get()),
                     "loadFraction": 1e-2 * float(self.ldf.get()),
                     "step": int(self.steps.get()),
-                    "dom": self.dropOptn.get(),
                 }
             )
 
@@ -575,7 +625,7 @@ class IB(Frame):
                 self.ptm.set(toSI(Pt))
                 self.pbm.set(toSI(Pb))
             else:
-                Pb, P0, Px = self.gun.toPbP0Px(lp, vp, pp, Tp, etap)
+                Pb, P0, Px, _ = self.gun.toPbP0PxVx(lp, vp, pp, Tp, etap)
                 self.ptm.set(toSI(P0))
                 self.pbm.set(toSI(Pb))
 
@@ -637,7 +687,7 @@ class IB(Frame):
             errorFrm,
             yscrollcommand=errScroll.set,
             wrap=WORD,
-            height=10,
+            height=5,
             width=0,
         )
 
@@ -929,7 +979,7 @@ class IB(Frame):
         self.arcmm.trace_add("write", self.callback)
 
         self.gunType.trace_add("write", self.typeCallback)
-        self.typeCallback(None, None, None)
+        self.typeCallback()
 
     def addGeomPlot(self):
         geomParentFrm = self.geomParentFrm
@@ -1051,10 +1101,13 @@ class IB(Frame):
 
         self.parent.after(100, self.timedLoop)
 
-    def updateFigPlot(self):
+    def updateFigPlot(self, *args):
         with mpl.rc_context(FIG_CONTEXT):
             gun = self.gun
-            gunType = self.kwargs["typ"]
+            try:
+                gunType = self.kwargs["typ"]
+            except AttributeError:
+                return
             self.ax.cla()
             self.axP.cla()
             self.axv.cla()
@@ -1078,6 +1131,7 @@ class IB(Frame):
                 Pxs = []
                 psis = []
                 etas = []
+                vxs = []
                 dom = self.dropOptn.get()
 
                 for i, (t, (l, psi, v, p, T, eta)) in enumerate(
@@ -1092,19 +1146,24 @@ class IB(Frame):
                     if gunType == CONVENTIONAL:
                         Pb, Pt = gun.toPbPt(l, p)
                         P0, Px = 0, 0
+                        vx = 0
                     else:
-                        Pb, P0, Px = gun.toPbP0Px(l, v, p, T, eta)
+                        Pb, P0, Px, vx = gun.toPbP0PxVx(l, v, p, T, eta)
                         Pt = 0
                     Pbs.append(Pb / 1e6)
                     Pts.append(Pt / 1e6)
                     P0s.append(P0 / 1e6)
                     Pxs.append(Px / 1e6)
+                    vxs.append(vx)
                     psis.append(psi)
                     etas.append(eta)
 
-                self.axv.scatter(xs, vs, color="tab:blue", marker="s", s=8)
-                self.axP.scatter(xs, Ps, color="tab:green", marker="s", s=8)
-                self.ax.scatter(xs, psis, color="tab:red", marker="s", s=8)
+                if self.plotVel.get():
+                    self.axv.scatter(xs, vs, color="tab:blue", marker="s", s=8)
+                if self.plotAvgP.get():
+                    self.axP.scatter(xs, Ps, color="tab:green", marker="s", s=8)
+                if self.plotBurnup.get():
+                    self.ax.scatter(xs, psis, color="tab:red", marker="s", s=8)
 
                 xPeak = 0
                 for i, (tag, t, l, psi, v, p, T, eta) in enumerate(
@@ -1123,14 +1182,16 @@ class IB(Frame):
                     if gunType == CONVENTIONAL:
                         Pb, Pt = gun.toPbPt(l, p)
                         P0, Px = 0, 0
+                        vx = 0
                     else:
-                        Pb, P0, Px = gun.toPbP0Px(l, v, p, T, eta)
+                        Pb, P0, Px, vx = gun.toPbP0PxVx(l, v, p, T, eta)
                         Pt = 0
 
                     Pbs.append(Pb / 1e6)
                     Pts.append(Pt / 1e6)
                     P0s.append(P0 / 1e6)
                     Pxs.append(Px / 1e6)
+                    vxs.append(vx)
                     psis.append(psi)
                     etas.append(eta)
 
@@ -1142,21 +1203,21 @@ class IB(Frame):
                 self.axP.set(ylim=(0, max(Ps + Pbs + Pts + P0s + Pxs) * 1.05))
                 self.axv.set(ylim=(0, max(vs) * 1.05))
 
-                (xs, vs, Ps, Pbs, Pts, P0s, Pxs, psis, etas) = zip(
+                (xs, vs, vxs, Ps, Pbs, Pts, P0s, Pxs, psis, etas) = zip(
                     *sorted(
-                        zip(xs, vs, Ps, Pbs, Pts, P0s, Pxs, psis, etas),
+                        zip(xs, vs, vxs, Ps, Pbs, Pts, P0s, Pxs, psis, etas),
                         key=lambda line: line[0],
                     )
                 )
-
-                (pv,) = self.axv.plot(
-                    xs,
-                    vs,
-                    "tab:blue",
-                    label="Shot Velocity\nm/s",
-                    marker=".",
-                    alpha=1,
-                )
+                if self.plotVel.get():
+                    self.axv.plot(
+                        xs,
+                        vs,
+                        "tab:blue",
+                        label="Shot Velocity\nm/s",
+                        marker=".",
+                        alpha=1,
+                    )
                 vd = float(self.vTgt.get())
                 self.axv.scatter(
                     xs[-1],
@@ -1168,48 +1229,75 @@ class IB(Frame):
                 )
 
                 if self.typeOptn.get() == CONVENTIONAL:
-                    self.axP.plot(
-                        xs,
-                        Pts,
-                        "seagreen",
-                        label="Breech Face",
-                        linestyle="dashed",
-                        alpha=0.75,
-                    )
+                    if self.plotBreechNozzleP.get():
+                        self.axP.plot(
+                            xs,
+                            Pts,
+                            "seagreen",
+                            label="Breech Face",
+                            linestyle="dashed",
+                            alpha=0.75,
+                        )
                 else:
+                    if self.plotStagP.get():
+                        self.axP.plot(
+                            xs,
+                            P0s,
+                            "yellowgreen",
+                            label="Stagnation",
+                            linestyle="dashed",
+                            alpha=0.75,
+                        )
+
+                    if self.plotBreechNozzleP.get():
+                        self.axP.plot(
+                            xs,
+                            Pxs,
+                            "seagreen",
+                            label="Nozz. Throat P.",
+                            linestyle="dashdot",
+                            alpha=0.75,
+                        )
+                    if self.plotNozzleV.get():
+                        self.axv.plot(
+                            xs,
+                            vxs,
+                            "royalblue",
+                            label="Nozz. Throat Vel.",
+                            alpha=0.75,
+                            linestyle="dotted",
+                        )
+
+                    if self.plotEta.get():
+                        self.ax.plot(
+                            xs,
+                            etas,
+                            "tab:orange",
+                            label="Outflow Frac.",
+                            alpha=0.75,
+                            linestyle="dotted",
+                        )
+
+                if self.plotAvgP.get():
                     self.axP.plot(
                         xs,
-                        P0s,
-                        "seagreen",
-                        label="Stagnation",
-                        linestyle="dashed",
-                        alpha=0.75,
+                        Ps,
+                        "tab:green",
+                        label="Avg. Pressure\nMPa",
+                        marker=".",
+                        alpha=1,
                     )
+
+                if self.plotBaseP.get():
                     self.axP.plot(
                         xs,
-                        Pxs,
-                        "yellowgreen",
-                        label="Nozzle Throat",
-                        linestyle="dashdot",
+                        Pbs,
+                        "olive",
+                        label="Shot Base",
+                        linestyle="dotted",
                         alpha=0.75,
                     )
 
-                (pP,) = self.axP.plot(
-                    xs,
-                    Ps,
-                    "tab:green",
-                    label="Avg. Pressure\nMPa",
-                    marker=".",
-                    alpha=1,
-                )
-                self.axP.plot(
-                    xs,
-                    Pbs,
-                    "olive",
-                    label="Shot Base",
-                    linestyle="dotted",
-                    alpha=0.75,
-                )
                 Pd = float(self.pTgt.get())
                 self.axP.scatter(
                     xPeak,
@@ -1220,42 +1308,22 @@ class IB(Frame):
                     marker=5,  # caret right:5
                     label="P. Target",
                 )
-
-                (ppsi,) = self.ax.plot(
-                    xs,
-                    psis,
-                    "tab:red",
-                    label="Volume Burnup",
-                    marker=".",
-                    alpha=1,
-                )
-
-                if gunType == CONVENTIONAL:
-                    pass
-                else:
+                if self.plotBurnup.get():
                     self.ax.plot(
                         xs,
-                        etas,
-                        "tab:orange",
-                        label="Outflow Frac.",
+                        psis,
+                        "tab:red",
+                        label="Volume Burnup",
                         marker=".",
-                        alpha=0.75,
+                        alpha=1,
                     )
 
                 tkw = dict(size=4, width=1.5)
-
                 self.ax.yaxis.tick_right()
-                self.ax.tick_params(axis="y", colors=ppsi.get_color(), **tkw)
-                self.axv.tick_params(axis="y", colors=pv.get_color(), **tkw)
-                self.axP.tick_params(axis="y", colors=pP.get_color(), **tkw)
+                self.ax.tick_params(axis="y", colors="tab:red", **tkw)
+                self.axv.tick_params(axis="y", colors="tab:blue", **tkw)
+                self.axP.tick_params(axis="y", colors="tab:green", **tkw)
                 self.ax.tick_params(axis="x", **tkw)
-
-                """
-                This would be heavily appreciated, however the mplcursors library
-                currently has issues with highlighted lines getting deleted.
-
-                # mplcursors.cursor(ppsi, highlight=True)
-                """
 
                 if dom == DOMAIN_TIME:
                     self.ax.set_xlabel("Time - ms")
@@ -1276,29 +1344,10 @@ class IB(Frame):
                 ):
                     labelLines(lines, align=True, xvals=xvals)
 
-                # labelLines(, zorder=2.5, color="white")
-
-                """
-                self.ax.legend(
-                    handles=[pv, vd, pP, pd, ppsi, ref],
-                    loc="upper left",
-                    bbox_to_anchor=(0.0, 0.95),
-                    # ncol=3,
-                )
-                """
-
             else:
                 self.axP.spines.right.set_position(("axes", 0.5))
                 self.ax.set_xlabel("Domain")
-            """
-            self.figCursor = Cursor(
-                self.axP,
-                horizOn=True,
-                vertOn=False,
-                color="white",
-                linewidth=1.0,
-            )
-            """
+
             self.axP.yaxis.set_ticks(self.axP.get_yticks()[1:-1:])
             self.pltCanvas.draw_idle()
 
@@ -1366,7 +1415,7 @@ class IB(Frame):
             yscrollcommand=vertscroll.set, xscrollcommand=horzscroll.set
         )  # assign the scrollbar to the Treeview Widget
 
-    def updateSpec(self, var, index, mode):
+    def updateSpec(self, *args):
         self.specs.config(state="normal")
         compo = self.compositions[self.dropProp.get()]
         self.specs.delete("1.0", "end")
@@ -1408,11 +1457,11 @@ class IB(Frame):
         self.specs.config(state="disabled")
         # this updates the specification description
 
-        self.callback(None, None, None)
+        self.callback()
 
         return True
 
-    def updateGeom(self, var, index, mode):
+    def updateGeom(self, *args):
         geom = self.geometries[self.dropGeom.get()]
         if geom == SimpleGeometry.SPHERE:
             self.grdRw.config(state="disabled")
@@ -1464,7 +1513,7 @@ class IB(Frame):
             self.lengthRatioTip.set(perfLRtext)
             self.lengthSecondaryTip.set(pDiaRText)
 
-        self.callback(None, None, None)
+        self.callback()
 
         return True
 
@@ -1511,7 +1560,7 @@ class IB(Frame):
             self.errorText.insert("end", line + "\n")
         self.errorLst = []
 
-    def callback(self, var, index, mode):
+    def callback(self, *args):
         """
         updates the propellant object on write to the ratio entry fields
         and, on changing the propellant or geometrical specification.
@@ -1548,7 +1597,7 @@ class IB(Frame):
 
         self.updateError()
 
-    def typeCallback(self, var, index, mode):
+    def typeCallback(self, *args):
         gunType = self.typeOptn.get()
         if gunType == CONVENTIONAL:
             self.nozzExpw.config(state="disabled")
@@ -1557,7 +1606,7 @@ class IB(Frame):
             self.nozzExpw.config(state="normal")
             self.nozzEffw.config(state="normal")
 
-    def setCD(self, var, index, mode):
+    def setCD(self, *args):
         if self.solve_W_Lg.get() == 0:
             self.optimizeLF.config(state="disabled")
         else:

@@ -941,15 +941,15 @@ class Recoiless:
         be = te / self.phi
         return te, be
 
-    def toPbP0Px(self, l, v, p, T, eta):
+    def toPbP0PxVx(self, l, v, p, T, eta):
         tau = T / self.T_v
         y = self.omega * eta
         m_dot = self.C_A * self.v_j * self.S * p / (self.f * tau**0.5)
-        v_x = m_dot * (self.V_0 + self.S * l) / (self.S_j * (self.omega - y))
+        vx = m_dot * (self.V_0 + self.S * l) / (self.S_j * (self.omega - y))
         if l == 0:
             H = inf
         else:
-            H = v_x / v
+            H = vx / v
 
         H = min(H, 2 * self.phi_1 * self.m / (self.omega - y) + 1)
 
@@ -962,7 +962,7 @@ class Recoiless:
         px = pb * (
             1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 - H)
         )  # muzzle pressure
-        return pb, p0, px
+        return pb, p0, px, vx
 
     @staticmethod
     def getCf(gamma, Sr, tol=1e-5):
