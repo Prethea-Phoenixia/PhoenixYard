@@ -42,7 +42,8 @@ from recoiless import Recoiless
 from prop import Propellant, GrainComp, GEOMETRIES, SimpleGeometry
 from opt import Constrained
 from optRecoiless import ConstrainedRecoiless
-from tip import *
+from tip import ToolTip, CreateToolTip
+from lang import STRING
 
 from misc import (
     toSI,
@@ -87,6 +88,8 @@ class IB(Frame):
         menubar.add_cascade(label="Theme", menu=themeMenu)
         debugMenu = Menu(menubar)
         menubar.add_cascade(label="Debug", menu=debugMenu)
+        langMenu = Menu(menubar)
+        menubar.add_cascade(label="Language 语言", menu=langMenu)
 
         self.themeRadio = IntVar()
         self.themeRadio.set(1)
@@ -114,6 +117,15 @@ class IB(Frame):
             onvalue=1,
             offvalue=0,
         )
+
+        self.LANG = StringVar(value=list(STRING.keys())[0])
+        for lang in STRING.keys():
+            langMenu.add_radiobutton(
+                label=lang,
+                variable=self.LANG,
+                value=lang,
+                command=self.changeLang,
+            )
 
         parent.config(menu=menubar)
 
@@ -157,10 +169,22 @@ class IB(Frame):
         # self.resized = False
         self.timedLoop()
 
+    def changeLang(self):
+        self.chgTip.set(self.getString("chgText"))
+        self.vinfTip.set(self.getString("vinfText"))
+        self.lxTip.set(self.getString("calLxTxt"))
+
+    def getString(self, name):
+        try:
+            return STRING[self.LANG.get()][name]
+        except KeyError:
+            return STRING["English"][name]
+
     def addTopBar(self, parent):
         topFrm = ttk.LabelFrame(parent, text="Plot Option")
         topFrm.grid(row=0, column=0, sticky="nsew")
-        topFrm.columnconfigure(7, weight=1)
+        for i in range(8):
+            topFrm.columnconfigure(i, weight=1)
 
         self.pbar = ttk.Progressbar(topFrm, mode="indeterminate", maximum=100)
         self.pbar.grid(
@@ -231,6 +255,7 @@ class IB(Frame):
 
         i = 0
 
+        self.lxTip = StringVar(value=self.getString("calLxTxt"))
         self.lx, self.tlx, _, _, i = self.add122Disp(
             parent=specFrm,
             rowIndex=i,
@@ -239,16 +264,17 @@ class IB(Frame):
             unitText_dn="Cal",
             justify_up="right",
             justify_dn="right",
-            infotext=calLxTxt,
+            infotext=self.lxTip,
         )
 
+        self.vinfTip = StringVar(value=self.getString("vinfText"))
         self.va, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
             labelText="Asymptotic Vel.",
             unitText="m/s",
             justify="right",
-            infotext=vinfText,
+            infotext=self.vinfTip,
         )
 
         self.ptm, self.pbm, _, _, i = self.add122Disp(
@@ -259,7 +285,7 @@ class IB(Frame):
             unitText_dn="Pa",
             justify_up="right",
             justify_dn="right",
-            infotext=pMaxTxt,
+            infotext=self.getString("pMaxTxt"),
         )
 
         self.te, _, i = self.add12Disp(
@@ -267,7 +293,7 @@ class IB(Frame):
             rowIndex=i,
             labelText="Thermal Eff.",
             unitText="%",
-            infotext=teffText,
+            infotext=self.getString("teffText"),
         )
 
         self.be, _, i = self.add12Disp(
@@ -275,7 +301,7 @@ class IB(Frame):
             rowIndex=i,
             labelText="Ballistic Eff.",
             unitText="%",
-            infotext=beffText,
+            infotext=self.getString("beffText"),
         )
         self.cv, _, i = self.add12Disp(
             parent=specFrm,
@@ -330,7 +356,7 @@ class IB(Frame):
             unitText="MPa",
             default="350.0",
             validation=validationNN,
-            infotext=pTgtTxt,
+            infotext=self.getString("pTgtTxt"),
         )
 
         self.minWeb, _, j = self.add3Input(
@@ -363,7 +389,7 @@ class IB(Frame):
         self.useConstraint.grid(row=j, column=0, columnspan=3, sticky="nsew")
         self.solve_W_Lg.trace_add("write", self.setCD)
 
-        CreateToolTip(self.useConstraint, useConsTxt)
+        CreateToolTip(self.useConstraint, self.getString("useConsTxt"))
 
         j += 1
         self.opt_lf = IntVar()
@@ -373,7 +399,7 @@ class IB(Frame):
         self.optimizeLF.grid(row=j, column=0, columnspan=3, sticky="nsew")
         self.setCD()
 
-        CreateToolTip(self.optimizeLF, optLFTxt)
+        CreateToolTip(self.optimizeLF, self.getString("optLFTxt"))
         i += 1
 
         sampleFrm = ttk.LabelFrame(
@@ -415,7 +441,7 @@ class IB(Frame):
             anchor="center",
         )
 
-        CreateToolTip(sampleFrm, sampTxt)
+        CreateToolTip(sampleFrm, self.getString("sampTxt"))
 
         i += 1
 
@@ -428,7 +454,7 @@ class IB(Frame):
             validation=validationPI,
             formatter=formatIntInput,
             color="red",
-            infotext=tolText,
+            infotext=self.getString("tolText"),
         )
 
         self.calButton = ttk.Button(
@@ -743,6 +769,8 @@ class IB(Frame):
             default="1.0",
             validation=validationNN,
         )
+
+        self.chgTip = StringVar(value=self.getString("chgText"))
         self.chgkg, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
@@ -750,7 +778,7 @@ class IB(Frame):
             unitText="kg",
             default="1.0",
             validation=validationNN,
-            infotext=chgText,
+            infotext=self.chgTip,
         )
 
         # allow propellant specification to grow
@@ -809,7 +837,7 @@ class IB(Frame):
         specScroll.config(command=self.specs.yview)
         specHScroll.config(command=self.specs.xview)
 
-        CreateToolTip(propFrm, specsText)
+        CreateToolTip(propFrm, self.getString("specsText"))
 
         i += 1
 
@@ -843,7 +871,7 @@ class IB(Frame):
             pady=2,
         )
 
-        CreateToolTip(geomPlotFrm, geomPlotTxt)
+        CreateToolTip(geomPlotFrm, self.getString("geomPlotTxt"))
 
         self.geomParentFrm = grainFrm
         self.geomPlotFrm = geomPlotFrm
@@ -918,7 +946,7 @@ class IB(Frame):
             unitText="%",
             default="50.0",
             validation=validationNN,
-            infotext=ldftext,
+            infotext=self.getString("ldftext"),
         )
 
         self.clr, _, i = self.add3Input(
@@ -928,7 +956,7 @@ class IB(Frame):
             unitText="x",
             default="1.5",
             validation=validationNN,
-            infotext=clrtext,
+            infotext=self.getString("clrtext"),
         )
 
         self.dgc, _, i = self.add3Input(
@@ -938,7 +966,7 @@ class IB(Frame):
             unitText="%",
             default="5.0",
             validation=validationNN,
-            infotext=dgctext,
+            infotext=self.getString("dgctext"),
         )
 
         self.stpMPa, _, i = self.add3Input(
@@ -948,7 +976,7 @@ class IB(Frame):
             unitText="MPa",
             default="10",
             validation=validationNN,
-            infotext=stpText,
+            infotext=self.getString("stpText"),
         )
 
         self.nozzExp, self.nozzExpw, i = self.add3Input(
@@ -958,7 +986,7 @@ class IB(Frame):
             unitText="x",
             default="4",
             validation=validationNN,
-            infotext=nozzExpTxt,
+            infotext=self.getString("nozzExpTxt"),
         )
 
         self.nozzEff, self.nozzEffw, i = self.add3Input(
@@ -968,7 +996,7 @@ class IB(Frame):
             unitText="%",
             default="92.0",
             validation=validationNN,
-            infotext=nozzEffTxt,
+            infotext=self.getString("nozzEffTxt"),
         )
 
         self.currProp.trace_add("write", self.updateSpec)
@@ -1481,7 +1509,7 @@ class IB(Frame):
             self.lengthRatioAs.set("")
             self.ratioAs.set("")
 
-            self.lengthPrimaryTip.set(diaText)
+            self.lengthPrimaryTip.set(self.getString("diaText"))
             self.lengthRatioTip.set("")
             self.lengthSecondaryTip.set("")
 
@@ -1490,9 +1518,9 @@ class IB(Frame):
             self.lengthRatioAs.set("Length / Width")
             self.ratioAs.set("Height / Width")
 
-            self.lengthPrimaryTip.set(widthText)
-            self.lengthRatioTip.set(rodRtext)
-            self.lengthSecondaryTip.set(heightRtext)
+            self.lengthPrimaryTip.set(self.getString("widthText"))
+            self.lengthRatioTip.set(self.getString("rodRtext"))
+            self.lengthSecondaryTip.set(self.getString("heightRtext"))
 
         elif geom == SimpleGeometry.CYLINDER:
             self.lengthPrimaryAs.set("Diameter")
@@ -1500,8 +1528,8 @@ class IB(Frame):
             self.lengthRatioAs.set("Length / Diameter")
             self.ratioAs.set("")
 
-            self.lengthPrimaryTip.set(diaText)
-            self.lengthRatioTip.set(cylLRtext)
+            self.lengthPrimaryTip.set(self.getString("diaText"))
+            self.lengthRatioTip.set(self.getString("cylLRtext"))
             self.lengthSecondaryTip.set("")
 
         else:
@@ -1509,9 +1537,9 @@ class IB(Frame):
             self.lengthRatioAs.set("Length / Diameter")
             self.ratioAs.set("Perf.Dia. / A.Th.")
 
-            self.lengthPrimaryTip.set(arcText)
-            self.lengthRatioTip.set(perfLRtext)
-            self.lengthSecondaryTip.set(pDiaRText)
+            self.lengthPrimaryTip.set(self.getString("arcText"))
+            self.lengthRatioTip.set(self.getString("perfLRtext"))
+            self.lengthSecondaryTip.set(self.getString("pDiaRText"))
 
         self.callback()
 
