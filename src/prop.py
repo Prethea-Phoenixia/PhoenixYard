@@ -419,6 +419,15 @@ class Propellant:
         else:
             return 0
 
+    def f_ullim(self):
+        if self.Z_b > 1:
+            return (
+                self.chi * (1 + 2 * self.labda + 3 * self.mu),
+                1 + 2 * self.labda_s,
+            )
+        else:
+            return 0
+
     def f_psi_Z(self, Z):
         if Z <= 1.0:
             return self.chi * Z * (1 + self.labda * Z + self.mu * Z**2)

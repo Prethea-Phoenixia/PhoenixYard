@@ -9,6 +9,7 @@ GEOM_CONTEXT = {
     # "figure.autolayout": True,
     "lines.markersize": 2,
     "axes.axisbelow": True,
+    # "path.simplify_threshold": 1,
 }
 
 FIG_CONTEXT = {
@@ -26,13 +27,12 @@ FIG_CONTEXT = {
     "axes.axisbelow": False,
     "axes.labelweight": "bold",
     "yaxis.labellocation": "top",
+    # "path.simplify_threshold": 1,
 }
 
 from tkinter import *
 from tkinter import ttk
 import tkinter.font as tkFont
-
-
 import traceback
 
 from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
@@ -952,7 +952,6 @@ class IB(Frame):
         window, and everything would be fine, ironically.
         (in this case, dpi = dpi)
         """
-        # input()
         dpi = self.dpi
         with mpl.rc_context(GEOM_CONTEXT):
             fig = Figure(
@@ -1471,14 +1470,25 @@ class IB(Frame):
 
     def updateGeomPlot(self):
         with mpl.rc_context(GEOM_CONTEXT):
-            N = 50
+            N = 10
             prop = self.prop
+            Zb = prop.Z_b
             self.geomAx.cla()
             if prop is not None:
-                xs = [i / (N - 1) * prop.Z_b for i in range(N)]
+                xs = [i / N for i in range(N)]
                 ys = [prop.f_sigma_Z(x) for x in xs]
+
+                if Zb > 1:
+                    xs.extend((1, 1))
+                    ys.extend(prop.f_ullim())
+
+                xs.append(Zb)
+                ys.append(prop.f_sigma_Z(Zb))
+
                 xs.append(xs[-1])
                 ys.append(0)
+
+                # xs, ys = zip(*sorted(zip(xs, ys), key=lambda x: x[0]))
                 self.geomAx.plot(xs, ys)
                 self.geomAx.grid(
                     which="major", color="grey", linestyle="dotted"

@@ -274,8 +274,6 @@ class Recoiless:
             )
         self.S_j = self.S_j_bar * self.S
 
-        print(self.S_j_bar)
-
         l_g_bar = self.l_g / self.l_0
 
         tScale = self.l_0 / self.v_j
