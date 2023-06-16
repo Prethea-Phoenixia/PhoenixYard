@@ -89,7 +89,7 @@ class IB(Frame):
         debugMenu = Menu(menubar)
         menubar.add_cascade(label="Debug", menu=debugMenu)
         langMenu = Menu(menubar)
-        menubar.add_cascade(label="Language 语言", menu=langMenu)
+        menubar.add_cascade(label="Lang 语言", menu=langMenu)
 
         self.themeRadio = IntVar()
         self.themeRadio.set(1)
@@ -173,6 +173,9 @@ class IB(Frame):
         self.chgTip.set(self.getString("chgText"))
         self.vinfTip.set(self.getString("vinfText"))
         self.lxTip.set(self.getString("calLxTxt"))
+        self.geomPlotTip.set(self.getString("geomPlotTxt"))
+        self.teffTip.set(self.getString("teffText"))
+        self.beffTip.set(self.getString("beffText"))
 
     def getString(self, name):
         try:
@@ -288,20 +291,22 @@ class IB(Frame):
             infotext=self.getString("pMaxTxt"),
         )
 
+        self.teffTip = StringVar(value=self.getString("teffText"))
         self.te, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
             labelText="Thermal Eff.",
             unitText="%",
-            infotext=self.getString("teffText"),
+            infotext=self.teffTip,
         )
 
+        self.beffTip = StringVar(value=self.getString("beffText"))
         self.be, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
             labelText="Ballistic Eff.",
             unitText="%",
-            infotext=self.getString("beffText"),
+            infotext=self.beffTip,
         )
         self.cv, _, i = self.add12Disp(
             parent=specFrm,
@@ -871,7 +876,8 @@ class IB(Frame):
             pady=2,
         )
 
-        CreateToolTip(geomPlotFrm, self.getString("geomPlotTxt"))
+        self.geomPlotTip = StringVar(value=self.getString("geomPlotTxt"))
+        CreateToolTip(geomPlotFrm, self.geomPlotTip)
 
         self.geomParentFrm = grainFrm
         self.geomPlotFrm = geomPlotFrm
