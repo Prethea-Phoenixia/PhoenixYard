@@ -12,6 +12,12 @@ ENGLISH = {
     "tblLabel": "Tube Length",
     "shtLabel": "Shot Mass",
     "chgLabel": "Charge Mass",
+    "ldfLabel": "Load Factor",
+    "clrLabel": "Chamber L.R.",
+    "dgcLabel": "Drag coefficient",
+    "stpLabel": "Start Pressure",
+    "nozzExpLabel": "Nozzle Expansion",
+    "nozzEffLabel": "Nozzle Efficiency",
     "chgText": " ".join(
         (
             "Mass of propellant charge to be used. Lagrangian approximation",
@@ -275,6 +281,12 @@ CHINESE = {
     "tblLabel": "身管长",
     "shtLabel": "弹重",
     "chgLabel": "药量",
+    "ldfLabel": "装药系数",
+    "clrLabel": "药室扩大系数",
+    "dgcLabel": "阻力系数",
+    "stpLabel": "挤进压强",
+    "nozzExpLabel": "喷管面积比",
+    "nozzEffLabel": "碰口效率",
     "chgText": "".join(
         (
             "拉格朗日假设是简化弹道学问题的经典假设。该假设下膛内密度始终沿炮膛均匀分布，火药燃速",

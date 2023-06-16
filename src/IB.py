@@ -186,10 +186,18 @@ class IB(Frame):
         self.shtLb.config(text=self.getString("shtLabel"))
         self.chgLb.config(text=self.getString("chgLabel"))
 
+        self.ldfLb.config(text=self.getString("ldfLabel"))
+        self.clrLb.config(text=self.getString("clrLabel"))
+        self.dgcLb.config(text=self.getString("dgcLabel"))
+        self.stpLb.config(text=self.getString("stpLabel"))
+
         self.vTgtLb.config(text=self.getString("vTgtLabel"))
         self.pTgtLb.config(text=self.getString("pTgtLabel"))
         self.minWebLb.config(text=self.getString("minWebLabel"))
         self.lgmaxLb.config(text=self.getString("maxLgLabel"))
+
+        self.nozzExpLb.config(text=self.getString("nozzExpLabel"))
+        self.nozzEffLb.config(text=self.getString("nozzEffLabel"))
 
         self.chgTip.set(self.getString("chgText"))
         self.vinfTip.set(self.getString("vinfText"))
@@ -969,7 +977,7 @@ class IB(Frame):
         self.ldfLb, self.ldf, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText="Load Factor",
+            labelText=self.getString("ldfLabel"),
             unitText="%",
             default="50.0",
             validation=validationNN,
@@ -979,7 +987,7 @@ class IB(Frame):
         self.clrLb, self.clr, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText="Chamber L.R.",
+            labelText=self.getString("clrLabel"),
             unitText="x",
             default="1.5",
             validation=validationNN,
@@ -989,7 +997,7 @@ class IB(Frame):
         self.dgcLb, self.dgc, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText="Drag coefficient",
+            labelText=self.getString("dgcLabel"),
             unitText="%",
             default="5.0",
             validation=validationNN,
@@ -999,7 +1007,7 @@ class IB(Frame):
         self.stpLb, self.stpMPa, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText="Start Pressure",
+            labelText=self.getString("stpLabel"),
             unitText="MPa",
             default="10",
             validation=validationNN,
@@ -1009,7 +1017,7 @@ class IB(Frame):
         self.nozzExpLb, self.nozzExp, self.nozzExpw, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText="Nozzle Expansion",
+            labelText=self.getString("nozzExpLabel"),
             unitText="x",
             default="4",
             validation=validationNN,
@@ -1019,7 +1027,7 @@ class IB(Frame):
         self.nozzEffLb, self.nozzEff, self.nozzEffw, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText="Nozzle Efficiency",
+            labelText=self.getString("nozzEffLabel"),
             unitText="%",
             default="92.0",
             validation=validationNN,
