@@ -1,4 +1,17 @@
 ENGLISH = {
+    "themeLabel": "Theme",
+    "lightLabel": "Light",
+    "darkLabel": "Dark",
+    "debugLabel": "Debug Info",
+    "enableLabel": "Enabled",
+    "vTgtLabel": "V. Tgt.",
+    "pTgtLabel": "P. Tgt.",
+    "minWebLabel": "Min. W.",
+    "maxLgLabel": "Max. L.",
+    "calLabel": "Caliber",
+    "tblLabel": "Tube Length",
+    "shtLabel": "Shot Mass",
+    "chgLabel": "Charge Mass",
     "chgText": " ".join(
         (
             "Mass of propellant charge to be used. Lagrangian approximation",
@@ -249,6 +262,19 @@ ENGLISH = {
     ),
 }
 CHINESE = {
+    "themeLabel": "主题",
+    "lightLabel": "浅色",
+    "darkLabel": "深色",
+    "debugLabel": "调试信息",
+    "enableLabel": "启用",
+    "vTgtLabel": "设计弹速",
+    "pTgtLabel": "最大膛压",
+    "minWebLabel": "最小弧厚",
+    "maxLgLabel": "最长身管",
+    "calLabel": "口径",
+    "tblLabel": "身管长",
+    "shtLabel": "弹重",
+    "chgLabel": "药量",
     "chgText": "".join(
         (
             "拉格朗日假设是简化弹道学问题的经典假设。该假设下膛内密度始终沿炮膛均匀分布，火药燃速",
@@ -262,7 +288,7 @@ CHINESE = {
     "calLxTxt": "".join(
         (
             "炮管倍径，即炮管长度与口径的比例。西方文献中常用 L/xx表示。\n",
-            "上：身管倍径，至弹底起始位置；下：炮管倍径（含药室），至膛底",
+            "上：身管倍径，至弹底起始位置；下：身管（含药室）倍径，至膛底",
         )
     ),
     "geomPlotTxt": "".join(

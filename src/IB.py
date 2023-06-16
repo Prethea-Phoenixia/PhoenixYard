@@ -75,6 +75,7 @@ CONVENTIONAL = "Conventional Gun"
 class IB(Frame):
     def __init__(self, parent, dpi):
         Frame.__init__(self, parent)
+        self.LANG = StringVar(value=list(STRING.keys())[0])
         self.queue = Queue()
         self.process = None
         self.pos = -1
@@ -84,12 +85,17 @@ class IB(Frame):
 
         menubar = Menu(parent)
 
+        self.menubar = menubar
+
         themeMenu = Menu(menubar)
-        menubar.add_cascade(label="Theme", menu=themeMenu)
+        menubar.add_cascade(label=self.getString("themeLabel"), menu=themeMenu)
         debugMenu = Menu(menubar)
-        menubar.add_cascade(label="Debug", menu=debugMenu)
+        menubar.add_cascade(label=self.getString("debugLabel"), menu=debugMenu)
         langMenu = Menu(menubar)
         menubar.add_cascade(label="Lang 语言", menu=langMenu)
+
+        self.themeMenu = themeMenu
+        self.debugMenu = debugMenu
 
         self.themeRadio = IntVar()
         self.themeRadio.set(1)
@@ -99,26 +105,25 @@ class IB(Frame):
         self.DEBUG.set(1)
 
         themeMenu.add_radiobutton(
-            label="Dark",
+            label=self.getString("darkLabel"),
             variable=self.themeRadio,
             value=1,
             command=self.useTheme,
         )
         themeMenu.add_radiobutton(
-            label="Light",
+            label=self.getString("lightLabel"),
             variable=self.themeRadio,
             value=2,
             command=self.useTheme,
         )
 
         debugMenu.add_checkbutton(
-            label="Enable",
+            label=self.getString("enableLabel"),
             variable=self.DEBUG,
             onvalue=1,
             offvalue=0,
         )
 
-        self.LANG = StringVar(value=list(STRING.keys())[0])
         for lang in STRING.keys():
             langMenu.add_radiobutton(
                 label=lang,
@@ -170,6 +175,22 @@ class IB(Frame):
         self.timedLoop()
 
     def changeLang(self):
+        self.menubar.entryconfig(0, label=self.getString("themeLabel"))
+        self.menubar.entryconfig(1, label=self.getString("debugLabel"))
+        self.themeMenu.entryconfig(0, label=self.getString("darkLabel"))
+        self.themeMenu.entryconfig(1, label=self.getString("lightLabel"))
+        self.debugMenu.entryconfig(0, label=self.getString("enableLabel"))
+
+        self.calLb.config(text=self.getString("calLabel"))
+        self.tblLb.config(text=self.getString("tblLabel"))
+        self.shtLb.config(text=self.getString("shtLabel"))
+        self.chgLb.config(text=self.getString("chgLabel"))
+
+        self.vTgtLb.config(text=self.getString("vTgtLabel"))
+        self.pTgtLb.config(text=self.getString("pTgtLabel"))
+        self.minWebLb.config(text=self.getString("minWebLabel"))
+        self.lgmaxLb.config(text=self.getString("maxLgLabel"))
+
         self.chgTip.set(self.getString("chgText"))
         self.vinfTip.set(self.getString("vinfText"))
         self.lxTip.set(self.getString("calLxTxt"))
@@ -343,42 +364,42 @@ class IB(Frame):
         )
         j = 0
 
-        self.vTgt, _, j = self.add3Input(
+        self.vTgtLb, self.vTgt, _, j = self.add3Input(
             parent=consFrm,
             rowIndex=0,
             colIndex=0,
-            labelText="V. Tgt.",
+            labelText=self.getString("vTgtLabel"),
             unitText="m/s",
             default="1500.0",
             validation=validationNN,
         )
 
-        self.pTgt, _, j = self.add3Input(
+        self.pTgtLb, self.pTgt, _, j = self.add3Input(
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
-            labelText="P. Tgt.",
+            labelText=self.getString("pTgtLabel"),
             unitText="MPa",
             default="350.0",
             validation=validationNN,
             infotext=self.getString("pTgtTxt"),
         )
 
-        self.minWeb, _, j = self.add3Input(
+        self.minWebLb, self.minWeb, _, j = self.add3Input(
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
-            labelText="Min. W.",
+            labelText=self.getString("minWebLabel"),
             unitText="μm",
             default="1.0",
             validation=validationNN,
             color="red",
         )
-        self.lgmax, _, j = self.add3Input(
+        self.lgmaxLb, self.lgmax, _, j = self.add3Input(
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
-            labelText="Max. Lg",
+            labelText=self.getString("maxLgLabel"),
             unitText="m",
             default="1000.0",
             validation=validationNN,
@@ -434,7 +455,7 @@ class IB(Frame):
 
         j += 1
 
-        self.steps, _, j = self.add2Input(
+        self.stepsLb, self.steps, _, j = self.add2Input(
             parent=sampleFrm,
             rowIndex=j,
             colIndex=0,
@@ -450,7 +471,7 @@ class IB(Frame):
 
         i += 1
 
-        self.accExp, _, i = self.add2Input(
+        self.accExpLb, self.accExp, _, i = self.add2Input(
             parent=opFrm,
             rowIndex=i,
             colIndex=0,
@@ -750,36 +771,36 @@ class IB(Frame):
         )
 
         i += 1
-        self.calmm, _, i = self.add3Input(
+        self.calLb, self.calmm, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText="Caliber",
+            labelText=self.getString("calLabel"),
             unitText="mm",
             default="50.0",
             validation=validationNN,
         )
-        self.tblmm, _, i = self.add3Input(
+        self.tblLb, self.tblmm, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText="Tube Length",
+            labelText=self.getString("tblLabel"),
             unitText="mm",
             default="3500.0",
             validation=validationNN,
         )
-        self.shtkg, _, i = self.add3Input(
+        self.shtLb, self.shtkg, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText="Shot Mass",
+            labelText=self.getString("shtLabel"),
             unitText="kg",
             default="1.0",
             validation=validationNN,
         )
 
         self.chgTip = StringVar(value=self.getString("chgText"))
-        self.chgkg, _, i = self.add3Input(
+        self.chgLb, self.chgkg, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText="Charge Mass",
+            labelText=self.getString("chgLabel"),
             unitText="kg",
             default="1.0",
             validation=validationNN,
@@ -907,7 +928,7 @@ class IB(Frame):
         self.lengthPrimaryTip = StringVar()
 
         j += 1
-        self.arcmm, _, j = self.add3Input(
+        self.arcLb, self.arcmm, _, j = self.add3Input(
             parent=grainFrm,
             rowIndex=j,
             labelText=self.lengthPrimaryAs,
@@ -920,7 +941,7 @@ class IB(Frame):
 
         self.ratioAs = StringVar()
         self.lengthSecondaryTip = StringVar()
-        self.grdR, self.grdRw, j = self.add3Input(
+        self.grdRLb, self.grdR, self.grdRw, j = self.add3Input(
             parent=grainFrm,
             rowIndex=j,
             labelText=self.ratioAs,
@@ -933,7 +954,7 @@ class IB(Frame):
         self.lengthRatioAs = StringVar()
         self.lengthRatioTip = StringVar()
 
-        self.grlR, self.grlRw, j = self.add3Input(
+        self.grlRLb, self.grlR, self.grlRw, j = self.add3Input(
             parent=grainFrm,
             rowIndex=j,
             labelText=self.lengthRatioAs,
@@ -945,7 +966,7 @@ class IB(Frame):
 
         i += 1
 
-        self.ldf, _, i = self.add3Input(
+        self.ldfLb, self.ldf, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText="Load Factor",
@@ -955,7 +976,7 @@ class IB(Frame):
             infotext=self.getString("ldftext"),
         )
 
-        self.clr, _, i = self.add3Input(
+        self.clrLb, self.clr, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText="Chamber L.R.",
@@ -965,7 +986,7 @@ class IB(Frame):
             infotext=self.getString("clrtext"),
         )
 
-        self.dgc, _, i = self.add3Input(
+        self.dgcLb, self.dgc, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText="Drag coefficient",
@@ -975,7 +996,7 @@ class IB(Frame):
             infotext=self.getString("dgctext"),
         )
 
-        self.stpMPa, _, i = self.add3Input(
+        self.stpLb, self.stpMPa, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText="Start Pressure",
@@ -985,7 +1006,7 @@ class IB(Frame):
             infotext=self.getString("stpText"),
         )
 
-        self.nozzExp, self.nozzExpw, i = self.add3Input(
+        self.nozzExpLb, self.nozzExp, self.nozzExpw, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText="Nozzle Expansion",
@@ -995,7 +1016,7 @@ class IB(Frame):
             infotext=self.getString("nozzExpTxt"),
         )
 
-        self.nozzEff, self.nozzEffw, i = self.add3Input(
+        self.nozzEffLb, self.nozzEff, self.nozzEffw, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText="Nozzle Efficiency",
@@ -1128,8 +1149,7 @@ class IB(Frame):
             self.updateSpec(None, None, None)
             self.resized = False
         """
-        # print(self.process is not None and self.process.is_alive())
-        # print(self.pos)
+
         if self.pos >= 0:  # and not self.process.is_alive():
             self.getValue()
 
@@ -1401,7 +1421,6 @@ class IB(Frame):
 
         tblFrm.columnconfigure(0, weight=1)
         tblFrm.rowconfigure(0, weight=1)
-
         # configure the numerical
 
         self.tv = ttk.Treeview(
@@ -1416,10 +1435,10 @@ class IB(Frame):
         self.tv.tag_configure(POINT_FRACTURE, foreground="brown")
         # self.tv.tag_configure("monospace", font=("TkFixedFont", 9))
 
-        t_Font = tkFont.Font(family="hack", size=8)
+        t_Font = tkFont.Font(family="hack", size=9)
 
         self.tv.tag_configure("monospace", font=t_Font)
-        self.tv.tag_configure("error", font=("hack", 7), foreground="grey")
+        self.tv.tag_configure("error", font=("hack", 9), foreground="grey")
 
         # we use a fixed width font so any char will do
         width, height = t_Font.measure("m"), t_Font.metrics("linespace")
@@ -1453,7 +1472,7 @@ class IB(Frame):
         self.specs.config(state="normal")
         compo = self.compositions[self.dropProp.get()]
         self.specs.delete("1.0", "end")
-        t_Font = tkFont.Font(family="hack", size=8)
+        t_Font = tkFont.Font(family="hack", size=9)
         width = self.specs.winfo_width() // t_Font.measure("m")
         self.specs.insert(
             "end", " Adb.Temp: {:>4.0f} K (Isochoric)\n".format(compo.T_v)
@@ -1696,7 +1715,7 @@ class IB(Frame):
             pady=2,
         )
         en.bind("<FocusOut>", formatter)
-        return e, en, rowIndex + 1
+        return lb, e, en, rowIndex + 1
 
     def add3Input(
         self,
@@ -1712,7 +1731,7 @@ class IB(Frame):
         infotext=None,
         colIndex=0,
     ):
-        e, en, _ = self.add2Input(
+        lb, e, en, _ = self.add2Input(
             parent,
             rowIndex,
             colIndex,
@@ -1727,7 +1746,7 @@ class IB(Frame):
         ttk.Label(parent, text=unitText).grid(
             row=rowIndex, column=colIndex + 2, sticky="nsew", padx=2, pady=2
         )
-        return e, en, rowIndex + 1
+        return lb, e, en, rowIndex + 1
 
     def add12Disp(
         self,
@@ -1853,10 +1872,10 @@ class IB(Frame):
         # so the default row height should be around 12
 
         style.configure("Treeview", rowheight=round(12 * dpi / 72.0))
-        style.configure("Treeview.Heading", font=("Hack", 8))
+        style.configure("Treeview.Heading", font=("Hack", 9))
         style.configure("TButton", font=("Hack", 10, "bold"))
         style.configure("TLabelframe.Label", font=("Hack", 10, "bold"))
-        style.configure("TCheckbutton", font=("Hack", 8))
+        style.configure("TCheckbutton", font=("Hack", 9))
         style.configure("SubLabelFrame.TLabelframe.Label", font=("Hack", 9))
         style.configure("TNotebook.Tab", font=("Hack", 10))
 
