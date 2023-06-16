@@ -206,6 +206,14 @@ class IB(Frame):
         self.teffTip.set(self.getString("teffText"))
         self.beffTip.set(self.getString("beffText"))
 
+        self.tblFrm.config(text=self.getString("tblFrmLabel"))
+        self.plotFrm.config(text=self.getString("plotFrmLabel"))
+        self.errorFrm.config(text=self.getString("errFrmLabel"))
+        self.parFrm.config(text=self.getString("parFrmLabel"))
+        self.specFrm.config(text=self.getString("specFrmLabel"))
+        self.opFrm.config(text=self.getString("opFrmLabel"))
+        self.consFrm.config(text=self.getString("consFrmLabel"))
+
     def getString(self, name):
         try:
             return STRING[self.LANG.get()][name]
@@ -281,14 +289,15 @@ class IB(Frame):
         rightFrm.columnconfigure(0, weight=1)
         rightFrm.rowconfigure(0, weight=1)
 
-        specFrm = ttk.LabelFrame(rightFrm, text="Design Summary")
+        specFrm = ttk.LabelFrame(rightFrm, text=self.getString("specFrmLabel"))
         specFrm.grid(row=0, column=0, sticky="nsew")
         specFrm.columnconfigure(0, weight=1)
+        self.specFrm = specFrm
 
         i = 0
 
         self.lxTip = StringVar(value=self.getString("calLxTxt"))
-        self.lx, self.tlx, _, _, i = self.add122Disp(
+        self.lxLb, self.lx, self.tlx, _, _, i = self.add122Disp(
             parent=specFrm,
             rowIndex=i,
             labelText="Length Ratio",
@@ -300,7 +309,7 @@ class IB(Frame):
         )
 
         self.vinfTip = StringVar(value=self.getString("vinfText"))
-        self.va, _, i = self.add12Disp(
+        self.vaLb, self.va, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
             labelText="Asymptotic Vel.",
@@ -309,7 +318,7 @@ class IB(Frame):
             infotext=self.vinfTip,
         )
 
-        self.ptm, self.pbm, _, _, i = self.add122Disp(
+        self.pPLb, self.ptm, self.pbm, _, _, i = self.add122Disp(
             parent=specFrm,
             rowIndex=i,
             labelText="Peak Pressure",
@@ -321,7 +330,7 @@ class IB(Frame):
         )
 
         self.teffTip = StringVar(value=self.getString("teffText"))
-        self.te, _, i = self.add12Disp(
+        self.teLb, self.te, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
             labelText="Thermal Eff.",
@@ -330,21 +339,21 @@ class IB(Frame):
         )
 
         self.beffTip = StringVar(value=self.getString("beffText"))
-        self.be, _, i = self.add12Disp(
+        self.beLb, self.be, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
             labelText="Ballistic Eff.",
             unitText="%",
             infotext=self.beffTip,
         )
-        self.cv, _, i = self.add12Disp(
+        self.cvLb, self.cv, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
             labelText="Chamber Volume",
             unitText="m³",
             justify="right",
         )
-        self.ldp, self.ld, _, _, i = self.add122Disp(
+        self.ldpLb, self.ldp, self.ld, _, _, i = self.add122Disp(
             parent=specFrm,
             rowIndex=i,
             labelText="Loading Density",
@@ -353,11 +362,10 @@ class IB(Frame):
             justify_dn="right",
         )
 
-        opFrm = ttk.LabelFrame(rightFrm, text="Operations")
+        opFrm = ttk.LabelFrame(rightFrm, text=self.getString("opFrmLabel"))
         opFrm.grid(row=1, column=0, sticky="nsew")
-
-        # opFrm.columnconfigure(0, weight=1)
         opFrm.columnconfigure(1, weight=1)
+        self.opFrm = opFrm
 
         validationNN = parent.register(validateNN)
         validationPI = parent.register(validatePI)
@@ -365,11 +373,14 @@ class IB(Frame):
         i = 0
 
         consFrm = ttk.LabelFrame(
-            opFrm, text="Constraints", style="SubLabelFrame.TLabelframe"
+            opFrm,
+            text=self.getString("consFrmLabel"),
+            style="SubLabelFrame.TLabelframe",
         )
         consFrm.grid(
             row=i, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
+        self.consFrm = consFrm
         j = 0
 
         self.vTgtLb, self.vTgt, _, j = self.add3Input(
@@ -493,7 +504,7 @@ class IB(Frame):
 
         self.calButton = ttk.Button(
             opFrm,
-            text="Calculate",
+            text="CALCULATE",
             # command=self.calculate,  # underline=0
             command=self.onCalculate,
         )
@@ -736,10 +747,11 @@ class IB(Frame):
         self.process = None
 
     def addErrFrm(self, parent):
-        errorFrm = ttk.LabelFrame(parent, text="Exceptions")
+        errorFrm = ttk.LabelFrame(parent, text=self.getString("errFrmLabel"))
         errorFrm.grid(row=3, column=0, sticky="nsew")
         errorFrm.columnconfigure(0, weight=1)
         errorFrm.rowconfigure(0, weight=1)
+        self.errorFrm = errorFrm
 
         errScroll = ttk.Scrollbar(errorFrm, orient="vertical")
         errScroll.grid(row=0, column=1, sticky="nsew")
@@ -749,17 +761,16 @@ class IB(Frame):
             wrap=WORD,
             height=5,
             width=0,
+            font=("Hack", 8),
         )
 
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
     def addParFrm(self, parent):
-        parFrm = ttk.LabelFrame(parent, text="Parameters")
+        parFrm = ttk.LabelFrame(parent, text=self.getString("parFrmLabel"))
         parFrm.grid(row=0, column=1, rowspan=4, sticky="nsew")
         parFrm.columnconfigure(0, weight=1)
-        # parFrm.columnconfigure(1, weight=1)
-        # parFrm.columnconfigure(2, weight=1)
-
+        self.parFrm = parFrm
         # validation
         validationNN = parent.register(validateNN)
 
@@ -866,6 +877,7 @@ class IB(Frame):
             width=36,
             yscrollcommand=specScroll.set,
             xscrollcommand=specHScroll.set,
+            font=("Hack", 8),
         )
         self.specs.grid(row=1, column=0, sticky="nsew")
         specScroll.config(command=self.specs.yview)
@@ -1084,7 +1096,7 @@ class IB(Frame):
             )
 
     def addPlotFrm(self, parent):
-        plotFrm = ttk.LabelFrame(parent, text="Plot")
+        plotFrm = ttk.LabelFrame(parent, text=self.getString("plotFrmLabel"))
         plotFrm.grid(row=1, column=0, sticky="nsew")
         plotFrm.columnconfigure(0, weight=1)
         plotFrm.rowconfigure(0, weight=1)
@@ -1424,13 +1436,13 @@ class IB(Frame):
             "Avg. Temp.",
             "Outflow Fract.",
         ]
-        tblFrm = ttk.LabelFrame(parent, text="Result Table")
+        tblFrm = ttk.LabelFrame(parent, text=self.getString("tblFrmLabel"))
         tblFrm.grid(row=2, column=0, sticky="nsew")
 
         tblFrm.columnconfigure(0, weight=1)
         tblFrm.rowconfigure(0, weight=1)
         # configure the numerical
-
+        self.tblFrm = tblFrm
         self.tv = ttk.Treeview(
             tblFrm, selectmode="browse", height=10
         )  # this set the nbr. of values
@@ -1441,12 +1453,11 @@ class IB(Frame):
         self.tv.tag_configure(POINT_PEAK, foreground="orange")
         self.tv.tag_configure(POINT_BURNOUT, foreground="red")
         self.tv.tag_configure(POINT_FRACTURE, foreground="brown")
-        # self.tv.tag_configure("monospace", font=("TkFixedFont", 9))
 
-        t_Font = tkFont.Font(family="hack", size=9)
+        t_Font = tkFont.Font(family="hack", size=8)
 
         self.tv.tag_configure("monospace", font=t_Font)
-        self.tv.tag_configure("error", font=("hack", 9), foreground="grey")
+        self.tv.tag_configure("error", font=("hack", 8), foreground="grey")
 
         # we use a fixed width font so any char will do
         width, height = t_Font.measure("m"), t_Font.metrics("linespace")
@@ -1480,7 +1491,7 @@ class IB(Frame):
         self.specs.config(state="normal")
         compo = self.compositions[self.dropProp.get()]
         self.specs.delete("1.0", "end")
-        t_Font = tkFont.Font(family="hack", size=9)
+        t_Font = tkFont.Font(family="hack", size=8)
         width = self.specs.winfo_width() // t_Font.measure("m")
         self.specs.insert(
             "end", " Adb.Temp: {:>4.0f} K (Isochoric)\n".format(compo.T_v)
@@ -1806,7 +1817,7 @@ class IB(Frame):
         if infotext is not None:
             CreateToolTip(lb, infotext)
 
-        return e, en, rowIndex + 2
+        return lb, e, en, rowIndex + 2
 
     def add122Disp(
         self,
@@ -1824,7 +1835,7 @@ class IB(Frame):
         infotext=None,
         reverse=False,
     ):
-        e, en, rowIndex = self.add12Disp(
+        lb, e, en, rowIndex = self.add12Disp(
             parent=parent,
             rowIndex=rowIndex,
             colIndex=colIndex,
@@ -1862,7 +1873,7 @@ class IB(Frame):
             pady=2,
         )
 
-        return e, e2, en, en2, rowIndex + 2
+        return lb, e, e2, en, en2, rowIndex + 2
 
     def useTheme(self):
         style = ttk.Style(self)
@@ -1880,12 +1891,12 @@ class IB(Frame):
         # so the default row height should be around 12
 
         style.configure("Treeview", rowheight=round(12 * dpi / 72.0))
-        style.configure("Treeview.Heading", font=("Hack", 9))
+        style.configure("Treeview.Heading", font=("Hack", 10))
         style.configure("TButton", font=("Hack", 10, "bold"))
         style.configure("TLabelframe.Label", font=("Hack", 10, "bold"))
-        style.configure("TCheckbutton", font=("Hack", 9))
-        style.configure("SubLabelFrame.TLabelframe.Label", font=("Hack", 9))
-        style.configure("TNotebook.Tab", font=("Hack", 10))
+        style.configure("TCheckbutton", font=("Hack", 10))
+        style.configure("SubLabelFrame.TLabelframe.Label", font=("Hack", 10))
+        # style.configure("TNotebook.Tab", font=("Hack", 10))
 
         bgc = str(style.lookup("TFrame", "background"))
         fgc = str(style.lookup("TFrame", "foreground"))

@@ -14,10 +14,18 @@ ENGLISH = {
     "chgLabel": "Charge Mass",
     "ldfLabel": "Load Factor",
     "clrLabel": "Chamber L.R.",
-    "dgcLabel": "Drag coefficient",
-    "stpLabel": "Start Pressure",
-    "nozzExpLabel": "Nozzle Expansion",
-    "nozzEffLabel": "Nozzle Efficiency",
+    "dgcLabel": "Drag coe.",
+    "stpLabel": "Start P.",
+    "nozzExpLabel": "Nozz. Exp.",
+    "nozzEffLabel": "Nozz. Eff.",
+    "tblFrmLabel": "Result Table",
+    "plotFrmLabel": "Plot",
+    "errFrmLabel": "Exceptions",
+    "parFrmLabel": "Parameters",
+    "specFrmLabel": "Design Summary",
+    "opFrmLabel": "Operations",
+    "consFrmLabel": "Constraints",
+    ""
     "chgText": " ".join(
         (
             "Mass of propellant charge to be used. Lagrangian approximation",
@@ -286,7 +294,14 @@ CHINESE = {
     "dgcLabel": "阻力系数",
     "stpLabel": "挤进压强",
     "nozzExpLabel": "喷管面积比",
-    "nozzEffLabel": "碰口效率",
+    "nozzEffLabel": "喷管效率",
+    "tblFrmLabel": "计算结果打表",
+    "plotFrmLabel": "计算结果作图",
+    "errFrmLabel": "程序运行例外",
+    "parFrmLabel": "内弹道参数",
+    "specFrmLabel": "计算结果指标",
+    "opFrmLabel": "程序运算控制",
+    "consFrmLabel": "反算限制条件",
     "chgText": "".join(
         (
             "拉格朗日假设是简化弹道学问题的经典假设。该假设下膛内密度始终沿炮膛均匀分布，火药燃速",
