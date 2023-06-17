@@ -29,12 +29,12 @@ if __name__ == "__main__":
 
     # Tk was originally developed for a dpi of 72
     # root.tk.call("tk", "scaling", "-displayof", ".", dpi / 72.0)
-    root.tk.call("tk", "scaling", dpi / 72.0)
+    root.tk.call("tk", "scaling", 1.0 * dpi / 72.0)
 
     root.tk.call("lappend", "auto_path", resolvepath("ui/awthemes-10.4.0"))
     root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
 
-    root.option_add("*Font", "Hack 10")
+    root.option_add("*Font", "Hack 8")
     root.option_add("*tearOff", FALSE)
 
     root.title("PIBS Phoenix's Internal Ballistics Solver v0.3")

@@ -213,6 +213,21 @@ class IB(Frame):
         self.specFrm.config(text=self.getString("specFrmLabel"))
         self.opFrm.config(text=self.getString("opFrmLabel"))
         self.consFrm.config(text=self.getString("consFrmLabel"))
+        self.topFrm.config(text=self.getString("pltOptnFrm"))
+
+        self.useConstraint.config(text=self.getString("consButton"))
+        self.optimizeLF.config(text=self.getString("minTVButton"))
+        self.sampleFrm.config(text=self.getString("sampleFrmLabel"))
+
+        self.lxLb.config(text=self.getString("lxLabel"))
+        self.vaLb.config(text=self.getString("vaLabel"))
+        self.pPLb.config(text=self.getString("pPLabel"))
+        self.teLb.config(text=self.getString("teffLabel"))
+        self.beLb.config(text=self.getString("beffLabel"))
+        self.cvLb.config(text=self.getString("cvLabel"))
+        self.ldpLb.config(text=self.getString("ldLabel"))
+
+        self.propFrm.config(text=self.getString("propFrmLabel"))
 
     def getString(self, name):
         try:
@@ -221,8 +236,10 @@ class IB(Frame):
             return STRING["English"][name]
 
     def addTopBar(self, parent):
-        topFrm = ttk.LabelFrame(parent, text="Plot Option")
+        topFrm = ttk.LabelFrame(parent, text=self.getString("pltOptnFrm"))
         topFrm.grid(row=0, column=0, sticky="nsew")
+        self.topFrm = topFrm
+
         for i in range(8):
             topFrm.columnconfigure(i, weight=1)
 
@@ -300,7 +317,7 @@ class IB(Frame):
         self.lxLb, self.lx, self.tlx, _, _, i = self.add122Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText="Length Ratio",
+            labelText=self.getString("lxLabel"),
             unitText_up="Cal",
             unitText_dn="Cal",
             justify_up="right",
@@ -312,7 +329,7 @@ class IB(Frame):
         self.vaLb, self.va, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText="Asymptotic Vel.",
+            labelText=self.getString("vaLabel"),
             unitText="m/s",
             justify="right",
             infotext=self.vinfTip,
@@ -321,7 +338,7 @@ class IB(Frame):
         self.pPLb, self.ptm, self.pbm, _, _, i = self.add122Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText="Peak Pressure",
+            labelText=self.getString("pPLabel"),
             unitText_up="Pa",
             unitText_dn="Pa",
             justify_up="right",
@@ -333,7 +350,7 @@ class IB(Frame):
         self.teLb, self.te, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText="Thermal Eff.",
+            labelText=self.getString("teffLabel"),
             unitText="%",
             infotext=self.teffTip,
         )
@@ -342,21 +359,21 @@ class IB(Frame):
         self.beLb, self.be, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText="Ballistic Eff.",
+            labelText=self.getString("beffLabel"),
             unitText="%",
             infotext=self.beffTip,
         )
         self.cvLb, self.cv, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText="Chamber Volume",
+            labelText=self.getString("cvLabel"),
             unitText="m³",
             justify="right",
         )
         self.ldpLb, self.ldp, self.ld, _, _, i = self.add122Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText="Loading Density",
+            labelText=self.getString("ldLabel"),
             unitText_up="%",
             unitText_dn="kg/m³",
             justify_dn="right",
@@ -429,7 +446,7 @@ class IB(Frame):
         self.solve_W_Lg = IntVar()
         self.solve_W_Lg.set(0)
         self.useConstraint = ttk.Checkbutton(
-            consFrm, text="Constrain Design", variable=self.solve_W_Lg
+            consFrm, text=self.getString("consButton"), variable=self.solve_W_Lg
         )
         self.useConstraint.grid(row=j, column=0, columnspan=3, sticky="nsew")
         self.solve_W_Lg.trace_add("write", self.setCD)
@@ -439,7 +456,7 @@ class IB(Frame):
         j += 1
         self.opt_lf = IntVar()
         self.optimizeLF = ttk.Checkbutton(
-            consFrm, text="Minimize Tube Volume", variable=self.opt_lf
+            consFrm, text=self.getString("minTVButton"), variable=self.opt_lf
         )
         self.optimizeLF.grid(row=j, column=0, columnspan=3, sticky="nsew")
         self.setCD()
@@ -448,16 +465,17 @@ class IB(Frame):
         i += 1
 
         sampleFrm = ttk.LabelFrame(
-            opFrm, text="Sampling", style="SubLabelFrame.TLabelframe"
+            opFrm,
+            text=self.getString("sampleFrmLabel"),
+            style="SubLabelFrame.TLabelframe",
         )
         sampleFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
-
-        j = 0
-
         sampleFrm.columnconfigure(0, weight=1)
         sampleFrm.columnconfigure(1, weight=1)
+        self.sampleFrm = sampleFrm
+
         self.dropOptn = ttk.Combobox(
             sampleFrm,
             values=self.domainOptions,
@@ -465,6 +483,7 @@ class IB(Frame):
             justify="center",
         )
 
+        j = 0
         self.dropOptn.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropOptn.current(0)
         self.dropOptn.grid(
@@ -830,7 +849,9 @@ class IB(Frame):
         parFrm.rowconfigure(i, weight=3)
 
         propFrm = ttk.LabelFrame(
-            parFrm, text="Propellant", style="SubLabelFrame.TLabelframe"
+            parFrm,
+            text=self.getString("propFrmLabel"),
+            style="SubLabelFrame.TLabelframe",
         )
         propFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
@@ -839,6 +860,7 @@ class IB(Frame):
         propFrm.rowconfigure(1, weight=1)
         propFrm.columnconfigure(0, weight=1)
         # propFrm.columnconfigure(1, weight=1)
+        self.propFrm = propFrm
 
         self.currProp = StringVar()
         self.dropProp = ttk.Combobox(
@@ -1181,7 +1203,8 @@ class IB(Frame):
             try:
                 gunType = self.kwargs["typ"]
             except AttributeError:
-                return
+                gunType = CONVENTIONAL
+
             self.ax.cla()
             self.axP.cla()
             self.axv.cla()
@@ -1891,11 +1914,11 @@ class IB(Frame):
         # so the default row height should be around 12
 
         style.configure("Treeview", rowheight=round(12 * dpi / 72.0))
-        style.configure("Treeview.Heading", font=("Hack", 10))
-        style.configure("TButton", font=("Hack", 10, "bold"))
+        style.configure("Treeview.Heading", font=("Hack", 8))
+        style.configure("TButton", font=("Hack", 9, "bold"))
         style.configure("TLabelframe.Label", font=("Hack", 10, "bold"))
-        style.configure("TCheckbutton", font=("Hack", 10))
-        style.configure("SubLabelFrame.TLabelframe.Label", font=("Hack", 10))
+        style.configure("TCheckbutton", font=("Hack", 8))
+        style.configure("SubLabelFrame.TLabelframe.Label", font=("Hack", 9))
         # style.configure("TNotebook.Tab", font=("Hack", 10))
 
         bgc = str(style.lookup("TFrame", "background"))
