@@ -228,6 +228,10 @@ class IB(Frame):
         self.ldpLb.config(text=self.getString("ldLabel"))
 
         self.propFrm.config(text=self.getString("propFrmLabel"))
+        self.grainFrm.config(text=self.getString("grainFrmLabel"))
+
+        for i, columnName in enumerate(self.getString("columnList")):
+            self.tv.heading(i, text=columnName)
 
     def getString(self, name):
         try:
@@ -913,13 +917,16 @@ class IB(Frame):
         parFrm.rowconfigure(i, weight=1)
 
         grainFrm = ttk.LabelFrame(
-            parFrm, text="Grain Geometry", style="SubLabelFrame.TLabelframe"
+            parFrm,
+            text=self.getString("grainFrmLabel"),
+            style="SubLabelFrame.TLabelframe",
         )
         grainFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
         grainFrm.columnconfigure(0, weight=1)
         grainFrm.rowconfigure(0, weight=1)
+        self.grainFrm = grainFrm
 
         geomPlotFrm = ttk.LabelFrame(
             grainFrm,
@@ -1449,16 +1456,7 @@ class IB(Frame):
             self.pltCanvas.draw_idle()
 
     def addTblFrm(self, parent):
-        columnList = [
-            "Event",
-            "Time",
-            "Travel",
-            "Burnup",
-            "Velocity",
-            "Avg. Pressure",
-            "Avg. Temp.",
-            "Outflow Fract.",
-        ]
+        columnList = self.getString("columnList")
         tblFrm = ttk.LabelFrame(parent, text=self.getString("tblFrmLabel"))
         tblFrm.grid(row=2, column=0, sticky="nsew")
 
@@ -1503,12 +1501,14 @@ class IB(Frame):
         vertscroll.configure(command=self.tv.yview)  # make it vertical
         vertscroll.grid(row=0, column=1, sticky="nsew")
 
+        """
         horzscroll = ttk.Scrollbar(tblFrm, orient="horizontal")
         horzscroll.configure(command=self.tv.xview)
         horzscroll.grid(row=1, column=0, sticky="nsew")
         self.tv.configure(
             yscrollcommand=vertscroll.set, xscrollcommand=horzscroll.set
         )  # assign the scrollbar to the Treeview Widget
+        """
 
     def updateSpec(self, *args):
         self.specs.config(state="normal")

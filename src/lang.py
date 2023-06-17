@@ -37,6 +37,7 @@ ENGLISH = {
     "cvLabel": "Chamber Volume",
     "ldLabel": "Loading Density",
     "propFrmLabel": "Propellant",
+    "grainFrmLabel": "Grain Geometry",
     "chgText": " ".join(
         (
             "Mass of propellant charge to be used. Lagrangian approximation",
@@ -285,6 +286,16 @@ ENGLISH = {
             "rocket theories. Therefore a more conservative estimate of 92% is adopted",
         )
     ),
+    "columnList": [
+        "Event",
+        "Time",
+        "Travel",
+        "Burnup",
+        "Velocity",
+        "Avg. Pressure",
+        "Avg. Temp.",
+        "Outflow Fract.",
+    ],
 }
 CHINESE = {
     "themeLabel": "主题",
@@ -309,7 +320,7 @@ CHINESE = {
     "tblFrmLabel": "计算结果打表",
     "plotFrmLabel": "计算结果作图",
     "errFrmLabel": "程序运行例外",
-    "parFrmLabel": "内弹道参数",
+    "parFrmLabel": "内弹道参量",
     "specFrmLabel": "计算结果指标",
     "opFrmLabel": "程序运算控制",
     "consFrmLabel": "反算边界条件",
@@ -325,6 +336,7 @@ CHINESE = {
     "cvLabel": "药室容积",
     "ldLabel": "装填密度",
     "propFrmLabel": "火药",
+    "grainFrmLabel": "药粒形状",
     "chgText": "".join(
         (
             "拉格朗日假设是简化弹道学问题的经典假设。该假设下膛内密度始终沿炮膛均匀分布，火药燃速",
@@ -362,5 +374,15 @@ CHINESE = {
             "也是炮弹出膛动能占火药做功潜能的比例，是衡量火炮系统火药利用效率的主要指标之一。",
         )
     ),
+    "columnList": [
+        "特征点",
+        "历时",
+        "行程",
+        "火药燃去比例",
+        "弹速",
+        "空间平均压强",
+        "平均燃气温度",
+        "燃气流出比例",
+    ],
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}
