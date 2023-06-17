@@ -233,6 +233,21 @@ class IB(Frame):
         for i, columnName in enumerate(self.getString("columnList")):
             self.tv.heading(i, text=columnName)
 
+        self.plotAvgPCheck.config(text=self.getString("plotAvgP"))
+        self.plotBasePCheck.config(text=self.getString("plotBaseP"))
+        self.plotBreechNozzlePCheck.config(
+            text=self.getString("plotBreechNozzleP")
+        )
+        self.plotStagPCheck.config(text=self.getString("plotStagP"))
+
+        self.plotVelCheck.config(text=self.getString("plotVel"))
+        self.plotNozzleVCheck.config(text=self.getString("plotNozzleV"))
+        self.plotBurnupCheck.config(text=self.getString("plotBurnup"))
+        self.plotEtaCheck.config(text=self.getString("plotEta"))
+
+        self.stepsLb.config(text=self.getString("stepsLabel"))
+        self.updateGeom()
+
     def getString(self, name):
         try:
             return STRING[self.LANG.get()][name]
@@ -254,42 +269,56 @@ class IB(Frame):
 
         self.plotAvgP = IntVar(value=1)
 
-        ttk.Checkbutton(
-            topFrm, text="Length Avg. P.", variable=self.plotAvgP
-        ).grid(row=1, column=0, sticky="nsew")
+        self.plotAvgPCheck = ttk.Checkbutton(
+            topFrm, text=self.getString("plotAvgP"), variable=self.plotAvgP
+        )
+        self.plotAvgPCheck.grid(row=1, column=0, sticky="nsew")
+
         self.plotBaseP = IntVar(value=1)
-        ttk.Checkbutton(
-            topFrm, text="Shot Base P.", variable=self.plotBaseP
-        ).grid(row=1, column=1, sticky="nsew")
+        self.plotBasePCheck = ttk.Checkbutton(
+            topFrm, text=self.getString("plotBaseP"), variable=self.plotBaseP
+        )
+        self.plotBasePCheck.grid(row=1, column=1, sticky="nsew")
 
         self.plotBreechNozzleP = IntVar(value=1)
-        ttk.Checkbutton(
-            topFrm, text="Breech/Nozzle P.", variable=self.plotBreechNozzleP
-        ).grid(row=1, column=2, sticky="nsew")
+        self.plotBreechNozzlePCheck = ttk.Checkbutton(
+            topFrm,
+            text=self.getString("plotBreechNozzleP"),
+            variable=self.plotBreechNozzleP,
+        )
+        self.plotBreechNozzlePCheck.grid(row=1, column=2, sticky="nsew")
 
         self.plotStagP = IntVar(value=1)
-        ttk.Checkbutton(
-            topFrm, text="Stagnation P.", variable=self.plotStagP
-        ).grid(row=1, column=3, sticky="nsew")
+        self.plotStagPCheck = ttk.Checkbutton(
+            topFrm, text=self.getString("plotStagP"), variable=self.plotStagP
+        )
+        self.plotStagPCheck.grid(row=1, column=3, sticky="nsew")
 
         self.plotVel = IntVar(value=1)
-        ttk.Checkbutton(topFrm, text="Shot Vel.", variable=self.plotVel).grid(
-            row=1, column=4, sticky="nsew"
+        self.plotVelCheck = ttk.Checkbutton(
+            topFrm, text=self.getString("plotVel"), variable=self.plotVel
         )
+        self.plotVelCheck.grid(row=1, column=4, sticky="nsew")
 
         self.plotNozzleV = IntVar(value=1)
-        ttk.Checkbutton(
-            topFrm, text="Nozzle Throat Vel.", variable=self.plotNozzleV
-        ).grid(row=1, column=5, sticky="nsew")
+        self.plotNozzleVCheck = ttk.Checkbutton(
+            topFrm,
+            text=self.getString("plotNozzleV"),
+            variable=self.plotNozzleV,
+        )
+        self.plotNozzleVCheck.grid(row=1, column=5, sticky="nsew")
 
         self.plotBurnup = IntVar(value=1)
-        ttk.Checkbutton(topFrm, text="Burnup", variable=self.plotBurnup).grid(
-            row=1, column=6, sticky="nsew"
+        self.plotBurnupCheck = ttk.Checkbutton(
+            topFrm, text=self.getString("plotBurnup"), variable=self.plotBurnup
         )
+        self.plotBurnupCheck.grid(row=1, column=6, sticky="nsew")
+
         self.plotEta = IntVar(value=1)
-        ttk.Checkbutton(topFrm, text="Escape", variable=self.plotEta).grid(
-            row=1, column=7, sticky="nsew"
+        self.plotEtaCheck = ttk.Checkbutton(
+            topFrm, text=self.getString("plotEta"), variable=self.plotEta
         )
+        self.plotEtaCheck.grid(row=1, column=7, sticky="nsew")
 
         self.plotAvgP.trace_add("write", self.updateFigPlot)
         self.plotBaseP.trace_add("write", self.updateFigPlot)
@@ -501,7 +530,7 @@ class IB(Frame):
             parent=sampleFrm,
             rowIndex=j,
             colIndex=0,
-            labelText="Steps",
+            labelText=self.getString("stepsLabel"),
             default="25",
             validation=validationNN,
             formatter=formatIntInput,
@@ -1571,7 +1600,7 @@ class IB(Frame):
             self.grlRw.config(state="normal")
 
         if geom == SimpleGeometry.SPHERE:
-            self.lengthPrimaryAs.set("Diameter")
+            self.lengthPrimaryAs.set(self.getString("diamLabel"))
 
             self.lengthRatioAs.set("")
             self.ratioAs.set("")
@@ -1581,18 +1610,17 @@ class IB(Frame):
             self.lengthSecondaryTip.set("")
 
         elif geom == SimpleGeometry.ROD:
-            self.lengthPrimaryAs.set("Width")
-            self.lengthRatioAs.set("Length / Width")
-            self.ratioAs.set("Height / Width")
+            self.lengthPrimaryAs.set(self.getString("widtLabel"))
+            self.lengthRatioAs.set(self.getString("ltwLabel"))
+            self.ratioAs.set(self.getString("htwLabel"))
 
             self.lengthPrimaryTip.set(self.getString("widthText"))
             self.lengthRatioTip.set(self.getString("rodRtext"))
             self.lengthSecondaryTip.set(self.getString("heightRtext"))
 
         elif geom == SimpleGeometry.CYLINDER:
-            self.lengthPrimaryAs.set("Diameter")
-
-            self.lengthRatioAs.set("Length / Diameter")
+            self.lengthPrimaryAs.set(self.getString("diamLabel"))
+            self.lengthRatioAs.set(self.getString("ltdLabel"))
             self.ratioAs.set("")
 
             self.lengthPrimaryTip.set(self.getString("diaText"))
@@ -1600,9 +1628,9 @@ class IB(Frame):
             self.lengthSecondaryTip.set("")
 
         else:
-            self.lengthPrimaryAs.set("Arc Thickness")
-            self.lengthRatioAs.set("Length / Diameter")
-            self.ratioAs.set("Perf.Dia. / A.Th.")
+            self.lengthPrimaryAs.set(self.getString("athLabel"))
+            self.lengthRatioAs.set(self.getString("ltdLabel"))
+            self.ratioAs.set(self.getString("pdtalLabel"))
 
             self.lengthPrimaryTip.set(self.getString("arcText"))
             self.lengthRatioTip.set(self.getString("perfLRtext"))
