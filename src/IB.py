@@ -1914,11 +1914,11 @@ class IB(Frame):
         # so the default row height should be around 12
 
         style.configure("Treeview", rowheight=round(12 * dpi / 72.0))
-        style.configure("Treeview.Heading", font=("Hack", 8))
-        style.configure("TButton", font=("Hack", 9, "bold"))
-        style.configure("TLabelframe.Label", font=("Hack", 10, "bold"))
-        style.configure("TCheckbutton", font=("Hack", 8))
-        style.configure("SubLabelFrame.TLabelframe.Label", font=("Hack", 9))
+        style.configure("Treeview.Heading", font=("Hack", 9))
+        style.configure("TButton", font=("Hack", 10, "bold"))
+        style.configure("TLabelframe.Label", font=("Hack", 11, "bold"))
+        style.configure("TCheckbutton", font=("Hack", 9))
+        style.configure("SubLabelFrame.TLabelframe.Label", font=("Hack", 10))
         # style.configure("TNotebook.Tab", font=("Hack", 10))
 
         bgc = str(style.lookup("TFrame", "background"))

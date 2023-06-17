@@ -34,7 +34,7 @@ if __name__ == "__main__":
     root.tk.call("lappend", "auto_path", resolvepath("ui/awthemes-10.4.0"))
     root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
 
-    root.option_add("*Font", "Hack 8")
+    root.option_add("*Font", "Hack 9")
     root.option_add("*tearOff", FALSE)
 
     root.title("PIBS Phoenix's Internal Ballistics Solver v0.3")
