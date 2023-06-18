@@ -55,6 +55,10 @@ ENGLISH = {
     "plotEta": "Escape",
     "stepsLabel": "Steps",
     "calcLabel": "CALCULATE",
+    "CONVENTIONAL": "Conventional Gun",
+    "RECOILESS": "Recoiless Gun",
+    "DOMAIN_TIME": "Time",
+    "DOMAIN_LENG": "Length",
     "chgText": " ".join(
         (
             "Mass of propellant charge to be used. Lagrangian approximation",
@@ -313,6 +317,17 @@ ENGLISH = {
         "Avg. Temp.",
         "Outflow Fract.",
     ],
+    "SEVEN_PERF_CYLINDER": "7 Perf. Cylinder",
+    "SEVEN_PERF_ROSETTE": "7 Perf. Rosette Prism",
+    "FOURTEEN_PERF_ROSETTE": "14 Perf. Rosette Prism",
+    "NINETEEN_PERF_ROSETTE": "19 Perf. Rosette Prism",
+    "NINETEEN_PERF_CYLINDER": "19 Perf. Cylinder",
+    "NINETEEN_PERF_HEXAGON": "19 Perf. Hexagonal Prism",
+    "NINETEEN_PERF_ROUNDED_HEXAGON": "19 Perf. Rounded Hex. Prism",
+    "SPHERE": "Sphere",
+    "ROD": "Strip / Flake",
+    "CYLINDER": "Cylinder",
+    "TUBE": "Tube",
 }
 CHINESE = {
     "themeLabel": "主题",
@@ -371,6 +386,10 @@ CHINESE = {
     "plotEta": "燃气流出比例",
     "stepsLabel": "采样点",
     "calcLabel": "计算",
+    "CONVENTIONAL": "常规火炮",
+    "RECOILESS": "无后座炮",
+    "DOMAIN_TIME": "时间",
+    "DOMAIN_LENG": "空间",
     "chgText": "".join(
         (
             "拉格朗日假设是简化弹道学问题的经典假设。该假设下膛内密度始终沿炮膛均匀分布，火药燃速",
@@ -418,5 +437,16 @@ CHINESE = {
         "平均燃气温度",
         "燃气流出比例",
     ],
+    "SEVEN_PERF_CYLINDER": "圆柱形七孔柱",
+    "SEVEN_PERF_ROSETTE": "花边形七孔柱",
+    "FOURTEEN_PERF_ROSETTE": "花边十四孔柱",
+    "NINETEEN_PERF_ROSETTE": "花边十九孔柱",
+    "NINETEEN_PERF_CYLINDER": "圆柱形十九孔柱",
+    "NINETEEN_PERF_HEXAGON": "正六边形十九孔柱",
+    "NINETEEN_PERF_ROUNDED_HEXAGON": "圆角六边形19孔柱",
+    "SPHERE": "球体",
+    "ROD": "立方体状",
+    "CYLINDER": "圆柱",
+    "TUBE": "管状",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}

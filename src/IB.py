@@ -137,14 +137,12 @@ class IB(Frame):
         self.compositions = GrainComp.readFile(
             resolvepath("data/propellants.csv")
         )
-        self.geometries = GEOMETRIES
+        self.geometries = {self.getString(k): v for k, v in GEOMETRIES.items()}
         self.prop = None
         self.gun = None
         self.errorLst = []
 
         self.propOptions = tuple(self.compositions.keys())
-        self.geoOptions = tuple(self.geometries.keys())
-        self.domainOptions = (DOMAIN_TIME, DOMAIN_LENG)
 
         parent.columnconfigure(0, weight=1)
         parent.rowconfigure(1, weight=1)
@@ -221,7 +219,7 @@ class IB(Frame):
 
         self.lxLb.config(text=self.getString("lxLabel"))
         self.vaLb.config(text=self.getString("vaLabel"))
-        self.pPLb.config(text=self.getString("pPLabel"))
+        # self.pPLb.config(text=self.getString("pPLabel"))
         self.teLb.config(text=self.getString("teffLabel"))
         self.beLb.config(text=self.getString("beffLabel"))
         self.cvLb.config(text=self.getString("cvLabel"))
@@ -247,6 +245,29 @@ class IB(Frame):
 
         self.stepsLb.config(text=self.getString("stepsLabel"))
         self.calButton.config(text=self.getString("calcLabel"))
+
+        gunTypeIndex = self.typeOptn["values"].index(self.gunType.get())
+        self.typeOptn.config(
+            values=(
+                self.getString("CONVENTIONAL"),
+                self.getString("RECOILESS"),
+            )
+        )
+        self.typeOptn.current(gunTypeIndex)
+
+        domainIndex = self.dropOptn["values"].index(self.dropOptn.get())
+        self.dropOptn.config(
+            values=(
+                self.getString("DOMAIN_TIME"),
+                self.getString("DOMAIN_LENG"),
+            )
+        )
+        self.dropOptn.current(domainIndex)
+
+        geomIndex = self.dropGeom["values"].index(self.dropGeom.get())
+        self.geometries = {self.getString(k): v for k, v in GEOMETRIES.items()}
+        self.dropGeom.config(values=tuple(self.geometries.keys()))
+        self.dropGeom.current(geomIndex)
         self.updateGeom()
 
     def getString(self, name):
@@ -368,7 +389,7 @@ class IB(Frame):
             justify="right",
             infotext=self.vinfTip,
         )
-
+        """
         self.pPLb, self.ptm, self.pbm, _, _, i = self.add122Disp(
             parent=specFrm,
             rowIndex=i,
@@ -379,6 +400,16 @@ class IB(Frame):
             justify_dn="right",
             infotext=self.getString("pMaxTxt"),
         )
+    
+        self.pPLb, self.pm, _, i = self.add12Disp(
+            parent=specFrm,
+            rowIndex=i,
+            labelText=self.getString("pPLabel"),
+            unitText="Pa",
+            justify="right",
+            infotext=self.getString("pMaxTxt"),
+        )
+        """
 
         self.teffTip = StringVar(value=self.getString("teffText"))
         self.teLb, self.te, _, i = self.add12Disp(
@@ -512,7 +543,10 @@ class IB(Frame):
 
         self.dropOptn = ttk.Combobox(
             sampleFrm,
-            values=self.domainOptions,
+            values=(
+                self.getString("DOMAIN_TIME"),
+                self.getString("DOMAIN_LENG"),
+            ),
             state="readonly",
             justify="center",
         )
@@ -574,7 +608,16 @@ class IB(Frame):
         constrain = self.solve_W_Lg.get() == 1
         optimize = self.opt_lf.get() == 1
         debug = self.DEBUG.get() == 1
-        gunType = self.typeOptn.get()
+        invGunTypeLookup = {
+            self.getString("CONVENTIONAL"): CONVENTIONAL,
+            self.getString("RECOILESS"): RECOILESS,
+        }
+        gunType = invGunTypeLookup[self.typeOptn.get()]
+
+        invDomainLookup = {
+            self.getString("DOMAIN_TIME"): DOMAIN_TIME,
+            self.getString("DOMAIN_LENG"): DOMAIN_LENG,
+        }
 
         self.tableData = []
         self.errorData = []
@@ -584,7 +627,7 @@ class IB(Frame):
             "con": constrain,
             "deb": debug,
             "typ": gunType,
-            "dom": self.dropOptn.get(),
+            "dom": invDomainLookup[self.dropOptn.get()],
         }
         self.process = None
 
@@ -744,6 +787,8 @@ class IB(Frame):
             i = [i[0] for i in self.tableData].index("PEAK PRESSURE")
             _, tp, lp, _, vp, pp, Tp, etap = self.tableData[i]
 
+            """
+            self.pm.set(toSI(pp))
             if gunType == CONVENTIONAL:
                 Pb, Pt = self.gun.toPbPt(lp, pp)
                 self.ptm.set(toSI(Pt))
@@ -752,7 +797,7 @@ class IB(Frame):
                 Pb, P0, Px, _ = self.gun.toPbP0PxVx(lp, vp, pp, Tp, etap)
                 self.ptm.set(toSI(P0))
                 self.pbm.set(toSI(Pb))
-
+            """
             self.lx.set(toSI(kwargs["lengthGun"] / kwargs["caliber"]))
             self.tlx.set(
                 toSI(
@@ -832,7 +877,10 @@ class IB(Frame):
         self.typeOptn = ttk.Combobox(
             parFrm,
             textvariable=self.gunType,
-            values=(CONVENTIONAL, RECOILESS),
+            values=(
+                self.getString("CONVENTIONAL"),
+                self.getString("RECOILESS"),
+            ),
             state="readonly",
             justify="center",
         )
@@ -990,7 +1038,7 @@ class IB(Frame):
         self.dropGeom = ttk.Combobox(
             grainFrm,
             textvariable=self.currGeom,
-            values=self.geoOptions,
+            values=tuple(self.geometries.keys()),
             state="readonly",
             justify="center",
         )
@@ -1239,8 +1287,19 @@ class IB(Frame):
             gun = self.gun
             try:
                 gunType = self.kwargs["typ"]
+                dom = self.kwargs["dom"]
             except AttributeError:
-                gunType = CONVENTIONAL
+                invGunTypeLookup = {
+                    self.getString("CONVENTIONAL"): CONVENTIONAL,
+                    self.getString("RECOILESS"): RECOILESS,
+                }
+
+                invDomainLookup = {
+                    self.getString("DOMAIN_TIME"): DOMAIN_TIME,
+                    self.getString("DOMAIN_LENG"): DOMAIN_LENG,
+                }
+                gunType = invGunTypeLookup[self.typeOptn.get()]
+                dom = invDomainLookup[self.dropOptn.get()]
 
             self.ax.cla()
             self.axP.cla()
@@ -1266,7 +1325,6 @@ class IB(Frame):
                 psis = []
                 etas = []
                 vxs = []
-                dom = self.dropOptn.get()
 
                 for i, (t, (l, psi, v, p, T, eta)) in enumerate(
                     self.intgRecord
@@ -1362,7 +1420,7 @@ class IB(Frame):
                     alpha=1,
                 )
 
-                if self.typeOptn.get() == CONVENTIONAL:
+                if gunType == CONVENTIONAL:
                     if self.plotBreechNozzleP.get():
                         self.axP.plot(
                             xs,
@@ -1725,7 +1783,11 @@ class IB(Frame):
         self.updateError()
 
     def typeCallback(self, *args):
-        gunType = self.typeOptn.get()
+        invGunTypeLookup = {
+            self.getString("CONVENTIONAL"): CONVENTIONAL,
+            self.getString("RECOILESS"): RECOILESS,
+        }
+        gunType = invGunTypeLookup[self.typeOptn.get()]
         if gunType == CONVENTIONAL:
             self.nozzExpw.config(state="disabled")
             self.nozzEffw.config(state="disabled")

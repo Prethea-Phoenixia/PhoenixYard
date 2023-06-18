@@ -16,7 +16,7 @@ class MultPerfGeometry(Enum):
         self.useAR = False
 
     SEVEN_PERF_CYLINDER = (
-        "7 Perf Cylinder",
+        "SEVEN_PERF_CYLINDER",
         1,
         7,
         0,
@@ -24,7 +24,7 @@ class MultPerfGeometry(Enum):
         7,
     )
     SEVEN_PERF_ROSETTE = (
-        "7 Perf Rosette Prism",
+        "SEVEN_PERF_ROSETTE",
         2,
         8,
         12 * 3**0.5 / pi,
@@ -32,7 +32,7 @@ class MultPerfGeometry(Enum):
         7,
     )
     FOURTEEN_PERF_ROSETTE = (
-        "14 Perf Rosette Prism",
+        "FOURTEEN_PERF_ROSETTE",
         8 / 3,
         47 / 3,
         26 * 3**0.5 / pi,
@@ -40,7 +40,7 @@ class MultPerfGeometry(Enum):
         14,
     )
     NINETEEN_PERF_ROSETTE = (
-        "19 Perf Rosette Prism",
+        "NINETEEN_PERF_ROSETTE",  # rosette prism
         3,
         21,
         36 * 3**0.5 / pi,
@@ -48,7 +48,7 @@ class MultPerfGeometry(Enum):
         19,
     )
     NINETEEN_PERF_CYLINDER = (
-        "19 Perf Cylinder",
+        "NINETEEN_PERF_CYLINDER",
         1,
         19,
         0,
@@ -56,7 +56,7 @@ class MultPerfGeometry(Enum):
         19,
     )
     NINETEEN_PERF_HEXAGON = (
-        "19 Perf Hexagonal Prism",
+        "NINETEEN_PERF_HEXAGON",  # hexagonal prism
         18 / pi,
         19,
         18 * (3 * 3**0.5 - 1) / pi,
@@ -64,7 +64,7 @@ class MultPerfGeometry(Enum):
         19,
     )
     NINETEEN_PERF_ROUNDED_HEXAGON = (
-        "19 Perf Rounded Hex. Prism",
+        "NINETEEN_PERF_ROUNDED_HEXAGON",
         3**0.5 + 12 / pi,
         19,
         3 - 3**0.5 + 12 * (4 * 3**0.5 - 1) / pi,
@@ -79,10 +79,10 @@ class SimpleGeometry(Enum):
     def __init__(self, desc):
         self.desc = desc
 
-    SPHERE = "Sphere"
-    ROD = "Strip / Flake (Rect. Prism)"
-    CYLINDER = "Cylinder"
-    TUBE = "1 Perf Cylinder"
+    SPHERE = "SPHERE"
+    ROD = "ROD"  # "Strip / Flake (Rect. Prism)"
+    CYLINDER = "CYLINDER"
+    TUBE = "TUBE"
 
 
 GEOMETRIES = {i.desc: i for i in SimpleGeometry}
