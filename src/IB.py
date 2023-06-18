@@ -979,7 +979,7 @@ class IB(Frame):
             # wrap=WORD,
             wrap="none",
             height=10,
-            width=32,
+            width=28,
             yscrollcommand=specScroll.set,
             xscrollcommand=specHScroll.set,
             font=("Hack", 8),
