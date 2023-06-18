@@ -269,6 +269,7 @@ class IB(Frame):
         self.dropGeom.config(values=tuple(self.geometries.keys()))
         self.dropGeom.current(geomIndex)
         self.updateGeom()
+        self.updateSpec()
 
     def getString(self, name):
         try:
@@ -1608,25 +1609,38 @@ class IB(Frame):
         t_Font = tkFont.Font(family="hack", size=8)
         width = self.specs.winfo_width() // t_Font.measure("m")
         self.specs.insert(
-            "end", " Adb.Temp: {:>4.0f} K (Isochoric)\n".format(compo.T_v)
+            "end",
+            "{:}: {:>4.0f} K {:}\n".format(
+                self.getString("TvDesc"),
+                compo.T_v,
+                self.getString("isochorDesc"),
+            ),
         ),
 
         self.specs.insert(
-            "end", "  Density: {:>4.0f} kg/m^3\n".format(compo.rho_p)
+            "end",
+            "{:}: {:>4.0f} kg/m^3\n".format(
+                self.getString("densityDesc"), compo.rho_p
+            ),
         )
         isp = compo.getIsp()
         self.specs.insert(
             "end",
-            " Isp(Vac): {:>4.0f} m/s {:>3.0f} s\n".format(isp, isp / 9.805),
+            "{:}: {:>4.0f} m/s {:>3.0f} s\n".format(
+                self.getString("vacISPDesc"), isp, isp / 9.805
+            ),
         )
         isp = compo.getIsp(50)
         self.specs.insert(
             "end",
-            " Isp(Atm): {:>4.0f} m/s {:>3.0f} s\n(Pc:Pa=50)\n".format(
-                isp, isp / 9.805
+            "{:}: {:>4.0f} m/s {:>3.0f} s\n{:}\n".format(
+                self.getString("atmISPDesc"),
+                isp,
+                isp / 9.805,
+                self.getString("pRatioDesc"),
             ),
         )
-        self.specs.insert("end", "Burn rate:\n")
+        self.specs.insert("end", "{:}:\n".format(self.getString("brDesc")))
         for p in (100e6, 200e6, 300e6):
             self.specs.insert(
                 "end",

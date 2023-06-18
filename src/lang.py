@@ -59,6 +59,13 @@ ENGLISH = {
     "RECOILESS": "Recoiless Gun",
     "DOMAIN_TIME": "Time",
     "DOMAIN_LENG": "Length",
+    "TvDesc": "Adb.Temp",
+    "isochorDesc": "(Isochoric)",
+    "densityDesc": " Density",
+    "vacISPDesc": "Isp(Vac)",
+    "atmISPDesc": "Isp(Atm)",
+    "pRatioDesc": "(Pc:Pa=50)",
+    "brDesc": "Burn rate",
     "chgText": " ".join(
         (
             "Mass of propellant charge to be used. Lagrangian approximation",
@@ -448,5 +455,12 @@ CHINESE = {
     "ROD": "立方体状",
     "CYLINDER": "圆柱",
     "TUBE": "管状",
+    "TvDesc": "绝热燃烧温度",
+    "isochorDesc": "（定容）",
+    "densityDesc": "　　　　密度",
+    "vacISPDesc": "　　真空比冲",
+    "atmISPDesc": "　　大气比冲",
+    "pRatioDesc": "　（压强比50）",
+    "brDesc": "燃速",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}
