@@ -445,6 +445,9 @@ class IB(Frame):
             justify_dn="right",
         )
 
+        for j in range(i):
+            specFrm.rowconfigure(j, weight=1)
+
         opFrm = ttk.LabelFrame(rightFrm, text=self.getString("opFrmLabel"))
         opFrm.grid(row=1, column=0, sticky="nsew")
         opFrm.columnconfigure(1, weight=1)
