@@ -37,7 +37,7 @@ if __name__ == "__main__":
     root.option_add("*Font", "Hack 9")
     root.option_add("*tearOff", FALSE)
 
-    root.title("PIBS Phoenix's Internal Ballistics Solver v0.3")
+    root.title("PIBS v0.4")
 
     ibPanel = IB(root, dpi)
 

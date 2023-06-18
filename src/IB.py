@@ -246,6 +246,7 @@ class IB(Frame):
         self.plotEtaCheck.config(text=self.getString("plotEta"))
 
         self.stepsLb.config(text=self.getString("stepsLabel"))
+        self.calButton.config(text=self.getString("calcLabel"))
         self.updateGeom()
 
     def getString(self, name):
@@ -556,7 +557,7 @@ class IB(Frame):
 
         self.calButton = ttk.Button(
             opFrm,
-            text="CALCULATE",
+            text=self.getString("calcLabel"),
             # command=self.calculate,  # underline=0
             command=self.onCalculate,
         )
@@ -929,7 +930,7 @@ class IB(Frame):
             # wrap=WORD,
             wrap="none",
             height=10,
-            width=36,
+            width=32,
             yscrollcommand=specScroll.set,
             xscrollcommand=specHScroll.set,
             font=("Hack", 8),
@@ -996,7 +997,7 @@ class IB(Frame):
 
         self.dropGeom.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropGeom.current(0)
-        self.dropGeom.configure(width=30)
+        # self.dropGeom.configure(width=25)
 
         self.dropGeom.grid(
             row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
@@ -1538,6 +1539,9 @@ class IB(Frame):
             yscrollcommand=vertscroll.set, xscrollcommand=horzscroll.set
         )  # assign the scrollbar to the Treeview Widget
         """
+        self.tv.configure(
+            yscrollcommand=vertscroll.set
+        )  # assign the scrollbar to the Treeview Widget
 
     def updateSpec(self, *args):
         self.specs.config(state="normal")
@@ -1560,7 +1564,7 @@ class IB(Frame):
         isp = compo.getIsp(50)
         self.specs.insert(
             "end",
-            " Isp(Atm): {:>4.0f} m/s {:>3.0f} s (Pc:Pa=50)\n".format(
+            " Isp(Atm): {:>4.0f} m/s {:>3.0f} s\n(Pc:Pa=50)\n".format(
                 isp, isp / 9.805
             ),
         )
@@ -1568,8 +1572,8 @@ class IB(Frame):
         for p in (100e6, 200e6, 300e6):
             self.specs.insert(
                 "end",
-                "{:>13}".format(toSI(compo.getLBR(p), unit="m/s", dec=3))
-                + " @ {:>13}\n".format(toSI(p, unit="Pa", dec=3)),
+                "{:>12}".format(toSI(compo.getLBR(p), unit="m/s", dec=3))
+                + " @ {:>12}\n".format(toSI(p, unit="Pa", dec=3)),
             )
 
         self.specs.insert(

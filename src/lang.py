@@ -54,6 +54,7 @@ ENGLISH = {
     "plotBurnup": "Burnup",
     "plotEta": "Escape",
     "stepsLabel": "Steps",
+    "calcLabel": "CALCULATE",
     "chgText": " ".join(
         (
             "Mass of propellant charge to be used. Lagrangian approximation",
@@ -337,9 +338,9 @@ CHINESE = {
     "plotFrmLabel": "计算结果作图",
     "errFrmLabel": "程序运行例外",
     "parFrmLabel": "内弹道参量",
-    "specFrmLabel": "计算结果指标",
+    "specFrmLabel": "系统性能指标",
     "opFrmLabel": "程序运算控制",
-    "consFrmLabel": "反算边界条件",
+    "consFrmLabel": "反算设置",
     "consButton": "反算弧厚身管长",
     "minTVButton": "求最小膛容解",
     "sampleFrmLabel": "采样控制",
@@ -369,6 +370,7 @@ CHINESE = {
     "plotBurnup": "火药燃尽比例",
     "plotEta": "燃气流出比例",
     "stepsLabel": "采样点",
+    "calcLabel": "计算",
     "chgText": "".join(
         (
             "拉格朗日假设是简化弹道学问题的经典假设。该假设下膛内密度始终沿炮膛均匀分布，火药燃速",
