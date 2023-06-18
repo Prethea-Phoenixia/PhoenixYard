@@ -65,7 +65,7 @@ ENGLISH = {
     "vacISPDesc": "Isp(Vac)",
     "atmISPDesc": "Isp(Atm)",
     "pRatioDesc": "(Pc:Pa=50)",
-    "brDesc": "Burn rate",
+    "brDesc": "Burnrate",
     "chgText": " ".join(
         (
             "Mass of propellant charge to be used. Lagrangian approximation",
