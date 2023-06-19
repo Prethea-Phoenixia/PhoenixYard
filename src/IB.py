@@ -1,3 +1,45 @@
+from tkinter import *
+from tkinter import ttk
+import tkinter.font as tkFont
+import traceback
+
+from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
+from gun import POINT_PEAK, POINT_BURNOUT, POINT_FRACTURE
+from recoiless import Recoiless
+
+from prop import Propellant, GrainComp, GEOMETRIES, SimpleGeometry
+from opt import Constrained
+from optRecoiless import ConstrainedRecoiless
+from tip import CreateToolTip
+from lang import STRING
+
+from misc import (
+    toSI,
+    validateNN,
+    validatePI,
+    formatFloatInput,
+    formatIntInput,
+    dot_aligned,
+    resolvepath,
+)
+from math import ceil, floor, log10
+
+import matplotlib.pyplot as mpl
+from matplotlib.figure import Figure
+from labellines import labelLines
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+# from matplotlib.widgets import Cursor
+
+
+from multiprocessing import Process, Queue
+from queue import Empty
+
+import sys
+
+RECOILESS = "Recoiless Gun"
+CONVENTIONAL = "Conventional Gun"
+
 GEOM_CONTEXT = {
     "font.size": 8,
     "axes.titlesize": 8,
@@ -30,47 +72,6 @@ FIG_CONTEXT = {
     # "path.simplify_threshold": 1,
     "font.family": "Hack",
 }
-
-from tkinter import *
-from tkinter import ttk
-import tkinter.font as tkFont
-import traceback
-
-from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
-from gun import POINT_PEAK, POINT_BURNOUT, POINT_FRACTURE
-from recoiless import Recoiless
-
-from prop import Propellant, GrainComp, GEOMETRIES, SimpleGeometry
-from opt import Constrained
-from optRecoiless import ConstrainedRecoiless
-from tip import ToolTip, CreateToolTip
-from lang import STRING
-
-from misc import (
-    toSI,
-    validateNN,
-    validatePI,
-    formatFloatInput,
-    formatIntInput,
-    dot_aligned,
-    resolvepath,
-)
-from math import ceil, floor, log10
-
-import matplotlib.pyplot as mpl
-from matplotlib.figure import Figure
-from labellines import labelLine, labelLines
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.widgets import Cursor
-
-
-from multiprocessing import Process, Queue
-from queue import Empty
-
-import sys
-
-RECOILESS = "Recoiless Gun"
-CONVENTIONAL = "Conventional Gun"
 
 
 class IB(Frame):
@@ -713,7 +714,6 @@ class IB(Frame):
     def getValue(self):
         constrain = self.kwargs["con"]
         optimize = self.kwargs["con"]
-        gunType = self.kwargs["typ"]
 
         queue = self.queue
 
@@ -1170,7 +1170,6 @@ class IB(Frame):
         self.typeCallback()
 
     def addGeomPlot(self):
-        geomParentFrm = self.geomParentFrm
         geomPlotFrm = self.geomPlotFrm
         geomPlotFrm.columnconfigure(0, weight=1)
         geomPlotFrm.rowconfigure(0, weight=1)
@@ -1575,7 +1574,7 @@ class IB(Frame):
         self.tv.tag_configure("error", font=("hack", 8), foreground="grey")
 
         # we use a fixed width font so any char will do
-        width, height = t_Font.measure("m"), t_Font.metrics("linespace")
+        width, _ = t_Font.measure("m"), t_Font.metrics("linespace")
 
         for column in columnList:  # foreach column
             self.tv.heading(
@@ -2078,7 +2077,7 @@ class IB(Frame):
             self.updateGeomPlot()
             self.updateFigPlot()
 
-        except AttributeError as e:
+        except AttributeError:
             pass
 
         self.update_idletasks()

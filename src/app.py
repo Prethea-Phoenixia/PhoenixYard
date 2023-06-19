@@ -21,7 +21,7 @@ if __name__ == "__main__":
     elif winRelease in ("7", "Vista"):
         windll.user32.SetProcessDPIAware()
     else:
-        print("Unknown release: ", release, ", skipping DPI handling")
+        print("Unknown release: ", winRelease, ", skipping DPI handling")
 
     # this allows us to set our own taskbar icon
     myappid = "mycompany.myproduct.subproduct.version"  # arbitrary string

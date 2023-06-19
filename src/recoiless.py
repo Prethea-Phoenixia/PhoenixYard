@@ -1,4 +1,4 @@
-from math import pi, log, exp, inf
+from math import pi, inf
 from num import gss, RKF78, cubic
 from prop import GrainComp, Propellant
 

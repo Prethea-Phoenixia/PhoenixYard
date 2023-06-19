@@ -1,6 +1,5 @@
 from tkinter import *
 import tkinter.font as tkFont
-from math import ceil
 
 
 class ToolTip(object):
@@ -32,8 +31,9 @@ class ToolTip(object):
         # we use a fixed width font so any char will do
         columnWidth = 40
         width, height = t_Font.measure("m"), t_Font.metrics("linespace")
-        x, y, cx, cy = self.widget.bbox("insert")
-        rx, ry, crx, cry = root.bbox()
+
+        x, y, _, _ = self.widget.bbox("insert")
+        # rx, ry, crx, cry = root.bbox()
         # bouding box coordinate is in regard to origin of widget/window
 
         if (
@@ -46,7 +46,6 @@ class ToolTip(object):
             x = x + self.widget.winfo_rootx() + self.widget.winfo_width()
             y = y + self.widget.winfo_rooty()
 
-        # tw.wm_geometry("+%d+%d" % (x, y))
         label = Label(
             tw,
             text=self.text,

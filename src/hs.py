@@ -717,7 +717,7 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):  # in kelvin  # mol/g
 
     speciesList.sort(key=lambda x: x[1], reverse=True)
 
-    n0 = Ci + 0.5 * Hi + 0.5 * Ni
+    # n0 = Ci + 0.5 * Hi + 0.5 * Ni
 
     B = BCO2 * CO2j + BN2CO * (N2j + COj) + BH2O * H2Oj + BH2 * H2j
     C = CCO2 * CO2j + CN2CO * (N2j + COj) + CH2O * H2Oj + CH2 * H2j
