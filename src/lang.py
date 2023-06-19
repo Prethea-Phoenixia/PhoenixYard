@@ -335,6 +335,8 @@ ENGLISH = {
     "ROD": "Strip / Flake",
     "CYLINDER": "Cylinder",
     "TUBE": "Tube",
+    "figTimeDomain": "Time - ms",
+    "figLengDomain": "Travel - m",
 }
 CHINESE = {
     "themeLabel": "主题",
@@ -462,5 +464,7 @@ CHINESE = {
     "atmISPDesc": "　　大气比冲",
     "pRatioDesc": "　（压强比50）",
     "brDesc": "燃速",
+    "figTimeDomain": "时间 / ms",
+    "figLengDomain": "行程 / m",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}

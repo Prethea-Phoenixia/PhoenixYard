@@ -1,10 +1,10 @@
 GEOM_CONTEXT = {
-    "font.size": 6,
-    "axes.titlesize": 6,
+    "font.size": 8,
+    "axes.titlesize": 8,
     "axes.labelsize": 8,
-    "xtick.labelsize": 6,
-    "ytick.labelsize": 6,
-    "legend.fontsize": 6,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "legend.fontsize": 8,
     "figure.titlesize": 10,
     # "figure.autolayout": True,
     "lines.markersize": 2,
@@ -13,13 +13,13 @@ GEOM_CONTEXT = {
 }
 
 FIG_CONTEXT = {
-    "font.size": 8,
-    "axes.titlesize": 8,
-    "axes.labelsize": 8,
-    "xtick.labelsize": 8,
-    "ytick.labelsize": 8,
-    "legend.fontsize": 8,
-    "figure.titlesize": 12,
+    "font.size": 9,
+    "axes.titlesize": 9,
+    "axes.labelsize": 9,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "legend.fontsize": 9,
+    "figure.titlesize": 11,
     # "figure.autolayout": True,
     "lines.linewidth": 1,
     "font.weight": "bold",
@@ -28,6 +28,7 @@ FIG_CONTEXT = {
     "axes.labelweight": "bold",
     "yaxis.labellocation": "top",
     # "path.simplify_threshold": 1,
+    "font.family": "Hack",
 }
 
 from tkinter import *
@@ -270,6 +271,7 @@ class IB(Frame):
         self.dropGeom.current(geomIndex)
         self.updateGeom()
         self.updateSpec()
+        self.updateFigPlot()
 
     def getString(self, name):
         try:
@@ -1522,9 +1524,9 @@ class IB(Frame):
                 self.ax.tick_params(axis="x", **tkw)
 
                 if dom == DOMAIN_TIME:
-                    self.ax.set_xlabel("Time - ms")
-                elif dom == DOMAIN_LENG:
-                    self.ax.set_xlabel("Length - m")
+                    self.ax.set_xlabel(self.getString("figTimeDomain"))
+                else:
+                    self.ax.set_xlabel(self.getString("figLengDomain"))
 
                 for lines, xvals in zip(
                     (

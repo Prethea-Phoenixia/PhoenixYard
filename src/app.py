@@ -5,7 +5,14 @@ from ctypes import windll
 import platform
 import multiprocessing
 
+from matplotlib import font_manager
+
+# import matplotlib.font_manager as font_manager
+
+
 if __name__ == "__main__":
+    tcl = Tcl()
+    print(tcl.call("info", "patchlevel"))
     multiprocessing.freeze_support()
     # this tells windows that our program will handle scaling ourselves
     winRelease = platform.release()
@@ -24,6 +31,8 @@ if __name__ == "__main__":
     root.iconbitmap(resolvepath("ui/logo.ico"))
     # one must supply the entire path
     loadfont(resolvepath("ui/Hack-Regular.ttf"))
+
+    font_manager.fontManager.addfont(resolvepath("ui/Hack-Regular.ttf"))
 
     dpi = root.winfo_fpixels("1i")
 
