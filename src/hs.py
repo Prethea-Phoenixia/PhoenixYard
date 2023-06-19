@@ -50,8 +50,6 @@ These entries are removed due to large mismatch between values computed from
 composition and tabulated ones.
 Metriol trinitrate,MTN,0.3052,377,0.04313,5,9,3,9,
 Trimethylolethane trinitrate,TMETN,0.3052,377,0.04313,5,9,3,9,
-
-
 """
 import csv
 import difflib
@@ -163,7 +161,7 @@ class Ingredient:
             HoC /= A  # to kcal/g
             HoC *= 1000  # to cal/g
         elif u == "kJ/kg":
-            Q /= 4.184  # to kcal/kg
+            HoC /= 4.184  # to kcal/kg
         elif u == "kcal/mol":
             HoC /= A
             HoC *= 1000
@@ -181,7 +179,7 @@ class Ingredient:
         # heat required to bring combustion product to 2500k, +: product hotter than 2.5kK
         # -: product cooler than 2.5kK
 
-        newIngr = cls(name, alt, Cv, E, invM, Ci, Hi, Ni, Oi, 0)
+        newIngr = cls(name, alt, Cv, E, invM, C, H, N, O, 0)
         if keep:
             cls.allDict.update({newIngr.name: newIngr})
             if newIngr.alt != "":
@@ -328,6 +326,7 @@ class Ingredient:
         )
 
         print("Chemical Composition:")
+        print(self.C, self.H, self.N, self.O, self.A)
         print(
             "C{:.1f} H{:.1f} N{:.1f} O{:.1f}, A={:.1f} g/mol".format(
                 self.C, self.H, self.N, self.O, self.A
@@ -736,11 +735,11 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):  # in kelvin  # mol/g
 
 if __name__ == "__main__":
     ingredients = Ingredient.readFile("data/hs.csv")
-    """
-    for T in (1600, 2000, 2400, 2800, 3100):
-        print(balance(T=T, Ci=2232e-5, Hi=3010e-5, Ni=1046e-5, Oi=3469e-5))
-    """
-    # input()
+
+    TMETN = Ingredient.fromElement(
+        name="Trimethylolethane trinitrate", alt="TMETN", C=5, H=9, N=3, O=9
+    )
+    TMETN.prettyPrint()
     NC1260 = Ingredient.nitrocellulose(0.1260)
     RDX = Ingredient.find("RDX")
     NG = Ingredient.find("NG")

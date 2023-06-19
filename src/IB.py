@@ -52,6 +52,7 @@ GEOM_CONTEXT = {
     "lines.markersize": 2,
     "axes.axisbelow": True,
     # "path.simplify_threshold": 1,
+    "font.family": "Hack",
 }
 
 FIG_CONTEXT = {
@@ -70,7 +71,7 @@ FIG_CONTEXT = {
     "axes.labelweight": "bold",
     "yaxis.labellocation": "top",
     # "path.simplify_threshold": 1,
-    "font.family": "Hack",
+    "font.family": ["Hack", "Noto Sans SC"],  # fallback
 }
 
 
@@ -205,6 +206,7 @@ class IB(Frame):
         self.geomPlotTip.set(self.getString("geomPlotTxt"))
         self.teffTip.set(self.getString("teffText"))
         self.beffTip.set(self.getString("beffText"))
+        self.specsTip.set(self.getString("specsText"))
 
         self.tblFrm.config(text=self.getString("tblFrmLabel"))
         self.plotFrm.config(text=self.getString("plotFrmLabel"))
@@ -447,9 +449,6 @@ class IB(Frame):
             unitText_dn="kg/m³",
             justify_dn="right",
         )
-
-        for j in range(i):
-            specFrm.rowconfigure(j, weight=1)
 
         opFrm = ttk.LabelFrame(rightFrm, text=self.getString("opFrmLabel"))
         opFrm.grid(row=1, column=0, sticky="nsew")
@@ -993,7 +992,8 @@ class IB(Frame):
         specScroll.config(command=self.specs.yview)
         specHScroll.config(command=self.specs.xview)
 
-        CreateToolTip(propFrm, self.getString("specsText"))
+        self.specsTip = StringVar(value=self.getString("specsText"))
+        CreateToolTip(propFrm, self.specsTip)
 
         i += 1
 
@@ -1411,7 +1411,7 @@ class IB(Frame):
                         xs,
                         vs,
                         "tab:blue",
-                        label="Shot Velocity\nm/s",
+                        label=self.getString("figShotVel"),
                         marker=".",
                         alpha=1,
                     )
@@ -1431,7 +1431,7 @@ class IB(Frame):
                             xs,
                             Pts,
                             "seagreen",
-                            label="Breech Face",
+                            label=self.getString("figBreech"),
                             linestyle="dashed",
                             alpha=0.75,
                         )
@@ -1441,7 +1441,7 @@ class IB(Frame):
                             xs,
                             P0s,
                             "yellowgreen",
-                            label="Stagnation",
+                            label=self.getString("figStagnation"),
                             linestyle="dashed",
                             alpha=0.75,
                         )
@@ -1451,7 +1451,7 @@ class IB(Frame):
                             xs,
                             Pxs,
                             "seagreen",
-                            label="Nozz. Throat P.",
+                            label=self.getString("figNozzleP"),
                             linestyle="dashdot",
                             alpha=0.75,
                         )
@@ -1460,7 +1460,7 @@ class IB(Frame):
                             xs,
                             vxs,
                             "royalblue",
-                            label="Nozz. Throat Vel.",
+                            label=self.getString("figNozzleV"),
                             alpha=0.75,
                             linestyle="dotted",
                         )
@@ -1470,7 +1470,7 @@ class IB(Frame):
                             xs,
                             etas,
                             "tab:orange",
-                            label="Outflow Frac.",
+                            label=self.getString("figOutflow"),
                             alpha=0.75,
                             linestyle="dotted",
                         )
@@ -1480,7 +1480,7 @@ class IB(Frame):
                         xs,
                         Ps,
                         "tab:green",
-                        label="Avg. Pressure\nMPa",
+                        label=self.getString("figAvgP"),
                         marker=".",
                         alpha=1,
                     )
@@ -1490,7 +1490,7 @@ class IB(Frame):
                         xs,
                         Pbs,
                         "olive",
-                        label="Shot Base",
+                        label=self.getString("figShotBase"),
                         linestyle="dotted",
                         alpha=0.75,
                     )
@@ -1503,14 +1503,14 @@ class IB(Frame):
                     c="tab:green",
                     alpha=1,
                     marker=5,  # caret right:5
-                    label="P. Target",
+                    label=self.getString("figTgtP"),
                 )
                 if self.plotBurnup.get():
                     self.ax.plot(
                         xs,
                         psis,
                         "tab:red",
-                        label="Volume Burnup",
+                        label=self.getString("figPsi"),
                         marker=".",
                         alpha=1,
                     )
