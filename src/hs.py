@@ -735,11 +735,18 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):  # in kelvin  # mol/g
 
 if __name__ == "__main__":
     ingredients = Ingredient.readFile("data/hs.csv")
-
+    """
     TMETN = Ingredient.fromElement(
-        name="Trimethylolethane trinitrate", alt="TMETN", C=5, H=9, N=3, O=9
+        name="Trimethylolethane trinitrate",
+        alt="TMETN",
+        C=5,
+        H=9,
+        N=3,
+        O=9,
+        HoC=2811,
+        u="kJ/mol",
     )
-    TMETN.prettyPrint()
+
     NC1260 = Ingredient.nitrocellulose(0.1260)
     RDX = Ingredient.find("RDX")
     NG = Ingredient.find("NG")
@@ -837,14 +844,34 @@ if __name__ == "__main__":
         Delta=0.1,
     )
     JA2.prettyPrint()
-
+    """
+    """
     NC1315 = Ingredient.nitrocellulose(0.1315)
     DNT = Ingredient.find("DNT")
     DBP = Ingredient.find("Dibutylphathalate")
     DPA = Ingredient.find("Diphenlyamine")
+
     M1 = Mixture(
         name="M1",
         compoDict={NC1315: 0.8500, DNT: 0.1000, DBP: 0.0500, DPA: 0.01},
         Delta=0.089,
     )
     M1.prettyPrint()
+    """
+
+    RDX = Ingredient.find("RDX")
+    CAB = Ingredient.fromElement(
+        "Cellulose Acetate Butyrate", alt="CAB", C=15, H=22, O=8
+    )
+    NC1260 = Ingredient.nitrocellulose(0.126)
+    ATC = Ingredient.fromElement(
+        "Acetyl Triethyl Citrate", alt="ATC", C=14, H=22, O=8
+    )
+    EC = Ingredient.find("Ethyl Centralite")
+
+
+"""
+// TODO: calcualte Heat of Combustion from Heat of Formation data.
+XM39,"Nitramine, 76.00% (5um RDX) Hexogen, 12.00% Cellulose Acetate Butyrate,  7.60% Acetyl Triethyl Citrate,  4.00% Nitrocellulose (12.60%N),  0.40% Ethyl Centralite", ,1636,1070000, ,0.92,1.4737e-9,2670
+M43,"Nitramine, 76.00% (5um RDX) Hexogen, 12.00% Cellulose Acetate Butyrate,  7.60% Acetal Formal,  4.00% Nitrocellulose (12.60%N),  0.40% Ethyl Centralite", ,1655, , ,0.82,1.022e-8 ,
+"""
