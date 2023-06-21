@@ -56,6 +56,11 @@ import difflib
 from num import quadratic
 from math import exp, log10
 
+M_C = 12.01
+M_H = 1.008
+M_O = 16.00
+M_N = 14.008
+
 
 class Ingredient:
     """
@@ -79,7 +84,7 @@ class Ingredient:
         self.O = O
         self.Ext = Ext
 
-        A = 12.01 * C + 1.008 * H + 14.008 * N + 16.00 * O + Ext  # g/mol
+        A = M_C * C + M_H * H + M_N * N + M_O * O + Ext  # g/mol
         self.A = A
 
     @classmethod
@@ -133,19 +138,24 @@ class Ingredient:
         H=0,
         N=0,
         O=0,
-        HoC=0,
-        # Q=None,
+        HoC=None,
+        HoF=None,
         alt="",
         u="kJ/mol",
         keep=True,
     ):
+        if (HoC is None) == (HoF is None):
+            raise ValueError(
+                "Ambiguious input, exactly one of HoC or HoF must be supplied"
+            )
+
         """
         Given the molecular formula of a chemical, estimate factors necessary for
         use in the Hirschfelder-Sherman calculation, and add the newly created
         ingredient into the class.
         """
         # accurate molecular mass here to account for natural abundance of isotopes
-        A = 12.01 * C + 1.008 * H + 14.008 * N + 16.00 * O  # g/mol
+        A = M_C * C + M_H * H + M_N * N + M_O * O  # g/mol
 
         """
         convert element nbr. (mol/mol) into nbr. mol of element per unit mass (mol/g)
@@ -157,27 +167,50 @@ class Ingredient:
 
         # if HoC is not None:
         if u == "kJ/mol":
-            HoC /= 4.184  # to kcal/mol
-            HoC /= A  # to kcal/g
-            HoC *= 1000  # to cal/g
+            if HoC is not None:
+                HoC /= 4.184  # to kcal/mol
+                HoC /= A  # to kcal/g
+                HoC *= 1000  # to cal/g
+            if HoF is not None:
+                HoF /= 4.184
+                HoF /= A
+                HoF *= 1000
         elif u == "kJ/kg":
-            HoC /= 4.184  # to kcal/kg
+            if HoC is not None:
+                HoC /= 4.184  # to kcal/kg
+            if HoF is not None:
+                HoF /= 4.184
         elif u == "kcal/mol":
-            HoC /= A
-            HoC *= 1000
+            if HoC is not None:
+                HoC /= A
+                HoC *= 1000
+            if HoF is not None:
+                HoF /= A
+                HoF *= 1000
         elif u == "kcal/kg" or u == "cal/g":
             pass  # kcal/kg = cal/g
         else:
             raise ValueError("Unknown unit ", u)
+
+        """
+        Formal heat of combustion is calculated by computing the difference in heat of formation
+        as compared to the *most stable product*, i.e. Hydrogen element -> Hydrogen gas, Carbon 
+        element -> Carbon Dioxide, Nitrogen Element -> Nitrogen gas 
+
+        Values adopted here are from Hunt for internal consistency
+        """
+        Hf_H2O = -67400
+        Hf_CO2 = -94020
+        if HoC is None:
+            HoC = Hf_H2O * 0.5 * Hi + Hf_CO2 * Ci - HoF
 
         invM = Ci + 0.5 * Hi + 0.5 * Ni
         # isochoric heat capacity from 2000-3000K
         Cv = 1.620 * Ci + 3.265 * Hi + 3.384 * Ni + 5.193 * Oi
         # HoC: heat of combustion, +: energy is released, -: energy is consumed
         # this is the opposite of the usual convention of enthalpy of combustion.
-        E = HoC - 132771 * Ci - 40026 * Hi - 6724 * Ni + 51819 * Oi
-        # heat required to bring combustion product to 2500k, +: product hotter than 2.5kK
-        # -: product cooler than 2.5kK
+        E = -HoC - 132771 * Ci - 40026 * Hi - 6724 * Ni + 51819 * Oi
+        # heat required to bring combustion product to 2500k
 
         newIngr = cls(name, alt, Cv, E, invM, C, H, N, O, 0)
         if keep:
@@ -200,7 +233,7 @@ class Ingredient:
         Typically N level is between 11.50% and 13.50%
         """
         f = Nfraction
-        x = 162.14 * f / (14.008 - 45 * f)
+        x = 162.14 * f / (M_N - 45 * f)
         C = 6
         H = 10 - x
         O = 5 + 2 * x
@@ -399,7 +432,6 @@ class Mixture:
         """
         covolume estimate suggested by Cook:
         self.b = 1e-3 * (1.18 + 6.9 * Ci - 11.5 * Oi)
-        
         linear regression fit from original data:
         self.b = 1e-3 * (
             1.3372800285521016 + 15.00623286 * Ci - 20.81820076 * Oi
@@ -416,10 +448,10 @@ class Mixture:
         These aren't good enough, esp. not for the modern propellants like JA2,
         the deviaiton is up to 0.2 (0.89 vs 0.98)
         """
-        self.C = Ci * 12.01
-        self.H = Hi * 1.008
-        self.O = Oi * 16.00
-        self.N = Ni * 14.008
+        self.C = Ci * M_C
+        self.H = Hi * M_H
+        self.O = Oi * M_O
+        self.N = Ni * M_N
 
     def prettyPrint(self):
         print("Mixture: {:}".format(self.name))
@@ -688,7 +720,7 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):  # in kelvin  # mol/g
         CO2j = quadratic((1 - K0), -(G + H + K0 * I), G * H)[1]
         CO2j = max(CO2j, 0)
 
-        if abs(oldCO2j - CO2j) * 12.01 < tol:
+        if abs(oldCO2j - CO2j) * M_C < tol:
             break
 
         OHj = H2Oj / (H2j) ** 0.5 * sqrtVdivRT * K[1] * exp(-20 * n / V)
@@ -707,11 +739,11 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):  # in kelvin  # mol/g
         ("H2", H2j * 2.016, H2j / a),
         ("H2O", H2Oj * 18.016, H2Oj / a),
         ("OH", OHj * 17.008, OHj / a),
-        ("H", Hj * 1.008, Hj / a),
+        ("H", Hj * M_H, Hj / a),
         ("NO", NOj * 30.008, NOj / a),
         ("O2", O2j * 32.00, O2j / a),
-        ("O", Oj * 16.00, Oj / a),
-        ("N", Nj * 14.008, Nj / a),
+        ("O", Oj * M_O, Oj / a),
+        ("N", Nj * M_N, Nj / a),
     ]
 
     speciesList.sort(key=lambda x: x[1], reverse=True)
@@ -860,18 +892,41 @@ if __name__ == "__main__":
     """
 
     RDX = Ingredient.find("RDX")
+    """
+    RDX = Ingredient.fromElement(
+        "RDX", alt="RDX", C=3, H=6, N=6, O=6, HoF=276.86, u="kJ/kg"
+    )
+    """
     CAB = Ingredient.fromElement(
-        "Cellulose Acetate Butyrate", alt="CAB", C=15, H=22, O=8
+        "Cellulose Acetate Butyrate",
+        alt="CAB",
+        C=15,
+        H=22,
+        O=8,
+        HoF=-4933.76,
+        u="kJ/kg",
     )
     NC1260 = Ingredient.nitrocellulose(0.126)
+    NC1260.prettyPrint()
     ATC = Ingredient.fromElement(
-        "Acetyl Triethyl Citrate", alt="ATC", C=14, H=22, O=8
+        "Acetyl Triethyl Citrate",
+        alt="ATC",
+        C=14,
+        H=22,
+        O=8,
+        HoF=-5459.6,
+        u="kJ/kg",
     )
     EC = Ingredient.find("Ethyl Centralite")
 
-
+    XM39 = Mixture(
+        name="XM39",
+        compoDict={RDX: 76, CAB: 12, NC1260: 4, ATC: 7.6, EC: 0.4},
+        Delta=0.2,
+    )
+    XM39.prettyPrint()
 """
-// TODO: calcualte Heat of Combustion from Heat of Formation data.
-XM39,"Nitramine, 76.00% (5um RDX) Hexogen, 12.00% Cellulose Acetate Butyrate,  7.60% Acetyl Triethyl Citrate,  4.00% Nitrocellulose (12.60%N),  0.40% Ethyl Centralite", ,1636,1070000, ,0.92,1.4737e-9,2670
-M43,"Nitramine, 76.00% (5um RDX) Hexogen, 12.00% Cellulose Acetate Butyrate,  7.60% Acetal Formal,  4.00% Nitrocellulose (12.60%N),  0.40% Ethyl Centralite", ,1655, , ,0.82,1.022e-8 ,
+// TODO: M43 composition is not listed in work from early 00s.
+M43,"Nitramine, 76.00% (5um RDX) Hexogen, 12.00% Cellulose Acetate Butyrate, 
+ 7.60% Acetal Formal,  4.00% Nitrocellulose (12.60%N),  0.40% Ethyl Centralite", ,1655, , ,0.82,1.022e-8 ,
 """

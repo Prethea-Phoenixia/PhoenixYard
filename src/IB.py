@@ -588,7 +588,7 @@ class IB(Frame):
             rowIndex=i,
             colIndex=0,
             labelText="-log10(ε)",
-            default="3",
+            default="4",
             validation=validationPI,
             formatter=formatIntInput,
             color="red",
