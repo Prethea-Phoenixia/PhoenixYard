@@ -207,6 +207,7 @@ class IB(Frame):
         self.teffTip.set(self.getString("teffText"))
         self.beffTip.set(self.getString("beffText"))
         self.specsTip.set(self.getString("specsText"))
+        self.ldfTip.set(self.getString("ldftext"))
 
         self.tblFrm.config(text=self.getString("tblFrmLabel"))
         self.plotFrm.config(text=self.getString("plotFrmLabel"))
@@ -1098,7 +1099,7 @@ class IB(Frame):
         )
 
         i += 1
-
+        self.ldfTip = StringVar(value=self.getString("ldftext"))
         self.ldfLb, self.ldf, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
@@ -1106,7 +1107,7 @@ class IB(Frame):
             unitText="%",
             default="50.0",
             validation=validationNN,
-            infotext=self.getString("ldftext"),
+            infotext=self.ldfTip,
         )
 
         self.clrLb, self.clr, _, i = self.add3Input(
