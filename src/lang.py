@@ -183,17 +183,9 @@ ENGLISH = {
             "due to mechanical stress.",
         )
     ),
-    "cylLRtext": " ".join(
-        (
-            "Specify length to diameter ratio of the grain.",
-            "Cylindrical or tubular propellant can be made rather long",
-        )
-    ),
+    "cylLRtext": " ".join(("Specify length to diameter ratio of the grain.",)),
     "rodRtext": " ".join(
-        (
-            "Specify the length to width ratio of propellant rod or flake.",
-            "Can be quite long for tape like propellant.",
-        )
+        ("Specify the length to width ratio of propellant rod or flake.",)
     ),
     "widthText": " ".join(
         (
@@ -482,7 +474,7 @@ CHINESE = {
             "寸药粒的情况下通常使用简单形状药粒。",
         )
     ),
-    "pDiaRText": " ".join(
+    "pDiaRText": "".join(
         (
             "   设置火药药粒孔径对于弧厚的比例。\n",
             "   生产过程中，多孔火药一般是以粘稠悬浊液、胶体的形式，在压强下挤入黄铜模具翻模制造。",
@@ -491,7 +483,27 @@ CHINESE = {
             "   标准的多孔火药中，该值一般取值在0.5到1之间。对于较长的柱状火药，该值可以取到1.33。",
         )
     ),
-    "diaText": " ".join(("设置火药药粒的直径。",)),
+    "diaText": "".join(("设置火药药粒的直径。",)),
+    "perfLRtext": "".join(
+        (
+            "设置火药药粒的长径比。多孔火药长径比一般在1.82-3.57之间。该比例越大，火药燃烧增面性越强。",
+            "当取值过小，以至于药粒柱高小于弧厚时，药粒可能出现减面燃烧的现象。",
+            "一般而言较长的药粒难以同时着火，需要每隔一定间隔开槽。",
+            "运动性越差，发射时停留在在膛底，作用压强越高。",
+        )
+    ),
+    "cylLRtext": "".join(("设置、管柱状火药的长径比",)),
+    "rodRtext": "".join(("设置长方体火药长宽比。",)),
+    "widthText": "".join(("设置长方体火药宽度。不需要一定是最小跨度边。",)),
+    "heightRtext": " ".join(("设置火药的高宽比例。",)),
+    "tolText": " ".join(
+        (
+            "积分器最大允许相对绝对误差，ε。龙格-库塔-菲尔伯格自适应积分器根据每一步各项的取值，导数，",
+            "对常微分方程生成七阶，八阶两个估测。这两个估测的差值作为局部误差，再根据步长与积分域的比例",
+            "外推估测全局误差。将该值与用户设定的误差大小作比较，按一定算法调整步长直到该要求得到满足。重复",
+            "以上直到积分器达到停止条件，或遇到数值奇点。",
+        )
+    ),
     "columnList": [
         "特征点",
         "历时",

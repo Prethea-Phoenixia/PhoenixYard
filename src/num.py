@@ -249,8 +249,6 @@ def RKF78(
             dys : estimated first derivative
                 and terminates the integrator on a boolean value of True
 
-        valFunc
-                : optional, accepts the following arguments:
 
 
         minTol  : optional, minimum magnitude of error

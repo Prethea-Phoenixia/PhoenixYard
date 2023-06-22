@@ -208,6 +208,7 @@ class IB(Frame):
         self.beffTip.set(self.getString("beffText"))
         self.specsTip.set(self.getString("specsText"))
         self.ldfTip.set(self.getString("ldftext"))
+        self.tolTip.set(self.getString("tolText"))
 
         self.tblFrm.config(text=self.getString("tblFrmLabel"))
         self.plotFrm.config(text=self.getString("plotFrmLabel"))
@@ -584,6 +585,7 @@ class IB(Frame):
 
         i += 1
 
+        self.tolTip = StringVar(value=self.getString("tolText"))
         self.accExpLb, self.accExp, _, i = self.add2Input(
             parent=opFrm,
             rowIndex=i,
@@ -593,7 +595,7 @@ class IB(Frame):
             validation=validationPI,
             formatter=formatIntInput,
             color="red",
-            infotext=self.getString("tolText"),
+            infotext=self.tolTip,
         )
 
         self.calButton = ttk.Button(
