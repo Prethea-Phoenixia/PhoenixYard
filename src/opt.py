@@ -478,7 +478,7 @@ class Constrained:
 
 
 if __name__ == "__main__":
-    from prop import GrainComp, MultPerfGeometry, SimpleGeometry
+    from prop import GrainComp, SimpleGeometry
 
     compositions = GrainComp.readFile("data/propellants.csv")
     S22 = compositions["ATK PRD(S)22"]
@@ -495,4 +495,8 @@ if __name__ == "__main__":
     )
 
     for i in range(10):
-        print(test.findMinV(chargeMassRatio=1, tol=1e-3, minWeb=1e-6))
+        print(
+            test.findMinV(
+                chargeMassRatio=1, tol=1e-3, minWeb=1e-6, maxLength=1e3
+            )
+        )

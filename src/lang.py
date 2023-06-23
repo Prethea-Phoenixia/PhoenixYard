@@ -111,7 +111,7 @@ ENGLISH = {
             "However, it is mechanically the weakest.",
         )
     ),
-    "geomPlotTxt": " ".join(
+    "geomPlotText": " ".join(
         (
             "Plot of σ, or burn surface area (unitless) with",
             "respect to Z, or the linear burnt ratio. A upward",
@@ -126,7 +126,7 @@ ENGLISH = {
             "burn behaviour is not entirely rigorous.",
         )
     ),
-    "ldftext": " ".join(
+    "ldfText": " ".join(
         (
             "Percentage of chamber volume filled by",
             "the outlines of the grain, also known",
@@ -171,7 +171,7 @@ ENGLISH = {
         )
     ),
     "diaText": " ".join(("Specify the diameter of the propellant grain.",)),
-    "perfLRtext": " ".join(
+    "perfLRText": " ".join(
         (
             "Specify length to diameter ratio of the grain, for",
             "mutli perforated grains this is usually in the range of"
@@ -183,8 +183,8 @@ ENGLISH = {
             "due to mechanical stress.",
         )
     ),
-    "cylLRtext": " ".join(("Specify length to diameter ratio of the grain.",)),
-    "rodRtext": " ".join(
+    "cylLRText": " ".join(("Specify length to diameter ratio of the grain.",)),
+    "rodRText": " ".join(
         ("Specify the length to width ratio of propellant rod or flake.",)
     ),
     "widthText": " ".join(
@@ -195,7 +195,7 @@ ENGLISH = {
             "to be the smallest dimension.",
         )
     ),
-    "heightRtext": " ".join(
+    "heightRText": " ".join(
         ("Specify the height to width ratio of propellant rod or flake.",)
     ),
     "tolText": " ".join(
@@ -220,7 +220,7 @@ ENGLISH = {
             "throughout.",
         )
     ),
-    "clrtext": " ".join(
+    "clrText": " ".join(
         (
             "Chamber length ratio is defined as the ratio of the actual chamber",
             "cross section to that of the barrel, or put another way, the length",
@@ -232,7 +232,7 @@ ENGLISH = {
             "chamberage effect.",
         )
     ),
-    "dgctext": " ".join(
+    "dgcText": " ".join(
         (
             "Drag coefficient, or the pressure induced by barrel",
             "friction divided by the shot base pressure. Currently",
@@ -241,7 +241,7 @@ ENGLISH = {
             "with driving band on the lower end.",
         )
     ),
-    "sampTxt": " ".join(
+    "sampText": " ".join(
         (
             "Samples are taken equidistantly along specified domain.",
             "Sampling is done after the system has been solved and thus",
@@ -250,20 +250,20 @@ ENGLISH = {
             "made to an accuracy specification.",
         )
     ),
-    "pTgtTxt": " ".join(
+    "pTgtText": " ".join(
         (
             "Pressure design target: length averaged, Lagrangian",
             "chamber pressure.",
         )
     ),
-    "useConsTxt": " ".join(
+    "useConsText": " ".join(
         (
             "Constrain the design to specified muzzle velocity and peak pressure",
             "by controlling the web thickness and tube length. Currently solved",
             "solution is correct for chamber length ratio of 1.0x.",
         )
     ),
-    "optLFTxt": " ".join(
+    "optLFText": " ".join(
         (
             "Find the optimum load fraction for this charge mass, minimizing",
             "tube volume (including chamber), in addition to the above constraints.",
@@ -273,13 +273,13 @@ ENGLISH = {
             "of ambient temperature on propellant force.",
         )
     ),
-    "calLxTxt": " ".join(
+    "calLxText": " ".join(
         (
             "Tube length, commonly expressed in literature as L/xx.",
             "Top is measured from shot start, bottom is measured from breechface.",
         )
     ),
-    "pMaxTxt": " ".join(
+    "pMaxText": " ".join(
         (
             "Peak pressure, when measured from the breech, and when measured at",
             "the base of projectile. Breech pressure is around 1.0-1.2x of the",
@@ -289,7 +289,7 @@ ENGLISH = {
             "considered (Chamber Expansion not equal to 1.0x).",
         )
     ),
-    "nozzExpTxt": " ".join(
+    "nozzExpText": " ".join(
         (
             "Area expansion ratio of the recoiless gun's rear nozzle, or the ratio",
             "between the cross section area of the nozzle end, and the area of the",
@@ -299,7 +299,7 @@ ENGLISH = {
             "quickly diminishing returns. Usually chosen to be around 4.",
         )
     ),
-    "nozzEffTxt": " ".join(
+    "nozzEffText": " ".join(
         (
             "Efficiency of the nozzle, accouting for the less efficient geometry used",
             "in real nozzles to simplify production, where a short nozzle of the straight",
@@ -308,7 +308,7 @@ ENGLISH = {
             "rocket theories. Therefore a more conservative estimate of 92% is adopted",
         )
     ),
-    "calcButtonTxt": "Integrate system using RKF7(8) integrator",
+    "calcButtonText": "Integrate system using RKF7(8) integrator",
     "columnList": [
         "Event",
         "Time",
@@ -446,7 +446,7 @@ CHINESE = {
             "更高，但燃烧表现不稳定。",
         )
     ),
-    "geomPlotTxt": "".join(
+    "geomPlotText": "".join(
         (
             "相对燃烧表面σ=S/S1，关于相对厚度Z=e/e1的函数。曲线递增代表增面燃烧，曲线递减代表减面燃烧。",
             "简单形状火药燃烧全过程Z从0到1，为减面燃烧；多孔火药的燃烧分裂前Z从0到1，有条件地增面燃烧，",
@@ -454,7 +454,7 @@ CHINESE = {
             "增面燃烧有利于减缓压强上升，降低最大压强，提高压强充满率，改善膛内受力情况。",
         )
     ),
-    "ldftext": "".join(
+    "ldfText": "".join(
         (
             "装填系数，即药粒外轮廓对于药膛空间充满比例。对于无内孔的药粒，等于装填密度(Δ)与",
             "火药密度(ρp)的比例。对于有内孔的药粒，再乘上药粒内空间填充率。该系数反应了药室内",
@@ -487,7 +487,7 @@ CHINESE = {
         )
     ),
     "diaText": "".join(("设置火药药粒的直径。",)),
-    "perfLRtext": "".join(
+    "perfLRText": "".join(
         (
             "设置火药药粒的长径比。多孔火药长径比一般在1.82-3.57之间。该比例越大，火药燃烧增面性越强。",
             "当取值过小，以至于药粒柱高小于弧厚时，药粒可能出现减面燃烧的现象。",
@@ -495,10 +495,10 @@ CHINESE = {
             "运动性越差，发射时停留在在膛底，作用压强越高。",
         )
     ),
-    "cylLRtext": "".join(("设置、管柱状火药的长径比",)),
-    "rodRtext": "".join(("设置长方体火药长宽比。",)),
+    "cylLRText": "".join(("设置、管柱状火药的长径比",)),
+    "rodRText": "".join(("设置长方体火药长宽比。",)),
     "widthText": "".join(("设置长方体火药宽度。不需要一定是最小跨度边。",)),
-    "heightRtext": "".join(("设置火药的高宽比例。",)),
+    "heightRText": "".join(("设置火药的高宽比例。",)),
     "tolText": "".join(
         (
             "积分器最大允许相对绝对误差，ε。龙格-库塔-菲尔伯格自适应积分器根据每一步各项的取值，导数，",
@@ -520,47 +520,39 @@ CHINESE = {
             "   对无坐力火炮，为满足严格无坐力条件，喷口打开压强与挤进取相同数值。",
         )
     ),
-    "clrtext": "".join(
+    "clrText": "".join(
         (
             "药室扩大系数指的是药室截面积与炮管截面积的比例。膛压较大时，定装弹药过长的药室存在抽壳困难",
             "的情况，后膛过长也不利于火炮装填作业。\n",
             "药室缩进产生流速突变对于弹道内循环的起始阶段影响最大。这里按照坡膛面积、流速突变考虑，对于常",
-            "规火炮，以修正次要功系数的方法体现这样的效应。对于无坐力炮，由于涉及压强弹速较低，目前并未",
-            "进行缩进修正。",
+            "规火炮，以修正次要功系数的方法体现这样的效应。对于无坐力炮，由于涉及压强弹速较低，未对缩进",
+            "效应进行修正。",
         )
     ),
-    "dgctext": " ".join(
+    "dgcText": "".join(
+        ("阻力系数，即作用于弹头的一切与弹底压强相关的阻力，与弹底压强的比例。对于线膛武器，", "取值从2%到7%不等，其中小口径武器相对较高。")
+    ),
+    "sampText": "".join(
         (
-            "Drag coefficient, or the pressure induced by barrel",
-            "friction divided by the shot base pressure. Currently",
-            "2%-7% is reported for rifled weapons, with smaller",
-            "calibers on the higher end and larger caliber shots",
-            "with driving band on the lower end.",
+            "   采样时将给定域等间隔均分的数目。程序中，特征点的计算先行进行，与采样设置无关。采样点的计算在时间域上由零点开始逐步计算，",
+            "因此完全独立与特征点计算，可以作为特征点计算结果的验证。\n",
+            "   需要注意的是，由于基于长度的常微分系统在零点上有数值奇点，因此在长度域上的采样点计算与特征点计算并不独立。",
         )
     ),
-    "sampTxt": " ".join(
-        (
-            "Samples are taken equidistantly along specified domain.",
-            "Sampling is done after the system has been solved and thus",
-            "does not influence the accuracy of characteristc points.",
-            "This can be used to sanity-check and validate calculations",
-            "made to an accuracy specification.",
-        )
-    ),
-    "pTgtTxt": " ".join(
+    "pTgtText": " ".join(
         (
             "Pressure design target: length averaged, Lagrangian",
             "chamber pressure.",
         )
     ),
-    "useConsTxt": " ".join(
+    "useConsText": " ".join(
         (
             "Constrain the design to specified muzzle velocity and peak pressure",
             "by controlling the web thickness and tube length. Currently solved",
             "solution is correct for chamber length ratio of 1.0x.",
         )
     ),
-    "optLFTxt": " ".join(
+    "optLFText": " ".join(
         (
             "Find the optimum load fraction for this charge mass, minimizing",
             "tube volume (including chamber), in addition to the above constraints.",
@@ -570,13 +562,13 @@ CHINESE = {
             "of ambient temperature on propellant force.",
         )
     ),
-    "calLxTxt": " ".join(
+    "calLxText": " ".join(
         (
             "Tube length, commonly expressed in literature as L/xx.",
             "Top is measured from shot start, bottom is measured from breechface.",
         )
     ),
-    "pMaxTxt": " ".join(
+    "pMaxText": " ".join(
         (
             "Peak pressure, when measured from the breech, and when measured at",
             "the base of projectile. Breech pressure is around 1.0-1.2x of the",
@@ -586,7 +578,7 @@ CHINESE = {
             "considered (Chamber Expansion not equal to 1.0x).",
         )
     ),
-    "nozzExpTxt": " ".join(
+    "nozzExpText": " ".join(
         (
             "Area expansion ratio of the recoiless gun's rear nozzle, or the ratio",
             "between the cross section area of the nozzle end, and the area of the",
@@ -596,7 +588,7 @@ CHINESE = {
             "quickly diminishing returns. Usually chosen to be around 4.",
         )
     ),
-    "nozzEffTxt": " ".join(
+    "nozzEffText": " ".join(
         (
             "Efficiency of the nozzle, accouting for the less efficient geometry used",
             "in real nozzles to simplify production, where a short nozzle of the straight",
@@ -605,7 +597,7 @@ CHINESE = {
             "rocket theories. Therefore a more conservative estimate of 92% is adopted",
         )
     ),
-    "calcButtonTxt": "调用龙格-库塔-菲尔伯格7-8阶积分器求解系统。",
+    "calcButtonText": "调用龙格-库塔-菲尔伯格7-8阶积分器求解系统。",
     "columnList": [
         "特征点",
         "历时",

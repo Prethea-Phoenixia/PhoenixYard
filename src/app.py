@@ -1,4 +1,4 @@
-from tkinter import *
+from tkinter import Tk, FALSE
 from IB import IB
 from misc import center, loadfont, resolvepath
 from ctypes import windll

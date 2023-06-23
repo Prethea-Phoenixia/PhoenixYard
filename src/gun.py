@@ -1,4 +1,4 @@
-from math import pi, log, exp, inf
+from math import pi, log
 from num import gss, RKF78, cubic
 from prop import GrainComp, Propellant
 
@@ -104,7 +104,7 @@ class Gun:
     def __getattr__(self, attrName):
         try:
             return getattr(self.propellant, attrName)
-        except:
+        except Exception as e:
             raise AttributeError("object has no '%s'" % attrName)
 
     def _fp_bar(self, Z, l_bar, v_bar):
@@ -416,7 +416,6 @@ class Gun:
                 for (Z, (t_bar, l_bar, v_bar)) in ztlv_record
             )
 
-            # print(*record, sep="\n")
         """
         Subscript e indicate exit condition.
         At this point, since its guaranteed that point i will be further
@@ -450,8 +449,6 @@ class Gun:
                 )
                 for (l_bar, (t_bar, Z, v_bar)) in ltzv_record
             )
-            # print(*record, sep="\n")
-            # record.sort(key=lambda line: line[0])
 
         updBarData(
             tag=POINT_EXIT,

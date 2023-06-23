@@ -407,7 +407,7 @@ class Propellant:
     def __getattr__(self, attrName):
         try:
             return getattr(self.composition, attrName)
-        except:
+        except Exception as e:
             raise AttributeError("object has no attribute '%s'" % attrName)
 
     def f_sigma_Z(self, Z):
