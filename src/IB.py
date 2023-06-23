@@ -208,7 +208,13 @@ class IB(Frame):
         self.beffTip.set(self.getString("beffText"))
         self.specsTip.set(self.getString("specsText"))
         self.ldfTip.set(self.getString("ldftext"))
+        self.clrTip.set(self.getString("clrtext"))
+        self.dgcTip.set(self.getString("dgctext"))
+        self.stpTip.set(self.getString("stpText"))
+        self.nozzExpTip.set(self.getString("nozzExpTxt"))
+        self.nozzEffTip.set(self.getString("nozzEffTxt"))
         self.tolTip.set(self.getString("tolText"))
+        self.sampleTip.set(self.getString("sampTxt"))
 
         self.tblFrm.config(text=self.getString("tblFrmLabel"))
         self.plotFrm.config(text=self.getString("plotFrmLabel"))
@@ -580,8 +586,8 @@ class IB(Frame):
             reverse=True,
             anchor="center",
         )
-
-        CreateToolTip(sampleFrm, self.getString("sampTxt"))
+        self.sampleTip = StringVar(value=self.getString("sampTxt"))
+        CreateToolTip(sampleFrm, self.sampleTip)
 
         i += 1
 
@@ -609,9 +615,8 @@ class IB(Frame):
         )
 
         opFrm.rowconfigure(i, weight=1)
-        CreateToolTip(
-            self.calButton, "Integrate system using RKF7(8) integrator"
-        )
+        self.calcButtonTip = StringVar(value=self.getString("calcButtonTxt"))
+        CreateToolTip(self.calButton, self.calcButtonTip)
 
     def onCalculate(self):
         constrain = self.solve_W_Lg.get() == 1
@@ -1112,6 +1117,7 @@ class IB(Frame):
             infotext=self.ldfTip,
         )
 
+        self.clrTip = StringVar(value=self.getString("clrtext"))
         self.clrLb, self.clr, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
@@ -1119,9 +1125,10 @@ class IB(Frame):
             unitText="x",
             default="1.5",
             validation=validationNN,
-            infotext=self.getString("clrtext"),
+            infotext=self.clrTip,
         )
 
+        self.dgcTip = StringVar(value=self.getString("dgctext"))
         self.dgcLb, self.dgc, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
@@ -1132,6 +1139,7 @@ class IB(Frame):
             infotext=self.getString("dgctext"),
         )
 
+        self.stpTip = StringVar(value=self.getString("stpText"))
         self.stpLb, self.stpMPa, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
@@ -1139,9 +1147,10 @@ class IB(Frame):
             unitText="MPa",
             default="10",
             validation=validationNN,
-            infotext=self.getString("stpText"),
+            infotext=self.stpTip,
         )
 
+        self.nozzExpTip = StringVar(value=self.getString("nozzExpTxt"))
         self.nozzExpLb, self.nozzExp, self.nozzExpw, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
@@ -1149,9 +1158,10 @@ class IB(Frame):
             unitText="x",
             default="4",
             validation=validationNN,
-            infotext=self.getString("nozzExpTxt"),
+            infotext=self.nozzExpTip,
         )
 
+        self.nozzEffTip = StringVar(value=self.getString("nozzEffTxt"))
         self.nozzEffLb, self.nozzEff, self.nozzEffw, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
@@ -1159,7 +1169,7 @@ class IB(Frame):
             unitText="%",
             default="92.0",
             validation=validationNN,
-            infotext=self.getString("nozzEffTxt"),
+            infotext=self.nozzEffTip,
         )
 
         self.currProp.trace_add("write", self.updateSpec)

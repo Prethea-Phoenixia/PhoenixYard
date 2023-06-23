@@ -264,9 +264,12 @@ class Recoiless:
             raise ValueError("Invalid integration specification")
 
         gamma = self.theta + 1
+        """
         self.S_j_bar = self.getCf(gamma, 1, tol) / (
             self.getCf(gamma, self.A_bar, tol) * self.chi_0
         )  # = S_j/S
+        """
+        self.S_j_bar = 1 / (self.getCf(gamma, self.A_bar, tol) * self.chi_0)
         if self.S_j_bar > self.chi_k:
             raise ValueError(
                 "Achieving recoiless condition necessitates"
