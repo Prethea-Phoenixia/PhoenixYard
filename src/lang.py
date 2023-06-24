@@ -207,105 +207,132 @@ ENGLISH = {
     ),
     "stpText": " ".join(
         (
-            "Peak pressure that initially resists",
-            "the movement of shot. This is made up of",
-            "the rifling engraving the driving band or",
-            "shell body, the static friction of the",
-            "barrel, and the cartridge case crimping onto",
-            "the shot (greatly varying between 0.25 - 100MPa",
-            "depending on caliber and desired RoF)\n",
-            "For recoiless weapon, the nozzle open pressure",
-            "is also taken to be this value, for simplicity,",
-            "and such that the balance of momentum is conserved",
-            "throughout.",
+            "Starting Pressure, parameter used to model projectile engraving",
+            "to simplfy internal ballistic solutions.\n",
+            "The engraving process is often simplified to be instantaneouse."
+            "That is, propellant burns in an isochoric fashion until the",
+            "pressure at base of projectile is enough to overcome starting",
+            "pressure, at which point starting pressure vanish, projectile",
+            "starts moving as descirbed by the system of ordinary",
+            "differential equation.\n",
+            "Historically start pressure was determined as the highest",
+            "pressure recorded when a projectile is pressed down into",
+            "the barrel. Typical values for rifled small arms are in the",
+            "30-40MPa range while for larger caliber rifled guns, values",
+            "are reported between 10-20MPa. Although a higher start pressure",
+            "somewhat increase the peak pressure, an initial resistance is",
+            "necessary to improve the consistency of propellant ignition.",
+            "Thus, even for smoothbore guns it is necessary provide some",
+            "starting resistance.\n"
+            "It is generally accepted now that projectile engraving is",
+            "actually a dynamic process, with the projectile already moving",
+            "at some speed. The resistance is also correspondingly higher,",
+            "with detailed calculation showing it to be rather close to the",
+            "peak pressure. ",
         )
     ),
     "clrText": " ".join(
         (
-            "Chamber length ratio is defined as the ratio of the actual chamber",
-            "cross section to that of the barrel, or put another way, the length",
-            "a chamber would have if its in line with the barrel to that of the",
-            "actual chamber length. This parameters is used to correct for",
-            "chamberage effect, which is most significant at the start of IB cycle.",
-            "Currently the chamberage correction for conventional guns employ a length"
-            "averaged approach. Recoiless guns are (currenlty) not corrected for",
-            "chamberage effect.",
+            "Chamber length ratio, or the average cross section of chamber",
+            "over that of the barrel.\n",
+            "Given the density of propellant is much less than that of the",
+            "shot, having chamber that is wider than the barrel improves",
+            "compactness with higher propellant loading. However, this",
+            "introduce the chamberage effect, or the increase in speed of",
+            "the gasses as it is compressed into the smaller barrel, most",
+            "prominent at the beginning of the internal ballistic cycle.\n",
+            "For conventional gun, the chamberage effect is corrected",
+            "by averaging the influence of chamberage over the length of",
+            "barrel and increasing the secondary work factor by a",
+            "corresponding amount. For recoiless gun, due to the slow",
+            "velocity of shot and low pressure, currently the chamberage",
+            "effect is not corrected for.",
         )
     ),
     "dgcText": " ".join(
         (
-            "Drag coefficient, or the pressure induced by barrel",
-            "friction divided by the shot base pressure. Currently",
-            "2%-7% is reported for rifled weapons, with smaller",
-            "calibers on the higher end and larger caliber shots",
-            "with driving band on the lower end.",
+            "Drag coefficient is used to model all resistive forces",
+            "that are proportional to shot base pressure.\n"
+            "2%-7% is commonly reported, with small arms that engages with",
+            "the rifling with the entire projectile on the high end,",
+            "and large caliber projectiles with driving band on the lower",
+            "end.",
         )
     ),
     "sampText": " ".join(
         (
-            "Samples are taken equidistantly along specified domain.",
-            "Sampling is done after the system has been solved and thus",
-            "does not influence the accuracy of characteristc points.",
-            "This can be used to sanity-check and validate calculations",
-            "made to an accuracy specification.",
+            "The domain that is sampled equidistantly form shot start until",
+            "projectile exit.\n",
+            "Sampling is done after the calculation for characteristc points,",
+            "and in the case of time-domain calculations, independent of the",
+            "former, enabling its use as a sanity check for the adaptive",
+            "results. Length-domain sampling is not independent of",
+            "characteristc point calculations, though.",
         )
     ),
-    "pTgtText": " ".join(
-        (
-            "Pressure design target: length averaged, Lagrangian",
-            "chamber pressure.",
-        )
-    ),
+    "pTgtText": "Maximum length-averaged chamber pressure.",
     "useConsText": " ".join(
         (
-            "Constrain the design to specified muzzle velocity and peak pressure",
-            "by controlling the web thickness and tube length. Currently solved",
-            "solution is correct for chamber length ratio of 1.0x.",
+            "Solve the required arc thickness and barrel length to achieve",
+            "peak pressure and muzzle velocity constraint, to the specified",
+            "accuracy.\n",
+            "Note while numerical precision is arbitrary,",
+            "calculated result should be interpreted within the limites of",
+            "reasonable manufacturability.",
         )
     ),
     "optLFText": " ".join(
         (
             "Find the optimum load fraction for this charge mass, minimizing",
-            "tube volume (including chamber), in addition to the above constraints.",
-            "The minimum volume solution is not necessarily appropriate for indirect",
-            "fire guns, as the proximity of burnout point with the muzzle end tends",
-            "to exacerbate velocity dispersion due to uneven burning, and the effect",
-            "of ambient temperature on propellant force.",
+            "tube volume (including chamber), under the constraint set out",
+            "above. The all-burnt point is usually solved to be close, or",
+            "outside of the muzzle, tending to cause large muzzle velcoity",
+            "disperson, as propellant burn rates can be heavily influenced",
+            "by factors such as ambient temperature.\n",
+            "The minimum volume solution is most appropriate for direct fire,",
+            "high velocity guns, such as tank guns and anti-tank guns, where",
+            "compactness and mobility are cruicial, and accuracy is not too",
+            "much impacted by velocity inconsistency between shots.\n",
+            "For guns intended for indirect fire or long range fire, for",
+            "example artillery and naval guns, an extended barrel that keeps",
+            "the all-burnt point within 80% of the barrel length with top",
+            "charge is more appropriate.",
         )
     ),
     "calLxText": " ".join(
         (
             "Tube length, commonly expressed in literature as L/xx.",
-            "Top is measured from shot start, bottom is measured from breechface.",
-        )
-    ),
-    "pMaxText": " ".join(
-        (
-            "Peak pressure, when measured from the breech, and when measured at",
-            "the base of projectile. Breech pressure is around 1.0-1.2x of the",
-            "result of copper crusher test, with the factor usually taken to be",
-            "1.12x. These values are tabulated at the peak of space-averaged",
-            "pressure, which does not co-occur when the effect of chamberage is",
-            "considered (Chamber Expansion not equal to 1.0x).",
+            "Top is measured from shot start, bottom is measured from",
+            "breechface.",
         )
     ),
     "nozzExpText": " ".join(
         (
-            "Area expansion ratio of the recoiless gun's rear nozzle, or the ratio",
-            "between the cross section area of the nozzle end, and the area of the",
-            "throat. This is used to size the throat, or opening, with larger nozzle",
-            "expansion ratio",
-            "resulting in more efficient nozzle, and less gas leakage, however with",
-            "quickly diminishing returns. Usually chosen to be around 4.",
+            "Area expansion ratio of the recoiless gun's rear nozzle, or the",
+            "cross section of the nozzle end over that of the throat. This is",
+            "used to size the throat to achieve recoiless condiiton while",
+            "the projectile is still in bore.\n",
+            "Usually taken to be 2-4. Higher expansion ratios are only",
+            "marginally more efficient while incurring additional penalty to",
+            "weight.",
         )
     ),
     "nozzEffText": " ".join(
         (
-            "Efficiency of the nozzle, accouting for the less efficient geometry used",
-            "in real nozzles to simplify production, where a short nozzle of the straight",
-            "walled type can be reasonably estimated to be within a few percent of unity,",
-            "but for the effect of high pressure gas that is usually not corrected for in",
-            "rocket theories. Therefore a more conservative estimate of 92% is adopted",
+            "Efficiency of nozzle for recoiless gun. From rocket theory,",
+            "it is possible to construct nozzle of decent efficiency",
+            "(as high as 95%) using simple gemometries, for example",
+            "a straight walled truncated cone with a 15 deg half angle.",
+            "Covolume correction is probably unnecessary due to the low",
+            "pressure involved in its internal ballistics, which is on",
+            "the order of rocket engines.\n",
+            "Nozzle Efficiency is introduced to account for geometrical",
+            "inefficiencies, wear as would be expected from a service",
+            "weapon, and finally to average out the effect of thrust factor",
+            "(for muzzle) inreacsing as the projectile leaves the tube.\n",
+            "Typically taken to be around 92%, this implies that an actual",
+            "recoiless gun will tend to slightly recoil forward while",
+            "projectile is in bore, and backward after it has left.",
         )
     ),
     "calcButtonText": "Integrate system using RKF7(8) integrator",
@@ -505,7 +532,7 @@ CHINESE = {
             "对常微分方程生成七阶，八阶两个估测。这两个估测的差值作为局部误差，再根据步长与积分域的比例",
             "外推，除以该点取值，估测全局相对误差。将该值与用户设定的误差大小作比较，按一定算法调整步长",
             "直到该条件得到满足。重复以上直到积分器达到停止条件，或遇到数值奇点。\n",
-            "   默认取值为对应ε=1E-3，若由图可见采样点与特征点差距较大，应适当调整。",
+            "   默认取值为对应ε=1E-3，若由图可见采样点与特征点差距较大，提示需要提高精度计算。",
         )
     ),
     "stpText": "".join(
@@ -514,7 +541,7 @@ CHINESE = {
             "压强。此时，弹头瞬间完成挤进炮膛，与膛线结合，开始运动，火药燃烧进入由常微方程描述的第二阶段。",
             "因为该参量实际上反映的是弹道简化，因此物理意义并不十分明确。\n",
             "   历史上常用静压法测定挤进压强，即用压力机缓慢将弹头挤入膛线所需的最大静压。一般而言，对于大口径",
-            "线膛炮10-20MPa，对小口径武器取30-40MPa。虽然较大的挤进压强造成了最大压强增加，不利于弹道系统；",
+            "线膛炮10-20MPa，对小口径武器取30-40MPa。虽然较大的挤进压强一定程度上造成最大压强增加，",
             "但更高的挤进压强有利于改善点火条件，提高点火一致性，因此即便是滑膛炮也需要一定的挤进压强。\n",
             "   实际挤进是一个运动的过程，弹头在挤进过程中，膛压可达到最大膛压的六、七成，挤进完成时火药燃烧，",
             "弹头速度都达到出膛的一成左右，耗时大致是火药燃烧时间的四分之一到三分之一。\n",
@@ -524,78 +551,64 @@ CHINESE = {
     "clrText": "".join(
         (
             "药室扩大系数指的是药室截面积与炮管截面积的比例。膛压较大时，定装弹药过长的药室存在抽壳困难",
-            "的情况，后膛过长也不利于火炮装填作业。\n",
+            "的情况，后膛过长也不利于火炮装填作业，并造成点火困难。\n",
             "药室缩进产生流速突变对于弹道内循环的起始阶段影响最大。这里按照坡膛面积、流速突变考虑，对于常",
             "规火炮，以修正次要功系数的方法体现这样的效应。对于无坐力炮，由于涉及压强弹速较低，未对缩进",
             "效应进行修正。",
         )
     ),
     "dgcText": "".join(
-        ("阻力系数，即作用于弹头的一切与弹底压强相关的阻力，与弹底压强的比例。对于线膛武器，", "取值从2%到7%不等，其中小口径武器相对较高。")
+        (
+            "阻力系数，即作用于弹头的一切与弹底压强相关的阻力，与弹底压强的比例。对于线膛武器，",
+            "取值从2%到7%不等，其中小口径武器相对较高。",
+        )
     ),
     "sampText": "".join(
         (
-            "   采样时将给定域等间隔均分的数目。程序中，特征点的计算先行进行，与采样设置无关。采样点的计算在时间域上由零点开始逐步计算，",
-            "因此完全独立与特征点计算，可以作为特征点计算结果的验证。\n",
-            "   需要注意的是，由于基于长度的常微分系统在零点上有数值奇点，因此在长度域上的采样点计算与特征点计算并不独立。",
+            "   采样时将给定域等间隔均分的数目。程序中，特征点的计算先行进行，与采样设置无关。采样点的计",
+            "算在时间域上独立于特征点计算，可以用于特征点计算结果的验证。\n",
+            "   需要注意的是，由于基于长度的常微分系统在零点上有数值奇点，因此在长度域上的采样点计算与",
+            "特征点计算并不独立。",
         )
     ),
-    "pTgtText": " ".join(
+    "pTgtText": "设计最大空间平均压强",
+    "useConsText": "".join(
         (
-            "Pressure design target: length averaged, Lagrangian",
-            "chamber pressure.",
+            "根据设计最大压强与设计弹速，按照精度要求，反算满足条件的火药弧厚，身管长度。",
+            "需要注意的是，反解虽然可以按任意数值精度进行，但计算的结果不一定具有实际应用价值。",
+            "实际情况下要求内弹道系统能够在火药，炮管加工偏差的情况下仍然满足技战术要求。",
         )
     ),
-    "useConsText": " ".join(
+    "optLFText": "".join(
         (
-            "Constrain the design to specified muzzle velocity and peak pressure",
-            "by controlling the web thickness and tube length. Currently solved",
-            "solution is correct for chamber length ratio of 1.0x.",
+            "   求该装药量下，满足最大设计压强和出躺弹速的的最小膛容解（含药室）。\n",
+            "   最小膛容解下火药燃尽点常常接近或位于炮口，实际使用中，火药燃速容易受环境温度，批次生产药力差异，",
+            "弹药装填条件影响，使得弹速的可重复性较差。这样的解一般适用于射程较短的高速直射火炮，例如坦克炮，反坦克炮；",
+            "对于这些武器弹速的差异对于精度影响有限。而对于榴弹炮等射程较远，精度要求较高的武器，应适当延长炮管至燃尽",
+            "点，使其在身管长度80%或以内。",
         )
     ),
-    "optLFText": " ".join(
+    "calLxText": "".join(
         (
-            "Find the optimum load fraction for this charge mass, minimizing",
-            "tube volume (including chamber), in addition to the above constraints.",
-            "The minimum volume solution is not necessarily appropriate for indirect",
-            "fire guns, as the proximity of burnout point with the muzzle end tends",
-            "to exacerbate velocity dispersion due to uneven burning, and the effect",
-            "of ambient temperature on propellant force.",
+            "身管倍径，即将火炮身管长度表述为口径的倍率\n",
+            "上为从弹底运动起点至炮口，下为从炮膛膛底计。",
         )
     ),
-    "calLxText": " ".join(
+    "nozzExpText": "".join(
         (
-            "Tube length, commonly expressed in literature as L/xx.",
-            "Top is measured from shot start, bottom is measured from breechface.",
+            "   无坐力炮喷管的扩张系数，或喷管尾与喉部的面积比。结合无坐力条件可以确定喉口的截面积。\n",
+            "   无坐力炮的喷管类似于火箭，其推力系数（喷管喷出口的动压相比燃气平均压强的放大比例）随",
+            "扩张系数的提升而增大，但总体上收益是边缘递减的。更高的推力系数使满足无坐力条件所需的喉口",
+            "面积减小，对于提高无坐力炮的内弹道效率有积极作用，但是降低了系统的机动性以及紧凑性，从总",
+            "体设计上必须仔细考量得失。一般无坐力炮取2-4。",
         )
     ),
-    "pMaxText": " ".join(
+    "nozzEffText": "".join(
         (
-            "Peak pressure, when measured from the breech, and when measured at",
-            "the base of projectile. Breech pressure is around 1.0-1.2x of the",
-            "result of copper crusher test, with the factor usually taken to be",
-            "1.12x. These values are tabulated at the peak of space-averaged",
-            "pressure, which does not co-occur when the effect of chamberage is",
-            "considered (Chamber Expansion not equal to 1.0x).",
-        )
-    ),
-    "nozzExpText": " ".join(
-        (
-            "Area expansion ratio of the recoiless gun's rear nozzle, or the ratio",
-            "between the cross section area of the nozzle end, and the area of the",
-            "throat. This is used to size the throat, or opening, with larger nozzle",
-            "expansion ratio",
-            "resulting in more efficient nozzle, and less gas leakage, however with",
-            "quickly diminishing returns. Usually chosen to be around 4.",
-        )
-    ),
-    "nozzEffText": " ".join(
-        (
-            "Efficiency of the nozzle, accouting for the less efficient geometry used",
-            "in real nozzles to simplify production, where a short nozzle of the straight",
-            "walled type can be reasonably estimated to be within a few percent of unity,",
-            "but for the effect of high pressure gas that is usually not corrected for in",
-            "rocket theories. Therefore a more conservative estimate of 92% is adopted",
+            "喷管效率。参照火箭理论的结果，选用合适的扩张角下，即使简单台体的喷管也可以达到95%的",
+            "推进效率。由于无坐力炮一般涉及的膛压较低，没有太大的必要针对余容进行修正。考虑到真实",
+            "喷管的磨损漏气情况，同时为达到快速再发射的目的，使得弹在膛内时少量前坐，出膛后少量",
+            "后坐，引入喷管效率进行修正。一般无坐力炮该值取92%左右。",
         )
     ),
     "calcButtonText": "调用龙格-库塔-菲尔伯格7-8阶积分器求解系统。",

@@ -199,6 +199,9 @@ class IB(Frame):
         self.nozzExpLb.config(text=self.getString("nozzExpLabel"))
         self.nozzEffLb.config(text=self.getString("nozzEffLabel"))
 
+        self.useConstraintTip.set(self.getString("useConsText"))
+        self.optimizeLFTip.set(self.getString("optLFText"))
+
         self.chgTip.set(self.getString("chgText"))
         self.vinfTip.set(self.getString("vinfText"))
         self.lxTip.set(self.getString("calLxText"))
@@ -215,6 +218,7 @@ class IB(Frame):
         self.tolTip.set(self.getString("tolText"))
         self.sampleTip.set(self.getString("sampText"))
         self.calcButtonTip.set(self.getString("calcButtonText"))
+        self.pTgtTip.set(self.getString("pTgtText"))
 
         self.tblFrm.config(text=self.getString("tblFrmLabel"))
         self.plotFrm.config(text=self.getString("plotFrmLabel"))
@@ -489,6 +493,7 @@ class IB(Frame):
             validation=validationNN,
         )
 
+        self.pTgtTip = StringVar(value=self.getString("pTgtText"))
         self.pTgtLb, self.pTgt, _, j = self.add3Input(
             parent=consFrm,
             rowIndex=j,
@@ -497,7 +502,7 @@ class IB(Frame):
             unitText="MPa",
             default="350.0",
             validation=validationNN,
-            infotext=self.getString("pTgtText"),
+            infotext=self.pTgtTip,
         )
 
         self.minWebLb, self.minWeb, _, j = self.add3Input(
@@ -530,17 +535,19 @@ class IB(Frame):
         self.useConstraint.grid(row=j, column=0, columnspan=3, sticky="nsew")
         self.solve_W_Lg.trace_add("write", self.setCD)
 
-        CreateToolTip(self.useConstraint, self.getString("useConsText"))
+        self.useConstraintTip = StringVar(value=self.getString("useConsText"))
+        CreateToolTip(self.useConstraint, self.useConstraintTip)
 
         j += 1
         self.opt_lf = IntVar()
+
         self.optimizeLF = ttk.Checkbutton(
             consFrm, text=self.getString("minTVButton"), variable=self.opt_lf
         )
         self.optimizeLF.grid(row=j, column=0, columnspan=3, sticky="nsew")
         self.setCD()
-
-        CreateToolTip(self.optimizeLF, self.getString("optLFText"))
+        self.optimizeLFTip = StringVar(value=self.getString("optLFText"))
+        CreateToolTip(self.optimizeLF, self.optimizeLFTip)
         i += 1
 
         sampleFrm = ttk.LabelFrame(
