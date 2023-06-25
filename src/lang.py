@@ -68,47 +68,77 @@ ENGLISH = {
     "brDesc": "Burnrate",
     "chgText": " ".join(
         (
-            "Mass of propellant charge to be used. Lagrangian approximation",
-            "is decently held up until a charge/shot mass ratio of 1. Higher",
-            "ratios tends to excite pressure waves inducing large pressure",
-            "spikes, requiring 1-D models to resolve.",
+            "Mass of propellant charge to be used. This program employ",
+            "calssical Lagrangian approximation for calculation,"
+            "implying a space-invariant density for propellant gasses,",
+            "and combustion occuring at space-average pressure.\n"
+            "This assumption is almost correct for charge to shot mass",
+            "ratios -> 0. As charge to shot mass ratio increase, pressure",
+            "wave phenomenon becomes significant. More sophisticated models",
+            "are required to take account of such phenomenon, although",
+            "empirically this program is rather accurate for cases with",
+            "shot to mass ratio of close to 1 (e.g. M829A1).",
         )
     ),
     "vinfText": " ".join(
         (
             "Velocity the shot would achieve if",
-            "the barrel is extended to infinite length.",
+            "the barrel is extended to infinite length,",
+            "or equivalently, if the gas is allowed to",
+            "expand to temperature of absolute zero.",
         )
     ),
     "teffText": " ".join(
         (
             "Thermal efficiency of the gun system, i.e.",
             "the amount of work done to both gas and",
-            "projectile over potential from propellant",
+            "projectile over potential from propellant.",
+            "This is equivalent to 1 substracting the",
+            "average temperature of exhaust gas with",
+            "that of its adiabatic flame temperature.",
         )
     ),
     "beffText": " ".join(
         (
             "Ballistic efficiency of the gun system, i.e.",
             "the amount of work done the projectile over",
-            "chemical potential energy of propellant.",
+            "chemical potential energy of propellant,",
+            "or the thermal efficiency divided with the",
+            "secondary work factor.",
         )
     ),
     "specsText": " ".join(
         (
             "Specify the propellant composition used.\n",
-            "Pure Nitrocellulose is plasticized with",
-            "Dinitrotoluene to reduce burn rate and lower",
+            "Pure Nitrocellulose is mixed with inert plasticizer",
+            "and stabilizer to reduce burn rate and lower",
             "flame temperature, forming single based",
-            "propellant.\n",
-            "Double based propellant is formed when",
+            "propellant. These have excellent mechanical strength,",
+            "low cost and high availability.\n",
+            "Double based propellant is formed when energetic",
             "Nitroglycerin is used as gelatinizer instead.",
-            "While more energetic, it also burns hotter",
-            "and erodes barrel more.\n",
-            "Triple base propellants contains Nitroguanidine,",
-            "with higher energy content",
-            "while keeping flame temperature low.",
-            "However, it is mechanically the weakest.",
+            "While more energetic and less sooty,",
+            "it also burns hotter and erodes barrel more.",
+            "DEGDN can be substituted at the cost of thermal",
+            "stability if supply of NG is unavailable.\n",
+            "Triple base propellants primarily consist of",
+            "Nitroguanidine, improving combustion chemistry,",
+            "when mixed with conventional propellant, generating",
+            "higher energy content while keeping flame",
+            "temperature low. However, it is mechanically",
+            "the weakest, and Nitroguanidine availability is",
+            "limited. Mixed Nitrate Ether propellants are",
+            "available that delivers similar level of performance",
+            "with higher availability.\n"
+            "Nitramine propellants mix nitramines like RDX or HMX",
+            "with small fraction of organic nitro propellant.",
+            "Nitramines are normally explosives, but their",
+            "burn characteristc can be modified for use as",
+            "propellant by grounding to micrometer sized",
+            "particles. HMX is preferable to RDX in terms",
+            "of propellant force, but burn less controllably.",
+            "Nitramine propellants tends to be considerably",
+            "erosive.",
         )
     ),
     "geomPlotText": " ".join(
@@ -155,8 +185,8 @@ ENGLISH = {
             "primary geometrical determinant of burn rapidity.\n",
             "In theory micrometer level precision",
             "is possible. In practice, tolerance for industrial",
-            "bulk production is in the range of 1μm - 0.15mm",
-            " - 1mm depending on sources.\n",
+            "bulk production is in the range of 1μm - 0.15mm,",
+            "depending on sources.\n",
             "Arc thickness is generally found close to 1mm",
             "for small to intermediate calibers.",
         )
@@ -195,14 +225,25 @@ ENGLISH = {
             "to be the smallest dimension.",
         )
     ),
-    "heightRText": " ".join(
-        ("Specify the height to width ratio of propellant rod or flake.",)
-    ),
+    "heightRText": "Specify the height to width ratio of propellant rod or flake.",
     "tolText": " ".join(
         (
-            "The maximum relative error, ε, that is allowed in the integrands",
-            "for each component. Some components may have significantly less",
-            "error than specified here, shown under each entry in the table.",
+            "The maximum tolerated error, ε, for each component of the",
+            "integrands\n"
+            "The absolute difference between the 8th order estimate and the",
+            "7th order estimate, as constructed from the Runge-Kutta-",
+            "Fehlberg 7(8) method, is taken to be the local truncation error.",
+            "This is scaled by the ratio between integration range and step-",
+            "size to estimate global truncation error. Finally, this is",
+            "divided by the current value for each integrand to to derive the",
+            "relative error.\n",
+            "The exact error critera is constructed such that for values",
+            "between (0,1) the maximum allowed error is exactly ε, and for",
+            "higher values x, ε*x. The underlying SoE is expressed in scaled",
+            "unitless formulation, i.e. with scaled velocity from [0,1) and",
+            "scaled length & time (0,+inf).\n",
+            "Defualt value corresponds to ε=1e-3, if value jumps are observed",
+            "on plot, adjust this value appropriately.",
         )
     ),
     "stpText": " ".join(
@@ -528,10 +569,12 @@ CHINESE = {
     "heightRText": "".join(("设置火药的高宽比例。",)),
     "tolText": "".join(
         (
-            "   积分器最大允许相对绝对误差，ε。龙格-库塔-菲尔伯格自适应积分器根据每一步各项的取值，导数，",
+            "   积分器最大允许误差，ε。龙格-库塔-菲尔伯格自适应积分器根据每一步各项的取值，导数，",
             "对常微分方程生成七阶，八阶两个估测。这两个估测的差值作为局部误差，再根据步长与积分域的比例",
             "外推，除以该点取值，估测全局相对误差。将该值与用户设定的误差大小作比较，按一定算法调整步长",
             "直到该条件得到满足。重复以上直到积分器达到停止条件，或遇到数值奇点。\n",
+            "   鉴于实际积分的常微分系统采用归一化无量纲形式，各项取值为：速度［0，1），行程、时间",
+            "［0，正无穷）。\n",
             "   默认取值为对应ε=1E-3，若由图可见采样点与特征点差距较大，提示需要提高精度计算。",
         )
     ),
