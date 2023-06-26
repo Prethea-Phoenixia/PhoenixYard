@@ -1,5 +1,5 @@
-from math import pi, log
-from num import gss, RKF78, cubic
+from math import pi, log, inf
+from num import gss, RKF78, cubic, intg, bisect
 from prop import GrainComp, Propellant
 
 DOMAIN_TIME = "Time"
@@ -41,7 +41,7 @@ class Gun:
         ):
             raise ValueError("Invalid gun parameters")
 
-        e_1 = 0.5 * grainSize
+        self.e_1 = 0.5 * grainSize
         self.S = (caliber / 2) ** 2 * pi
         self.m = shotMass
         self.propellant = propellant
@@ -52,14 +52,7 @@ class Gun:
         self.chi_k = chamberExpansion  # ration of l_0 / l_chamber
         self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
-        Labda = self.l_g / self.l_0
         self.phi_1 = 1 + dragCoefficient  # drag work coefficient
-        self.phi = self.phi_1 + self.omega / (3 * self.m) * (
-            1 - (1 - 1 / self.chi_k) * 2.303 * log(Labda + 1) / Labda
-        )  # extra work factor, chamberage effect averaged over entire length
-        self.v_j = (
-            2 * self.f * self.omega / (self.theta * self.phi * self.m)
-        ) ** 0.5
 
         if self.p_0 == 0:
             raise NotImplementedError(
@@ -76,13 +69,6 @@ class Gun:
                     + " In practice this implies a detonation of the gun breech"
                     + " will likely occur."
                 )
-
-        self.B = (
-            self.S**2
-            * e_1**2
-            / (self.f * self.phi * self.omega * self.m * self.u_1**2)
-            * (self.f * self.Delta) ** (2 * (1 - self.n))
-        )
 
         Zs = cubic(
             self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0
@@ -233,6 +219,41 @@ class Gun:
 
         return dp_bar
 
+    @staticmethod
+    def pidduck(wpm, k, tol):
+        """
+        Pidduck's limiting solution to the Lagrange problem.
+        """
+
+        def f(Omega, x):
+            return (1 - Omega * x**2) ** (1 / (k - 1))
+
+        def g(Omega, x):
+            return f(Omega, x) * x**2
+
+        def f_Omega(Omega):
+            if Omega == 0:
+                return -inf
+
+            I, _ = intg(lambda x: f(Omega, x), 0, 1, tol)
+            return I - 0.5 * ((k - 1) / k) * wpm * (
+                (1 - Omega) ** (k / (k - 1)) / Omega
+            )
+
+        a, b = bisect(f_Omega, 0, 1, tol)
+        Omega = 0.5 * (a + b)
+
+        labda_1 = ((1 - Omega) ** (k / (1 - k)) - 1) / wpm
+        # Pidduck's solution
+
+        I_u, _ = intg(lambda x: g(Omega, x), 0, 1, tol)
+        I_l, _ = intg(lambda x: f(Omega, x), 0, 1, tol)
+        labda_2 = I_u / I_l
+
+        print(labda_1, labda_2)
+
+        return labda_1, labda_2
+
     def integrate(self, steps=10, tol=1e-5, dom=DOMAIN_TIME, record=None):
         """
         Runs a full numerical solution for the gun in the specified domain sampled
@@ -247,6 +268,31 @@ class Gun:
         usually on the order of 1e-16 - 1e-14 as compared to much larger for component
         errors.
         """
+
+        labda_1, labda_2 = self.pidduck(
+            self.omega / (self.phi_1 * self.m), self.theta + 1, tol
+        )
+        self.labda_1 = labda_1
+        self.labda_2 = labda_2
+        # labda_2 = 1 / 3
+
+        Labda = self.l_g / self.l_0
+        cc = (
+            1 - (1 - 1 / self.chi_k) * 2.303 * log(Labda + 1) / Labda
+        )  # chamberage correction factor
+        self.phi = self.phi_1 + labda_2 * self.omega / self.m * cc
+
+        self.B = (
+            self.S**2
+            * self.e_1**2
+            / (self.f * self.phi * self.omega * self.m * self.u_1**2)
+            * (self.f * self.Delta) ** (2 * (1 - self.n))
+        )
+
+        self.v_j = (
+            2 * self.f * self.omega / (self.theta * self.phi * self.m)
+        ) ** 0.5
+
         minTol = 1e-16  # based on experience
 
         if any((steps < 0, tol < 0)):
@@ -796,10 +842,10 @@ class Gun:
         """
         theta_0 = self.V_0 / (self.V_0 + self.S * l)
         epsilon_prime = self.omega / (self.phi_1 * self.m)
-        factor_b = 1 + epsilon_prime / 3 * (
+        factor_b = 1 + self.labda_2 * epsilon_prime * (
             1 - 1.5 * theta_0**3 * (1 - self.chi_k**-2)
         )
-        factor_t = 1 - epsilon_prime / 6 * (
+        factor_t = 1 - self.labda_1 * self.labda_2 * epsilon_prime * (
             1 - 3 * theta_0**2 * (1 - theta_0) * (1 - self.chi_k**-2)
         )  # p/p_t
         return p / factor_b, p / factor_t

@@ -1,0 +1,1 @@
+auto-py-to-exe -c singlefile-laptop.json -o C:/Users/Fenix/Documents/GitHub/PhoenixYard/build

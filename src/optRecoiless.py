@@ -113,9 +113,7 @@ class ConstrainedRecoiless:
         phi = phi_1 + omega / (3 * m)
 
         gamma = theta + 1
-        S_j_bar = Recoiless.getCf(gamma, 1, tol) / (
-            Recoiless.getCf(gamma, A_bar, tol) * chi_0
-        )
+        S_j_bar = 1 / (Recoiless.getCf(gamma, A_bar, tol) * chi_0)
         S_j = S_j_bar * S
 
         K_0 = (2 / (gamma + 1)) ** (
@@ -548,6 +546,7 @@ if __name__ == "__main__":
     )
 
     test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-3)
-
+    """
     for i in range(10):
         print(test.findMinV(chargeMassRatio=1, tol=1e-3, minWeb=1e-6))
+    """
