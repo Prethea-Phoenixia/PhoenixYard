@@ -12,6 +12,50 @@ POINT_BURNOUT = "BURNOUT"
 POINT_EXIT = "SHOT EXIT"
 
 
+def pidduck(wpm, k, tol):
+    """
+    Pidduck's limiting solution to the Lagrange problem.
+    wpm : w/(phi_1 * m), charge mass to equivalent corrected shot weight
+    k   : adiabatic index of the gas, in practice this is not a great influence
+    tol : numerical tolerance
+
+    Pidduck's solution is reduced to that of M.A.Mamontov's solution at k = 1
+
+    Partial analytical approximation to the Lagrangian problem:
+    d rho / dx = 0: Lagrangian
+      d S / dx = 0: Pidduck
+      d T / dx = 0: M.A.Mamontov
+
+    """
+
+    def f(Omega, x):
+        return (1 - Omega * x**2) ** (1 / (k - 1))
+
+    def g(Omega, x):
+        return f(Omega, x) * x**2
+
+    def f_Omega(Omega):
+        if Omega == 0:
+            return -inf
+
+        I, _ = intg(lambda x: f(Omega, x), 0, 1, tol)
+        return I - 0.5 * ((k - 1) / k) * wpm * (
+            (1 - Omega) ** (k / (k - 1)) / Omega
+        )
+
+    a, b = bisect(f_Omega, 0, 1, tol)
+    Omega = 0.5 * (a + b)
+
+    labda_1 = ((1 - Omega) ** (k / (1 - k)) - 1) / wpm
+    # Pidduck's solution
+
+    I_u, _ = intg(lambda x: g(Omega, x), 0, 1, tol)
+    I_l, _ = intg(lambda x: f(Omega, x), 0, 1, tol)
+    labda_2 = I_u / I_l
+
+    return labda_1, labda_2
+
+
 class Gun:
     def __init__(
         self,
@@ -135,7 +179,6 @@ class Gun:
         initial condition."""
 
         psi = self.f_psi_Z(Z)
-        dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
 
         l_psi_bar = (
             1
@@ -159,7 +202,6 @@ class Gun:
 
     def _ode_Z(self, Z, t_bar, l_bar, v_bar):
         psi = self.f_psi_Z(Z)
-        dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
 
         l_psi_bar = (
             1
@@ -219,57 +261,22 @@ class Gun:
 
         return dp_bar
 
-    @staticmethod
-    def pidduck(wpm, k, tol):
-        """
-        Pidduck's limiting solution to the Lagrange problem.
-        """
-
-        def f(Omega, x):
-            return (1 - Omega * x**2) ** (1 / (k - 1))
-
-        def g(Omega, x):
-            return f(Omega, x) * x**2
-
-        def f_Omega(Omega):
-            if Omega == 0:
-                return -inf
-
-            I, _ = intg(lambda x: f(Omega, x), 0, 1, tol)
-            return I - 0.5 * ((k - 1) / k) * wpm * (
-                (1 - Omega) ** (k / (k - 1)) / Omega
-            )
-
-        a, b = bisect(f_Omega, 0, 1, tol)
-        Omega = 0.5 * (a + b)
-
-        labda_1 = ((1 - Omega) ** (k / (1 - k)) - 1) / wpm
-        # Pidduck's solution
-
-        I_u, _ = intg(lambda x: g(Omega, x), 0, 1, tol)
-        I_l, _ = intg(lambda x: f(Omega, x), 0, 1, tol)
-        labda_2 = I_u / I_l
-
-        print(labda_1, labda_2)
-
-        return labda_1, labda_2
-
     def integrate(self, steps=10, tol=1e-5, dom=DOMAIN_TIME, record=None):
         """
-        Runs a full numerical solution for the gun in the specified domain sampled
-        evenly at specified number of steps, using a scaled numerical tolerance as
-        specified.
+        Runs a full numerical solution for the gun in the specified domain
+        sampled evenly at specified number of steps, using a scaled numerical
+        tolerance as specified.
 
-        tolerance is meant to be interpreted as the maximum relative deviation each
-        component is allowed to have, at each step of integration point.
+        tolerance is meant to be interpreted as the maximum relative deviation
+        each component is allowed to have, at each step of integration point.
 
-        Through significant trials and errors, it was determined that for this particular
-        system, the error due to compounding does not appear to be significant,
-        usually on the order of 1e-16 - 1e-14 as compared to much larger for component
-        errors.
+        Through significant trials and errors, it was determined that for this
+        particular system, the error due to compounding does not appear to be
+        significant, usually on the order of 1e-16 - 1e-14 as compared to much
+        larger for component errors.
         """
 
-        labda_1, labda_2 = self.pidduck(
+        labda_1, labda_2 = pidduck(
             self.omega / (self.phi_1 * self.m), self.theta + 1, tol
         )
         self.labda_1 = labda_1
@@ -350,7 +357,7 @@ class Gun:
         N = 1
         Delta_Z = Z_b - Z_0
 
-        t_bar_i, l_bar_i, v_bar_i, p_bar_i = 0, 0, 0, p_bar_0
+        t_bar_i, l_bar_i, v_bar_i = 0, 0, 0
 
         isBurnOutContained = True
 
@@ -861,11 +868,11 @@ if __name__ == "__main__":
 
     M17 = compositions["M17"]
 
-    from prop import SimpleGeometry
+    from prop import SimpleGeometry, MultPerfGeometry
 
-    M17SHC = Propellant(M17, SimpleGeometry.SPHERE, 2, 2.5)
+    M17SHC = Propellant(M17, MultPerfGeometry.SEVEN_PERF_CYLINDER, 2, 2.5)
 
-    lf = 0.1
+    lf = 0.5
     print("DELTA:", lf * M17SHC.maxLF)
     test = Gun(
         caliber=0.050,

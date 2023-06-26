@@ -1,7 +1,8 @@
-from num import GSS, RKF78, cubic, secant
+from num import GSS, RKF78, cubic, secant, bisect
 from prop import Propellant
 from random import uniform
 from math import pi
+from gun import pidduck
 
 
 class Constrained:
@@ -14,6 +15,7 @@ class Constrained:
         dragCoefficient,
         designPressure,
         designVelocity,
+        chamberExpansion,
         **_,
     ):
         # constants for constrained designs
@@ -39,6 +41,7 @@ class Constrained:
         # design limits
         self.p_d = designPressure
         self.v_d = designVelocity
+        self.chi_k = chamberExpansion
 
     def __getattr__(self, attrName):
         try:
@@ -89,21 +92,38 @@ class Constrained:
         n = self.n
         alpha = self.alpha
         Z_b = self.Z_b
-
+        chi_k = self.chi_k
         f_psi_Z = self.f_psi_Z
-        f_sigma_Z = self.f_sigma_Z
 
         omega = m * chargeMassRatio
         V_0 = omega / (rho_p * maxLF * loadFraction)
         Delta = omega / V_0
-        p_bar_0 = p_0 / (Delta * f)
         l_0 = V_0 / S
-        phi = phi_1 + omega / (3 * m)
+
         """
-        it is impossible to account for the chamberage effect given unspecified
-        barrel length, in our formulation
+        At the start of the internal ballistic cycle, v_j
+        is at highest possible value due to chamberage,
+        and asymptotic velocity v_j is minimum. This results
+        in the highest possible estimate for v_bar_d
+
         """
+
+        _, labda_2 = pidduck(omega / (phi_1 * m), theta + 1, tol)
+        phi = (
+            phi_1 + labda_2 / chi_k * omega / m
+        )  # initial value of phi for labda = 0
         v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
+        v_bar_d = v_d / v_j
+
+        """ this is the case for infinitely long barrel, in which case
+        chamberage effect is negligible, and the asymptotic velocity
+        is minimum. This results in the highest possible value for
+        v_bar_d.
+        """
+
+        phi_prime = phi_1 + labda_2 * (omega / m)
+        v_j_prime = (2 * f * omega / (theta * phi_prime * m)) ** 0.5
+        v_bar_d_prime = v_d / v_j_prime
 
         if v_j < v_d:
             raise ValueError(
@@ -112,12 +132,7 @@ class Constrained:
 
         psi_0 = (1 / Delta - 1 / rho_p) / (f / p_0 + alpha - 1 / rho_p)
 
-        Zs = cubic(
-            a=chi * mu,
-            b=chi * labda,
-            c=chi,
-            d=-psi_0,
-        )
+        Zs = cubic(a=chi * mu, b=chi * labda, c=chi, d=-psi_0)
         # pick a valid solution between 0 and 1
         Zs = tuple(
             Z
@@ -126,14 +141,19 @@ class Constrained:
         )  # evaluated from left to right, guards against complex >/< float
         if len(Zs) < 1:
             raise ValueError(
-                "Propellant either could not develop enough pressure to overcome"
-                + " start pressure, or has burnt to post fracture."
+                "Propellant either could not develop enough pressure to "
+                + "overcome start pressure, or has burnt to post fracture."
             )
         Z_0 = Zs[0]
 
         def _fp_bar(Z, l_bar, v_bar):
             psi = f_psi_Z(Z)
+
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
+
+            phi = phi_1 + labda_2 * (l_bar + 1 / chi_k) / (l_bar + 1)
+
+            v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
 
             p_bar = (
                 f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
@@ -153,19 +173,22 @@ class Constrained:
             or until the system develops 2x design pressure.
             """
 
-            B = (
-                S**2
-                * e_1**2
-                / (f * phi * omega * m * u_1**2)
-                * (f * Delta) ** (2 * (1 - n))
-            )
-
             # integrate this to end of burn
 
             def _ode_Z(Z, t_bar, l_bar, v_bar):
                 """burnout domain ode of internal ballistics"""
+                phi = phi_1 + labda_2 * (l_bar + 1 / chi_k) / (l_bar + 1)
+
+                B = (
+                    S**2
+                    * e_1**2
+                    / (f * phi * omega * m * u_1**2)
+                    * (f * Delta) ** (2 * (1 - n))
+                )
+
+                v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
+
                 psi = f_psi_Z(Z)
-                dpsi = f_sigma_Z(Z)  # dpsi/dZ
 
                 l_psi_bar = (
                     1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
@@ -176,9 +199,7 @@ class Constrained:
 
                 if Z <= Z_b:
                     dt_bar = (2 * B / theta) ** 0.5 * p_bar**-n  # dt_bar/dZ
-
                     dl_bar = v_bar * dt_bar
-
                     dv_bar = 0.5 * dt_bar * theta * p_bar
 
                 else:
@@ -216,8 +237,6 @@ class Constrained:
                 record=record,
             )
 
-            p_bar_j = _fp_bar(Z_j, l_bar_j, v_bar_j)
-
             if len(record) > 1:
                 Z_i, (t_bar_i, l_bar_i, v_bar_i) = record[-2]
             else:
@@ -251,7 +270,7 @@ class Constrained:
 
             Z_p = 0.5 * (Z_1 + Z_2)
 
-            return _fp_Z(Z_p) - p_bar_d, Z_j, v_bar_i
+            return _fp_Z(Z_p) - p_bar_d, Z_j, v_bar_i, l_bar_i
 
         """
         The two initial guesses are good enough for the majority of cases,
@@ -262,7 +281,8 @@ class Constrained:
 
         if dp_bar_probe < 0:
             raise ValueError(
-                "Design pressure cannot be achieved by varying web down to minimum"
+                "Design pressure cannot be achieved by varying"
+                + " web down to minimum"
             )
 
         while dp_bar_probe > 0:
@@ -277,34 +297,38 @@ class Constrained:
             x_min=0.5 * probeWeb,  # <=0
         )  # this is the e_1 that satisifies the pressure specification.
 
-        p_bar_dev, Z_i, v_bar_i = _fp_e_1(e_1, tol)
+        p_bar_dev, Z_i, v_bar_i, l_bar_i = _fp_e_1(e_1, tol)
 
         if abs(p_bar_dev / p_bar_d) > tol:
             raise ValueError("Design pressure is not met")
 
+        phi = phi_1 + labda_2 * (omega / m) * (
+            (l_bar_i + 1 / chi_k) / (l_bar_i + 1)
+        )  #
+        v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
+
+        if v_j * v_bar_i > v_d and containBurnout:
+            raise ValueError("Design velocity exceeded before peak pressure")
+
         """
         step 2, find the requisite muzzle length to achieve design velocity
         """
-        v_bar_d = v_d / v_j
-
-        if v_bar_i > v_bar_d and containBurnout:
-            raise ValueError("Design velocity exceeded before peak pressure")
-
-        # TODO: find some way of making this cross constraint less troublesome.
-        B = (
-            S**2
-            * e_1**2
-            / (f * phi * omega * m * u_1**2)
-            * (f * Delta) ** (2 * (1 - n))
-        )
 
         def _ode_v(v_bar, t_bar, Z, l_bar):
-            # p_bar = _fp_bar(Z, l_bar, v_bar)
             psi = f_psi_Z(Z)
-            dpsi = f_sigma_Z(Z)  # dpsi/dZ
+
+            phi = phi_1 + labda_2 * (l_bar + 1 / chi_k) / (l_bar + 1)
+            B = (
+                S**2
+                * e_1**2
+                / (f * phi * omega * m * u_1**2)
+                * (f * Delta) ** (2 * (1 - n))
+            )
+
+            v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
 
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
-            # dp_bar/dt_bar
+
             p_bar = (
                 f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
             ) / (S * l_0 * (l_bar + l_psi_bar) * f * Delta)
@@ -313,8 +337,10 @@ class Constrained:
                 dZ = (2 / (B * theta)) ** 0.5 * p_bar ** (n - 1)
             else:
                 dZ = 0
+
             dl_bar = 2 * v_bar / (theta * p_bar)
             dt_bar = 2 / (theta * p_bar)
+
             return (dt_bar, dZ, dl_bar)
 
         """
@@ -324,27 +350,62 @@ class Constrained:
         """
 
         def abort(x, ys, o_x, o_ys):
-            v_bar = x
             t_bar, Z, l_bar = ys
             return l_bar > l_bar_d
 
-        (v_bar_g, (t_bar_g, Z_g, l_bar_g), (_, _, _)) = RKF78(
-            dFunc=_ode_v,
-            iniVal=(0, Z_0, 0),
-            x_0=0,
-            x_1=v_bar_d,
-            relTol=tol,
-            absTol=tol,
-            abortFunc=abort,
-        )
-        if l_bar_g > l_bar_d:
-            raise ValueError(
-                "Solution requires excessive tube length ({:.3e} m)".format(
-                    maxLength
-                )
+        def g(v_bar_g):
+            (v_bar_g, (t_bar_g, Z_g, l_bar_g), (_, _, _)) = RKF78(
+                dFunc=_ode_v,
+                iniVal=(0, Z_0, 0),
+                x_0=0,
+                x_1=v_bar_g,
+                relTol=tol,
+                absTol=tol,
+                abortFunc=abort,
             )
-        # print("p
-        if abs(v_bar_g - v_bar_d) / (v_bar_d) > tol:
+            if l_bar_g > l_bar_d:
+                raise ValueError(
+                    "Solution requires excessive tube length ({:.3e} m)".format(
+                        maxLength
+                    )
+                )
+
+            phi = phi_1 + labda_2 * (omega / m) * (
+                (l_bar_g + 1 / chi_k) / (l_bar_g + 1)
+            )  #
+            v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
+            v = v_bar_g * v_j
+
+            return v - v_d, l_bar_g
+
+        if chi_k != 1:
+            v_bar_g, _ = secant(
+                lambda v_bar: g(v_bar)[0],
+                v_bar_d,
+                v_bar_d_prime,
+                tol=tol,
+            )
+
+            """
+            # alternatively
+            v_bar_1, v_bar_2 = bisect(
+                lambda v_bar: g(v_bar)[0],
+                v_bar_d,
+                v_bar_d_prime,
+                tol=tol,
+            )
+            v_bar_g = 0.5 * (v_bar_1 + v_bar_2)
+            """
+
+        else:
+            """
+            for chamber expansion ratio of 1, phi is constant
+            and thus v_j, and every other derived values.
+            """
+            v_bar_g = v_bar_d
+
+        dv, l_bar_g = g(v_bar_g)
+        if abs(dv / v_d) > tol:
             raise ValueError("Velocity specification is not met")
 
         return e_1, l_bar_g * l_0
@@ -355,7 +416,7 @@ class Constrained:
         """
 
         """
-        Step 1, find a valid range of values for load fraction, 
+        Step 1, find a valid range of values for load fraction,
         using psuedo-bisection.
 
         high lf -> high web
@@ -395,9 +456,8 @@ class Constrained:
 
         if i == N - 1:
             raise ValueError(
-                "Unable to find any valid load fraction with {:d} random samples.".format(
-                    N
-                )
+                "Unable to find any valid load fraction"
+                + " with {:d} random samples.".format(N)
             )
 
         low = tol
@@ -492,11 +552,12 @@ if __name__ == "__main__":
         dragCoefficient=5e-2,
         designPressure=350e6,
         designVelocity=1500,
+        chamberExpansion=1,
     )
 
     for i in range(10):
         print(
             test.findMinV(
-                chargeMassRatio=1, tol=1e-3, minWeb=1e-6, maxLength=1e3
+                chargeMassRatio=1, tol=1e-3, minWeb=1e-6, maxLength=10
             )
         )

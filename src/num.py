@@ -679,6 +679,7 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
 
     fx_0 = f(x_0)
     fx_1 = f(x_1)
+
     for i in range(it):
         x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
         if x_min is not None and x_2 < x_min:
