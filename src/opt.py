@@ -1,4 +1,4 @@
-from num import GSS, RKF78, cubic, secant, bisect
+from num import GSS, RKF78, cubic, secant
 from prop import Propellant
 from random import uniform
 from math import pi
@@ -151,7 +151,9 @@ class Constrained:
 
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
 
-            phi = phi_1 + labda_2 * (l_bar + 1 / chi_k) / (l_bar + 1)
+            phi = phi_1 + labda_2 * (l_bar + 1 / chi_k) / (l_bar + 1) * (
+                omega / m
+            )
 
             v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
 
@@ -177,7 +179,9 @@ class Constrained:
 
             def _ode_Z(Z, t_bar, l_bar, v_bar):
                 """burnout domain ode of internal ballistics"""
-                phi = phi_1 + labda_2 * (l_bar + 1 / chi_k) / (l_bar + 1)
+                phi = phi_1 + labda_2 * (l_bar + 1 / chi_k) / (l_bar + 1) * (
+                    omega / m
+                )
 
                 B = (
                     S**2
@@ -186,13 +190,14 @@ class Constrained:
                     * (f * Delta) ** (2 * (1 - n))
                 )
 
-                v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
-
                 psi = f_psi_Z(Z)
 
                 l_psi_bar = (
                     1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
                 )
+
+                v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
+
                 p_bar = (
                     f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
                 ) / (S * l_0 * (l_bar + l_psi_bar) * f * Delta)
@@ -317,7 +322,10 @@ class Constrained:
         def _ode_v(v_bar, t_bar, Z, l_bar):
             psi = f_psi_Z(Z)
 
-            phi = phi_1 + labda_2 * (l_bar + 1 / chi_k) / (l_bar + 1)
+            phi = phi_1 + labda_2 * (l_bar + 1 / chi_k) / (l_bar + 1) * (
+                omega / m
+            )
+
             B = (
                 S**2
                 * e_1**2
@@ -325,9 +333,9 @@ class Constrained:
                 * (f * Delta) ** (2 * (1 - n))
             )
 
-            v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
-
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
+
+            v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
 
             p_bar = (
                 f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
@@ -373,8 +381,12 @@ class Constrained:
             phi = phi_1 + labda_2 * (omega / m) * (
                 (l_bar_g + 1 / chi_k) / (l_bar_g + 1)
             )  #
+
             v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
+
             v = v_bar_g * v_j
+
+            print(v)
 
             return v - v_d, l_bar_g
 

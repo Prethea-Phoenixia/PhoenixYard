@@ -151,7 +151,6 @@ class Gun:
 
     def _ode_t(self, t_bar, Z, l_bar, v_bar):
         psi = self.f_psi_Z(Z)
-        dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
 
         l_psi_bar = (
             1
