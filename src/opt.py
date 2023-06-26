@@ -231,8 +231,8 @@ class Constrained:
                 iniVal=(0, 0, 0),
                 x_0=Z_0,
                 x_1=Z_b,
-                relTol=0.1 * tol,
-                absTol=0.1 * tol,
+                relTol=tol,
+                absTol=tol,
                 abortFunc=abort,
                 record=record,
             )
@@ -248,8 +248,8 @@ class Constrained:
                     iniVal=(t_bar_i, l_bar_i, v_bar_i),
                     x_0=Z_i,
                     x_1=Z,
-                    relTol=0.01 * tol,
-                    absTol=0.01 * tol,
+                    relTol=tol,
+                    absTol=tol,
                 )
 
                 return _fp_bar(Z, l_bar, v_bar)
@@ -263,7 +263,7 @@ class Constrained:
                 _fp_Z,
                 Z_i,
                 Z_j,
-                yRelTol=0.1 * tol,
+                yRelTol=tol,
                 findMin=False,
                 xTol=0,
             )
@@ -386,17 +386,6 @@ class Constrained:
                 tol=tol,
             )
 
-            """
-            # alternatively
-            v_bar_1, v_bar_2 = bisect(
-                lambda v_bar: g(v_bar)[0],
-                v_bar_d,
-                v_bar_d_prime,
-                tol=tol,
-            )
-            v_bar_g = 0.5 * (v_bar_1 + v_bar_2)
-            """
-
         else:
             """
             for chamber expansion ratio of 1, phi is constant
@@ -435,12 +424,11 @@ class Constrained:
             e_1, l_g = solve(
                 loadFraction=lf,
                 chargeMassRatio=chargeMassRatio,
-                tol=0.1 * tol,  # this is to ensure unimodality up to ~tol
+                tol=tol,  # this is to ensure unimodality up to ~tol
                 minWeb=mW,
                 containBurnout=False,
                 maxLength=maxLength,
             )
-            # print(l_g + l_0)
             return e_1, (l_g + l_0), l_g
 
         records = []
