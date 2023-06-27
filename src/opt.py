@@ -179,6 +179,13 @@ class Constrained:
 
             def _ode_Z(Z, t_bar, l_bar, v_bar):
                 """burnout domain ode of internal ballistics"""
+
+                psi = f_psi_Z(Z)
+
+                l_psi_bar = (
+                    1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
+                )
+
                 phi = phi_1 + labda_2 * (l_bar + 1 / chi_k) / (l_bar + 1) * (
                     omega / m
                 )
@@ -188,12 +195,6 @@ class Constrained:
                     * e_1**2
                     / (f * phi * omega * m * u_1**2)
                     * (f * Delta) ** (2 * (1 - n))
-                )
-
-                psi = f_psi_Z(Z)
-
-                l_psi_bar = (
-                    1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
                 )
 
                 v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
@@ -225,9 +226,7 @@ class Constrained:
 
                 op_bar = _fp_bar(oZ, ol_bar, ov_bar)
 
-                return (
-                    p_bar < op_bar or p_bar > 2 * p_bar_d
-                )  # or l_bar > l_bar_d
+                return p_bar < op_bar or p_bar > 2 * p_bar_d
 
             record = []
 
@@ -349,7 +348,7 @@ class Constrained:
             dl_bar = 2 * v_bar / (theta * p_bar)
             dt_bar = 2 / (theta * p_bar)
 
-            return (dt_bar, dZ, dl_bar)
+            return [dt_bar, dZ, dl_bar]
 
         """
         Integrating from 0 enforce consistency and improves numerical
@@ -385,8 +384,6 @@ class Constrained:
             v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
 
             v = v_bar_g * v_j
-
-            print(v)
 
             return v - v_d, l_bar_g
 
@@ -552,7 +549,7 @@ if __name__ == "__main__":
         dragCoefficient=5e-2,
         designPressure=350e6,
         designVelocity=1500,
-        chamberExpansion=1,
+        chamberExpansion=1.5,
     )
 
     for i in range(10):
