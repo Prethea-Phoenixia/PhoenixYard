@@ -100,31 +100,10 @@ class Constrained:
         Delta = omega / V_0
         l_0 = V_0 / S
 
-        """
-        At the start of the internal ballistic cycle, v_j
-        is at highest possible value due to chamberage,
-        and asymptotic velocity v_j is minimum. This results
-        in the highest possible estimate for v_bar_d
-
-        """
-
         _, labda_2 = pidduck(omega / (phi_1 * m), theta + 1, tol)
-        phi = phi_1 + labda_2 * (omega / m) / chi_k
-        # initial value of phi for labda = 0
-
+        phi = phi_1 + labda_2 * (omega / m)
         v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
-
         v_bar_d = v_d / v_j
-
-        """ this is the case for infinitely long barrel, in which case
-        chamberage effect is negligible, and the asymptotic velocity
-        is minimum. This results in the highest possible value for
-        v_bar_d.
-        """
-
-        phi_prime = phi_1 + labda_2 * (omega / m)
-        v_j_prime = (2 * f * omega / (theta * phi_prime * m)) ** 0.5
-        v_bar_d_prime = v_d / v_j_prime
 
         if v_j < v_d:
             raise ValueError(
@@ -152,12 +131,6 @@ class Constrained:
 
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
 
-            phi = phi_1 + labda_2 * (l_bar + 1 / chi_k) / (l_bar + 1) * (
-                omega / m
-            )
-
-            v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
-
             p_bar = (
                 f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
             ) / (S * l_0 * (l_bar + l_psi_bar) * f * Delta)
@@ -176,7 +149,12 @@ class Constrained:
             or until the system develops 2x design pressure.
             """
 
-            # integrate this to end of burn
+            B = (
+                S**2
+                * e_1**2
+                / (f * phi * omega * m * u_1**2)
+                * (f * Delta) ** (2 * (1 - n))
+            )
 
             def _ode_Z(Z, t_bar, l_bar, v_bar):
                 """burnout domain ode of internal ballistics"""
@@ -185,17 +163,6 @@ class Constrained:
 
                 l_psi_bar = (
                     1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
-                )
-
-                phi = phi_1 + labda_2 * (l_bar + 1 / chi_k) / (l_bar + 1) * (
-                    omega / m
-                )
-
-                B = (
-                    S**2
-                    * e_1**2
-                    / (f * phi * omega * m * u_1**2)
-                    * (f * Delta) ** (2 * (1 - n))
                 )
 
                 v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
@@ -319,19 +286,15 @@ class Constrained:
         step 2, find the requisite muzzle length to achieve design velocity
         """
 
+        B = (
+            S**2
+            * e_1**2
+            / (f * phi * omega * m * u_1**2)
+            * (f * Delta) ** (2 * (1 - n))
+        )
+
         def _ode_v(v_bar, t_bar, Z, l_bar):
             psi = f_psi_Z(Z)
-
-            phi = phi_1 + labda_2 * (l_bar + 1 / chi_k) / (l_bar + 1) * (
-                omega / m
-            )
-
-            B = (
-                S**2
-                * e_1**2
-                / (f * phi * omega * m * u_1**2)
-                * (f * Delta) ** (2 * (1 - n))
-            )
 
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
 
@@ -361,49 +324,30 @@ class Constrained:
             t_bar, Z, l_bar = ys
             return l_bar > l_bar_d
 
-        def g(v_bar_g):
-            (v_bar_g, (t_bar_g, Z_g, l_bar_g), (_, _, _)) = RKF78(
-                dFunc=_ode_v,
-                iniVal=(0, Z_0, 0),
-                x_0=0,
-                x_1=v_bar_g,
-                relTol=tol,
-                absTol=tol,
-                abortFunc=abort,
-            )
-            if l_bar_g > l_bar_d:
-                raise ValueError(
-                    "Solution requires excessive tube length "
-                    + "({:.3e} m)".format(maxLength)
-                )
-
-            phi = phi_1 + labda_2 * (omega / m) * (
-                (l_bar_g + 1 / chi_k) / (l_bar_g + 1)
-            )  #
-
-            v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
-
-            v = v_bar_g * v_j
-
-            return v - v_d, l_bar_g
-
-        if chi_k != 1:
-            v_bar_g, _ = secant(
-                lambda v_bar: g(v_bar)[0],
-                v_bar_d,
-                v_bar_d_prime,
-                tol=tol,
+        (v_bar_g, (t_bar_g, Z_g, l_bar_g), (_, _, _)) = RKF78(
+            dFunc=_ode_v,
+            iniVal=(0, Z_0, 0),
+            x_0=0,
+            x_1=v_bar_d,
+            relTol=tol,
+            absTol=tol,
+            abortFunc=abort,
+        )
+        if l_bar_g > l_bar_d:
+            raise ValueError(
+                "Solution requires excessive tube length "
+                + "({:.3e} m)".format(maxLength)
             )
 
-        else:
-            """
-            for chamber expansion ratio of 1, phi is constant
-            and thus v_j, and every other derived values.
-            """
-            v_bar_g = v_bar_d
+        phi = phi_1 + labda_2 * (omega / m) * (
+            (l_bar_g + 1 / chi_k) / (l_bar_g + 1)
+        )  #
 
-        dv, l_bar_g = g(v_bar_g)
-        if abs(dv / v_d) > tol:
+        v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
+
+        v = v_bar_g * v_j
+
+        if abs((v - v_d) / v_d) > tol:
             raise ValueError("Velocity specification is not met")
 
         return e_1, l_bar_g * l_0
