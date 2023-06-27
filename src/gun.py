@@ -286,6 +286,7 @@ class Gun:
         cc = (
             1 - (1 - 1 / self.chi_k) * 2.303 * log(Labda + 1) / Labda
         )  # chamberage correction factor
+
         self.phi = self.phi_1 + labda_2 * self.omega / self.m * cc
 
         self.B = (
@@ -446,9 +447,9 @@ class Gun:
             raise ValueError("exit/burnout point found to be at the origin.")
 
         """
-        Cludge code to force the SoE past the discontinuity at Z = Z_b, since 
+        Cludge code to force the SoE past the discontinuity at Z = Z_b, since
         we wrote the SoE to be be piecewise continous from (0, Z_b] and (Z_b, +inf)
-        it is necessary to do this to prevent the RKF integrator coming up with 
+        it is necessary to do this to prevent the RKF integrator coming up with
         irreducible error estimates and driving the step size to 0 around Z = Z_b
         """
         if isBurnOutContained:
@@ -605,8 +606,8 @@ class Gun:
         """
             tolerance is specified a bit differently for gold section search
             GSS tol is the length between the upper bound and lower bound
-            of the maxima/minima, thus by our definition of tolerance (one sided),
-            we take the median value.
+            of the maxima/minima, thus by our definition of tolerance (one
+            sided), we take the median value.
         """
 
         t_bar_tol = tol * min(

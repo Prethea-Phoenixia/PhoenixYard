@@ -109,10 +109,11 @@ class Constrained:
         """
 
         _, labda_2 = pidduck(omega / (phi_1 * m), theta + 1, tol)
-        phi = (
-            phi_1 + labda_2 / chi_k * omega / m
-        )  # initial value of phi for labda = 0
+        phi = phi_1 + labda_2 * (omega / m) / chi_k
+        # initial value of phi for labda = 0
+
         v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
+
         v_bar_d = v_d / v_j
 
         """ this is the case for infinitely long barrel, in which case
@@ -372,9 +373,8 @@ class Constrained:
             )
             if l_bar_g > l_bar_d:
                 raise ValueError(
-                    "Solution requires excessive tube length ({:.3e} m)".format(
-                        maxLength
-                    )
+                    "Solution requires excessive tube length "
+                    + "({:.3e} m)".format(maxLength)
                 )
 
             phi = phi_1 + labda_2 * (omega / m) * (
