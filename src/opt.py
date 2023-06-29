@@ -354,7 +354,7 @@ class Constrained:
                 containBurnout,
                 maxLength,
                 labda_2,
-                cc_n,
+                cc=cc_n,
             )
         else:
             return e_1, l_bar_g * l_0

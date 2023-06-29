@@ -444,9 +444,7 @@ class Mixture:
             + 222.42131159 * Ni
             + 242.02396858 * Oi
         )
-
-        These aren't good enough, esp. not for the modern propellants like JA2,
-        the deviaiton is up to 0.2 (0.89 vs 0.98)
+        This is for a loading density of 0.2g/cc
         """
         self.C = Ci * M_C
         self.H = Hi * M_H
@@ -756,7 +754,6 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):  # in kelvin  # mol/g
     # b = V * (1 - n / n0 * (1 - B / V - n0 * C / V**2))
 
     b = (B * V**2 + n * C * V) / (V**2 + B * V + n * C)
-    # rint("Calculated Conditions: {:>6.1f} K ".format(T))
 
     p = n * R * T / (V - b) / 9.869
 
