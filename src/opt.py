@@ -1,7 +1,7 @@
 from num import GSS, RKF78, cubic, secant
 from prop import Propellant
 from random import uniform
-from math import pi
+from math import pi, log
 from gun import pidduck
 
 
@@ -57,6 +57,8 @@ class Constrained:
         minWeb=1e-6,
         containBurnout=True,
         maxLength=1e3,
+        labda_2=None,
+        cc=1,
         **_,
     ):
         if any(
@@ -100,8 +102,10 @@ class Constrained:
         Delta = omega / V_0
         l_0 = V_0 / S
 
-        _, labda_2 = pidduck(omega / (phi_1 * m), theta + 1, tol)
-        phi = phi_1 + labda_2 * (omega / m)
+        if labda_2 is None:
+            _, labda_2 = pidduck(omega / (phi_1 * m), theta + 1, tol)
+
+        phi = phi_1 + labda_2 * (omega / m) * cc
         v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
         v_bar_d = v_d / v_j
 
@@ -164,8 +168,6 @@ class Constrained:
                 l_psi_bar = (
                     1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
                 )
-
-                v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
 
                 p_bar = (
                     f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
@@ -274,11 +276,6 @@ class Constrained:
         if abs(p_bar_dev / p_bar_d) > tol:
             raise ValueError("Design pressure is not met")
 
-        phi = phi_1 + labda_2 * (omega / m) * (
-            (l_bar_i + 1 / chi_k) / (l_bar_i + 1)
-        )  #
-        v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
-
         if v_j * v_bar_i > v_d and containBurnout:
             raise ValueError("Design velocity exceeded before peak pressure")
 
@@ -297,8 +294,6 @@ class Constrained:
             psi = f_psi_Z(Z)
 
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
-
-            v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
 
             p_bar = (
                 f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
@@ -339,18 +334,30 @@ class Constrained:
                 + "({:.3e} m)".format(maxLength)
             )
 
-        phi = phi_1 + labda_2 * (omega / m) * (
-            (l_bar_g + 1 / chi_k) / (l_bar_g + 1)
-        )  #
-
-        v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
-
         v = v_bar_g * v_j
 
         if abs((v - v_d) / v_d) > tol:
             raise ValueError("Velocity specification is not met")
 
-        return e_1, l_bar_g * l_0
+        # calculate the averaged chamberage correction factor
+        # implied by this solution
+        cc_n = 1 - (1 - 1 / chi_k) * 2.303 * log(l_bar_g + 1) / l_bar_g
+
+        if abs(cc_n / cc - 1) > tol:
+            # successive better approximations will eventually
+            # result in value within tolerance.
+            return self.solve(
+                loadFraction,
+                chargeMassRatio,
+                tol,
+                minWeb,
+                containBurnout,
+                maxLength,
+                labda_2,
+                cc_n,
+            )
+        else:
+            return e_1, l_bar_g * l_0
 
     def findMinV(self, chargeMassRatio, tol, minWeb, maxLength, **_):
         """
@@ -364,11 +371,16 @@ class Constrained:
         high lf -> high web
         low lf -> low web
         """
-        omega = self.m * chargeMassRatio
+        m = self.m
+        omega = m * chargeMassRatio
         rho_p = self.rho_p
         maxLF = self.maxLF
         S = self.S
         solve = self.solve
+        phi_1 = self.phi_1
+        theta = self.theta
+
+        _, labda_2 = pidduck(omega / (phi_1 * m), theta + 1, tol)
 
         def f(lf, mW=minWeb):
             V_0 = omega / (rho_p * maxLF * lf)
@@ -377,10 +389,11 @@ class Constrained:
             e_1, l_g = solve(
                 loadFraction=lf,
                 chargeMassRatio=chargeMassRatio,
-                tol=tol,  # this is to ensure unimodality up to ~tol
+                tol=tol,
                 minWeb=mW,
                 containBurnout=False,
                 maxLength=maxLength,
+                labda_2=labda_2,
             )
             return e_1, (l_g + l_0), l_g
 
@@ -392,7 +405,7 @@ class Constrained:
                 _, lt_i, lg_i = f(startProbe)
                 records.append((startProbe, lt_i))
                 break
-            except ValueError:
+            except ValueError as e:
                 pass
 
         if i == N - 1:
