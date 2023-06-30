@@ -172,14 +172,15 @@ def formatIntInput(event):
         event.widget.insert(0, int(v))
 
 
-def dot_aligned(matrix, units, useSN):
+def dot_aligned(matrix, units, useSN, stripWS=True):
     transposed = []
 
     for seq, unit, isSN in zip(zip(*matrix), units, useSN):
         snums = []
         for n in seq:
             try:
-                snums.append(toSI(float(n), unit=unit, useSN=isSN))
+                vstr = toSI(float(n), unit=unit, useSN=isSN)
+                snums.append(vstr.strip() if stripWS else vstr)
             except ValueError:
                 snums.append(n)
         dots = [s.find(".") for s in snums]
@@ -205,3 +206,7 @@ def center(win):
     y = win.winfo_screenheight() // 2 - win_height // 2
     win.geometry("{}x{}+{}+{}".format(width, height, x, y))
     win.deiconify()
+
+
+if __name__ == "__main__":
+    print(toSI(1e-4).strip())

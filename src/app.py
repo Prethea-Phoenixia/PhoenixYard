@@ -1,4 +1,4 @@
-from tkinter import Tk, FALSE, font
+from tkinter import Tk, FALSE
 from IB import IB
 from misc import center, loadfont, resolvepath
 from ctypes import windll
@@ -55,5 +55,5 @@ if __name__ == "__main__":
 
     # print(font.families())
 
-    root.minsize(root.winfo_width(), root.winfo_height())
+    # root.minsize(root.winfo_width(), root.winfo_height())
     root.mainloop()

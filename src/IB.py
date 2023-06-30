@@ -697,10 +697,11 @@ class IB(Frame):
             self.getString("DOMAIN_TIME"): DOMAIN_TIME,
             self.getString("DOMAIN_LENG"): DOMAIN_LENG,
         }
-
+        """
         self.tableData = []
         self.errorData = []
         self.intgRecord = []
+        """
         self.kwargs = {
             "opt": optimize,
             "con": constrain,
@@ -898,23 +899,20 @@ class IB(Frame):
         )
         errorData = dot_aligned(self.errorData, units=units, useSN=useSN)
         # negErr, posErr = arrErr(self.errorData, units=units, useSN=useSN)
-        i = 0
 
-        for row, erow in zip(tableData, errorData):
+        for i, (row, erow) in enumerate(zip(tableData, errorData)):
             self.tv.insert(
-                "", "end", str(i), values=row, tags=(row[0], "monospace")
+                "", "end", str(i + 1), values=row, tags=(row[0], "monospace")
             )
             self.tv.insert(
-                str(i),
-                "end",
                 str(i + 1),
+                "end",
+                str(-i - 1),
                 values=tuple("±" + e if e != erow[0] else e for e in erow),
                 tags="error",
             )
 
-            self.tv.move(str(i + 1), str(i), "end")
-            i += 2
-
+            self.tv.move(str(-i - 1), str(i + 1), "end")
         self.updateError()
         self.updateFigPlot()
 
@@ -1324,7 +1322,7 @@ class IB(Frame):
             ax.yaxis.tick_right()
             ax.set_xlabel(" ")
 
-            axv.spines.right.set_position(("axes", 1.0 + 40 * dpi / 96 / width))
+            axv.spines.right.set_position(("axes", 1.0 + 45 * dpi / 96 / width))
             axP.spines.right.set_position(("data", 0.5))
 
             axP.yaxis.set_ticks(axP.get_yticks()[1:-1:])
@@ -1349,7 +1347,7 @@ class IB(Frame):
 
         with mpl.rc_context(FIG_CONTEXT):
             self.axv.spines.right.set_position(
-                ("axes", 1 + 40 * dpi / 96 / width)
+                ("axes", 1 + 45 * dpi / 96 / width)
             )
 
         # self.resized = True
@@ -1395,7 +1393,7 @@ class IB(Frame):
             size = self.fig.get_size_inches() * self.fig.dpi
 
             self.axv.spines.right.set_position(
-                ("axes", 1 + 40 * dpi / 96 / size[0])
+                ("axes", 1 + 45 * dpi / 96 / size[0])
             )
 
             if gun is not None:
@@ -1662,8 +1660,8 @@ class IB(Frame):
             self.tv.column(
                 column,
                 stretch=True,  # will adjust to window resizing
-                width=width * 16,
-                minwidth=width * 16,
+                width=width * 12,
+                minwidth=width * 12,
                 anchor="e",
             )
 
@@ -1673,17 +1671,18 @@ class IB(Frame):
         vertscroll.configure(command=self.tv.yview)  # make it vertical
         vertscroll.grid(row=0, column=1, sticky="nsew")
 
-        """
         horzscroll = ttk.Scrollbar(tblFrm, orient="horizontal")
         horzscroll.configure(command=self.tv.xview)
         horzscroll.grid(row=1, column=0, sticky="nsew")
         self.tv.configure(
             yscrollcommand=vertscroll.set, xscrollcommand=horzscroll.set
         )  # assign the scrollbar to the Treeview Widget
+
         """
         self.tv.configure(
             yscrollcommand=vertscroll.set
         )  # assign the scrollbar to the Treeview Widget
+        """
 
     def updateSpec(self, *args):
         self.specs.config(state="normal")
@@ -2118,7 +2117,6 @@ class IB(Frame):
             "SubLabelFrame.TLabelframe.Label",
             font=(self.getString("fontName"), 10),
         )
-
         style.configure("TCheckbutton", font=(self.getString("fontName"), 8))
 
         bgc = str(style.lookup("TFrame", "background"))
