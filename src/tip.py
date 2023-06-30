@@ -27,9 +27,10 @@ class ToolTip(object):
         tw.wm_overrideredirect(1)
         root = self.widget.winfo_toplevel()
 
-        t_Font = tkFont.Font(family="hack", size=9)
+        t_Font = tkFont.Font(family="Sarasa Mono SC", size=8)
         # we use a fixed width font so any char will do
         columnWidth = 40
+        # apparnetly this doesn't work correctly with CJK fonts.....
         width, height = t_Font.measure("m"), t_Font.metrics("linespace")
 
         x, y, _, _ = self.widget.bbox("insert")

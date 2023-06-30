@@ -55,13 +55,13 @@ GEOM_CONTEXT = {
 }
 
 FIG_CONTEXT = {
-    "font.size": 9,
-    "axes.titlesize": 9,
-    "axes.labelsize": 9,
-    "xtick.labelsize": 9,
-    "ytick.labelsize": 9,
-    "legend.fontsize": 9,
-    "figure.titlesize": 11,
+    "font.size": 8,
+    "axes.titlesize": 8,
+    "axes.labelsize": 8,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "legend.fontsize": 8,
+    "figure.titlesize": 10,
     # "figure.autolayout": True,
     "lines.linewidth": 1,
     "font.weight": "bold",
@@ -70,7 +70,7 @@ FIG_CONTEXT = {
     "axes.labelweight": "bold",
     "yaxis.labellocation": "top",
     # "path.simplify_threshold": 1,
-    "font.family": ["Hack", "Noto Sans SC"],  # fallback
+    "font.family": ["Hack", "Sarasa Mono SC"],  # fallback
 }
 
 
@@ -78,6 +78,10 @@ class IB(Frame):
     def __init__(self, parent, dpi):
         Frame.__init__(self, parent)
         self.LANG = StringVar(value=list(STRING.keys())[0])
+
+        default_font = tkFont.Font(family=self.getString("fontName"), size=8)
+        self.option_add("*Font", default_font)
+
         self.queue = Queue()
         self.process = None
         self.pos = -1
@@ -175,11 +179,34 @@ class IB(Frame):
         self.timedLoop()
 
     def changeLang(self):
+        def setFontSize(widget):
+            # print(widget)
+            new_font = tkFont.Font(font=widget.cget("font"))
+            size = new_font.actual()["size"]
+            widget.config(font=(self.getString("fontName"), size))
+
         self.menubar.entryconfig(0, label=self.getString("themeLabel"))
         self.menubar.entryconfig(1, label=self.getString("debugLabel"))
         self.themeMenu.entryconfig(0, label=self.getString("darkLabel"))
         self.themeMenu.entryconfig(1, label=self.getString("lightLabel"))
         self.debugMenu.entryconfig(0, label=self.getString("enableLabel"))
+
+        allFontConfig = [
+            self.calLb,
+            self.tblLb,
+            self.shtLb,
+            self.chgLb,
+            self.ldfLb,
+            self.clrLb,
+            self.dgcLb,
+            self.stpLb,
+            self.vTgtLb,
+            self.pTgtLb,
+            self.minWebLb,
+            self.lgmaxLb,
+            self.nozzExpLb,
+            self.nozzEffLb,
+        ]
 
         self.calLb.config(text=self.getString("calLabel"))
         self.tblLb.config(text=self.getString("tblLabel"))
@@ -201,7 +228,6 @@ class IB(Frame):
 
         self.useConstraintTip.set(self.getString("useConsText"))
         self.optimizeLFTip.set(self.getString("optLFText"))
-
         self.chgTip.set(self.getString("chgText"))
         self.vinfTip.set(self.getString("vinfText"))
         self.lxTip.set(self.getString("calLxText"))
@@ -220,6 +246,30 @@ class IB(Frame):
         self.calcButtonTip.set(self.getString("calcButtonText"))
         self.pTgtTip.set(self.getString("pTgtText"))
 
+        allFontConfig.extend(
+            (
+                # self.tblFrm,
+                # self.plotFrm,
+                # self.errorFrm,
+                # self.parFrm,
+                # self.specFrm,
+                # self.opFrm,
+                # self.consFrm,
+                # self.topFrm,
+                # self.useConstraint,
+                # self.optimizeLF,
+                # self.sampleFrm,
+                self.lxLb,
+                self.vaLb,
+                self.teLb,
+                self.beLb,
+                self.cvLb,
+                self.ldpLb,
+                # self.propFrm,
+                # self.grainFrm,
+            )
+        )
+
         self.tblFrm.config(text=self.getString("tblFrmLabel"))
         self.plotFrm.config(text=self.getString("plotFrmLabel"))
         self.errorFrm.config(text=self.getString("errFrmLabel"))
@@ -235,7 +285,6 @@ class IB(Frame):
 
         self.lxLb.config(text=self.getString("lxLabel"))
         self.vaLb.config(text=self.getString("vaLabel"))
-        # self.pPLb.config(text=self.getString("pPLabel"))
         self.teLb.config(text=self.getString("teffLabel"))
         self.beLb.config(text=self.getString("beffLabel"))
         self.cvLb.config(text=self.getString("cvLabel"))
@@ -247,13 +296,14 @@ class IB(Frame):
         for i, columnName in enumerate(self.getString("columnList")):
             self.tv.heading(i, text=columnName)
 
+        allFontConfig.append(self.stepsLb)
+
         self.plotAvgPCheck.config(text=self.getString("plotAvgP"))
         self.plotBasePCheck.config(text=self.getString("plotBaseP"))
         self.plotBreechNozzlePCheck.config(
             text=self.getString("plotBreechNozzleP")
         )
         self.plotStagPCheck.config(text=self.getString("plotStagP"))
-
         self.plotVelCheck.config(text=self.getString("plotVel"))
         self.plotNozzleVCheck.config(text=self.getString("plotNozzleV"))
         self.plotBurnupCheck.config(text=self.getString("plotBurnup"))
@@ -261,6 +311,8 @@ class IB(Frame):
 
         self.stepsLb.config(text=self.getString("stepsLabel"))
         self.calButton.config(text=self.getString("calcLabel"))
+
+        allFontConfig.extend((self.typeOptn, self.dropOptn, self.dropGeom))
 
         gunTypeIndex = self.typeOptn["values"].index(self.gunType.get())
         self.typeOptn.config(
@@ -284,9 +336,15 @@ class IB(Frame):
         self.geometries = {self.getString(k): v for k, v in GEOMETRIES.items()}
         self.dropGeom.config(values=tuple(self.geometries.keys()))
         self.dropGeom.current(geomIndex)
+
         self.updateGeom()
         self.updateSpec()
         self.updateFigPlot()
+
+        for w in allFontConfig:
+            setFontSize(w)
+
+        self.useTheme()
 
     def getString(self, name):
         try:
@@ -879,7 +937,7 @@ class IB(Frame):
             wrap=WORD,
             height=5,
             width=0,
-            font=("Hack", 8),
+            font=("Sarasa Mono SC", 8),
         )
 
         self.errorText.grid(row=0, column=0, sticky="nsew")
@@ -998,10 +1056,11 @@ class IB(Frame):
             # wrap=WORD,
             wrap="none",
             height=10,
-            width=28,
+            width=0,
+            # width=28,
             yscrollcommand=specScroll.set,
             xscrollcommand=specHScroll.set,
-            font=("Hack", 8),
+            font=("Sarasa Mono SC", 8),
         )
         self.specs.grid(row=1, column=0, sticky="nsew")
         specScroll.config(command=self.specs.yview)
@@ -1066,7 +1125,7 @@ class IB(Frame):
 
         self.dropGeom.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropGeom.current(0)
-        # self.dropGeom.configure(width=25)
+        # self.dropGeom.configure(width=28)  # this is the limiting value
 
         self.dropGeom.grid(
             row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
@@ -1263,7 +1322,7 @@ class IB(Frame):
             axv = ax.twinx()
 
             ax.yaxis.tick_right()
-            ax.set_xlabel("Domain")
+            ax.set_xlabel(" ")
 
             axv.spines.right.set_position(("axes", 1.0 + 40 * dpi / 96 / width))
             axP.spines.right.set_position(("data", 0.5))
@@ -1563,7 +1622,7 @@ class IB(Frame):
 
             else:
                 self.axP.spines.right.set_position(("axes", 0.5))
-                self.ax.set_xlabel("Domain")
+                self.ax.set_xlabel(" ")
 
             self.axP.yaxis.set_ticks(self.axP.get_yticks()[1:-1:])
             self.pltCanvas.draw_idle()
@@ -1591,7 +1650,7 @@ class IB(Frame):
         t_Font = tkFont.Font(family="hack", size=8)
 
         self.tv.tag_configure("monospace", font=t_Font)
-        self.tv.tag_configure("error", font=("hack", 8), foreground="grey")
+        self.tv.tag_configure("error", font=t_Font, foreground="grey")
 
         # we use a fixed width font so any char will do
         width, _ = t_Font.measure("m"), t_Font.metrics("linespace")
@@ -1630,7 +1689,7 @@ class IB(Frame):
         self.specs.config(state="normal")
         compo = self.compositions[self.dropProp.get()]
         self.specs.delete("1.0", "end")
-        t_Font = tkFont.Font(family="hack", size=8)
+        t_Font = tkFont.Font(font=self.specs.cget("font"))
         width = self.specs.winfo_width() // t_Font.measure("m")
         self.specs.insert(
             "end",
@@ -2046,12 +2105,21 @@ class IB(Frame):
         # so the default row height should be around 12
 
         style.configure("Treeview", rowheight=round(12 * dpi / 72.0))
-        style.configure("Treeview.Heading", font=("Hack", 9))
-        style.configure("TButton", font=("Hack", 10, "bold"))
-        style.configure("TLabelframe.Label", font=("Hack", 11, "bold"))
-        style.configure("TCheckbutton", font=("Hack", 9))
-        style.configure("SubLabelFrame.TLabelframe.Label", font=("Hack", 10))
-        # style.configure("TNotebook.Tab", font=("Hack", 10))
+        style.configure(
+            "Treeview.Heading", font=(self.getString("fontName"), 8)
+        )
+        style.configure(
+            "TButton", font=(self.getString("fontName"), 10, "bold")
+        )
+        style.configure(
+            "TLabelframe.Label", font=(self.getString("fontName"), 10, "bold")
+        )
+        style.configure(
+            "SubLabelFrame.TLabelframe.Label",
+            font=(self.getString("fontName"), 10),
+        )
+
+        style.configure("TCheckbutton", font=(self.getString("fontName"), 8))
 
         bgc = str(style.lookup("TFrame", "background"))
         fgc = str(style.lookup("TFrame", "foreground"))

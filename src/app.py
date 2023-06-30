@@ -1,4 +1,4 @@
-from tkinter import Tk, FALSE
+from tkinter import Tk, FALSE, font
 from IB import IB
 from misc import center, loadfont, resolvepath
 from ctypes import windll
@@ -28,10 +28,13 @@ if __name__ == "__main__":
     root = Tk()
     root.iconbitmap(resolvepath("ui/logo.ico"))
     # one must supply the entire path
-    loadfont(resolvepath("ui/Hack-Regular.ttf"))
+    loadfont(resolvepath("ui/Hack-Regular.ttf"), False, True)
+    loadfont(resolvepath("ui/sarasa-mono-sc-regular.ttf"), False, True)
 
     font_manager.fontManager.addfont(resolvepath("ui/Hack-Regular.ttf"))
-    font_manager.fontManager.addfont(resolvepath("ui/NotoSansSC-Regular.otf"))
+    font_manager.fontManager.addfont(
+        resolvepath("ui/sarasa-mono-sc-regular.ttf")
+    )
 
     dpi = root.winfo_fpixels("1i")
 
@@ -42,7 +45,6 @@ if __name__ == "__main__":
     root.tk.call("lappend", "auto_path", resolvepath("ui/awthemes-10.4.0"))
     root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
 
-    root.option_add("*Font", "Hack 9")
     root.option_add("*tearOff", FALSE)
 
     root.title("PIBS v0.4")
@@ -50,6 +52,8 @@ if __name__ == "__main__":
     ibPanel = IB(root, dpi)
 
     center(root)
+
+    # print(font.families())
 
     root.minsize(root.winfo_width(), root.winfo_height())
     root.mainloop()
