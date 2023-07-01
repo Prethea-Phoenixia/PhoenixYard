@@ -25,8 +25,9 @@ from misc import (
     formatIntInput,
     dot_aligned,
     resolvepath,
+    roundSig,
 )
-from math import ceil, floor, log10
+from math import ceil
 
 import matplotlib.pyplot as mpl
 from matplotlib.figure import Figure
@@ -178,8 +179,6 @@ class IB(Frame):
         self.forceUpdOnThemeWidget.append(self.specs)
 
         parent.bind("<Configure>", self.resizePlot)
-
-        # self.resized = False
         self.timedLoop()
 
     def changeLang(self):
@@ -293,8 +292,6 @@ class IB(Frame):
         self.updateGeom()
         self.updateSpec()
         self.updateFigPlot()
-
-        # self.useTheme()
 
     def getString(self, name):
         try:
@@ -711,7 +708,8 @@ class IB(Frame):
 
     def getValue(self):
         constrain = self.kwargs["con"]
-        optimize = self.kwargs["con"]
+        optimize = self.kwargs["opt"]
+        # gunType = self.kwargs["typ"]
 
         queue = self.queue
 
@@ -752,24 +750,14 @@ class IB(Frame):
             self.cv.set(toSI(chamberVolume, useSN=True))
 
             if constrain:
-                webmm = round(
-                    1e3 * kwargs["grainSize"],
-                    3 - int(floor(log10(abs(1e3 * kwargs["grainSize"])))),
-                )
+                webmm = roundSig(1e3 * kwargs["grainSize"])
                 self.arcmm.set(webmm)
 
-                lgmm = round(
-                    kwargs["lengthGun"] * 1e3,
-                    3 - int(floor(log10(abs(kwargs["lengthGun"] * 1000)))),
-                )
+                lgmm = roundSig(kwargs["lengthGun"] * 1e3)
 
                 self.tblmm.set(lgmm)
                 if optimize:
-                    lfpercent = round(
-                        kwargs["loadFraction"] * 100,
-                        3
-                        - int(floor(log10(abs(kwargs["loadFraction"] * 100)))),
-                    )
+                    lfpercent = roundSig(kwargs["loadFraction"] * 100)
                     self.ldf.set(lfpercent)
 
             self.ldp.set(
@@ -824,6 +812,10 @@ class IB(Frame):
         )
         errorData = dot_aligned(self.errorData, units=units, useSN=useSN)
         # negErr, posErr = arrErr(self.errorData, units=units, useSN=useSN)
+        """
+        t_Font = tkFont.Font(family="Sarasa Mono SC", size=8)
+        width, _ = t_Font.measure("m"), t_Font.metrics("linespace")
+        """
 
         for i, (row, erow) in enumerate(zip(tableData, errorData)):
             self.tv.insert(
@@ -1185,7 +1177,6 @@ class IB(Frame):
         # we lock the frame the plot is put in
         geomPlotFrm.grid_propagate(False)
         # and lock it there
-        
         If we set the global dpi awareness for this window
         to false (0), this will result in a correctly sized
         window, and everything would be fine, ironically.
@@ -1578,9 +1569,9 @@ class IB(Frame):
         # we use a fixed width font so any char will do
         width, _ = t_Font.measure("m"), t_Font.metrics("linespace")
 
-        for column in columnList:  # foreach column
+        for i, column in enumerate(columnList):  # foreach column
             self.tv.heading(
-                column, text=column
+                i, text=column
             )  # let the column heading = column name
             self.tv.column(
                 column,
@@ -1809,9 +1800,11 @@ class IB(Frame):
             self.getString("RECOILESS"): RECOILESS,
         }
         gunType = invGunTypeLookup[self.typeOptn.get()]
+
         if gunType == CONVENTIONAL:
             self.nozzExpw.config(state="disabled")
             self.nozzEffw.config(state="disabled")
+
         else:
             self.nozzExpw.config(state="normal")
             self.nozzEffw.config(state="normal")
@@ -2111,27 +2104,13 @@ def calculate(
             if optimize:
                 l_f, e_1, l_g = constrained.findMinV(**kwargs)
 
-                kwargs.update(
-                    {
-                        "loadFraction": round(
-                            l_f, 3 - int(floor(log10(abs(l_f))))
-                        )
-                    }
-                )
+                kwargs.update({"loadFraction": roundSig(l_f)})
 
             else:
                 e_1, l_g = constrained.solve(**kwargs)
 
-            kwargs.update(
-                {
-                    "grainSize": round(
-                        2 * e_1, 3 - int(floor(log10(abs(2 * e_1))))
-                    )
-                }
-            )
-            kwargs.update(
-                {"lengthGun": round(l_g, 3 - int(floor(log10(abs(l_g)))))}
-            )
+            kwargs.update({"grainSize": roundSig(2 * e_1)})
+            kwargs.update({"lengthGun": roundSig(l_g)})
 
             chamberVolume = (
                 kwargs["chargeMass"]

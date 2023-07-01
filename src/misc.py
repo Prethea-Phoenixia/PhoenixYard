@@ -1,7 +1,7 @@
 import os
 import sys
 from ctypes import windll, byref, create_unicode_buffer, create_string_buffer
-from math import log
+from math import log, floor, log10
 from tkinter import *
 
 _prefix = {
@@ -208,5 +208,12 @@ def center(win):
     win.deiconify()
 
 
+def roundSig(x, n=4):
+    return round(x, (n - 1) - int(floor(log10(abs(x)))))
+
+
 if __name__ == "__main__":
     print(toSI(1e-4).strip())
+    from math import pi
+
+    print(roundSig(pi))

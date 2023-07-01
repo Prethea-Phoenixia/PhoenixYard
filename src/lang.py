@@ -64,7 +64,7 @@ ENGLISH = {
     "densityDesc": " Density",
     "vacISPDesc": "Isp(Vac)",
     "atmISPDesc": "Isp(Atm)",
-    "pRatioDesc": "(Pc:Pa=50)",
+    "pRatioDesc": "          (Pc:Pa=50)",
     "brDesc": "Burnrate",
     "chgText": " ".join(
         (
@@ -681,7 +681,7 @@ CHINESE = {
     "densityDesc": "　　　　密度",
     "vacISPDesc": "　　真空比冲",
     "atmISPDesc": "　　大气比冲",
-    "pRatioDesc": "　（压强比50）",
+    "pRatioDesc": "　           （压强比50）",
     "brDesc": "燃速",
     "figTimeDomain": "时间 / ms",
     "figLengDomain": "行程 / m",
