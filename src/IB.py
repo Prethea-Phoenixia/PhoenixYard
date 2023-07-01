@@ -51,7 +51,7 @@ GEOM_CONTEXT = {
     "lines.markersize": 2,
     "axes.axisbelow": True,
     # "path.simplify_threshold": 1,
-    "font.family": "Hack",
+    "font.family": "Sarasa Mono SC",
 }
 
 FIG_CONTEXT = {
@@ -70,7 +70,7 @@ FIG_CONTEXT = {
     "axes.labelweight": "bold",
     "yaxis.labellocation": "top",
     # "path.simplify_threshold": 1,
-    "font.family": ["Hack", "Sarasa Mono SC"],  # fallback
+    "font.family": ["Sarasa Mono SC"],  # fallback
 }
 
 
@@ -1645,7 +1645,7 @@ class IB(Frame):
         self.tv.tag_configure(POINT_BURNOUT, foreground="red")
         self.tv.tag_configure(POINT_FRACTURE, foreground="brown")
 
-        t_Font = tkFont.Font(family="hack", size=8)
+        t_Font = tkFont.Font(family="Sarasa Mono SC", size=8)
 
         self.tv.tag_configure("monospace", font=t_Font)
         self.tv.tag_configure("error", font=t_Font, foreground="grey")

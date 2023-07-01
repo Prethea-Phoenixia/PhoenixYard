@@ -28,7 +28,8 @@ if __name__ == "__main__":
     root = Tk()
     root.iconbitmap(resolvepath("ui/logo.ico"))
     # one must supply the entire path
-    loadfont(resolvepath("ui/Hack-Regular.ttf"), False, True)
+    # loadfont(resolvepath("ui/Hack-Regular.ttf"), False, True)
+
     loadfont(resolvepath("ui/sarasa-mono-sc-regular.ttf"), False, True)
 
     font_manager.fontManager.addfont(resolvepath("ui/Hack-Regular.ttf"))
