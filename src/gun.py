@@ -110,8 +110,8 @@ class Gun:
             if self.psi_0 <= 0:
                 raise ValueError(
                     "Initial burnup fraction is solved to be negative."
-                    + " In practice this implies a detonation of the gun breech"
-                    + " will likely occur."
+                    + " In practice this implies a detonation of the gun"
+                    + " breech will likely occur."
                 )
 
         Zs = cubic(
@@ -125,8 +125,8 @@ class Gun:
         )  # evaluated from left to right, guards against complex >/< float
         if len(Zs) < 1:
             raise ValueError(
-                "Propellant either could not develop enough pressure to overcome"
-                + " start pressure, or has burnt to post fracture."
+                "Propellant either could not develop enough pressure to"
+                + " overcome start pressure, or has burnt to post fracture."
             )
 
         self.Z_0 = Zs[0]
@@ -140,7 +140,9 @@ class Gun:
     def _fp_bar(self, Z, l_bar, v_bar):
         psi = self.f_psi_Z(Z)
 
-        l_psi_bar = 1 - self.Delta * ((1 - psi) / self.rho_p + self.alpha * psi)
+        l_psi_bar = 1 - self.Delta * (
+            (1 - psi) / self.rho_p + (self.alpha * psi)
+        )
 
         p_bar = (
             self.f * self.omega * psi
@@ -246,7 +248,9 @@ class Gun:
         else:
             return 0
 
-        l_psi_bar = 1 - self.Delta * ((1 - psi) / self.rho_p + self.alpha * psi)
+        l_psi_bar = 1 - self.Delta * (
+            (1 - psi) / self.rho_p + (self.alpha * psi)
+        )
         dp_bar = (
             (
                 (1 + p_bar * self.Delta * (self.alpha - 1 / self.rho_p))
@@ -412,17 +416,17 @@ class Gun:
 
             if p_bar_j > p_bar_max:
                 raise ValueError(
-                    "Nobel-Abel EoS is generally accurate enough below 600MPa. However,"
-                    + " Unreasonably high pressure (>{:.0f} MPa) was encountered.".format(
-                        p_max / 1e6
-                    )
+                    "Nobel-Abel EoS is generally accurate enough below",
+                    +" 600MPa. However, Unreasonably high pressure ",
+                    "(>{:.0f} MPa) was encountered.".format(p_max / 1e6),
                 )
 
             if any(
                 (t_bar_i == t_bar_j, l_bar_i == l_bar_j, v_bar_i == v_bar_j)
             ):
                 raise ValueError(
-                    "Numerical integration stalled in search of exit/burnout point."
+                    "Numerical integration stalled in search of exit/burnout"
+                    + " point.",
                 )
 
             if l_bar_j >= l_g_bar:
@@ -448,9 +452,10 @@ class Gun:
 
         """
         Cludge code to force the SoE past the discontinuity at Z = Z_b, since
-        we wrote the SoE to be be piecewise continous from (0, Z_b] and (Z_b, +inf)
-        it is necessary to do this to prevent the RKF integrator coming up with
-        irreducible error estimates and driving the step size to 0 around Z = Z_b
+        we wrote the SoE to be be piecewise continous from (0, Z_b] and (Z_b,
+        +inf) it is necessary to do this to prevent the RKF integrator coming
+        up with irreducible error estimates and driving the step size to 0 
+        around Z = Z_b
         """
         if isBurnOutContained:
             Z_i = Z_b + tol

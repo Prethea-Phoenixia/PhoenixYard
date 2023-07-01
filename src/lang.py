@@ -1,5 +1,4 @@
 ENGLISH = {
-    "fontName": "Sarasa Mono SC",
     "themeLabel": "Theme",
     "lightLabel": "Light",
     "darkLabel": "Dark",
@@ -413,7 +412,6 @@ ENGLISH = {
     "figPsi": "Volume Burnup",
 }
 CHINESE = {
-    "fontName": "Sarasa Mono SC",
     "themeLabel": "主题",
     "lightLabel": "浅色",
     "darkLabel": "深色",

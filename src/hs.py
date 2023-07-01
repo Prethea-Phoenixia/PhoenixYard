@@ -634,25 +634,26 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):  # in kelvin  # mol/g
 
     T: temperature in Kelvin
     V: volume per unit mass of gas, in cc/g
-    1/V is also commonly known as Delta, or load density, if the propellant solid
-    covolume can be ignored.
-    in literature, usually 1/V = 0.2 g/cc = 200 kg/m^3 is adopted for IB purposes.
-    However, very often covolume values are given for a specific load condition.
+    1/V is also commonly known as Delta, or load density, if the propellant
+    solid covolume can be ignored.
+    in literature, usually 1/V = 0.2 g/cc = 200 kg/m^3 is adopted for IB
+    purposes. However, very often covolume values are given for a specific
+    load condition.
 
-        > a value of 0.089(0.084) g/cc is adopted for propellant referenced from
-        ADA043778. When this value is adopted, prediciton is good to within 1% of
-        tabulated.
+        > a value of 0.089(0.084) g/cc is adopted for propellant referenced
+        from ADA043778. When this value is adopted, prediciton is good to
+        within 1% of tabulated.
 
-        >It is possible that for modern software, even if the user sets a 1/V of
-        0.2 g/cc, the program will apply its own averaging routine resulting in
-        different result than is calculated here, given the apparent accuracy of
-        all other parameter estimation performed here, and the closeness the com-
-        position can be solved to published data.
+        >It is possible that for modern software, even if the user sets a 1/V
+        of 0.2 g/cc, the program will apply its own averaging routine resulting
+        in different result than is calculated here, given the apparent accuracy
+        of all other parameter estimation performed here, and the closeness the
+        composition can be solved to published data.
 
-    Covolume is is suitably invariant over typical internal ballistic tempearture,
-    range, however it varies not-insignificantly by load density in test chambers,
-    and thus must be chosen with reference to gas density achieved in actual gun
-    system.
+    Covolume is is suitably invariant over typical internal ballistic
+    tempearture, range, however it varies not-insignificantly by load density
+    in test chambers, and thus must be chosen with reference to gas density
+    achieved in actual gun system.
 
     n: number of gram-molecules per unit mass of gas, in mol/g
     """

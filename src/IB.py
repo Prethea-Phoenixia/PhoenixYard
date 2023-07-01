@@ -1,5 +1,9 @@
-from tkinter import *
+from tkinter import Frame, Menu, Text
+from tkinter import StringVar, IntVar
 from tkinter import ttk
+
+from tkinter.ttk import Label
+
 import tkinter.font as tkFont
 import traceback
 
@@ -47,7 +51,6 @@ GEOM_CONTEXT = {
     "ytick.labelsize": 8,
     "legend.fontsize": 8,
     "figure.titlesize": 10,
-    # "figure.autolayout": True,
     "lines.markersize": 2,
     "axes.axisbelow": True,
     # "path.simplify_threshold": 1,
@@ -62,7 +65,6 @@ FIG_CONTEXT = {
     "ytick.labelsize": 8,
     "legend.fontsize": 8,
     "figure.titlesize": 10,
-    # "figure.autolayout": True,
     "lines.linewidth": 1,
     "font.weight": "bold",
     "lines.markersize": 4,
@@ -73,13 +75,15 @@ FIG_CONTEXT = {
     "font.family": ["Sarasa Mono SC"],  # fallback
 }
 
+fontName = "Sarasa Mono SC"
+
 
 class IB(Frame):
     def __init__(self, parent, dpi):
         Frame.__init__(self, parent)
         self.LANG = StringVar(value=list(STRING.keys())[0])
 
-        default_font = tkFont.Font(family=self.getString("fontName"), size=8)
+        default_font = tkFont.Font(family=fontName, size=8)
         self.option_add("*Font", default_font)
 
         self.queue = Queue()
@@ -179,34 +183,11 @@ class IB(Frame):
         self.timedLoop()
 
     def changeLang(self):
-        def setFontSize(widget):
-            # print(widget)
-            new_font = tkFont.Font(font=widget.cget("font"))
-            size = new_font.actual()["size"]
-            widget.config(font=(self.getString("fontName"), size))
-
         self.menubar.entryconfig(0, label=self.getString("themeLabel"))
         self.menubar.entryconfig(1, label=self.getString("debugLabel"))
         self.themeMenu.entryconfig(0, label=self.getString("darkLabel"))
         self.themeMenu.entryconfig(1, label=self.getString("lightLabel"))
         self.debugMenu.entryconfig(0, label=self.getString("enableLabel"))
-
-        allFontConfig = [
-            self.calLb,
-            self.tblLb,
-            self.shtLb,
-            self.chgLb,
-            self.ldfLb,
-            self.clrLb,
-            self.dgcLb,
-            self.stpLb,
-            self.vTgtLb,
-            self.pTgtLb,
-            self.minWebLb,
-            self.lgmaxLb,
-            self.nozzExpLb,
-            self.nozzEffLb,
-        ]
 
         self.calLb.config(text=self.getString("calLabel"))
         self.tblLb.config(text=self.getString("tblLabel"))
@@ -246,30 +227,6 @@ class IB(Frame):
         self.calcButtonTip.set(self.getString("calcButtonText"))
         self.pTgtTip.set(self.getString("pTgtText"))
 
-        allFontConfig.extend(
-            (
-                # self.tblFrm,
-                # self.plotFrm,
-                # self.errorFrm,
-                # self.parFrm,
-                # self.specFrm,
-                # self.opFrm,
-                # self.consFrm,
-                # self.topFrm,
-                # self.useConstraint,
-                # self.optimizeLF,
-                # self.sampleFrm,
-                self.lxLb,
-                self.vaLb,
-                self.teLb,
-                self.beLb,
-                self.cvLb,
-                self.ldpLb,
-                # self.propFrm,
-                # self.grainFrm,
-            )
-        )
-
         self.tblFrm.config(text=self.getString("tblFrmLabel"))
         self.plotFrm.config(text=self.getString("plotFrmLabel"))
         self.errorFrm.config(text=self.getString("errFrmLabel"))
@@ -296,8 +253,6 @@ class IB(Frame):
         for i, columnName in enumerate(self.getString("columnList")):
             self.tv.heading(i, text=columnName)
 
-        allFontConfig.append(self.stepsLb)
-
         self.plotAvgPCheck.config(text=self.getString("plotAvgP"))
         self.plotBasePCheck.config(text=self.getString("plotBaseP"))
         self.plotBreechNozzlePCheck.config(
@@ -311,8 +266,6 @@ class IB(Frame):
 
         self.stepsLb.config(text=self.getString("stepsLabel"))
         self.calButton.config(text=self.getString("calcLabel"))
-
-        allFontConfig.extend((self.typeOptn, self.dropOptn, self.dropGeom))
 
         gunTypeIndex = self.typeOptn["values"].index(self.gunType.get())
         self.typeOptn.config(
@@ -341,10 +294,7 @@ class IB(Frame):
         self.updateSpec()
         self.updateFigPlot()
 
-        for w in allFontConfig:
-            setFontSize(w)
-
-        self.useTheme()
+        # self.useTheme()
 
     def getString(self, name):
         try:
@@ -426,10 +376,6 @@ class IB(Frame):
         self.plotNozzleV.trace_add("write", self.updateFigPlot)
         self.plotBurnup.trace_add("write", self.updateFigPlot)
         self.plotVel.trace_add("write", self.updateFigPlot)
-        """
-        self.summary = ttk.Entry(topFrm, justify="right", state="disabled")
-        self.summary.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
-        """
 
     def addRightFrm(self, parent):
         rightFrm = ttk.Frame(parent)
@@ -465,27 +411,6 @@ class IB(Frame):
             justify="right",
             infotext=self.vinfTip,
         )
-        """
-        self.pPLb, self.ptm, self.pbm, _, _, i = self.add122Disp(
-            parent=specFrm,
-            rowIndex=i,
-            labelText=self.getString("pPLabel"),
-            unitText_up="Pa",
-            unitText_dn="Pa",
-            justify_up="right",
-            justify_dn="right",
-            infotext=self.getString("pMaxText"),
-        )
-    
-        self.pPLb, self.pm, _, i = self.add12Disp(
-            parent=specFrm,
-            rowIndex=i,
-            labelText=self.getString("pPLabel"),
-            unitText="Pa",
-            justify="right",
-            infotext=self.getString("pMaxText"),
-        )
-        """
 
         self.teffTip = StringVar(value=self.getString("teffText"))
         self.teLb, self.te, _, i = self.add12Disp(
@@ -932,7 +857,7 @@ class IB(Frame):
         self.errorText = Text(
             errorFrm,
             yscrollcommand=errScroll.set,
-            wrap=WORD,
+            wrap="word",
             height=5,
             width=0,
             font=("Sarasa Mono SC", 8),
@@ -2104,20 +2029,14 @@ class IB(Frame):
         # so the default row height should be around 12
 
         style.configure("Treeview", rowheight=round(12 * dpi / 72.0))
-        style.configure(
-            "Treeview.Heading", font=(self.getString("fontName"), 8)
-        )
-        style.configure(
-            "TButton", font=(self.getString("fontName"), 10, "bold")
-        )
-        style.configure(
-            "TLabelframe.Label", font=(self.getString("fontName"), 10, "bold")
-        )
+        style.configure("Treeview.Heading", font=(fontName, 8))
+        style.configure("TButton", font=(fontName, 10, "bold"))
+        style.configure("TLabelframe.Label", font=(fontName, 10, "bold"))
         style.configure(
             "SubLabelFrame.TLabelframe.Label",
-            font=(self.getString("fontName"), 10),
+            font=(fontName, 10),
         )
-        style.configure("TCheckbutton", font=(self.getString("fontName"), 8))
+        style.configure("TCheckbutton", font=(fontName, 8))
 
         bgc = str(style.lookup("TFrame", "background"))
         fgc = str(style.lookup("TFrame", "foreground"))

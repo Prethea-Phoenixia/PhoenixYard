@@ -1,4 +1,4 @@
-from tkinter import Tk, FALSE
+from tkinter import Tk
 from IB import IB
 from misc import center, loadfont, resolvepath
 from ctypes import windll
@@ -27,12 +27,9 @@ if __name__ == "__main__":
 
     root = Tk()
     root.iconbitmap(resolvepath("ui/logo.ico"))
-    # one must supply the entire path
-    # loadfont(resolvepath("ui/Hack-Regular.ttf"), False, True)
 
     loadfont(resolvepath("ui/sarasa-mono-sc-regular.ttf"), False, True)
 
-    font_manager.fontManager.addfont(resolvepath("ui/Hack-Regular.ttf"))
     font_manager.fontManager.addfont(
         resolvepath("ui/sarasa-mono-sc-regular.ttf")
     )
@@ -46,7 +43,7 @@ if __name__ == "__main__":
     root.tk.call("lappend", "auto_path", resolvepath("ui/awthemes-10.4.0"))
     root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
 
-    root.option_add("*tearOff", FALSE)
+    root.option_add("*tearOff", False)
 
     root.title("PIBS v0.4")
 
