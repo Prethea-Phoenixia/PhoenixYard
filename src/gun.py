@@ -1,4 +1,4 @@
-from math import pi, log, inf
+from math import pi, log, inf, exp
 from num import gss, RKF78, cubic, intg, bisect
 from prop import GrainComp, Propellant
 
@@ -11,25 +11,30 @@ POINT_FRACTURE = "FRACTURE"
 POINT_BURNOUT = "BURNOUT"
 POINT_EXIT = "SHOT EXIT"
 
+SOL_LAGRANGE = "Lagrange"
+SOL_PIDDUCK = "Pidduk"
+SOL_MAMONTOV = "Mamontov"
+
 
 def pidduck(wpm, k, tol):
     """
     Pidduck's limiting solution to the Lagrange problem.
-    wpm : w/(phi_1 * m), charge mass to equivalent corrected shot weight
+    wpm : w/(phi_1 * m), charge mass to equivalent corrected (fictitious) shot
+          weight
     k   : adiabatic index of the gas, in practice this is not a great influence
     tol : numerical tolerance
 
-    Pidduck's solution is reduced to that of M.A.Mamontov's solution at k = 1
-
-    Partial analytical approximation to the Lagrangian problem:
-    d rho / dx = 0: Lagrangian
-      d S / dx = 0: Pidduck
-      d T / dx = 0: M.A.Mamontov
-
+    Pidduck's solution is reduced to that of M.A.Mamontov's solution at k -> 1,
+    however numerical difficulty necessitates taking the limit.
     """
+    if k < 1:
+        raise ValueError("Invalid adiabatic index passed", k)
 
     def f(Omega, x):
-        return (1 - Omega * x**2) ** (1 / (k - 1))
+        if k == 1:
+            return exp(-Omega * x**2)
+        else:
+            return (1 - Omega * x**2) ** (1 / (k - 1))
 
     def g(Omega, x):
         return f(Omega, x) * x**2
@@ -39,14 +44,20 @@ def pidduck(wpm, k, tol):
             return -inf
 
         I, _ = intg(lambda x: f(Omega, x), 0, 1, tol)
-        return I - 0.5 * ((k - 1) / k) * wpm * (
-            (1 - Omega) ** (k / (k - 1)) / Omega
-        )
+
+        if k == 1:
+            return I - 0.5 * wpm * exp(-Omega) / Omega
+        else:
+            return I - 0.5 * ((k - 1) / k) * wpm * (
+                (1 - Omega) ** (k / (k - 1)) / Omega
+            )
 
     a, b = bisect(f_Omega, 0, 1, tol)
     Omega = 0.5 * (a + b)
-
-    labda_1 = ((1 - Omega) ** (k / (1 - k)) - 1) / wpm
+    if k == 1:
+        labda_1 = (exp(Omega) - 1) / wpm
+    else:
+        labda_1 = ((1 - Omega) ** (k / (1 - k)) - 1) / wpm
     # Pidduck's solution
 
     I_u, _ = intg(lambda x: g(Omega, x), 0, 1, tol)
@@ -264,7 +275,9 @@ class Gun:
 
         return dp_bar
 
-    def integrate(self, steps=10, tol=1e-5, dom=DOMAIN_TIME, record=None):
+    def integrate(
+        self, steps=10, tol=1e-5, dom=DOMAIN_TIME, sol=SOL_PIDDUCK, record=None
+    ):
         """
         Runs a full numerical solution for the gun in the specified domain
         sampled evenly at specified number of steps, using a scaled numerical
@@ -277,11 +290,26 @@ class Gun:
         particular system, the error due to compounding does not appear to be
         significant, usually on the order of 1e-16 - 1e-14 as compared to much
         larger for component errors.
-        """
 
-        labda_1, labda_2 = pidduck(
-            self.omega / (self.phi_1 * self.m), self.theta + 1, tol
-        )
+        Partial analytical approximation to the Lagrangian problem:
+        d rho / dx = 0: Lagrange
+          d S / dx = 0: Pidduck
+          d T / dx = 0: M.A.Mamontov
+        All solutions assumes gas velocity increasing linearlly from 0
+        at breech face and shot velocity at shot base.
+
+        """
+        if sol == SOL_LAGRANGE:
+            labda_1, labda_2 = 0.5, 1 / 3
+        if sol == SOL_PIDDUCK:
+            labda_1, labda_2 = pidduck(
+                self.omega / (self.phi_1 * self.m), self.theta + 1, tol
+            )
+        elif sol == SOL_MAMONTOV:
+            labda_1, labda_2 = pidduck(
+                self.omega / (self.phi_1 * self.m), 1, tol
+            )
+
         self.labda_1 = labda_1
         self.labda_2 = labda_2
         # labda_2 = 1 / 3
@@ -901,7 +929,7 @@ if __name__ == "__main__":
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(200, 1e-6, dom="length")[0],
+            test.integrate(200, 1e-6, dom="length", sol=SOL_MAMONTOV)[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T", "eta"),
         )
     )

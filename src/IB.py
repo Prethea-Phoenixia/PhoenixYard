@@ -9,6 +9,7 @@ import traceback
 
 from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
 from gun import POINT_PEAK, POINT_BURNOUT, POINT_FRACTURE
+from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
 from recoiless import Recoiless
 
 from prop import Propellant, GrainComp, GEOMETRIES, SimpleGeometry
@@ -1282,23 +1283,6 @@ class IB(Frame):
 
     def updateFigPlot(self, *args):
         with mpl.rc_context(FIG_CONTEXT):
-            gun = self.gun
-            try:
-                gunType = self.kwargs["typ"]
-                dom = self.kwargs["dom"]
-            except AttributeError:
-                invGunTypeLookup = {
-                    self.getString("CONVENTIONAL"): CONVENTIONAL,
-                    self.getString("RECOILESS"): RECOILESS,
-                }
-
-                invDomainLookup = {
-                    self.getString("DOMAIN_TIME"): DOMAIN_TIME,
-                    self.getString("DOMAIN_LENG"): DOMAIN_LENG,
-                }
-                gunType = invGunTypeLookup[self.typeOptn.get()]
-                dom = invDomainLookup[self.dropOptn.get()]
-
             self.ax.cla()
             self.axP.cla()
             self.axv.cla()
@@ -1311,8 +1295,10 @@ class IB(Frame):
             self.axv.spines.right.set_position(
                 ("axes", 1 + 45 * dpi / 96 / size[0])
             )
-
+            gun = self.gun
             if gun is not None:
+                gunType = self.kwargs["typ"]
+                dom = self.kwargs["dom"]
                 xs = []
                 vs = []
                 Ps = []

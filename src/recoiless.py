@@ -62,13 +62,7 @@ class Recoiless:
         Labda = self.l_g / self.l_0
         self.phi_1 = 1 + dragCoefficient  # drag work coefficient
         self.phi = self.phi_1 + self.omega / (3 * self.m)
-        # chamberage effect is explicitly not accounted for.
-        # also the lagrange approximation is used instead of Pidduck's.
-        """
-        Lagrange approximation:
-            Pt/Pd = 1 + labda_1 * w/(phi_1 * m), labda_1 = 0.5
-            phi   = phi_1 + labda_2 * w/(phi_1 * m), labda_2 = 0.3333
-        """
+
         self.v_j = (
             2 * self.f * self.omega / (self.theta * self.phi * self.m)
         ) ** 0.5
