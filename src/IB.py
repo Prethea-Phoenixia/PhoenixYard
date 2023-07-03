@@ -105,27 +105,33 @@ class IB(Frame):
         menubar.add_cascade(label=self.getString("debugLabel"), menu=debugMenu)
         langMenu = Menu(menubar)
         menubar.add_cascade(label="Lang 语言", menu=langMenu)
+        solMenu = Menu(menubar)
+        menubar.add_cascade(label=self.getString("solLabel"), menu=solMenu)
 
         self.themeMenu = themeMenu
         self.debugMenu = debugMenu
+        self.solMenu = solMenu
 
         self.themeRadio = IntVar()
-        self.themeRadio.set(1)
+        self.themeRadio.set(0)
         self.useTheme()
 
         self.DEBUG = IntVar()
         self.DEBUG.set(1)
 
+        self.soln = IntVar()
+        self.soln.set(0)
+
         themeMenu.add_radiobutton(
             label=self.getString("darkLabel"),
             variable=self.themeRadio,
-            value=1,
+            value=0,
             command=self.useTheme,
         )
         themeMenu.add_radiobutton(
             label=self.getString("lightLabel"),
             variable=self.themeRadio,
-            value=2,
+            value=1,
             command=self.useTheme,
         )
 
@@ -134,6 +140,16 @@ class IB(Frame):
             variable=self.DEBUG,
             onvalue=1,
             offvalue=0,
+        )
+
+        solMenu.add_radiobutton(
+            label=self.getString("SOL_LAGRANGE"), variable=self.soln, value=0
+        )
+        solMenu.add_radiobutton(
+            label=self.getString("SOL_PIDDUCK"), variable=self.soln, value=1
+        )
+        solMenu.add_radiobutton(
+            label=self.getString("SOL_MAMONTOV"), variable=self.soln, value=2
         )
 
         for lang in STRING.keys():
@@ -182,12 +198,19 @@ class IB(Frame):
         parent.bind("<Configure>", self.resizePlot)
         self.timedLoop()
 
+        self.update_idletasks()
+
     def changeLang(self):
         self.menubar.entryconfig(0, label=self.getString("themeLabel"))
         self.menubar.entryconfig(1, label=self.getString("debugLabel"))
         self.themeMenu.entryconfig(0, label=self.getString("darkLabel"))
         self.themeMenu.entryconfig(1, label=self.getString("lightLabel"))
         self.debugMenu.entryconfig(0, label=self.getString("enableLabel"))
+
+        self.menubar.entryconfig(3, label=self.getString("solLabel"))
+        self.solMenu.entryconfig(0, label=self.getString("SOL_LAGRANGE"))
+        self.solMenu.entryconfig(1, label=self.getString("SOL_PIDDUCK"))
+        self.solMenu.entryconfig(2, label=self.getString("SOL_MAMONTOV"))
 
         self.calLb.config(text=self.getString("calLabel"))
         self.tblLb.config(text=self.getString("tblLabel"))
@@ -264,7 +287,7 @@ class IB(Frame):
         self.plotBurnupCheck.config(text=self.getString("plotBurnup"))
         self.plotEtaCheck.config(text=self.getString("plotEta"))
 
-        self.stepsLb.config(text=self.getString("stepsLabel"))
+        self.stepLb.config(text=self.getString("stepLabel"))
         self.calButton.config(text=self.getString("calcLabel"))
 
         gunTypeIndex = self.typeOptn["values"].index(self.gunType.get())
@@ -464,7 +487,7 @@ class IB(Frame):
         self.consFrm = consFrm
         j = 0
 
-        self.vTgtLb, self.vTgt, _, j = self.add3Input(
+        self.vTgtLb, self.vTgt, _, _, j = self.add3Input(
             parent=consFrm,
             rowIndex=0,
             colIndex=0,
@@ -475,7 +498,7 @@ class IB(Frame):
         )
 
         self.pTgtTip = StringVar(value=self.getString("pTgtText"))
-        self.pTgtLb, self.pTgt, _, j = self.add3Input(
+        self.pTgtLb, self.pTgt, _, _, j = self.add3Input(
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
@@ -486,7 +509,7 @@ class IB(Frame):
             infotext=self.pTgtTip,
         )
 
-        self.minWebLb, self.minWeb, _, j = self.add3Input(
+        self.minWebLb, self.minWeb, _, _, j = self.add3Input(
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
@@ -496,7 +519,7 @@ class IB(Frame):
             validation=validationNN,
             color="red",
         )
-        self.lgmaxLb, self.lgmax, _, j = self.add3Input(
+        self.lgmaxLb, self.lgmax, _, _, j = self.add3Input(
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
@@ -563,17 +586,18 @@ class IB(Frame):
 
         j += 1
 
-        self.stepsLb, self.steps, _, j = self.add2Input(
+        self.stepLb, self.step, _, j = self.add2Input(
             parent=sampleFrm,
             rowIndex=j,
             colIndex=0,
-            labelText=self.getString("stepsLabel"),
+            labelText=self.getString("stepLabel"),
             default="25",
             validation=validationNN,
             formatter=formatIntInput,
             reverse=True,
             anchor="center",
         )
+
         self.sampleTip = StringVar(value=self.getString("sampText"))
         CreateToolTip(sampleFrm, self.sampleTip)
 
@@ -620,17 +644,16 @@ class IB(Frame):
             self.getString("DOMAIN_TIME"): DOMAIN_TIME,
             self.getString("DOMAIN_LENG"): DOMAIN_LENG,
         }
-        """
-        self.tableData = []
-        self.errorData = []
-        self.intgRecord = []
-        """
+
+        sols = (SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV)
+
         self.kwargs = {
             "opt": optimize,
             "con": constrain,
             "deb": debug,
             "typ": gunType,
             "dom": invDomainLookup[self.dropOptn.get()],
+            "sol": sols[self.soln.get()],
         }
         self.process = None
 
@@ -672,7 +695,7 @@ class IB(Frame):
                     "minWeb": 1e-6 * float(self.minWeb.get()),
                     "maxLength": float(self.lgmax.get()),
                     "loadFraction": 1e-2 * float(self.ldf.get()),
-                    "step": int(self.steps.get()),
+                    "step": int(self.step.get()),
                 }
             )
 
@@ -780,17 +803,6 @@ class IB(Frame):
             i = [i[0] for i in self.tableData].index("PEAK PRESSURE")
             _, tp, lp, _, vp, pp, Tp, etap = self.tableData[i]
 
-            """
-            self.pm.set(toSI(pp))
-            if gunType == CONVENTIONAL:
-                Pb, Pt = self.gun.toPbPt(lp, pp)
-                self.ptm.set(toSI(Pt))
-                self.pbm.set(toSI(Pb))
-            else:
-                Pb, P0, Px, _ = self.gun.toPbP0PxVx(lp, vp, pp, Tp, etap)
-                self.ptm.set(toSI(P0))
-                self.pbm.set(toSI(Pb))
-            """
             self.lx.set(toSI(kwargs["lengthGun"] / kwargs["caliber"]))
             self.tlx.set(
                 toSI(
@@ -885,7 +897,7 @@ class IB(Frame):
         )
 
         i += 1
-        self.calLb, self.calmm, _, i = self.add3Input(
+        self.calLb, self.calmm, _, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText=self.getString("calLabel"),
@@ -893,7 +905,7 @@ class IB(Frame):
             default="50.0",
             validation=validationNN,
         )
-        self.tblLb, self.tblmm, _, i = self.add3Input(
+        self.tblLb, self.tblmm, _, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText=self.getString("tblLabel"),
@@ -901,7 +913,7 @@ class IB(Frame):
             default="3500.0",
             validation=validationNN,
         )
-        self.shtLb, self.shtkg, _, i = self.add3Input(
+        self.shtLb, self.shtkg, _, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText=self.getString("shtLabel"),
@@ -911,7 +923,7 @@ class IB(Frame):
         )
 
         self.chgTip = StringVar(value=self.getString("chgText"))
-        self.chgLb, self.chgkg, _, i = self.add3Input(
+        self.chgLb, self.chgkg, _, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText=self.getString("chgLabel"),
@@ -971,7 +983,7 @@ class IB(Frame):
             propFrm,
             # wrap=WORD,
             wrap="none",
-            height=10,
+            height=5,
             width=0,
             # width=28,
             yscrollcommand=specScroll.set,
@@ -1051,7 +1063,7 @@ class IB(Frame):
         self.lengthPrimaryTip = StringVar()
 
         j += 1
-        self.arcLb, self.arcmm, _, j = self.add3Input(
+        self.arcLb, self.arcmm, _, _, j = self.add3Input(
             parent=grainFrm,
             rowIndex=j,
             labelText=self.lengthPrimaryAs,
@@ -1064,7 +1076,7 @@ class IB(Frame):
 
         self.ratioAs = StringVar()
         self.lengthSecondaryTip = StringVar()
-        self.grdRLb, self.grdR, self.grdRw, j = self.add3Input(
+        self.grdRLb, self.grdR, self.grdRw, _, j = self.add3Input(
             parent=grainFrm,
             rowIndex=j,
             labelText=self.ratioAs,
@@ -1077,7 +1089,7 @@ class IB(Frame):
         self.lengthRatioAs = StringVar()
         self.lengthRatioTip = StringVar()
 
-        self.grlRLb, self.grlR, self.grlRw, j = self.add3Input(
+        self.grlRLb, self.grlR, self.grlRw, _, j = self.add3Input(
             parent=grainFrm,
             rowIndex=j,
             labelText=self.lengthRatioAs,
@@ -1089,7 +1101,7 @@ class IB(Frame):
 
         i += 1
         self.ldfTip = StringVar(value=self.getString("ldfText"))
-        self.ldfLb, self.ldf, _, i = self.add3Input(
+        self.ldfLb, self.ldf, _, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText=self.getString("ldfLabel"),
@@ -1100,7 +1112,7 @@ class IB(Frame):
         )
 
         self.clrTip = StringVar(value=self.getString("clrText"))
-        self.clrLb, self.clr, _, i = self.add3Input(
+        self.clrLb, self.clr, _, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText=self.getString("clrLabel"),
@@ -1111,7 +1123,7 @@ class IB(Frame):
         )
 
         self.dgcTip = StringVar(value=self.getString("dgcText"))
-        self.dgcLb, self.dgc, _, i = self.add3Input(
+        self.dgcLb, self.dgc, _, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText=self.getString("dgcLabel"),
@@ -1122,7 +1134,7 @@ class IB(Frame):
         )
 
         self.stpTip = StringVar(value=self.getString("stpText"))
-        self.stpLb, self.stpMPa, _, i = self.add3Input(
+        self.stpLb, self.stpMPa, _, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText=self.getString("stpLabel"),
@@ -1133,7 +1145,13 @@ class IB(Frame):
         )
 
         self.nozzExpTip = StringVar(value=self.getString("nozzExpText"))
-        self.nozzExpLb, self.nozzExp, self.nozzExpw, i = self.add3Input(
+        (
+            self.nozzExpLb,
+            self.nozzExp,
+            self.nozzExpw,
+            self.nozzExpU,
+            i,
+        ) = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText=self.getString("nozzExpLabel"),
@@ -1144,7 +1162,13 @@ class IB(Frame):
         )
 
         self.nozzEffTip = StringVar(value=self.getString("nozzEffText"))
-        self.nozzEffLb, self.nozzEff, self.nozzEffw, i = self.add3Input(
+        (
+            self.nozzEffLb,
+            self.nozzEff,
+            self.nozzEffw,
+            self.nozzEffU,
+            i,
+        ) = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText=self.getString("nozzEffLabel"),
@@ -1791,9 +1815,23 @@ class IB(Frame):
             self.nozzExpw.config(state="disabled")
             self.nozzEffw.config(state="disabled")
 
+            self.nozzExpLb.grid_remove()
+            self.nozzExpw.grid_remove()
+            self.nozzExpU.grid_remove()
+            self.nozzEffLb.grid_remove()
+            self.nozzEffw.grid_remove()
+            self.nozzEffU.grid_remove()
+
         else:
             self.nozzExpw.config(state="normal")
             self.nozzEffw.config(state="normal")
+
+            self.nozzExpLb.grid()
+            self.nozzExpw.grid()
+            self.nozzExpU.grid()
+            self.nozzEffLb.grid()
+            self.nozzEffw.grid()
+            self.nozzEffU.grid()
 
     def setCD(self, *args):
         if self.solve_W_Lg.get() == 0:
@@ -1879,10 +1917,11 @@ class IB(Frame):
             color,
             infotext,
         )
-        ttk.Label(parent, text=unitText).grid(
+        ulb = ttk.Label(parent, text=unitText)
+        ulb.grid(
             row=rowIndex, column=colIndex + 2, sticky="nsew", padx=2, pady=2
         )
-        return lb, e, en, rowIndex + 1
+        return lb, e, en, ulb, rowIndex + 1
 
     def add12Disp(
         self,
@@ -1994,7 +2033,7 @@ class IB(Frame):
 
     def useTheme(self):
         style = ttk.Style(self)
-        if self.themeRadio.get() == 1:
+        if self.themeRadio.get() == 0:
             style.theme_use("awdark")
         else:
             style.theme_use("awlight")
@@ -2116,9 +2155,7 @@ def calculate(
             gun = Recoiless(**kwargs)
 
         tableData, errorData = gun.integrate(
-            steps=kwargs["step"],
-            dom=kwargs["dom"],
-            tol=kwargs["tol"],
+            **kwargs,
             record=intgRecord,
         )
 

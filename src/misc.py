@@ -4,6 +4,9 @@ from ctypes import windll, byref, create_unicode_buffer, create_string_buffer
 from math import log, floor, log10
 from tkinter import *
 
+from win32api import GetMonitorInfo, MonitorFromPoint
+
+
 _prefix = {
     "y": 1e-24,  # yocto
     "z": 1e-21,  # zepto
@@ -195,6 +198,12 @@ def center(win):
     centers a tkinter window
     :param win: the main window or Toplevel window to center
     """
+
+    monitor_info = GetMonitorInfo(MonitorFromPoint((0, 0)))
+    monitor_area = monitor_info.get("Monitor")
+    work_area = monitor_info.get("Work")
+    # print("The taskbar height is {}.".format(monitor_area[3] - work_area[3]))
+    taskbar_height = monitor_area[3] - work_area[3]
     win.update_idletasks()
     width = win.winfo_width()
     frm_width = win.winfo_rootx() - win.winfo_x()
@@ -203,7 +212,7 @@ def center(win):
     titlebar_height = win.winfo_rooty() - win.winfo_y()
     win_height = height + titlebar_height + frm_width
     x = win.winfo_screenwidth() // 2 - win_width // 2
-    y = win.winfo_screenheight() // 2 - win_height // 2
+    y = (win.winfo_screenheight() - taskbar_height) // 2 - win_height // 2
     win.geometry("{}x{}+{}+{}".format(width, height, x, y))
     win.deiconify()
 

@@ -276,11 +276,17 @@ class Gun:
         return dp_bar
 
     def integrate(
-        self, steps=10, tol=1e-5, dom=DOMAIN_TIME, sol=SOL_PIDDUCK, record=None
+        self,
+        step=10,
+        tol=1e-5,
+        dom=DOMAIN_TIME,
+        sol=SOL_PIDDUCK,
+        record=None,
+        **_,
     ):
         """
         Runs a full numerical solution for the gun in the specified domain
-        sampled evenly at specified number of steps, using a scaled numerical
+        sampled evenly at specified number of step, using a scaled numerical
         tolerance as specified.
 
         tolerance is meant to be interpreted as the maximum relative deviation
@@ -301,7 +307,7 @@ class Gun:
         """
         if sol == SOL_LAGRANGE:
             labda_1, labda_2 = 0.5, 1 / 3
-        if sol == SOL_PIDDUCK:
+        elif sol == SOL_PIDDUCK:
             labda_1, labda_2 = pidduck(
                 self.omega / (self.phi_1 * self.m), self.theta + 1, tol
             )
@@ -309,6 +315,8 @@ class Gun:
             labda_1, labda_2 = pidduck(
                 self.omega / (self.phi_1 * self.m), 1, tol
             )
+        else:
+            raise ValueError("Unknown Solution")
 
         self.labda_1 = labda_1
         self.labda_2 = labda_2
@@ -334,7 +342,7 @@ class Gun:
 
         minTol = 1e-16  # based on experience
 
-        if any((steps < 0, tol < 0)):
+        if any((step < 0, tol < 0)):
             raise ValueError("Invalid integration specification")
 
         l_g_bar = self.l_g / self.l_0
@@ -715,8 +723,8 @@ class Gun:
         try:
             if dom == DOMAIN_TIME:
                 (Z_j, l_bar_j, v_bar_j, t_bar_j) = (Z_0, 0, 0, 0)
-                for j in range(steps):
-                    t_bar_k = t_bar_e / (steps + 1) * (j + 1)
+                for j in range(step):
+                    t_bar_k = t_bar_e / (step + 1) * (j + 1)
                     (
                         _,
                         (Z_j, l_bar_j, v_bar_j),
@@ -767,8 +775,8 @@ class Gun:
                     minTol=minTol,
                 )[1]
 
-                for j in range(steps):
-                    l_bar_k = l_g_bar / (steps + 1) * (j + 1)
+                for j in range(step):
+                    l_bar_k = l_g_bar / (step + 1) * (j + 1)
 
                     (
                         _,

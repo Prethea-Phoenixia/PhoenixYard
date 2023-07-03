@@ -53,12 +53,15 @@ ENGLISH = {
     "plotNozzleV": "Throat Vel.",
     "plotBurnup": "Burnup",
     "plotEta": "Escape",
-    "stepsLabel": "Steps",
+    "stepLabel": "step",
     "calcLabel": "CALCULATE",
     "CONVENTIONAL": "Conventional Gun",
     "RECOILESS": "Recoiless Gun",
     "DOMAIN_TIME": "Time",
     "DOMAIN_LENG": "Length",
+    "SOL_LAGRANGE": "Lagrange ∂ρ/∂x = 0",
+    "SOL_PIDDUCK": "Pidduck  ∂S/∂x = 0",
+    "SOL_MAMONTOV": "Mamontov ∂T/∂x = 0",
     "TvDesc": "Adb.Temp",
     "isochorDesc": "(Isochoric)",
     "densityDesc": " Density",
@@ -410,9 +413,10 @@ ENGLISH = {
     "figShotBase": "Shot Base",
     "figTgtP": "P. Target",
     "figPsi": "Volume Burnup",
+    "solLabel": "Solution",
 }
 CHINESE = {
-    "themeLabel": "主题",
+    "themeLabel": "界面主题",
     "lightLabel": "浅色",
     "darkLabel": "深色",
     "debugLabel": "调试信息",
@@ -466,12 +470,15 @@ CHINESE = {
     "plotNozzleV": "喉口流出速度",
     "plotBurnup": "火药燃去比例",
     "plotEta": "燃气流出比例",
-    "stepsLabel": "采样点",
+    "stepLabel": "采样点",
     "calcLabel": "计算",
     "CONVENTIONAL": "常规火炮",
     "RECOILESS": "无后坐炮",
     "DOMAIN_TIME": "时间",
     "DOMAIN_LENG": "空间",
+    "SOL_LAGRANGE": "拉格朗日解 ∂ρ/∂x = 0",
+    "SOL_PIDDUCK": "毕杜克解   ∂S/∂x = 0",
+    "SOL_MAMONTOV": "马蒙托夫解 ∂T/∂x = 0",
     "chgText": "".join(
         (
             "拉格朗日假设是简化弹道学问题的经典假设。该假设下膛内密度始终沿炮膛均匀分布，火药燃速",
@@ -695,5 +702,6 @@ CHINESE = {
     "figShotBase": "弹底",
     "figTgtP": "设计压强",
     "figPsi": "燃去比例",
+    "solLabel": "弹道近似",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}

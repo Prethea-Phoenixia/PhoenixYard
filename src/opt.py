@@ -3,6 +3,7 @@ from prop import Propellant
 from random import uniform
 from math import pi, log
 from gun import pidduck
+from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
 
 
 class Constrained:
@@ -59,6 +60,7 @@ class Constrained:
         maxLength=1e3,
         labda_2=None,
         cc=1,
+        sol=SOL_PIDDUCK,
         **_,
     ):
         if any(
@@ -103,7 +105,14 @@ class Constrained:
         l_0 = V_0 / S
 
         if labda_2 is None:
-            _, labda_2 = pidduck(omega / (phi_1 * m), theta + 1, tol)
+            if sol == SOL_LAGRANGE:
+                labda_2 = 1 / 3
+            elif sol == SOL_PIDDUCK:
+                _, labda_2 = pidduck(omega / (phi_1 * m), theta + 1, tol)
+            elif sol == SOL_MAMONTOV:
+                _, labda_2 = pidduck(omega / (phi_1 * m), 1, tol)
+            else:
+                raise ValueError("Unknown Solution")
 
         phi = phi_1 + labda_2 * (omega / m) * cc
         v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
@@ -347,19 +356,22 @@ class Constrained:
             # successive better approximations will eventually
             # result in value within tolerance.
             return self.solve(
-                loadFraction,
-                chargeMassRatio,
-                tol,
-                minWeb,
-                containBurnout,
-                maxLength,
-                labda_2,
+                loadFraction=loadFraction,
+                chargeMassRatio=chargeMassRatio,
+                tol=tol,
+                minWeb=minWeb,
+                containBurnout=containBurnout,
+                maxLength=maxLength,
+                labda_2=labda_2,
+                sol=sol,
                 cc=cc_n,
             )
         else:
             return e_1, l_bar_g * l_0
 
-    def findMinV(self, chargeMassRatio, tol, minWeb, maxLength, **_):
+    def findMinV(
+        self, chargeMassRatio, tol, minWeb, maxLength, sol=SOL_PIDDUCK, **_
+    ):
         """
         find the minimum volume solution.
         """
@@ -380,7 +392,14 @@ class Constrained:
         phi_1 = self.phi_1
         theta = self.theta
 
-        _, labda_2 = pidduck(omega / (phi_1 * m), theta + 1, tol)
+        if sol == SOL_LAGRANGE:
+            labda_2 = 1 / 3
+        elif sol == SOL_PIDDUCK:
+            _, labda_2 = pidduck(omega / (phi_1 * m), theta + 1, tol)
+        elif sol == SOL_MAMONTOV:
+            _, labda_2 = pidduck(omega / (phi_1 * m), 1, tol)
+        else:
+            raise ValueError("Unknown Solution")
 
         def f(lf, mW=minWeb):
             V_0 = omega / (rho_p * maxLF * lf)
@@ -394,6 +413,7 @@ class Constrained:
                 containBurnout=False,
                 maxLength=maxLength,
                 labda_2=labda_2,
+                sol=sol,
             )
             return e_1, (l_g + l_0), l_g
 
