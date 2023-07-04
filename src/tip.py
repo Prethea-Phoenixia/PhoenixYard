@@ -29,7 +29,7 @@ class ToolTip(object):
 
         t_Font = tkFont.Font(family="Sarasa Mono SC", size=8)
         # we use a fixed width font so any char will do
-        columnWidth = 40
+        columnWidth = 60
         # apparnetly this doesn't work correctly with CJK fonts.....
         width, height = t_Font.measure("m"), t_Font.metrics("linespace")
 
