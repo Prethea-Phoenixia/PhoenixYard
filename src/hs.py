@@ -719,7 +719,7 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):  # in kelvin  # mol/g
         CO2j = quadratic((1 - K0), -(G + H + K0 * I), G * H)[1]
         CO2j = max(CO2j, 0)
 
-        if abs(oldCO2j - CO2j) * M_C < tol:
+        if abs(oldCO2j - CO2j) / CO2j < tol:
             break
 
         OHj = H2Oj / (H2j) ** 0.5 * sqrtVdivRT * K[1] * exp(-20 * n / V)

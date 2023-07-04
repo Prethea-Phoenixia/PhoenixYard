@@ -69,18 +69,37 @@ ENGLISH = {
     "atmISPDesc": "Isp(Atm)",
     "pRatioDesc": "          (Pc:Pa=50)",
     "brDesc": "Burnrate",
+    "plotText": " ".join(
+        (
+            "Considerable difficulty exist for modelling the mixed-phase",
+            "flow of burning propellant and gas. Therefore simplification",
+            "is commonly adopted in the works of interior ballisticians.",
+            "First, solid particulate is assumed to be comoving with gas",
+            "at the same velocity, simplifying to a homogeneous flow model.",
+            "Second, the spatial distribution of gas properties is assumed",
+            "through varying simplifying assumptions, allowing parameters",
+            "to be treated as constant through appropriate averaging.\n",
+            "The Lagrange approximation is the classical (and most common)",
+            "solution used. Adopting the assumption that density is constant",
+            "behind shot (∂ρ/∂x = 0), gas velocity is found to be spatially",
+            "linear, and pressure, quadratic. Pidduck relaxed this assumption",
+            "to merely requiring the gas process to be iso-entropic",
+            "(∂S/∂x = 0). This also implies a linear velocity distribution,",
+            "but a pressure distribution that is exponential.",
+            "The M.A.Mamontov (Ма́монтов) solution is the limiting solution",
+            "to the Pidduck approximation as adiabatic index approaches 1\n",
+            "The ",
+        )
+    ),
     "chgText": " ".join(
         (
-            "Mass of propellant charge to be used. This program employ",
-            "calssical Lagrangian approximation for calculation,"
-            "implying a space-invariant density for propellant gasses,",
-            "and combustion occuring at space-average pressure.\n"
-            "This assumption is almost correct for charge to shot mass",
-            "ratios -> 0. As charge to shot mass ratio increase, pressure",
-            "wave phenomenon becomes significant. More sophisticated models",
-            "are required to take account of such phenomenon, although",
-            "empirically this program is rather accurate for cases with",
-            "shot to mass ratio of close to 1 (e.g. M829A1).",
+            "Mass of propellant charge to be used. For ratio of charge to",
+            "mass much less than 1, the model used is decently accurate.",
+            "Empirically, calculated resluts for a charge to mass ratio of",
+            "close to 1 (e.g. US M829A1) is also reasonably close. For",
+            "ratio greater than 1, calculated result is an underestimation of",
+            "shot velocity. To date, the highest charge to mass gun to be",
+            "fielded is that of the 380mm German Paris Gun, at ~2-2.5.",
         )
     ),
     "vinfText": " ".join(
@@ -481,14 +500,42 @@ CHINESE = {
     "SOL_MAMONTOV": "马蒙托夫解 ∂T/∂x = 0",
     "chgText": "".join(
         (
-            "拉格朗日假设是简化弹道学问题的经典假设。该假设下膛内密度始终沿炮膛均匀分布，火药燃速",
-            "以膛内空间平均压强计算。在拉格朗日假设下计算的结果，可以较为准确地描述装药量小于",
-            "弹重的情况。装药量较大时，一方面膛内压力波传递与反射对于膛内气体影响较大，破坏了",
-            "压强分布假设；另一方面火药膛内运动较为明显，不能简单地认为在平均压力点燃烧。",
-            "研究这些问题涉及到对膛内气体两相流动问题的精确解。",
+            "内弹道系统的极限弹速正比与装药质量与火药力的乘积的平方根，因此使用更高的装药量与换用药力",
+            "更高的火药都对于提高弹速具有积极作用。装药量与通过乘以（1+阻力系数）调整的等效弹重系数的",
+            "比例称为装药比。程序使用的经典内弹道系统对于装药比<1的情况适用。经验表明，计算结果对于装药",
+            "比接近1（如美M829A1脱壳尾翼稳定穿甲弹）的仍然比较准确。历史上在常规火炮中实用过的最大装药",
+            "比约为2到2.5（德380mm“巴黎大炮”）。>1的高装药比下计算结果倾向于低估弹速，仅作为参考。",
         )
     ),
-    "vinfText": "".join(("该装药条件下的极限速度（vj），即炮管长度趋于无穷时弹速的极限。")),
+    "plotText": "".join(
+        (
+            "考虑火药燃烧的弹后火药、气流运动实际情况较为复杂。经典内弹道解法中经常采取一些简化假设。",
+            "首先，假设气相与固相运动速度一致，这样的流动称为均相流，在装药较为颗粒化时可以认为是近",
+            "似成立的。其次，弹后气流的时间、空间分布以一定的前提假设简化，以便于为各参数取适当的平均",
+            "值，作为常量，简化弹道计算。\n",
+            "最为经典、常用的简化是拉格朗日（Lagrange）简化，即假设弹后气流密度均匀（∂ρ/∂x=0），可",
+            "以推导出弹后气流流速随空间线性分布，气体压强随空间呈抛物线分布。毕杜克（Pidduck）则从",
+            "气流膨胀是等熵（绝热可逆，∂S/∂x=0）过程出发，以特解的形式得到了该假设下气流的极限分布，",
+            "即流速随空间线性，压强随空间指数分布。马蒙托夫（英文M.A.Mamontov，俄文M.A.Ма́монтов）",
+            "解则是在毕杜克解的基础上，增设了温度均匀的假设（∂T/∂x=0），实际上是毕杜克解在比热容趋",
+            "近1的极限。\n",
+            "拉格朗日解的理论基础是建立在装药比等效弹重远小于1时，膛内压力扰动以压力波的形式，在膛底",
+            "和弹底之间多次反射，压强分布在震荡的过程中趋于一致，其平均值接近该近似解计算值。在装药比",
+            "提高时，弹头出膛前反射的压力波至多只有一次追上弹底的机会，膛内压强不太可能均匀，此时很难",
+            "认为拉格朗日解成立。毕杜克极限解则没有限定具体对应的物理过程，是建立在热力学层面的考虑，",
+            "相比于拉格朗日解是更加宽松的假设。对于更高装药比的情况，有一些观点认为虽然密度场的分布不一",
+            "定均匀，但是温度场有可能，因此马蒙托夫近似解更适合这种情况。\n",
+            "实际上，三种近似解的结果十分接近，并且都很难表征高装药情况下的实际情况。高装药比情况下需要",
+            "使用均相流或者两项流模型，同时计算时间、空间上气流情况，计算复杂度相比经典内弹道体系激增，",
+            "而其结果在装药比<1时与经典内弹道模型差距不大。",
+        )
+    ),
+    "vinfText": "".join(
+        (
+            "该装药条件下的极限速度（vj），即炮管长度趋于无穷时弹速的极限。正比与火药力与装药量的乘积的平方根，",
+            "反比于弹重，绝热指数-1，与次要功系数的平方根。",
+        )
+    ),
     "teffText": "".join(
         (
             "对于火药在膛内完全燃烧的情况，火炮热机效率(γg')是出膛瞬间火药气体温度（Tg），",

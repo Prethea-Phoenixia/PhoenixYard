@@ -244,7 +244,7 @@ class Recoiless:
 
         return (dt_bar, dl_bar, dv_bar, deta, dtau)
 
-    def integrate(self, steps=10, tol=1e-5, dom=DOMAIN_TIME, record=None):
+    def integrate(self, steps=10, tol=1e-5, dom=DOMAIN_TIME, record=None, **_):
         """
         Runs a full numerical solution for the gun in the specified domain sampled
         evenly at specified number of steps, using a scaled numerical tolerance as

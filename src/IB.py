@@ -189,6 +189,8 @@ class IB(Frame):
         parent.update_idletasks()
         self.addFigPlot()
 
+        self.typeCallback()
+
         self.updateSpec()
         self.updateGeom()
 
@@ -249,6 +251,7 @@ class IB(Frame):
         self.sampleTip.set(self.getString("sampText"))
         self.calcButtonTip.set(self.getString("calcButtonText"))
         self.pTgtTip.set(self.getString("pTgtText"))
+        self.plotTip.set(self.getString("plotText"))
 
         self.tblFrm.config(text=self.getString("tblFrmLabel"))
         self.plotFrm.config(text=self.getString("plotFrmLabel"))
@@ -1186,7 +1189,6 @@ class IB(Frame):
         self.arcmm.trace_add("write", self.callback)
 
         self.gunType.trace_add("write", self.typeCallback)
-        self.typeCallback()
 
     def addGeomPlot(self):
         geomPlotFrm = self.geomPlotFrm
@@ -1232,6 +1234,9 @@ class IB(Frame):
         plotFrm.rowconfigure(0, weight=1)
 
         self.plotFrm = plotFrm
+
+        self.plotTip = StringVar(value=self.getString("plotText"))
+        CreateToolTip(self.plotFrm, self.plotTip)
 
     def addFigPlot(self):
         plotFrm = self.plotFrm

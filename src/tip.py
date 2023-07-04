@@ -1,4 +1,4 @@
-from tkinter import StringVar, Toplevel, Label, LEFT, SOLID
+from tkinter import StringVar, Toplevel, Label, LEFT, SOLID, Menu
 import tkinter.font as tkFont
 
 
