@@ -94,15 +94,15 @@ ENGLISH = {
             "as the charge to (fictitious, adjusted for drag and friction)",
             "mass ratio is very small, any pressure disturbances, propagating",
             "as waves, would reflect many times between shot base and breech",
-            "face, tending to equialize the pressure spatially.",
-            "However, as charge to mass increase, it is increasingly ",
-            "difficult for the reflected wave to catch up to shot,",
-            "invalidating the underlying assumption for this approximation.",
-            "The Pidduck approximation, on the other hand, only requires the",
-            "underlying process to be adiabatic and reversible. However, it",
-            "should be noted both the process of combusiton and the potential",
+            "face, tending to equialize the pressure spatially. However, as",
+            "charge to mass increase, it is increasingly difficult for",
+            "the reflected wave to catch up to shot, invalidating the",
+            "underlying assumption.",
+            "The Pidduck approximation only requires the underlying process",
+            "to be adiabatic and reversible. However, it should be",
+            "noted both the process of combusiton and the potential",
             "propagation of shockwave are clearly not isentropic, limiting",
-            "its applicability to where both happen only sparringly.",
+            "its applicability.",
             "The Mamontov approximation is considered by some to be",
             "best suited to the case of high charge to weight, given that",
             "temperature tends to equialize more readily.\n",
@@ -271,7 +271,9 @@ ENGLISH = {
             "to be the smallest dimension.",
         )
     ),
-    "heightRText": "Specify the height to width ratio of propellant rod or flake.",
+    "heightRText": " ".join(
+        ("Specify the height to width ratio of propellant rod or flake.",)
+    ),
     "tolText": " ".join(
         (
             "The maximum tolerated error, ε, for each component of the",
