@@ -542,7 +542,6 @@ class Recoiless:
                 ) in ztlvet_record
             )
 
-            # print(*record, sep="\n")
         """
         Subscript e indicate exit condition.
         At this point, since its guaranteed that point i will be further
@@ -855,7 +854,7 @@ class Recoiless:
                         tau_err=tau_err,
                     )
 
-            else:
+            elif dom == DOMAIN_LENG:
                 """
                 Due to two issues, i.e. 1.the length domain ODE
                 cannot be integrated from the origin point, and 2.the
@@ -918,9 +917,11 @@ class Recoiless:
                         eta_err=eta_err,
                         tau_err=tau_err,
                     )
+            else:
+                raise ValueError("Unknown domain")
 
         except ValueError as e:
-            pass
+            raise e
         finally:
             pass
 

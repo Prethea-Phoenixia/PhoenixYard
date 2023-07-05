@@ -858,7 +858,7 @@ class Gun:
                 raise ValueError("Unknown domain")
 
         except ValueError as e:
-            pass
+            raise e
         finally:
             pass
 

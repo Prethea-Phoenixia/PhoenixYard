@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     root.option_add("*tearOff", False)
 
-    root.title("PIBS v0.4")
+    root.title("PIBS v0.4.2")
 
     ibPanel = IB(root, dpi)
 
