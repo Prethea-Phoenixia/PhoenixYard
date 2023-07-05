@@ -63,6 +63,8 @@ class ConstrainedRecoiless:
         minWeb=1e-6,
         containBurnout=True,
         maxLength=1e3,
+        ambientRho=1.204,
+        ambientP=101.325e3,
         **_,
     ):
         if any(
@@ -108,13 +110,15 @@ class ConstrainedRecoiless:
         omega = m * chargeMassRatio
         V_0 = omega / (rho_p * maxLF * loadFraction)
         Delta = omega / V_0
-        p_bar_0 = p_0 / (Delta * f)
+        # p_bar_0 = p_0 / (Delta * f)
         l_0 = V_0 / S
-        phi = phi_1 + omega / (3 * m)
 
         gamma = theta + 1
+
+        phi = phi_1 + omega / (3 * m)
+
         S_j_bar = 1 / (Recoiless.getCf(gamma, A_bar, tol) * chi_0)
-        S_j = S_j_bar * S
+        # S_j = S_j_bar * S
 
         K_0 = (2 / (gamma + 1)) ** (
             (gamma + 1) / (2 * (gamma - 1))
@@ -130,6 +134,13 @@ class ConstrainedRecoiless:
         barrel length, in our formulation
         """
         v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
+
+        if ambientRho != 0:
+            c_1_bar = ((gamma) * ambientP / ambientRho) ** 0.5 / v_j
+            p_1_bar = ambientP / (f * Delta)
+        else:
+            c_1_bar = 0
+            p_1_bar = 0
 
         if v_j < v_d:
             raise ValueError(
@@ -195,10 +206,22 @@ class ConstrainedRecoiless:
                 )
                 p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
+                if c_1_bar != 0:
+                    v_r = v_bar / c_1_bar
+                    p_2_bar = (
+                        1
+                        + 0.25 * gamma * (gamma + 1) * v_r**2
+                        + gamma
+                        * v_r
+                        * (1 + (0.25 * (gamma + 1)) ** 2 * v_r**2) ** 0.5
+                    ) * p_1_bar
+                else:
+                    p_2_bar = 0
+
                 if Z <= Z_b:
                     dt_bar = (2 * B / theta) ** 0.5 * p_bar**-n
-                    dl_bar = v_bar * (2 * B / theta) ** 0.5 * p_bar**-n
-                    dv_bar = (B * theta * 0.5) ** 0.5 * p_bar ** (1 - n)
+                    dl_bar = v_bar * dt_bar
+                    dv_bar = 0.5 * theta * (p_bar - p_2_bar) * dt_bar
 
                 else:
                     # technically speaking it is undefined in this area
@@ -345,12 +368,26 @@ class ConstrainedRecoiless:
             l_psi_bar = 1 - Delta * ((1 - psi) / rho_p - alpha * (psi - eta))
             p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
+            if c_1_bar != 0:
+                v_r = v_bar / c_1_bar
+                p_2_bar = (
+                    1
+                    + 0.25 * gamma * (gamma + 1) * v_r**2
+                    + gamma
+                    * v_r
+                    * (1 + (0.25 * (gamma + 1)) ** 2 * v_r**2) ** 0.5
+                ) * p_1_bar
+            else:
+                p_2_bar = 0
+
+            dt_bar = 2 / (theta * (p_bar - p_2_bar))
+
             if Z <= Z_b:
-                dZ = (2 / (B * theta)) ** 0.5 * p_bar ** (n - 1)
+                dZ = dt_bar * (0.5 * theta / B) ** 0.5 * p_bar**n
             else:
                 dZ = 0
-            dl_bar = 2 * v_bar / (theta * p_bar)
-            dt_bar = 2 / (theta * p_bar)  # dt_bar/dv_bar
+
+            dl_bar = v_bar * dt_bar
 
             deta = C_A * S_j_bar * p_bar / tau**0.5 * dt_bar  # deta / dv_bar
             dtau = (
@@ -398,7 +435,16 @@ class ConstrainedRecoiless:
 
         return e_1, l_bar_g * l_0
 
-    def findMinV(self, chargeMassRatio, tol, minWeb, maxLength, **_):
+    def findMinV(
+        self,
+        chargeMassRatio,
+        tol,
+        minWeb,
+        maxLength,
+        ambientRho=1.204,
+        ambientP=101.325e3,
+        **_,
+    ):
         """
         find the minimum volume solution.
         """
@@ -427,6 +473,8 @@ class ConstrainedRecoiless:
                 minWeb=mW,
                 containBurnout=False,
                 maxLength=maxLength,
+                ambientP=ambientP,
+                ambientRho=ambientRho,
             )
             # print(l_g + l_0)
             return e_1, (l_g + l_0), l_g
@@ -545,7 +593,7 @@ if __name__ == "__main__":
         nozzleEfficiency=0.92,
     )
 
-    test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-3)
+    print(test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-3))
     """
     for i in range(10):
         print(test.findMinV(chargeMassRatio=1, tol=1e-3, minWeb=1e-6))

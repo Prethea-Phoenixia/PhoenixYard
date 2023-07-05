@@ -2,7 +2,6 @@ from tkinter import Frame, Menu, Text
 from tkinter import StringVar, IntVar
 from tkinter import ttk
 
-from tkinter.ttk import Label
 
 import tkinter.font as tkFont
 import traceback
@@ -122,6 +121,9 @@ class IB(Frame):
         self.soln = IntVar()
         self.soln.set(0)
 
+        self.inAtmos = IntVar()
+        self.inAtmos.set(1)
+
         themeMenu.add_radiobutton(
             label=self.getString("darkLabel"),
             variable=self.themeRadio,
@@ -150,6 +152,12 @@ class IB(Frame):
         )
         solMenu.add_radiobutton(
             label=self.getString("SOL_MAMONTOV"), variable=self.soln, value=2
+        )
+        solMenu.add_checkbutton(
+            label=self.getString("atmosLabel"),
+            variable=self.inAtmos,
+            onvalue=1,
+            offvalue=0,
         )
 
         for lang in STRING.keys():
@@ -213,6 +221,7 @@ class IB(Frame):
         self.solMenu.entryconfig(0, label=self.getString("SOL_LAGRANGE"))
         self.solMenu.entryconfig(1, label=self.getString("SOL_PIDDUCK"))
         self.solMenu.entryconfig(2, label=self.getString("SOL_MAMONTOV"))
+        self.solMenu.entryconfig(3, label=self.getString("atmosLabel"))
 
         self.calLb.config(text=self.getString("calLabel"))
         self.tblLb.config(text=self.getString("tblLabel"))
@@ -637,6 +646,8 @@ class IB(Frame):
         constrain = self.solve_W_Lg.get() == 1
         optimize = self.opt_lf.get() == 1
         debug = self.DEBUG.get() == 1
+        atmosphere = self.inAtmos.get() == 1
+
         invGunTypeLookup = {
             self.getString("CONVENTIONAL"): CONVENTIONAL,
             self.getString("RECOILESS"): RECOILESS,
@@ -658,6 +669,12 @@ class IB(Frame):
             "dom": invDomainLookup[self.dropOptn.get()],
             "sol": sols[self.soln.get()],
         }
+
+        if atmosphere:
+            self.kwargs.update({"ambientP": 101.325e3, "ambientRho": 1.204})
+        else:
+            self.kwargs.update({"ambientP": 0, "ambientRho": 0})
+
         self.process = None
 
         try:

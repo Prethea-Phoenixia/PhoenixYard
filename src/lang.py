@@ -459,6 +459,7 @@ ENGLISH = {
     "figTgtP": "P. Target",
     "figPsi": "Volume Burnup",
     "solLabel": "Solution",
+    "atmosLabel": "Atmospheric Drag",
 }
 CHINESE = {
     "themeLabel": "界面主题",
@@ -777,6 +778,7 @@ CHINESE = {
     "figShotBase": "弹底",
     "figTgtP": "设计压强",
     "figPsi": "燃去比例",
-    "solLabel": "弹道近似",
+    "solLabel": "计算选项",
+    "atmosLabel": "计算弹前空气阻力",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}

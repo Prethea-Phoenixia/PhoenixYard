@@ -61,6 +61,8 @@ class Constrained:
         labda_2=None,
         cc=1,
         sol=SOL_PIDDUCK,
+        ambientRho=1.204,
+        ambientP=101.325e3,
         **_,
     ):
         if any(
@@ -71,6 +73,8 @@ class Constrained:
                 loadFraction <= 0,
                 loadFraction > 1,
                 maxLength <= 0,
+                ambientRho < 0,
+                ambientP < 0,
             )
         ):
             raise ValueError(
@@ -104,11 +108,13 @@ class Constrained:
         Delta = omega / V_0
         l_0 = V_0 / S
 
+        gamma = theta + 1
+
         if labda_2 is None:
             if sol == SOL_LAGRANGE:
                 labda_2 = 1 / 3
             elif sol == SOL_PIDDUCK:
-                _, labda_2 = pidduck(omega / (phi_1 * m), theta + 1, tol)
+                _, labda_2 = pidduck(omega / (phi_1 * m), gamma, tol)
             elif sol == SOL_MAMONTOV:
                 _, labda_2 = pidduck(omega / (phi_1 * m), 1, tol)
             else:
@@ -117,6 +123,13 @@ class Constrained:
         phi = phi_1 + labda_2 * (omega / m) * cc
         v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
         v_bar_d = v_d / v_j
+
+        if ambientRho != 0:
+            c_1_bar = (gamma * ambientP / ambientRho) ** 0.5 / v_j
+            p_1_bar = ambientP / (f * Delta)
+        else:
+            c_1_bar = 0
+            p_1_bar = 0
 
         if v_j < v_d:
             raise ValueError(
@@ -182,10 +195,22 @@ class Constrained:
                     f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
                 ) / (S * l_0 * (l_bar + l_psi_bar) * f * Delta)
 
+                if c_1_bar != 0:
+                    v_r = v_bar / c_1_bar
+                    p_2_bar = (
+                        1
+                        + 0.25 * gamma * (gamma + 1) * v_r**2
+                        + gamma
+                        * v_r
+                        * (1 + (0.25 * (gamma + 1)) ** 2 * v_r**2) ** 0.5
+                    ) * p_1_bar
+                else:
+                    p_2_bar = 0
+
                 if Z <= Z_b:
                     dt_bar = (2 * B / theta) ** 0.5 * p_bar**-n  # dt_bar/dZ
                     dl_bar = v_bar * dt_bar
-                    dv_bar = 0.5 * dt_bar * theta * p_bar
+                    dv_bar = 0.5 * theta * (p_bar - p_2_bar) * dt_bar
 
                 else:
                     dt_bar = 0
@@ -308,13 +333,26 @@ class Constrained:
                 f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
             ) / (S * l_0 * (l_bar + l_psi_bar) * f * Delta)
 
+            if c_1_bar != 0:
+                v_r = v_bar / c_1_bar
+                p_2_bar = (
+                    1
+                    + 0.25 * gamma * (gamma + 1) * v_r**2
+                    + gamma
+                    * v_r
+                    * (1 + (0.25 * (gamma + 1)) ** 2 * v_r**2) ** 0.5
+                ) * p_1_bar
+            else:
+                p_2_bar = 0
+
+            dt_bar = 2 / (theta * (p_bar - p_2_bar))
+
             if Z <= Z_b:
-                dZ = (2 / (B * theta)) ** 0.5 * p_bar ** (n - 1)
+                dZ = dt_bar * (0.5 * theta / B) ** 0.5 * p_bar**n
             else:
                 dZ = 0
 
-            dl_bar = 2 * v_bar / (theta * p_bar)
-            dt_bar = 2 / (theta * p_bar)
+            dl_bar = v_bar * dt_bar
 
             return [dt_bar, dZ, dl_bar]
 
@@ -365,12 +403,22 @@ class Constrained:
                 labda_2=labda_2,
                 sol=sol,
                 cc=cc_n,
+                ambientRho=ambientRho,
+                ambientP=ambientP,
             )
         else:
             return e_1, l_bar_g * l_0
 
     def findMinV(
-        self, chargeMassRatio, tol, minWeb, maxLength, sol=SOL_PIDDUCK, **_
+        self,
+        chargeMassRatio,
+        tol,
+        minWeb,
+        maxLength,
+        sol=SOL_PIDDUCK,
+        ambientRho=1.204,
+        ambientP=101.325e3,
+        **_,
     ):
         """
         find the minimum volume solution.
@@ -391,11 +439,12 @@ class Constrained:
         solve = self.solve
         phi_1 = self.phi_1
         theta = self.theta
+        gamma = theta + 1
 
         if sol == SOL_LAGRANGE:
             labda_2 = 1 / 3
         elif sol == SOL_PIDDUCK:
-            _, labda_2 = pidduck(omega / (phi_1 * m), theta + 1, tol)
+            _, labda_2 = pidduck(omega / (phi_1 * m), gamma, tol)
         elif sol == SOL_MAMONTOV:
             _, labda_2 = pidduck(omega / (phi_1 * m), 1, tol)
         else:
@@ -414,6 +463,8 @@ class Constrained:
                 maxLength=maxLength,
                 labda_2=labda_2,
                 sol=sol,
+                ambientRho=ambientRho,
+                ambientP=ambientP,
             )
             return e_1, (l_g + l_0), l_g
 

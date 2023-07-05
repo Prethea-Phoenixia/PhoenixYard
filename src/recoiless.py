@@ -150,12 +150,24 @@ class Recoiless:
         )
         p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
+        if self.c_1_bar != 0:
+            k = 1 + self.theta  # gamma
+            v_r = v_bar / self.c_1_bar
+            p_2_bar = (
+                1
+                + 0.25 * k * (k + 1) * v_r**2
+                + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
+            ) * self.p_1_bar
+        else:
+            p_2_bar = 0
+
         if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_bar**self.n
         else:
             dZ = 0  # dZ/dt_bar
+
         dl_bar = v_bar
-        dv_bar = self.theta * 0.5 * p_bar
+        dv_bar = self.theta * 0.5 * (p_bar - p_2_bar)
 
         deta = self.C_A * self.S_j_bar * p_bar / tau**0.5  # deta / dt_bar
         dtau = (
@@ -185,14 +197,25 @@ class Recoiless:
         )
         p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
+        if self.c_1_bar != 0:
+            k = 1 + self.theta  # gamma
+            v_r = v_bar / self.c_1_bar
+            p_2_bar = (
+                1
+                + 0.25 * k * (k + 1) * v_r**2
+                + k * v_r * (1 + (0.25 * (k + 1) * v_r) ** 2) ** 0.5
+            ) * self.p_1_bar
+        else:
+            p_2_bar = 0
+
         if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_bar**self.n / v_bar
         else:
             dZ = 0  # dZ /dl_bar
-        dv_bar = self.theta * 0.5 * p_bar / v_bar  # dv_bar / dl_bar
+        dv_bar = self.theta * 0.5 * (p_bar - p_2_bar) / v_bar  # dv_bar/dl_bar
         dt_bar = 1 / v_bar  # dt_bar / dl_bar
 
-        dp_bar = tau / (l_bar + l_psi_bar) * (psi - eta) * dt_bar
+        # dp_bar = tau / (l_bar + l_psi_bar) * (psi - eta) * dt_bar
 
         deta = (
             self.C_A * self.S_j_bar * p_bar / tau**0.5 * dt_bar
@@ -218,10 +241,21 @@ class Recoiless:
         )
         p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
+        if self.c_1_bar != 0:
+            k = 1 + self.theta  # gamma
+            v_r = v_bar / self.c_1_bar
+            p_2_bar = (
+                1
+                + 0.25 * k * (k + 1) * v_r**2
+                + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
+            ) * self.p_1_bar
+        else:
+            p_2_bar = 0
+
         if Z <= self.Z_b:
             dt_bar = (2 * self.B / self.theta) ** 0.5 * p_bar**-self.n
-            dl_bar = v_bar * (2 * self.B / self.theta) ** 0.5 * p_bar**-self.n
-            dv_bar = (self.B * self.theta * 0.5) ** 0.5 * p_bar ** (1 - self.n)
+            dl_bar = v_bar * dt_bar
+            dv_bar = 0.5 * self.theta * (p_bar - p_2_bar) * dt_bar
 
         else:
             # technically speaking it is undefined in this area
@@ -244,7 +278,16 @@ class Recoiless:
 
         return (dt_bar, dl_bar, dv_bar, deta, dtau)
 
-    def integrate(self, steps=10, tol=1e-5, dom=DOMAIN_TIME, record=None, **_):
+    def integrate(
+        self,
+        steps=10,
+        tol=1e-5,
+        dom=DOMAIN_TIME,
+        record=None,
+        ambientRho=1.204,
+        ambientP=101.325e3,
+        **_,
+    ):
         """
         Runs a full numerical solution for the gun in the specified domain sampled
         evenly at specified number of steps, using a scaled numerical tolerance as
@@ -263,6 +306,9 @@ class Recoiless:
         if any((steps < 0, tol < 0)):
             raise ValueError("Invalid integration specification")
 
+        if any((ambientP < 0, ambientRho < 0)):
+            raise ValueError("Invalid ambient condition")
+
         gamma = self.theta + 1
         """
         self.S_j_bar = self.getCf(gamma, 1, tol) / (
@@ -277,11 +323,19 @@ class Recoiless:
             )
         self.S_j = self.S_j_bar * self.S
 
-        l_g_bar = self.l_g / self.l_0
-
         tScale = self.l_0 / self.v_j
         pScale = self.f * self.Delta
 
+        # ambient conditions
+        self.p_1_bar = ambientP / pScale
+        if ambientRho != 0:
+            self.c_1_bar = (
+                (self.theta + 1) * ambientP / ambientRho
+            ) ** 0.5 / self.v_j
+        else:
+            self.c_1_bar = 0
+
+        l_g_bar = self.l_g / self.l_0
         p_bar_0 = self.p_0 / pScale
         Z_b = self.Z_b
         Z_0 = self.Z_0
@@ -1036,4 +1090,4 @@ if __name__ == "__main__":
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )
-    print(test.getEff(942))
+    # print(test.getEff(942))

@@ -176,12 +176,24 @@ class Gun:
             - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
         ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
 
+        if self.c_1_bar != 0:
+            k = 1 + self.theta  # gamma
+            v_r = v_bar / self.c_1_bar
+            p_2_bar = (
+                1
+                + 0.25 * k * (k + 1) * v_r**2
+                + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
+            ) * self.p_1_bar
+        else:
+            p_2_bar = 0
+
         if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_bar**self.n
         else:
             dZ = 0  # dZ/dt_bar
+
         dl_bar = v_bar
-        dv_bar = self.theta * 0.5 * p_bar
+        dv_bar = self.theta * 0.5 * (p_bar - p_2_bar)
 
         return (dZ, dl_bar, dv_bar)
 
@@ -203,11 +215,23 @@ class Gun:
             - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
         ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
 
+        if self.c_1_bar != 0:
+            k = 1 + self.theta  # gamma
+            v_r = v_bar / self.c_1_bar
+            p_2_bar = (
+                1
+                + 0.25 * k * (k + 1) * v_r**2
+                + k * v_r * (1 + (0.25 * (k + 1) * v_r) ** 2) ** 0.5
+            ) * self.p_1_bar
+        else:
+            p_2_bar = 0
+
         if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_bar**self.n / v_bar
         else:
             dZ = 0  # dZ /dl_bar
-        dv_bar = self.theta * 0.5 * p_bar / v_bar  # dv_bar / dl_bar
+
+        dv_bar = self.theta * 0.5 * (p_bar - p_2_bar) / v_bar  # dv_bar/dl_bar
         dt_bar = 1 / v_bar  # dt_bar / dl_bar
 
         return (dt_bar, dZ, dv_bar)
@@ -226,10 +250,23 @@ class Gun:
             - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
         ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
 
+        if self.c_1_bar != 0:
+            k = 1 + self.theta  # gamma
+            v_r = v_bar / self.c_1_bar
+            p_2_bar = (
+                1
+                + 0.25 * k * (k + 1) * v_r**2
+                + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
+            ) * self.p_1_bar
+        else:
+            p_2_bar = 0
+
         if Z <= self.Z_b:
-            dt_bar = (2 * self.B / self.theta) ** 0.5 * p_bar**-self.n
-            dl_bar = v_bar * (2 * self.B / self.theta) ** 0.5 * p_bar**-self.n
-            dv_bar = (self.B * self.theta * 0.5) ** 0.5 * p_bar ** (1 - self.n)
+            dt_bar = (
+                2 * self.B / self.theta
+            ) ** 0.5 * p_bar**-self.n  # dt_bar/dZ
+            dl_bar = v_bar * dt_bar  # dv_bar/dZ
+            dv_bar = 0.5 * self.theta * (p_bar - p_2_bar) * dt_bar
         else:
             # technically speaking it is undefined in this area
             dt_bar = 0  # dt_bar/dZ
@@ -281,6 +318,8 @@ class Gun:
         tol=1e-5,
         dom=DOMAIN_TIME,
         sol=SOL_PIDDUCK,
+        ambientRho=1.204,
+        ambientP=101.325e3,
         record=None,
         **_,
     ):
@@ -305,6 +344,14 @@ class Gun:
         at breech face and shot velocity at shot base.
 
         """
+        minTol = 1e-16  # based on experience
+
+        if any((step < 0, tol < 0)):
+            raise ValueError("Invalid integration specification")
+
+        if any((ambientP < 0, ambientRho < 0)):
+            raise ValueError("Invalid ambient condition")
+
         if sol == SOL_LAGRANGE:
             labda_1, labda_2 = 0.5, 1 / 3
         elif sol == SOL_PIDDUCK:
@@ -340,16 +387,19 @@ class Gun:
             2 * self.f * self.omega / (self.theta * self.phi * self.m)
         ) ** 0.5
 
-        minTol = 1e-16  # based on experience
-
-        if any((step < 0, tol < 0)):
-            raise ValueError("Invalid integration specification")
-
-        l_g_bar = self.l_g / self.l_0
-
         tScale = self.l_0 / self.v_j
         pScale = self.f * self.Delta
 
+        # ambient conditions
+        self.p_1_bar = ambientP / pScale
+        if ambientRho != 0:
+            self.c_1_bar = (
+                (self.theta + 1) * ambientP / ambientRho
+            ) ** 0.5 / self.v_j
+        else:
+            self.c_1_bar = 0
+
+        l_g_bar = self.l_g / self.l_0
         p_bar_0 = self.p_0 / pScale
         Z_b = self.Z_b
         Z_0 = self.Z_0
@@ -752,7 +802,7 @@ class Gun:
                         v_bar_err=v_bar_err,
                     )
 
-            else:
+            elif dom == DOMAIN_LENG:
                 """
                 Due to two issues, i.e. 1.the length domain ODE
                 cannot be integrated from the origin point, and 2.the
@@ -804,6 +854,8 @@ class Gun:
                         Z_err=Z_err,
                         v_bar_err=v_bar_err,
                     )
+            else:
+                raise ValueError("Unknown domain")
 
         except ValueError as e:
             pass
@@ -937,7 +989,7 @@ if __name__ == "__main__":
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(200, 1e-6, dom="length", sol=SOL_MAMONTOV)[0],
+            test.integrate(200, 1e-6, dom=DOMAIN_LENG, sol=SOL_MAMONTOV)[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T", "eta"),
         )
     )
@@ -948,7 +1000,3 @@ if __name__ == "__main__":
     # burn rate coefficient:
     # mm/s/(MPa)**exponent -> m/s/Pa**exponent * 1e-3 /(1e6)**exponent
     # cm/s/(MPa)**exponent -> m/s/Pa**exponent * 1e-2 /(1e6)**exponent
-
-    # IMR ,"Single Base,*100.00% Nitrocellulose (13.15%), 1.00% Potassium Sulfate, 8.00% Dinitrotoluene, 0.70% Diphenylamine" ,1.2413 ,1620 ,989400 ,1.044e-3,
-    # todo: M3 propellant
-    # 155/105mm Howitzer; Charge for Zone 1-5,M1(A1) PH; M45 on M44 SPH; M126(A1) on M109 SPH; M185 on M109(A1-A4) SPH; M199 105mm,
