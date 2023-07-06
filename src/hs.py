@@ -32,24 +32,15 @@ TMETN, two entries are used to represent the two possible naming scheme.
 Picrite is an alternative name for Nitroguanidine.
 
 Some entries are removed due to inherent uncertainty of composition
-Asphalt                      ,            ,0.2179 ,-2305  ,0.09450,  ,  , ,  ,        
-Bd-MVP copolymer             ,            ,0.4132 ,-3183  ,0.11544,  ,  , ,  ,  
-Polyester                    ,            ,0.3552 ,-2620  ,0.09123,  ,  , ,  ,  
-Polyurethane,PU,0.4073,-3773,0.10796,27,36,2,10,
-
-
-Other entries are removed due to impossibility to research what material this is.
-Petrin                       ,            ,0.3703 ,374    ,0.04109,  ,  , ,  ,  
+Asphalt                      ,            ,0.2179 ,-2305  ,0.09450,  ,  , ,  ,
+Bd-MVP copolymer             ,            ,0.4132 ,-3183  ,0.11544,  ,  , ,  ,
+Polyurethane,PU,0.4073,-3773,0.10796,536,987,12,140,
 
 NC entries are removed, since these can be programmatically generate 
 Nitrocellulose 12.20% N      ,NC1220      ,0.3478 ,137.7  ,0.04127,  ,  , ,  ,        
 Nitrocellulose 12.60% N      ,NC1260      ,0.3454 ,198.9  ,0.04040,  ,  , ,  ,        
 Nitrocellulose 13.15% N      ,NC1315      ,0.3421 ,283.1  ,0.03920,  ,  , ,  , 
 
-These entries are removed due to large mismatch between values computed from 
-composition and tabulated ones.
-Metriol trinitrate,MTN,0.3052,377,0.04313,5,9,3,9,
-Trimethylolethane trinitrate,TMETN,0.3052,377,0.04313,5,9,3,9,
 """
 import csv
 import difflib
@@ -74,17 +65,24 @@ class Ingredient:
     def __init__(self, name, alt, Cvi, Ei, invMi, C, H, N, O, Ext):
         self.name = name
         self.alt = alt
-        self.Cvi = Cvi
-        self.Ei = Ei
-        self.invMi = invMi
 
-        self.C = C
-        self.H = H
-        self.N = N
-        self.O = O
-        self.Ext = Ext
+        if any((Cvi is None, Ei is None, invMi is None)):
+            # todo: estimate it.
+            pass
+        else:
+            self.Cvi = Cvi
+            self.Ei = Ei
+            self.invMi = invMi
 
-        A = M_C * C + M_H * H + M_N * N + M_O * O + Ext  # g/mol
+        self.C = C if C is not None else 0
+        self.H = H if H is not None else 0
+        self.N = N if N is not None else 0
+        self.O = O if O is not None else 0
+        self.Ext = Ext if Ext is not None else 0
+
+        A = (
+            M_C * self.C + M_H * self.H + M_N * self.N + M_O * self.O + self.Ext
+        )  # g/mol
         self.A = A
 
     @classmethod
@@ -104,18 +102,21 @@ class Ingredient:
                 if skipFirstLine:
                     skipFirstLine = False
                     continue
-                (name, alt, Cvi, Ei, invMi, C, H, N, O, Ext) = ingr
+                (name, alt, Hf, Cvi, Ei, invMi, C, H, N, O, Ext) = ingr
 
-                C, H, N, O, Ext = (
-                    float(v) if v != "" else 0 for v in (C, H, N, O, Ext)
+                Hf, Cvi, Ei, invMi, C, H, N, O, Ext = (
+                    float(v) if v != "" else None
+                    for v in (Hf, Cvi, Ei, invMi, C, H, N, O, Ext)
                 )
+
+                print((Hf, Cvi, Ei, invMi, C, H, N, O, Ext))
 
                 newIngr = cls(
                     name=name,
                     alt=alt,
-                    Cvi=float(Cvi),
-                    Ei=float(Ei),
-                    invMi=float(invMi),
+                    Cvi=Cvi,
+                    Ei=Ei,
+                    invMi=invMi,
                     C=C,
                     H=H,
                     N=N,
@@ -201,6 +202,7 @@ class Ingredient:
         """
         Hf_H2O = -67400
         Hf_CO2 = -94020
+
         if HoC is None:
             HoC = Hf_H2O * 0.5 * Hi + Hf_CO2 * Ci - HoF
 
@@ -210,6 +212,8 @@ class Ingredient:
         # HoC: heat of combustion, +: energy is released, -: energy is consumed
         # this is the opposite of the usual convention of enthalpy of combustion.
         E = -HoC - 132771 * Ci - 40026 * Hi - 6724 * Ni + 51819 * Oi
+
+        # Q = -HoC - 67421 * (2 * Ci + 0.5 * Hi - Oi)
         # heat required to bring combustion product to 2500k
 
         newIngr = cls(name, alt, Cv, E, invM, C, H, N, O, 0)
@@ -242,6 +246,7 @@ class Ingredient:
         name = "Nitrocellulose {:.2%} N".format(f)
         alt = "NC{:d}".format(int(f * 10000))
 
+        # H-S specific calculations
         Cv = 0.3421 + 0.006 * (13.15 - f * 100)
         E = 283.1 - 153 * (13.15 - f * 100)
         invM = 0.03920 + 0.00218 * (13.15 - f * 100)
@@ -359,7 +364,7 @@ class Ingredient:
         )
 
         print("Chemical Composition:")
-        print(self.C, self.H, self.N, self.O, self.A)
+        # print(self.C, self.H, self.N, self.O, self.A)
         print(
             "C{:.1f} H{:.1f} N{:.1f} O{:.1f}, A={:.1f} g/mol".format(
                 self.C, self.H, self.N, self.O, self.A
@@ -376,7 +381,7 @@ class Ingredient:
 
 
 class Mixture:
-    def __init__(self, name, compoDict, Delta=0.2):
+    def __init__(self, name, compoDict, Delta=0.2, tol=1e05):
         self.name = name
         self.Delta = Delta
         """
@@ -409,6 +414,16 @@ class Mixture:
             Ni += fraction * ingr.N / ingr.A
             Oi += fraction * ingr.O / ingr.A
 
+        Q = (
+            E
+            + 132771 * Ci
+            + 40026 * Hi
+            - 51819 * Oi
+            + 6724 * Ni
+            - 67421 * (2 * Ci + 0.5 * Hi - Oi)
+        )  # this is the "Heat of Explosion" US sources so like to list
+        self.Q = Q
+
         M = 1 / invM  # g/mol
         Tv = 2500 + E / Cv
         if Tv > 3000:
@@ -427,8 +442,9 @@ class Mixture:
         self.f = f
 
         self.speciesList, self.b, self.p = balance(
-            Tv, Ci, Hi, Oi, Ni, V=1 / Delta
+            Tv, Ci, Hi, Oi, Ni, V=1 / Delta, tol=tol
         )
+        print(E)
         """
         covolume estimate suggested by Cook:
         self.b = 1e-3 * (1.18 + 6.9 * Ci - 11.5 * Oi)
@@ -470,11 +486,12 @@ class Mixture:
         print("Isochoric Adb. Temp: {:>6.1f}K".format(self.Tv))
         print("Adiabatic Index    : {:>6.3f}".format(self.gamma))
         print("Specific Force     : {:>6.4f} MJ/kg".format(self.f / 1e6))
+        print("Heat of Explosion  : {:>6.1f} cal/g".format(self.Q))
         print("")
 
-        print("Species--%wt.---%mol-----------------------------")
+        print("Species--%wt.-----mol/g-----------------------------")
         print(
-            *("{:^5}  {:>6.2%}  {:>6.2%}".format(*v) for v in self.speciesList),
+            *("{:^5}  {:>6.2%}  {:>8.6f}".format(*v) for v in self.speciesList),
             sep="\n"
         )
         print("")
@@ -585,6 +602,83 @@ BCTable = [
     [4000, 14.5, 32.0, 57.8, 9.4, 10, 85, 555, 90],
 ]
 
+"""
+Table 2.05 from Hunt
+"Mean molecular heats over the temperature range of 300 deg K to T deg K"
+in calories per gram-mole per degree at constant volume
+T (K), CO2, H2O, CO, H2, N2, OH, NO, O2
+for monoatomic gas, take 2.980
+"""
+MMHTable = [
+    [1000, 9.409, 6.823, 5.403, 5.055, 5.326, 5.136, 5.592, 5.751],
+    [1200, 9.824, 7.107, 5.553, 5.115, 5.468, 5.212, 5.744, 5.907],
+    [1400, 10.165, 7.388, 5.684, 5.189, 5.597, 5.298, 5.869, 6.037],
+    [1600, 10.449, 7.661, 5.799, 5.272, 5.712, 5.390, 5.975, 6.147],
+    [1700, 10.577, 7.797, 5.852, 5.318, 5.766, 5.439, 6.024, 6.198],
+    [1800, 10.690, 7.918, 5.899, 5.359, 5.814, 5.482, 6.067, 6.244],
+    [1900, 10.798, 8.044, 5.945, 5.405, 5.861, 5.529, 6.110, 6.290],
+    [2000, 10.896, 8.157, 5.986, 5.447, 5.904, 5.572, 6.149, 6.331],
+    [2100, 10.990, 8.273, 6.012, 5.492, 5.945, 5.617, 6.186, 6.373],
+    [2200, 11.075, 8.378, 6.036, 5.533, 5.983, 5.657, 6.220, 6.412],
+    [2300, 11.157, 8.484, 6.086, 5.577, 6.020, 5.700, 6.252, 6.452],
+    [2400, 11.233, 8.581, 6.131, 5.617, 6.053, 5.739, 6.282, 6.488],
+    [2500, 11.306, 8.678, 6.162, 5.659, 6.086, 5.780, 6.310, 6.525],
+    [2600, 11.373, 8.768, 6.191, 5.697, 6.116, 5.818, 6.336, 6.559],
+    [2700, 11.438, 8.857, 6.218, 5.736, 6.146, 5.856, 6.361, 6.594],
+    [2800, 11.498, 8.940, 6.244, 5.773, 6.173, 5.891, 6.384, 6.626],
+    [2900, 11.556, 9.022, 6.269, 5.811, 6.199, 5.927, 6.406, 6.659],
+    [3000, 11.611, 9.099, 6.293, 5.846, 6.224, 5.960, 6.427, 6.690],
+    [3100, 11.664, 9.174, 6.315, 5.882, 6.248, 5.993, 6.448, 6.722],
+    [3200, 11.714, 9.245, 6.336, 5.915, 6.270, 6.024, 6.467, 6.752],
+    [3300, 11.762, 9.315, 6.357, 5.948, 6.292, 6.055, 6.486, 6.782],
+    [3400, 11.808, 9.380, 6.376, 5.980, 6.312, 6.085, 6.504, 6.811],
+    [3500, 11.853, 9.444, 6.395, 6.012, 6.332, 6.115, 6.521, 6.840],
+    [3600, 11.895, 9.505, 6.412, 6.042, 6.350, 6.143, 6.538, 6.868],
+    [3700, 11.936, 9.565, 6.429, 6.073, 6.368, 6.171, 6.554, 6.895],
+    [3800, 11.975, 9.621, 6.446, 6.102, 6.385, 6.198, 6.569, 6.921],
+    [3900, 12.013, 9.677, 6.462, 6.131, 6.402, 6.225, 6.585, 6.947],
+    [4000, 12.050, 9.730, 6.477, 6.158, 6.418, 6.251, 6.600, 6.972],
+]
+
+"""
+Table 2.08 from Hunt
+E1 /100
+H2, N2 & CO, CO2, H2O
+
+for E2 * 1e^-4:
+H2:     3
+N2, CO: 34,
+CO2:    220
+H2O:    35
+"""
+
+E1Table = [
+    [1600, 45, -110, -870, -935],
+    [1700, 50, -95, -840, -895],
+    [1800, 55, -80, -810, -855],
+    [1900, 65, -70, -785, -825],
+    [2000, 70, -55, -755, -795],
+    [2100, 75, -40, -730, -770],
+    [2200, 80, -25, -700, -745],
+    [2300, 90, -15, -675, -725],
+    [2400, 95, -0, -645, -705],
+    [2500, 100, 15, -620, -685],
+    [2600, 105, 25, -595, -665],
+    [2700, 110, 40, -565, -650],
+    [2800, 120, 55, -540, -635],
+    [2900, 125, 65, -515, -620],
+    [3000, 130, 80, -490, -605],
+    [3100, 135, 95, -465, -590],
+    [3200, 140, 105, -440, -580],
+    [3300, 145, 120, -415, -565],
+    [3400, 150, 130, -390, -555],
+    [3500, 160, 145, -365, -540],
+    [3600, 165, 155, -340, -530],
+    [3700, 170, 170, -315, -520],
+    [3800, 175, 185, -290, -510],
+    [3900, 180, 195, -265, -500],
+    [4000, 185, 210, -240, -490],
+]
 
 """
 (X): nbr. molecule per unit mass of propellant
@@ -610,7 +704,6 @@ Major                                   Minor
 (H2)    = 0.5  {H} + {C} - {O} + (CO2)  | - 0.5 (H) + 2 (O2) + (o) + (NO) + 0.5 (OH)
 
 
-
 n = {C} + 0.5 * {H} + 0.5 * {N}         | + (OH) + (H) + (NO) + (O2) + (O) + (N)
    CO/CO2     H2O/H2        N2
 
@@ -626,7 +719,7 @@ N2 <-> 2 N                      (N)
 """
 
 
-def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):  # in kelvin  # mol/g
+def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     """
     Ci, Hi, Oi, Ni are in mol/g.
     Consequently,
@@ -729,42 +822,112 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):  # in kelvin  # mol/g
         Oj = O2j**0.5 * sqrtVdivRT * K[4]
         Nj = N2j**0.5 * sqrtVdivRT * K[6]
 
-    a = N2j + COj + CO2j + H2j + H2Oj + OHj + Hj + NOj + O2j + Oj + Nj
+    n = N2j + COj + CO2j + H2j + H2Oj + OHj + Hj + NOj + O2j + Oj + Nj
 
     speciesList = [
-        ("N2", N2j * 28.016, N2j / a),
-        ("CO", COj * 28.01, COj / a),
-        ("CO2", CO2j * 44.01, CO2j / a),
-        ("H2", H2j * 2.016, H2j / a),
-        ("H2O", H2Oj * 18.016, H2Oj / a),
-        ("OH", OHj * 17.008, OHj / a),
-        ("H", Hj * M_H, Hj / a),
-        ("NO", NOj * 30.008, NOj / a),
-        ("O2", O2j * 32.00, O2j / a),
-        ("O", Oj * M_O, Oj / a),
-        ("N", Nj * M_N, Nj / a),
+        ("N2", N2j * 28.016, N2j),
+        ("CO", COj * 28.01, COj),
+        ("CO2", CO2j * 44.01, CO2j),
+        ("H2", H2j * 2.016, H2j),
+        ("H2O", H2Oj * 18.016, H2Oj),
+        ("OH", OHj * 17.008, OHj),
+        ("H", Hj * M_H, Hj),
+        ("NO", NOj * 30.008, NOj),
+        ("O2", O2j * 32.00, O2j),
+        ("O", Oj * M_O, Oj),
+        ("N", Nj * M_N, Nj),
     ]
 
     speciesList.sort(key=lambda x: x[1], reverse=True)
 
-    # n0 = Ci + 0.5 * Hi + 0.5 * Ni
-
     B = BCO2 * CO2j + BN2CO * (N2j + COj) + BH2O * H2Oj + BH2 * H2j
     C = CCO2 * CO2j + CN2CO * (N2j + COj) + CH2O * H2Oj + CH2 * H2j
 
-    # b = V * (1 - n / n0 * (1 - B / V - n0 * C / V**2))
-
     b = (B * V**2 + n * C * V) / (V**2 + B * V + n * C)
-
     p = n * R * T / (V - b) / 9.869
 
-    # p = n * R * T / V * (1 + B / V + n * C / V**2)
+    print("n  : specie %mass  mol/g")
+    print(
+        *[
+            "{:<2} : {:<6} {:<6.1%} {:<6.4f}".format(i, name, mass, num)
+            for i, (name, mass, num) in enumerate(speciesList)
+        ],
+        sep="\n"
+    )
+    """
+    Find the internal energy of the gaseous products.
+    E = MMH * (T-300K) + E1 * n/V + E2 * (n/V)**2
 
+    the E1 and E2 corrections are only done for major products.
+    """
+    for i in range(len(MMHTable) - 1):
+        Tlow, *MMHlow = MMHTable[i]
+        Thigh, *MMHhigh = MMHTable[i + 1]
+        if Tlow <= T <= Thigh:
+            if Tlow >= 2000:
+                k = (1 / T - 1 / Tlow) / (1 / Thigh - 1 / Tlow)
+            else:
+                k = (T - Tlow) / (Thigh - Tlow)
+            MMH = [vi * (1 - k) + vj * k for vi, vj in zip(MMHlow, MMHhigh)]
+            break
+
+    DeltaT = T - 300
+    HCO2, HH2O, HCO, HH2, HN2, HOH, HNO, HO2 = (v * DeltaT for v in MMH)
+    HH, HO, HN = (2.980 * DeltaT for _ in range(3))  # monoatomic
+
+    for i in range(len(E1Table) - 1):
+        Tlow, *E1low = E1Table[i]
+        Thigh, *E1high = E1Table[i + 1]
+        if Tlow <= T <= Thigh:
+            k = (T - Tlow) / (Thigh - Tlow)
+            E1 = [
+                (vi * (1 - k) + vj * k) * 1e2 for vi, vj in zip(E1low, E1high)
+            ]
+            break
+
+    E1H2, E1N2, E1CO2, E1H2O = E1
+    E1CO = E1N2
+
+    """
+    2nd part of Hunt table 2.08
+    """
+    HH2 += E1H2 * (n / V) + 3e4 * (n / V) ** 2
+    HN2 += E1N2 * (n / V) + 34e4 * (n / V) ** 2
+    HCO2 += E1CO2 * (n / V) + 220e4 * (n / V) ** 2
+    HH2O += E1H2O * (n / V) + 35e4 * (n / V) ** 2
+    HCO += E1CO * (n / V) + 34e4 * (n / V) ** 2
+
+    E = -1 * (  # the convention in propellant work is kinda weird
+        HCO2 * CO2j
+        + HH2O * H2Oj
+        + HCO * COj
+        + HH2 * H2j
+        + HN2 * N2j
+        + HOH * OHj
+        + HNO * NOj
+        + HO2 * O2j
+        + HH * Hj
+        + HO * Oj
+        + HN * Nj
+    )
+
+    """add the heat of formation of the products
+    according to their proportions, Hunt table 2.02, constant volume"""
+    E += COj * 26.70e3
+    E += CO2j * 94.02e3
+    E += H2Oj * 57.51e3  # this is in the gaseous form!
+    E += NOj * -21.50e3
+    E += OHj * -5.95e3
+    E += Nj * -84.15e3
+    E += Oj * -58.85e3
+    E += Hj * -51.53e3
+    print(E)
     return speciesList, b, p
 
 
 if __name__ == "__main__":
     ingredients = Ingredient.readFile("data/hs.csv")
+    Ingredient.check()
     """
     TMETN = Ingredient.fromElement(
         name="Trimethylolethane trinitrate",
@@ -888,13 +1051,9 @@ if __name__ == "__main__":
     )
     M1.prettyPrint()
     """
+    balance(3100, Ci=0.02232, Hi=0.03010, Ni=0.01046, Oi=0.03469, V=1 / 0.2)
 
     RDX = Ingredient.find("RDX")
-    """
-    RDX = Ingredient.fromElement(
-        "RDX", alt="RDX", C=3, H=6, N=6, O=6, HoF=276.86, u="kJ/kg"
-    )
-    """
     CAB = Ingredient.fromElement(
         "Cellulose Acetate Butyrate",
         alt="CAB",
@@ -906,25 +1065,38 @@ if __name__ == "__main__":
     )
     NC1260 = Ingredient.nitrocellulose(0.126)
     NC1260.prettyPrint()
-    ATC = Ingredient.fromElement(
+    ATEC = Ingredient.fromElement(
         "Acetyl Triethyl Citrate",
         alt="ATC",
         C=14,
         H=22,
         O=8,
-        HoF=-5459.6,
-        u="kJ/kg",
+        HoF=-1257,
+        u="cal/g",
     )
     EC = Ingredient.find("Ethyl Centralite")
 
+    BDNPA = Ingredient.fromElement(
+        "Bis-(Dinitropropyl)acetal",
+        alt="BDNPA",
+        C=8,
+        H=14,
+        N=4,
+        O=10,
+        HoF=-485,
+        u="cal/g",
+    )
+
     XM39 = Mixture(
         name="XM39",
-        compoDict={RDX: 76, CAB: 12, NC1260: 4, ATC: 7.6, EC: 0.4},
+        compoDict={RDX: 76, CAB: 12, NC1260: 4, ATEC: 7.6, EC: 0.4},
         Delta=0.2,
     )
     XM39.prettyPrint()
-"""
-// TODO: M43 composition is not listed in work from early 00s.
-M43,"Nitramine, 76.00% (5um RDX) Hexogen, 12.00% Cellulose Acetate Butyrate, 
- 7.60% Acetal Formal,  4.00% Nitrocellulose (12.60%N),  0.40% Ethyl Centralite", ,1655, , ,0.82,1.022e-8 ,
-"""
+
+    M43 = Mixture(
+        name="M43",
+        compoDict={RDX: 76, CAB: 12, NC1260: 4, BDNPA: 7.6, EC: 0.4},
+        Delta=0.2,
+    )
+    M43.prettyPrint()

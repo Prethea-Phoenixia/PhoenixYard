@@ -280,7 +280,7 @@ class Recoiless:
 
     def integrate(
         self,
-        steps=10,
+        step=10,
         tol=1e-5,
         dom=DOMAIN_TIME,
         record=None,
@@ -303,7 +303,7 @@ class Recoiless:
         """
         minTol = 1e-16  # based on experience
 
-        if any((steps < 0, tol < 0)):
+        if any((step < 0, tol < 0)):
             raise ValueError("Invalid integration specification")
 
         if any((ambientP < 0, ambientRho < 0)):
@@ -821,8 +821,8 @@ class Recoiless:
                     0,
                     1,
                 )
-                for j in range(steps):
-                    t_bar_k = t_bar_e / (steps + 1) * (j + 1)
+                for j in range(step):
+                    t_bar_k = t_bar_e / (step + 1) * (j + 1)
                     (
                         _,
                         (Z_j, l_bar_j, v_bar_j, eta_j, tau_j),
@@ -877,8 +877,8 @@ class Recoiless:
                     minTol=minTol,
                 )[1]
 
-                for j in range(steps):
-                    l_bar_k = l_g_bar / (steps + 1) * (j + 1)
+                for j in range(step):
+                    l_bar_k = l_g_bar / (step + 1) * (j + 1)
 
                     (
                         _,
@@ -1080,14 +1080,14 @@ if __name__ == "__main__":
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(100, 1e-6, dom=DOMAIN_TIME)[0],
+            test.integrate(0, 1e-6, dom=DOMAIN_TIME)[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(100, 1e-6, dom="length")[0],
+            test.integrate(0, 1e-6, dom=DOMAIN_LENG)[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T"),
         )
     )
