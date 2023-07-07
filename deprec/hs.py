@@ -51,6 +51,8 @@ M_C = 12.01
 M_H = 1.008
 M_O = 16.00
 M_N = 14.008
+Hf_H2O = -67400
+Hf_CO2 = -94020
 
 
 class Ingredient:
@@ -62,17 +64,24 @@ class Ingredient:
     allDict = {}
     altDict = {}
 
-    def __init__(self, name, alt, Cvi, Ei, invMi, C, H, N, O, Ext):
+    def __init__(
+        self,
+        name,
+        alt,
+        Hf=None,
+        Hc=None,
+        u="cal/g",
+        Cvi=None,
+        Ei=None,
+        invMi=None,
+        C=None,
+        H=None,
+        N=None,
+        O=None,
+        Ext=None,
+    ):
         self.name = name
         self.alt = alt
-
-        if any((Cvi is None, Ei is None, invMi is None)):
-            # todo: estimate it.
-            pass
-        else:
-            self.Cvi = Cvi
-            self.Ei = Ei
-            self.invMi = invMi
 
         self.C = C if C is not None else 0
         self.H = H if H is not None else 0
@@ -80,10 +89,90 @@ class Ingredient:
         self.O = O if O is not None else 0
         self.Ext = Ext if Ext is not None else 0
 
-        A = (
+        # accurate molecular mass here to account for natural abundance of isotopes
+        self.A = (
             M_C * self.C + M_H * self.H + M_N * self.N + M_O * self.O + self.Ext
-        )  # g/mol
-        self.A = A
+        )
+
+        """
+        convert element nbr. (mol/mol) into nbr. mol of element per unit
+         mass (mol/g)
+        """
+        Ci = self.C / self.A
+        Hi = self.H / self.A
+        Ni = self.N / self.A
+        Oi = self.O / self.A
+
+        """
+        Given the molecular formula of a chemical, estimate factors necessary for
+        use in the Hirschfelder-Sherman calculation, and add the newly created
+        ingredient into the class.
+        """
+
+        if not (Hf == Hc):
+            if u == "kJ/mol":
+                if Hc is not None:
+                    Hc /= 4.184  # to kcal/mol
+                    Hc /= self.A  # to kcal/g
+                    Hc *= 1000  # to cal/g
+                if Hf is not None:
+                    Hf /= 4.184
+                    Hf /= self.A
+                    Hf *= 1000
+            elif u == "kJ/kg":
+                if Hc is not None:
+                    Hc /= 4.184  # to kcal/kg
+                if Hf is not None:
+                    Hf /= 4.184
+            elif u == "kcal/mol":
+                if Hc is not None:
+                    Hc /= self.A
+                    Hc *= 1000
+                if Hf is not None:
+                    Hf /= self.A
+                    Hf *= 1000
+
+            elif u == "kcal/kg" or u == "cal/g":
+                pass  # kcal/kg = cal/g
+            else:
+                raise ValueError("Unknown unit ", u)
+
+        elif (
+            Ei is not None
+        ):  # both were not supplied! try to estimate it from E
+            Hc = -Ei - 132771 * Ci - 40026 * Hi - 6724 * Ni + 51819 * Oi
+        else:
+            raise ValueError(
+                "Insufficient information: Heat of Formation/Combustion must"
+                + " either be explicitly supplied or inferred from H-S and"
+                + " elemental composition"
+            )
+        """
+        Formal heat of combustion is calculated by computing the
+        difference in heat of formation as compared to the *most stable
+        product*,
+        i.e. Hydrogen element -> Hydrogen gas, Carbon element -> 
+        Carbon Dioxide, Nitrogen Element -> Nitrogen gas 
+
+        Values adopted here are from Hunt for internal consistency
+        """
+
+        if Hc is None:
+            Hc = Hf_H2O * 0.5 * Hi + Hf_CO2 * Ci - Hf
+
+        if Hf is None:
+            Hf = Hf_H2O * 0.5 * Hi + Hf_CO2 * Ci - Hc
+
+        self.Hf = Hf
+
+        if all((Cvi is not None, Ei is not None, invMi is not None)):
+            self.Cvi = Cvi
+            self.Ei = Ei
+            self.invMi = invMi
+        else:
+            self.invMi = Ci + 0.5 * Hi + 0.5 * Ni
+            self.Cvi = 1.620 * Ci + 3.265 * Hi + 3.384 * Ni + 5.193 * Oi
+            self.Ei = -Hc - 132771 * Ci - 40026 * Hi - 6724 * Ni + 51819 * Oi
 
     @classmethod
     def readFile(cls, fileName):
@@ -109,11 +198,10 @@ class Ingredient:
                     for v in (Hf, Cvi, Ei, invMi, C, H, N, O, Ext)
                 )
 
-                print((Hf, Cvi, Ei, invMi, C, H, N, O, Ext))
-
                 newIngr = cls(
                     name=name,
                     alt=alt,
+                    Hf=Hf,
                     Cvi=Cvi,
                     Ei=Ei,
                     invMi=invMi,
@@ -122,6 +210,7 @@ class Ingredient:
                     N=N,
                     O=O,
                     Ext=Ext,
+                    u="cal/g",
                 )
 
                 ingredients.append(newIngr)
@@ -139,84 +228,13 @@ class Ingredient:
         H=0,
         N=0,
         O=0,
-        HoC=None,
-        HoF=None,
+        Hc=None,
+        Hf=None,
         alt="",
         u="kJ/mol",
         keep=True,
     ):
-        if (HoC is None) == (HoF is None):
-            raise ValueError(
-                "Ambiguious input, exactly one of HoC or HoF must be supplied"
-            )
-
-        """
-        Given the molecular formula of a chemical, estimate factors necessary for
-        use in the Hirschfelder-Sherman calculation, and add the newly created
-        ingredient into the class.
-        """
-        # accurate molecular mass here to account for natural abundance of isotopes
-        A = M_C * C + M_H * H + M_N * N + M_O * O  # g/mol
-
-        """
-        convert element nbr. (mol/mol) into nbr. mol of element per unit mass (mol/g)
-        """
-        Ci = C / A
-        Hi = H / A
-        Ni = N / A
-        Oi = O / A
-
-        # if HoC is not None:
-        if u == "kJ/mol":
-            if HoC is not None:
-                HoC /= 4.184  # to kcal/mol
-                HoC /= A  # to kcal/g
-                HoC *= 1000  # to cal/g
-            if HoF is not None:
-                HoF /= 4.184
-                HoF /= A
-                HoF *= 1000
-        elif u == "kJ/kg":
-            if HoC is not None:
-                HoC /= 4.184  # to kcal/kg
-            if HoF is not None:
-                HoF /= 4.184
-        elif u == "kcal/mol":
-            if HoC is not None:
-                HoC /= A
-                HoC *= 1000
-            if HoF is not None:
-                HoF /= A
-                HoF *= 1000
-        elif u == "kcal/kg" or u == "cal/g":
-            pass  # kcal/kg = cal/g
-        else:
-            raise ValueError("Unknown unit ", u)
-
-        """
-        Formal heat of combustion is calculated by computing the difference in heat of formation
-        as compared to the *most stable product*, i.e. Hydrogen element -> Hydrogen gas, Carbon 
-        element -> Carbon Dioxide, Nitrogen Element -> Nitrogen gas 
-
-        Values adopted here are from Hunt for internal consistency
-        """
-        Hf_H2O = -67400
-        Hf_CO2 = -94020
-
-        if HoC is None:
-            HoC = Hf_H2O * 0.5 * Hi + Hf_CO2 * Ci - HoF
-
-        invM = Ci + 0.5 * Hi + 0.5 * Ni
-        # isochoric heat capacity from 2000-3000K
-        Cv = 1.620 * Ci + 3.265 * Hi + 3.384 * Ni + 5.193 * Oi
-        # HoC: heat of combustion, +: energy is released, -: energy is consumed
-        # this is the opposite of the usual convention of enthalpy of combustion.
-        E = -HoC - 132771 * Ci - 40026 * Hi - 6724 * Ni + 51819 * Oi
-
-        # Q = -HoC - 67421 * (2 * Ci + 0.5 * Hi - Oi)
-        # heat required to bring combustion product to 2500k
-
-        newIngr = cls(name, alt, Cv, E, invM, C, H, N, O, 0)
+        newIngr = cls(name=name, alt=alt, C=C, H=H, N=N, O=O, Hc=Hc, Hf=Hf, u=u)
         if keep:
             cls.allDict.update({newIngr.name: newIngr})
             if newIngr.alt != "":
@@ -310,7 +328,7 @@ class Ingredient:
     @classmethod
     def check(cls):
         print(
-            "{:_^30}|{:_^15}|{:_>5}{:_>5}{:_>5}{:_>5}|{:_>10}{:_>10}{:_>10}|{:_>10}{:_>10}|".format(
+            "{:_^30}|{:_^15}|{:_>5}{:_>5}{:_>5}{:_>5}|{:_>10}{:_>10}{:_>10}|{:_>10}{:_>10}{:_>10}|".format(
                 "Name",
                 "Alt",
                 "C",
@@ -321,6 +339,7 @@ class Ingredient:
                 "Ei",
                 "ni",
                 "%Cvi",
+                "%Ei",
                 "%ni",
             )
         )
@@ -331,15 +350,18 @@ class Ingredient:
             Hi = ingr.H / A
             Ni = ingr.N / A
             Oi = ingr.O / A
+            Hf = ingr.Hf
 
             invM = Ci + 0.5 * Hi + 0.5 * Ni
             # isochoric heat capacity from 2000-3000K
             Cv = 1.620 * Ci + 3.265 * Hi + 3.384 * Ni + 5.193 * Oi
             # HoC: heat of combustion, +: energy is released, -: energy is consumed
             # this is the opposite of the usual convention of enthalpy of combustion.
+            Hc = Hf_H2O * 0.5 * Hi + Hf_CO2 * Ci - Hf
+            E = -Hc - 132771 * Ci - 40026 * Hi - 6724 * Ni + 51819 * Oi
 
             print(
-                "{:^30}|{:^15}|{:5.3g}{:5.3g}{:5.3g}{:5.3g}|{:10.4g}{:10.4g}{:10.4g}|{:10.1%}{:10.1%}|".format(
+                "{:^30}|{:^15}|{:5.3g}{:5.3g}{:5.3g}{:5.3g}|{:10.4g}{:10.4g}{:10.4g}|{:10.1%}{:10.1%}{:10.1%}|{:}".format(
                     ingr.name,
                     ingr.alt,
                     ingr.C,
@@ -350,9 +372,16 @@ class Ingredient:
                     ingr.Ei,
                     ingr.invMi,
                     abs(ingr.Cvi - Cv) / ingr.Cvi,
+                    abs(ingr.Ei - E) / ingr.Ei,
                     abs(ingr.invMi - invM) / ingr.invMi,
+                    Hf,
                 )
             )
+            """
+            Hc = -ingr.Ei - 132771 * Ci - 40026 * Hi - 6724 * Ni + 51819 * Oi
+            Hf = Hf_H2O * 0.5 * Hi + Hf_CO2 * Ci - Hc
+            print(Hf)
+            """
 
     def prettyPrint(self):
         print(str(self))
@@ -401,6 +430,7 @@ class Mixture:
         Cv = 0  # heat capacity at constant volume, presumably in cal/g K
         E = 0  # heat of formation, also presumably in cal/g
         invM = 0  # specific gas volume, mol/g
+        Hf = 0
 
         Ci, Hi, Ni, Oi = 0, 0, 0, 0
 
@@ -408,6 +438,7 @@ class Mixture:
             Cv += fraction * ingr.Cvi
             E += fraction * ingr.Ei
             invM += fraction * ingr.invMi
+            Hf += fraction * ingr.Hf
 
             Ci += fraction * ingr.C / ingr.A
             Hi += fraction * ingr.H / ingr.A
@@ -441,10 +472,10 @@ class Mixture:
         self.gamma = gamma
         self.f = f
 
-        self.speciesList, self.b, self.p = balance(
+        print(Hf)
+        DeltaE, self.speciesList, self.b, self.p = balance(
             Tv, Ci, Hi, Oi, Ni, V=1 / Delta, tol=tol
         )
-        print(E)
         """
         covolume estimate suggested by Cook:
         self.b = 1e-3 * (1.18 + 6.9 * Ci - 11.5 * Oi)
@@ -897,7 +928,7 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     HH2O += E1H2O * (n / V) + 35e4 * (n / V) ** 2
     HCO += E1CO * (n / V) + 34e4 * (n / V) ** 2
 
-    E = -1 * (  # the convention in propellant work is kinda weird
+    E = (  # the convention in propellant work is kinda weird
         HCO2 * CO2j
         + HH2O * H2Oj
         + HCO * COj
@@ -913,16 +944,16 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
 
     """add the heat of formation of the products
     according to their proportions, Hunt table 2.02, constant volume"""
-    E += COj * 26.70e3
-    E += CO2j * 94.02e3
-    E += H2Oj * 57.51e3  # this is in the gaseous form!
-    E += NOj * -21.50e3
-    E += OHj * -5.95e3
-    E += Nj * -84.15e3
-    E += Oj * -58.85e3
-    E += Hj * -51.53e3
-    print(E)
-    return speciesList, b, p
+    E -= COj * 26.70e3
+    E -= CO2j * 94.02e3
+    E -= H2Oj * 57.51e3  # this is in the gaseous form!
+    E -= NOj * -21.50e3
+    E -= OHj * -5.95e3
+    E -= Nj * -84.15e3
+    E -= Oj * -58.85e3
+    E -= Hj * -51.53e3
+
+    return E, speciesList, b, p
 
 
 if __name__ == "__main__":
@@ -1060,7 +1091,7 @@ if __name__ == "__main__":
         C=15,
         H=22,
         O=8,
-        HoF=-4933.76,
+        Hf=-4933.76,
         u="kJ/kg",
     )
     NC1260 = Ingredient.nitrocellulose(0.126)
@@ -1071,7 +1102,7 @@ if __name__ == "__main__":
         C=14,
         H=22,
         O=8,
-        HoF=-1257,
+        Hf=-1257,
         u="cal/g",
     )
     EC = Ingredient.find("Ethyl Centralite")
@@ -1083,7 +1114,7 @@ if __name__ == "__main__":
         H=14,
         N=4,
         O=10,
-        HoF=-485,
+        Hf=-485,
         u="cal/g",
     )
 

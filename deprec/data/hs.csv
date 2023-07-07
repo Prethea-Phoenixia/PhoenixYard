@@ -1,4 +1,4 @@
-name,alt,Hf,Cvi,Ei,(1/M)i,C,H,N,O,Ext
+name,alt,Hf cal/g,Cvi,Ei,(1/M)i,C,H,N,O,Ext
 Acetone,,,0.5104,-2842.5,0.10331,3,6,,1,
 Ammonium dichromate,,-1688,0.2700,610,0.0200,,8,2,7,103.9922
 Ammonium nitrate,AN,-1090,0.4424,405.1,0.03748,,4,2,3,
@@ -28,7 +28,7 @@ Ethyl centralite,Centralite,-127,0.3905,-2766,0.10434,17,20,2,1,
 Graphite,,0,0.1349,-3234,0.08326,1,,,,
 GR-I rubber,Butyl Rubber,-376,0.5779,-4006,0.14235,4,8,,,
 Lead stearate,M&V,,0.3976,-2440,0.09180,36,70,,4,207.2
-Trimethylolethane (Metriol) trinitrate,TMETN (MTN),-415,0.3052,377,0.04313,5,9,3,9,
+Trimethylolethane (Metriol) trinitrate,TMETN (MTN),-415,,,,5,9,3,9,
 N-Methyl-p-nitroaniline,,,0.35808,-1625,0.07887,7,8,2,2,
 Mineral jelly,,,0.5811,-4175.1,0.1426,20,42,,,
 2-Nitrodiphenylamine,NDPA,,0.3226,-2201,0.08411,12,10,2,2,
