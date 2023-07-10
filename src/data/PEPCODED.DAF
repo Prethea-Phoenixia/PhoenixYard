@@ -1147,7 +1147,7 @@ C   1098 HYDROGEN PEROXIDE (35 PC)     234H 143O   0    0    0    0  -2926 .0400
     1145 R45HT                         667C 999H   5O   0    0    0      0 .0329]
     1146 Facile-I Plasticizer          125C 228H  14O   0    0    0     26 .0276]
     1147 Chromium monoxide (CrO)         1CR  1O   0    0    0    0    457 .2431]
-    1148 DOA                             22C  42H  4O   0    0    0  -1069 .0334]
+    1148 DOA                            22C  42H   4O   0    0    0  -1069 .0334]
     1149 Chromium trioxide (CrO3)        1CR  3O   0    0    0    0   -904 .0973]
     1150 Chromium dioxide (CrO2)         1CR  2O   0    0    0    0   -418 .1770]
     1152 CRYOGENIC HELIUM 2              1U1  0    0    0    0    0      0 .0089]

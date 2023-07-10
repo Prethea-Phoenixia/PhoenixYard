@@ -30,6 +30,8 @@ molarMasses = {
     "AT": 210.0, "RN": 222.0, "FR": 223.0, "RA": 226.0254,
     "AC": 227.0, "TH": 232.0381, "PA": 231.0359, "U": 238.029,
     "NP": 237.0482, "PU": 244.0, "FM": 257.0, "E": 0, "D": 2,
+    "U1":4.002602, "U2": 9.012182, "U3":24.305, "U4":26.981538,
+    "U5": 12.0107
 }
 # fmt: on
 class Ingredient:
@@ -43,6 +45,7 @@ class Ingredient:
         self.rho = rho
         A = 0
         for element, num in self.elements.items():
+            print(name)
             print(element, num)
 
             A += molarMasses[element] * num
