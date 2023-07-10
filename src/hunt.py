@@ -1,36 +1,6 @@
 from math import log10, exp
 from num import quadratic
 
-# the E stand for electron and D for deuterium
-# fmt: off
-molarMasses = {
-    "H": 1.00794, "HE": 4.002602, "LI": 6.941, "BE": 9.012182,
-    "B": 10.811, "C": 12.0107, "N": 14.00674, "O": 15.9994,
-    "F": 18.9984032, "NE": 20.11797, "NA": 22.989770, "MG": 24.305,
-    "AL": 26.981538, "SI": 28.0855, "P": 30.973761, "S": 32.066,
-    "CL": 35.4527, "AR": 39.948, "K": 39.0983, "CA": 40.078,
-    "SC": 44.95591, "TI": 47.88, "V": 50.9415, "CR": 51.996,
-    "MN": 54.938, "FE": 55.847, "CO": 58.9332, "NI": 58.6934,
-    "CU": 63.546, "ZN": 65.39, "GA": 69.723, "GE": 72.61,
-    "AS": 74.9216, "SE": 78.96, "BR": 79.904, "KR": 83.80,
-    "RB": 85.4678, "SR": 87.62, "Y": 88.9059, "ZR": 91.224,
-    "NB": 92.9064, "MO": 95.94, "TC": 98.0, "RU": 101.07,
-    "RH": 102.9055, "PD": 106.42, "AG": 107.868, "CD": 112.41,
-    "IN": 114.82, "SN": 118.71, "SB": 121.757, "TE": 127.60,
-    "I": 126.9045, "XE": 131.29, "CS": 132.9054, "BA": 137.33,
-    "LA": 138.9055, "CE": 140.12, "PR": 140.9077, "ND": 144.24,
-    "PM": 145.0, "SM": 150.36, "EU": 151.965, "GD": 157.25,
-    "TB": 158.9253, "DY": 162.50, "HO": 164.9303, "ER": 167.26,
-    "TM": 168.9342, "YB": 173.04, "LU": 174.967, "HF": 178.49,
-    "TA": 180.9479, "W": 183.85, "RE": 186.207, "OS": 190.2,
-    "IR": 192.22, "PT": 195.08, "AU": 196.9665, "HG": 200.59,
-    "TL": 204.383, "PB": 207.2, "BI": 208.9804, "PO": 209.0,
-    "AT": 210.0, "RN": 222.0, "FR": 223.0, "RA": 226.0254,
-    "AC": 227.0, "TH": 232.0381, "PA": 231.0359, "U": 238.029,
-    "NP": 237.0482, "PU": 244.0, "FM": 257.0, "E": 0, "D": 2,
-}
-# fmt: on
-
 """
 TABLE 2.07 from Hunt
 T in Kelvin, -DeltaB in cc/(gm.mol), -DeltaC/2 in (cc/(gm.mol))^2
@@ -137,6 +107,7 @@ T (K), CO2, H2O, CO, H2, N2, OH, NO, O2
 for monoatomic gas, take 2.980
 """
 MMHTable = [
+    [800, 8.896, 6.599, 5.244, 5.019, 5.179, 5.092, 5.432, 5.570],
     [1000, 9.409, 6.823, 5.403, 5.055, 5.326, 5.136, 5.592, 5.751],
     [1200, 9.824, 7.107, 5.553, 5.115, 5.468, 5.212, 5.744, 5.907],
     [1400, 10.165, 7.388, 5.684, 5.189, 5.597, 5.298, 5.869, 6.037],
@@ -225,14 +196,13 @@ Eq. 2.06
 (CO) + 2(CO2) + (H2O)   = {O}
 
 From Eq.2.06 and Eq.2.04
-Major                                   Minor
-(N2)    = 0.5  {N}                      | - 0.5 (N) - 0.5 (NO)
-(CO)    = {C} - (CO2)                   |
-(H2O)   = {O} - {C} - (CO2)             | - (OH) - (NO) - 2 [ (O2) + .5 (O) ]
-(H2)    = 0.5  {H} + {C} - {O} + (CO2)  | - 0.5 (H) + 2 (O2) + (o) + (NO) + 0.5 (OH)
+Major                              Minor
+(N2)  = 0.5  {N}                   | - 0.5 (N) - 0.5 (NO)
+(CO)  = {C} - (CO2)                |
+(H2O) = {O} - {C} - (CO2)          | - (OH) - (NO) - 2 [ (O2) + .5 (O) ]
+(H2)  = 0.5 {H} + {C} - {O} + (CO2)| - 0.5 (H) + 2 (O2) + (o) + (NO) + 0.5 (OH)
 
-
-n = {C} + 0.5 * {H} + 0.5 * {N}         | + (OH) + (H) + (NO) + (O2) + (O) + (N)
+n = {C} + 0.5 * {H} + 0.5 * {N}    | + (OH) + (H) + (NO) + (O2) + (O) + (N)
    CO/CO2     H2O/H2        N2
 
 dissociaiton considered ,in descending order of significance:
@@ -353,17 +323,17 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     n = N2j + COj + CO2j + H2j + H2Oj + OHj + Hj + NOj + O2j + Oj + Nj
 
     speciesList = [
-        ("N2", N2j * molarMasses["N"] * 2, N2j),
-        ("CO", COj * (molarMasses["C"] + molarMasses["O"]), COj),
-        ("CO2", CO2j * (molarMasses["C"] + molarMasses["O"] * 2), CO2j),
-        ("H2", H2j * molarMasses["H"] * 2, H2j),
-        ("H2O", H2Oj * (molarMasses["H"] * 2 + molarMasses["O"]), H2Oj),
-        ("OH", OHj * (molarMasses["H"] + molarMasses["O"]), OHj),
-        ("H", Hj * molarMasses["H"], Hj),
-        ("NO", NOj * (molarMasses["N"] + molarMasses["O"]), NOj),
-        ("O2", O2j * (molarMasses["O"] * 2), O2j),
-        ("O", Oj * molarMasses["O"], Oj),
-        ("N", Nj * (molarMasses["N"] * 2), Nj),
+        ("N2", N2j * (14.01 * 2), N2j),
+        ("N", Nj * 14.01, Nj),
+        ("O2", O2j * (16.0 * 2), O2j),
+        ("O", Oj * 16.0, Oj),
+        ("CO2", CO2j * 44.01, CO2j),
+        ("CO", COj * 28.01, COj),
+        ("H2", H2j * 1.008 * 2, H2j),
+        ("H", Hj * 1.008, Hj),
+        ("NO", NOj * 30.01, NOj),
+        ("H2O", H2Oj * 18.02, H2Oj),
+        ("OH", OHj * 17.01, OHj),
     ]
 
     speciesList.sort(key=lambda x: x[1], reverse=True)
@@ -454,4 +424,6 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
 
 
 if __name__ == "__main__":
-    balance(3100, Ci=0.02232, Hi=0.03010, Ni=0.01046, Oi=0.03469, V=1 / 0.2)
+    print(
+        balance(3100, Ci=0.02232, Hi=0.03010, Ni=0.01046, Oi=0.03469, V=1 / 0.2)
+    )
