@@ -2,6 +2,8 @@ import difflib
 
 from hunt import balance
 
+from num import secant
+
 
 # the E stand for electron and D for deuterium
 # fmt: off
@@ -30,26 +32,83 @@ molarMasses = {
     "AT": 210.0, "RN": 222.0, "FR": 223.0, "RA": 226.0254,
     "AC": 227.0, "TH": 232.0381, "PA": 231.0359, "U": 238.029,
     "NP": 237.0482, "PU": 244.0, "FM": 257.0, "E": 0, "D": 2,
-    "U1":4.002602, "U2": 9.012182, "U3":24.305, "U4":26.981538,
+    "U1": 4.002602, "U2": 9.012182, "U3": 24.305, "U4": 26.981538,
     "U5": 12.0107
 }
 # fmt: on
 class Ingredient:
     allIngr = {}
+    lastLine = 0
+    lineIngr = {}
 
-    def __init__(self, name, elements, Hf, rho, flag=""):
+    def __init__(
+        self,
+        name,
+        elements,
+        Hf,
+        rho,
+        rho_u="lb/cu.in",
+        Hf_u="cal/g",
+        flag="",
+        lineNo=None,
+    ):
+        if lineNo is not None:
+            if lineNo > Ingredient.lastLine:
+                Ingredient.lastLine = lineNo
+            else:
+                if lineNo not in Ingredient.lineIngr:
+                    pass
+                else:
+                    raise ValueError("Line Number Collision")
+        else:
+            lineNo = Ingredient.lastLine + 1
+            Ingredient.lastLine += 1
+
+        self.lineNo = lineNo
         self.name = name
         self.flag = flag
         self.elements = elements
-        self.Hf = Hf
-        self.rho = rho
+
+        if rho_u == "lb/cu.in":
+            self.rho = rho * 27.680  # to g/cc
+        elif rho_u == "g/cc":
+            self.rho = rho
+        else:
+            raise ValueError("Unknown Unit For Density")
+
         A = 0
         for element, num in self.elements.items():
-            print(name)
-            print(element, num)
-
             A += molarMasses[element] * num
-        self.A = A
+
+        if "C" in self.elements:
+            self.Ci = self.elements["C"] / A
+        else:
+            self.Ci = 0
+        if "H" in self.elements:
+            self.Hi = self.elements["H"] / A
+        else:
+            self.Hi = 0
+        if "O" in self.elements:
+            self.Oi = self.elements["O"] / A
+        else:
+            self.Oi = 0
+        if "N" in self.elements:
+            self.Ni = self.elements["N"] / A
+        else:
+            self.Ni = 0
+
+        self.A = A  # g/mol
+
+        if Hf_u == "cal/g":
+            self.Hf = Hf
+        elif Hf_u == "cal/mol":
+            self.Hf = Hf / A
+        elif Hf_u == "J/g":
+            self.Hf = Hf / 4.184
+        elif Hf_u == "J/mol":
+            self.Hf = Hf / (4.184 * A)
+        else:
+            raise ValueError("Unknown Enthalpy Unit")
 
     @classmethod
     def readFile(cls, fileName):
@@ -84,13 +143,19 @@ class Ingredient:
                     rho = float(line[74:80])
 
                     newIngr = Ingredient(
-                        name=name, elements=elements, Hf=Hf, rho=rho, flag=flag
+                        name=name,
+                        elements=elements,
+                        Hf=Hf,
+                        rho=rho,
+                        flag=flag,
+                        lineNo=lineNo,
                     )
 
                     fileIngr.append(newIngr)
 
         for ingr in fileIngr:
             cls.allIngr.update({ingr.name: ingr})
+            cls.lineIngr.update({ingr.lineNo: ingr})
 
     @classmethod
     def find(cls, name):
@@ -124,9 +189,22 @@ class Ingredient:
             print('Unknown ingredient description "{:}"'.format(name) + "\n")
             return None
 
+    @classmethod
+    def getLine(cls, lineNo):
+        if lineNo in cls.lineIngr:
+            print(
+                "Returning line {:} : {:}".format(
+                    lineNo, cls.lineIngr[lineNo].name
+                )
+            )
+            return cls.lineIngr[lineNo]
+        else:
+            print("No such line as {:}\n".format(lineNo))
+            return None
+
 
 class Mixture:
-    def __init__(self, name, compoDict, Delta=0.2, tol=1e05):
+    def __init__(self, name, compoDict, Delta=0.2, tol=1e-5):
         self.name = name
         self.Delta = Delta  # load density in g/cc
 
@@ -140,35 +218,42 @@ class Mixture:
             ingr: fraction / total for ingr, fraction in compoDict.items()
         }
 
-        """
-        tally the releavnt factors according to their mass fraction
-        """
+        # tally the releavnt factors according to their mass fraction
+
         invRho = 0
         Ci, Hi, Ni, Oi = 0, 0, 0, 0
+        Hf = 0
 
         for ingr, fraction in self.compoDict.items():
             invRho += fraction / ingr.rho
+            Ci += fraction * ingr.Ci  # mol/g
+            Hi += fraction * ingr.Hi
+            Oi += fraction * ingr.Oi
+            Ni += fraction * ingr.Ni
+            Hf += fraction * ingr.Hf
 
-            if "C" in ingr.elements:
-                Ci += fraction * ingr.elements["C"]
-            if "H" in ingr.elements:
-                Hi += fraction * ingr.elements["H"]
-            if "O" in ingr.elements:
-                Oi += fraction * ingr.elements["O"]
-            if "N" in ingr.elements:
-                Ni += fraction * ingr.elements["N"]
-
-        self.rho = 1 / invRho * 27680  # convert to kg/m^3
+        self.rho = 1 / invRho
 
         def f(T):
-            DeltaE, self.speciesList, self.b, self.p = balance(
+            DeltaE, _, _, _, _ = balance(
                 T, Ci, Hi, Oi, Ni, V=1 / Delta, tol=tol
             )
 
-        self.C = Ci * 12.01
-        self.H = Hi * 1.008
-        self.O = Oi * 16.0
-        self.N = Ni * 14.01
+            return DeltaE - Hf
+
+        Tv, _ = secant(f, 2500, 3500, x_min=1600, x_max=4000, tol=tol)
+
+        _, self.speciesList, self.b, self.p, self.f = balance(
+            Tv, Ci, Hi, Oi, Ni, V=1 / Delta, tol=tol
+        )
+
+        self.C = Ci * molarMasses["C"]  # weight fraction
+        self.H = Hi * molarMasses["H"]
+        self.O = Oi * molarMasses["O"]
+        self.N = Ni * molarMasses["N"]
+
+        self.Tv = Tv
+        self.Hf = Hf
 
     def prettyPrint(self):
         print("Mixture: {:}".format(self.name))
@@ -183,30 +268,77 @@ class Mixture:
                 self.C, self.H, self.N, self.O
             )
         )
-
         print("")
-        print("Hirschfelder-Sherman Estimations:----------------")
-        print("Isochoric Adb. Temp: {:>6.1f}K".format(self.Tv))
-        print("Adiabatic Index    : {:>6.3f}".format(self.gamma))
-        print("Specific Force     : {:>6.4f} MJ/kg".format(self.f / 1e6))
-        print("Heat of Explosion  : {:>6.1f} cal/g".format(self.Q))
-        print("")
-
-        print("Species--%wt.-----mol/g-----------------------------")
+        print("Calculated Properties:---------------------------")
+        print("Density            : {:>6.4g} g/cc".format(self.rho))
+        print("Heat of Formation  : {:>6.3g} cal/g".format(self.Hf))
         print(
-            *("{:^5}  {:>6.2%}  {:>8.6f}".format(*v) for v in self.speciesList),
+            "Isochoric Adiabatic Flame Temperature\n"
+            + "                   : {:>6.4g} K".format(self.Tv)
+        )
+        print(" @ Product  %mass  mol/g")
+        print(
+            *[
+                "{:>2} : {:^6} {:<6.1%} {:<6.4f}".format(i, name, mass, num)
+                for i, (name, mass, num) in enumerate(self.speciesList)
+            ],
             sep="\n"
         )
-        print("")
-        print("Further thermalchemical Calculations:------------")
-
+        print("Impetus / Force    : {:>6.4g} J/g".format(self.f))
         print("Covolume           : {:>6.4g} cc/g".format(self.b))
-        print(" @Temperature      : {:>6.1f} K".format(self.Tv))
-        print(" @Load Density     : {:>6.3g} g/cc".format(self.Delta))
-        print(" @Pressure         : {:>6.4g} MPa".format(self.p))
+        # print(" @Temperature      : {:>6.0f} K".format(self.Tv))
+        print(" @ Load Density    : {:>6.3g} g/cc".format(self.Delta))
+        print(" @ Pressure        : {:>6.4g} MPa".format(self.p))
         print("")
 
 
 if __name__ == "__main__":
     Ingredient.readFile("data/PEPCODED.DAF")
-    # print(*Ingredient.allIngr.keys(), sep="\n")
+    NC1260 = Ingredient.getLine(683)
+    RDX = Ingredient.getLine(847)
+    # EC = Ingredient.getLine(397)
+
+    EC = Ingredient(
+        name="Ethyl Centralite",
+        elements={"C": 17, "H": 20, "O": 1, "N": 2},
+        rho=1.140,
+        rho_u="g/cc",
+        Hf=-391.5,
+        Hf_u="J/g",
+    )
+
+    ATEC = Ingredient(
+        name="Acetyl triethyl citrate",
+        elements={"C": 14, "H": 22, "O": 8},
+        rho=1.136,
+        rho_u="g/cc",
+        # Hf=-1257,
+        Hf=-5459.6,
+        Hf_u="J/g",
+    )
+
+    CAB = Ingredient(
+        "Cellulose Acetate Butyrate",
+        elements={"C": 15, "H": 22, "O": 8},
+        Hf=-4933.76,
+        Hf_u="J/g",
+        rho=1.220,
+        rho_u="g/cc",
+    )
+
+    BDNPA = Ingredient.getLine(189)
+
+    XM39 = Mixture(
+        "XM39",
+        compoDict={RDX: 76, CAB: 12, NC1260: 4, ATEC: 7.6, EC: 0.4},
+    )
+
+    XM39.prettyPrint()
+
+    M43 = Mixture(
+        name="M43",
+        compoDict={RDX: 76, CAB: 12, NC1260: 4, BDNPA: 7.6, EC: 0.4},
+        Delta=0.2,
+    )
+
+    M43.prettyPrint()

@@ -295,7 +295,7 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     )  # initiate with a value that would not result in a negative fraction
 
     while True:
-        n = Ci + 0.5 * Hi + 0.5 * Ni + OHj + Hj + NOj + O2j + Oj + Nj
+        n = Ci + 0.5 * Hi + 0.5 * Ni + OHj + Hj + NOj + O2j + Oj + Nj  # mol/g
 
         N2j = 0.5 * Ni - 0.5 * Nj - 0.5 * NOj
         G = Ci
@@ -304,7 +304,6 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         H2Oj = H - CO2j
         I = 0.5 * Hi + Ci - Oi - 0.5 * Hj + 2 * O2j + Oj + NOj + 0.5 * OHj
         H2j = I + CO2j
-
         K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
         oldCO2j = CO2j
         CO2j = quadratic((1 - K0), -(G + H + K0 * I), G * H)[1]
@@ -344,14 +343,6 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     b = (B * V**2 + n * C * V) / (V**2 + B * V + n * C)
     p = n * R * T / (V - b) / 9.869
 
-    print("n  : specie %mass  mol/g")
-    print(
-        *[
-            "{:<2} : {:<6} {:<6.1%} {:<6.4f}".format(i, name, mass, num)
-            for i, (name, mass, num) in enumerate(speciesList)
-        ],
-        sep="\n"
-    )
     """
     Find the internal energy of the gaseous products.
     E = MMH * (T-300K) + E1 * n/V + E2 * (n/V)**2
@@ -420,7 +411,9 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     E -= Oj * -58.85e3
     E -= Hj * -51.53e3
 
-    return E, speciesList, b, p
+    f = n * T * 8.314  # 8.314 j/ mol K force constant is calculated
+
+    return E, speciesList, b, p, f
 
 
 if __name__ == "__main__":
