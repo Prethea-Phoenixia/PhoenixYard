@@ -101,7 +101,10 @@ BCTable = [
 
 """
 Table 2.05 from Hunt
+first line is found in Table 3.2 from Corner.
+Add 1.987 for constant pressure values.
 "Mean molecular heats over the temperature range of 300 deg K to T deg K"
+"at zero desnity" (from Corner)
 in calories per gram-mole per degree at constant volume
 T (K), CO2, H2O, CO, H2, N2, OH, NO, O2
 for monoatomic gas, take 2.980
@@ -207,13 +210,12 @@ n = {C} + 0.5 * {H} + 0.5 * {N}    | + (OH) + (H) + (NO) + (O2) + (O) + (N)
 
 dissociaiton considered ,in descending order of significance:
 
-2 H2O <-> 2 OH + H2             (OH)
-H2 <-> 2 H                      (H)
-2 H2O + N2 <-> 2 H2 + 2 NO      (NO)
-2 H2O <-> 2 H2 + O2             (O2)
-O2 <-> 2 O                      (O)
-N2 <-> 2 N                      (N)
-
+2 H2O <-> 2 OH + H2             (OH)  K1 (H)
+H2 <-> 2 H                      (H)   K5 (H)
+2 H2O + N2 <-> 2 H2 + 2 NO      (NO)  K2 (H)
+2 H2O <-> 2 H2 + O2             (O2)  K3 (H)
+O2 <-> 2 O                      (O)   K4 (H)
+N2 <-> 2 N                      (N)   K6 (H)
 """
 
 
@@ -319,7 +321,7 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         Oj = O2j**0.5 * sqrtVdivRT * K[4]
         Nj = N2j**0.5 * sqrtVdivRT * K[6]
 
-    n = N2j + COj + CO2j + H2j + H2Oj + OHj + Hj + NOj + O2j + Oj + Nj
+    n = N2j + COj + CO2j + H2j + H2Oj + OHj + Hj + NOj + O2j + Oj + Nj  # mol/g
 
     speciesList = [
         ("N2", N2j * (14.01 * 2), N2j),
@@ -399,21 +401,26 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         + HO * Oj
         + HN * Nj
     )
-
     """add the heat of formation of the products
     according to their proportions, Hunt table 2.02, constant volume"""
-    E -= COj * 26.70e3
-    E -= CO2j * 94.02e3
-    E -= H2Oj * 57.51e3  # this is in the gaseous form!
-    E -= NOj * -21.50e3
-    E -= OHj * -5.95e3
-    E -= Nj * -84.15e3
-    E -= Oj * -58.85e3
-    E -= Hj * -51.53e3
-
+    Hf = (
+        COj * 26.70e3
+        + CO2j * 94.02e3
+        + H2Oj * 57.51e3  # this is in the gaseous form!
+        + NOj * -21.50e3
+        + OHj * -5.95e3
+        + Nj * -84.15e3
+        + Oj * -58.85e3
+        + Hj * -51.53e3
+    )
     f = n * T * 8.314  # 8.314 j/ mol K force constant is calculated
 
-    return E, speciesList, b, p, f
+    """ b: covolume
+        p: pressure implied by load density
+        f: propellant force
+        E: internal energy of products.
+    """
+    return E - Hf, E, n, speciesList, b, p, f
 
 
 if __name__ == "__main__":

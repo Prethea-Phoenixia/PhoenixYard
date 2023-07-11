@@ -225,6 +225,10 @@ class Mixture:
         Hf = 0
 
         for ingr, fraction in self.compoDict.items():
+            if ingr.rho == 0:
+                raise ValueError(
+                    "{:} is not provided with density data".format(ingr.name)
+                )
             invRho += fraction / ingr.rho
             Ci += fraction * ingr.Ci  # mol/g
             Hi += fraction * ingr.Hi
@@ -235,7 +239,7 @@ class Mixture:
         self.rho = 1 / invRho
 
         def f(T):
-            DeltaE, _, _, _, _ = balance(
+            DeltaE, _, _, _, _, _, _ = balance(
                 T, Ci, Hi, Oi, Ni, V=1 / Delta, tol=tol
             )
 
@@ -243,10 +247,16 @@ class Mixture:
 
         Tv, _ = secant(f, 2500, 3500, x_min=1600, x_max=4000, tol=tol)
 
-        _, self.speciesList, self.b, self.p, self.f = balance(
+        _, _, n, self.speciesList, self.b, self.p, self.f = balance(
             Tv, Ci, Hi, Oi, Ni, V=1 / Delta, tol=tol
         )
-
+        # see Hunt ss 2.13
+        _, E1, _, _, _, _, _ = balance(Tv, Ci, Hi, Oi, Ni, V=1 / 0.2, tol=tol)
+        _, E2, _, _, _, _, _ = balance(
+            0.6 * Tv, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=tol
+        )
+        sigma_v = (E1 - E2) / (0.4 * Tv)
+        self.gamma = (n * 1.987 / sigma_v) + 1
         self.C = Ci * molarMasses["C"]  # weight fraction
         self.H = Hi * molarMasses["H"]
         self.O = Oi * molarMasses["O"]
@@ -289,6 +299,7 @@ class Mixture:
         # print(" @Temperature      : {:>6.0f} K".format(self.Tv))
         print(" @ Load Density    : {:>6.3g} g/cc".format(self.Delta))
         print(" @ Pressure        : {:>6.4g} MPa".format(self.p))
+        print("avg Adb. index     : {:>6.4g}".format(self.gamma))
         print("")
 
 
@@ -296,7 +307,7 @@ if __name__ == "__main__":
     Ingredient.readFile("data/PEPCODED.DAF")
     NC1260 = Ingredient.getLine(683)
     RDX = Ingredient.getLine(847)
-    # EC = Ingredient.getLine(397)
+    EC = Ingredient.getLine(397)
 
     EC = Ingredient(
         name="Ethyl Centralite",
@@ -327,17 +338,25 @@ if __name__ == "__main__":
     )
 
     BDNPA = Ingredient.getLine(189)
-
+    BDNPF = Ingredient.getLine(190)
+    """
     XM39 = Mixture(
         "XM39",
         compoDict={RDX: 76, CAB: 12, NC1260: 4, ATEC: 7.6, EC: 0.4},
     )
 
     XM39.prettyPrint()
-
+    """
     M43 = Mixture(
         name="M43",
-        compoDict={RDX: 76, CAB: 12, NC1260: 4, BDNPA: 7.6, EC: 0.4},
+        compoDict={
+            RDX: 76,
+            CAB: 12,
+            NC1260: 4,
+            BDNPA: 7.6,
+            # BDNPF: 7.6,
+            EC: 0.4,
+        },
         Delta=0.2,
     )
 
