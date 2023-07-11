@@ -283,8 +283,9 @@ class Mixture:
         print("Density            : {:>6.4g} g/cc".format(self.rho))
         print("Heat of Formation  : {:>6.3g} cal/g".format(self.Hf))
         print(
-            "Isochoric Adiabatic Flame Temperature\n"
-            + "                   : {:>6.4g} K".format(self.Tv)
+            "Flame Temperature  : {:>6.4g} K (Isochoric Adiabatic)".format(
+                self.Tv
+            )
         )
         print(" @ Product  %mass  mol/g")
         print(
