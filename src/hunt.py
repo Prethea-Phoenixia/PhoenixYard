@@ -219,6 +219,65 @@ N2 <-> 2 N                      (N)   K6 (H)
 """
 
 
+def readHuntTable(T):
+    for i in range(len(negDeltaTable) - 1):
+        Tlow, negDeltaBlow, neghalfDeltaClow = negDeltaTable[i]
+        Thigh, negDeltaBhigh, neghalfDeltaChigh = negDeltaTable[i + 1]
+        if Tlow <= T <= Thigh:
+            k = (T - Tlow) / (Thigh - Tlow)
+            negDeltaB = negDeltaBlow * (1 - k) + negDeltaBhigh * k
+            neghalfDeltaC = neghalfDeltaClow * (1 - k) + neghalfDeltaChigh * k
+            break
+
+    for i in range(len(equilibriumKT) - 1):
+        Tlow, *Klow = equilibriumKT[i]
+        Thigh, *Khigh = equilibriumKT[i + 1]
+        if Tlow <= T <= Thigh:
+            k = (1 / T - 1 / Tlow) / (1 / Thigh - 1 / Tlow)
+            K = [
+                10 ** (log10(Ki) * (1 - k) + log10(Kj) * k)
+                for Ki, Kj in zip(Klow, Khigh)
+            ]
+            break
+
+    for i in range(len(BCTable) - 1):
+        Tlow, *BClow = BCTable[i]
+        Thigh, *BChigh = BCTable[i + 1]
+        if Tlow <= T <= Thigh:
+            k = (T - Tlow) / (Thigh - Tlow)
+            BC = [vi * (1 - k) + vj * k for vi, vj in zip(BClow, BChigh)]
+            break
+
+    """
+    Find the internal energy of the gaseous products.
+    E = MMH * (T-300K) + E1 * n/V + E2 * (n/V)**2
+
+    the E1 and E2 corrections are only done for major products.
+    """
+    for i in range(len(MMHTable) - 1):
+        Tlow, *MMHlow = MMHTable[i]
+        Thigh, *MMHhigh = MMHTable[i + 1]
+        if Tlow <= T <= Thigh:
+            if Tlow >= 2000:
+                k = (1 / T - 1 / Tlow) / (1 / Thigh - 1 / Tlow)
+            else:
+                k = (T - Tlow) / (Thigh - Tlow)
+            MMH = [vi * (1 - k) + vj * k for vi, vj in zip(MMHlow, MMHhigh)]
+            break
+
+    for i in range(len(E1Table) - 1):
+        Tlow, *E1low = E1Table[i]
+        Thigh, *E1high = E1Table[i + 1]
+        if Tlow <= T <= Thigh:
+            k = (T - Tlow) / (Thigh - Tlow)
+            E1 = [
+                (vi * (1 - k) + vj * k) * 1e2 for vi, vj in zip(E1low, E1high)
+            ]
+            break
+
+    return negDeltaB, neghalfDeltaC, K, BC, MMH, E1
+
+
 def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     """
     Ci, Hi, Oi, Ni are in mol/g.
@@ -252,33 +311,8 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     """
     if T > 4000 or T < 1000:
         raise ValueError("T Not supported")
-    for i in range(len(negDeltaTable) - 1):
-        Tlow, negDeltaBlow, neghalfDeltaClow = negDeltaTable[i]
-        Thigh, negDeltaBhigh, neghalfDeltaChigh = negDeltaTable[i + 1]
-        if Tlow <= T <= Thigh:
-            k = (T - Tlow) / (Thigh - Tlow)
-            negDeltaB = negDeltaBlow * (1 - k) + negDeltaBhigh * k
-            neghalfDeltaC = neghalfDeltaClow * (1 - k) + neghalfDeltaChigh * k
-            break
 
-    for i in range(len(equilibriumKT) - 1):
-        Tlow, *Klow = equilibriumKT[i]
-        Thigh, *Khigh = equilibriumKT[i + 1]
-        if Tlow <= T <= Thigh:
-            k = (1 / T - 1 / Tlow) / (1 / Thigh - 1 / Tlow)
-            K = [
-                10 ** (log10(Ki) * (1 - k) + log10(Kj) * k)
-                for Ki, Kj in zip(Klow, Khigh)
-            ]
-            break
-
-    for i in range(len(BCTable) - 1):
-        Tlow, *BClow = BCTable[i]
-        Thigh, *BChigh = BCTable[i + 1]
-        if Tlow <= T <= Thigh:
-            k = (T - Tlow) / (Thigh - Tlow)
-            BC = [vi * (1 - k) + vj * k for vi, vj in zip(BClow, BChigh)]
-            break
+    negDeltaB, neghalfDeltaC, K, BC, MMH, E1 = readHuntTable(T)
 
     BH2, BN2CO, BCO2, BH2O, CH2, CN2CO, CCO2, CH2O = BC
 
@@ -324,17 +358,17 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     n = N2j + COj + CO2j + H2j + H2Oj + OHj + Hj + NOj + O2j + Oj + Nj  # mol/g
 
     speciesList = [
+        ("CO", COj * 28.01, COj),
+        ("CO2", CO2j * 44.01, CO2j),
+        ("H2O", H2Oj * 18.02, H2Oj),
+        ("NO", NOj * 30.01, NOj),
+        ("OH", OHj * 17.01, OHj),
         ("N2", N2j * (14.01 * 2), N2j),
         ("N", Nj * 14.01, Nj),
         ("O2", O2j * (16.0 * 2), O2j),
         ("O", Oj * 16.0, Oj),
-        ("CO2", CO2j * 44.01, CO2j),
-        ("CO", COj * 28.01, COj),
         ("H2", H2j * 1.008 * 2, H2j),
         ("H", Hj * 1.008, Hj),
-        ("NO", NOj * 30.01, NOj),
-        ("H2O", H2Oj * 18.02, H2Oj),
-        ("OH", OHj * 17.01, OHj),
     ]
 
     speciesList.sort(key=lambda x: x[1], reverse=True)
@@ -345,36 +379,9 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     b = (B * V**2 + n * C * V) / (V**2 + B * V + n * C)
     p = n * R * T / (V - b) / 9.869
 
-    """
-    Find the internal energy of the gaseous products.
-    E = MMH * (T-300K) + E1 * n/V + E2 * (n/V)**2
-
-    the E1 and E2 corrections are only done for major products.
-    """
-    for i in range(len(MMHTable) - 1):
-        Tlow, *MMHlow = MMHTable[i]
-        Thigh, *MMHhigh = MMHTable[i + 1]
-        if Tlow <= T <= Thigh:
-            if Tlow >= 2000:
-                k = (1 / T - 1 / Tlow) / (1 / Thigh - 1 / Tlow)
-            else:
-                k = (T - Tlow) / (Thigh - Tlow)
-            MMH = [vi * (1 - k) + vj * k for vi, vj in zip(MMHlow, MMHhigh)]
-            break
-
     DeltaT = T - 300
     HCO2, HH2O, HCO, HH2, HN2, HOH, HNO, HO2 = (v * DeltaT for v in MMH)
     HH, HO, HN = (2.980 * DeltaT for _ in range(3))  # monoatomic
-
-    for i in range(len(E1Table) - 1):
-        Tlow, *E1low = E1Table[i]
-        Thigh, *E1high = E1Table[i + 1]
-        if Tlow <= T <= Thigh:
-            k = (T - Tlow) / (Thigh - Tlow)
-            E1 = [
-                (vi * (1 - k) + vj * k) * 1e2 for vi, vj in zip(E1low, E1high)
-            ]
-            break
 
     E1H2, E1N2, E1CO2, E1H2O = E1
     E1CO = E1N2
