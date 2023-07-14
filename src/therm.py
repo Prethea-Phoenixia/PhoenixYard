@@ -1,6 +1,6 @@
 import difflib
 
-from hunt import balance
+from corner import balance
 from num import secant
 from periodic import molarMasses
 
