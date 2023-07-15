@@ -309,14 +309,14 @@ if __name__ == "__main__":
 
     BDNPA = Ingredient.getLine(189)
     BDNPF = Ingredient.getLine(190)
-    """
+
     XM39 = Mixture(
         "XM39",
         compoDict={RDX: 76, CAB: 12, NC1260: 4, ATEC: 7.6, EC: 0.4},
     )
 
     XM39.prettyPrint()
-    """
+
     M43 = Mixture(
         name="M43",
         compoDict={

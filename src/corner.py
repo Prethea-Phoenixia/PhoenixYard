@@ -288,93 +288,6 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
 
     BH2, BN2CO, BCO2, BH2O, CH2, CN2CO, CCO2, CH2O = BC
 
-    R = 82.06  # in cc atm /(K mol)
-    sqrtVdivRT = (V / (R * T)) ** 0.5
-
-    # initialize minor species.
-    Hj, OHj, NOj, Nj, Oj, O2j, CH4j, NH3j = 0, 0, 0, 0, 0, 0, 0, 0
-
-    CO2j = -inf
-    n = None
-
-    while True:
-        n = (
-            Ci
-            + 0.5 * Hi
-            + 0.5 * Ni
-            + Hj
-            + OHj
-            + NOj
-            + Nj
-            + Oj
-            + O2j
-            + CH4j
-            + NH3j
-        )  # mol/g
-
-        K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
-        oldCO2j = CO2j
-        CO2j = quadratic(
-            K0 - 1, K0 * (0.5 * Hi + Ci - Oi) + Oi, Oi * (Ci - Oi)
-        )[1]
-
-        if abs(oldCO2j - CO2j) / CO2j < tol:
-            CO2j = oldCO2j
-            break
-
-        COj = Ci - CO2j - CH4j
-        H2Oj = Oi - Ci - CO2j - OHj - NOj - Oj - 2 * O2j + CH4j
-        H2j = (
-            0.5 * Hi
-            - Oi
-            + Ci
-            + CO2j
-            - 0.5 * Hj
-            - 0.5 * OHj
-            + 1.5 * NH3j
-            + 3 * CH4j
-            - NOj
-            - Oj
-            - 2 * O2j
-        )
-
-        N2j = 0.5 * (Ni - Nj - NOj - NH3j)
-        Hj = H2j**0.5 * sqrtVdivRT * K[1]
-        OHj = H2Oj / (H2j) ** 0.5 * sqrtVdivRT * K[2] * exp(-20 * n / V)
-        NOj = H2Oj * N2j**0.5 / H2j * sqrtVdivRT * K[3] * exp(-20 * n / V)
-        Nj = N2j**0.5 * sqrtVdivRT * K[4]
-        Oj = (H2Oj / H2j) * sqrtVdivRT**2 * K[5]
-        O2j = (H2Oj / H2j) ** 2 * sqrtVdivRT**2 * K[6]
-
-    speciesList = [
-        ("CO", COj * 28.01, COj),
-        ("CO2", CO2j * 44.01, CO2j),
-        ("H2O", H2Oj * 18.02, H2Oj),
-        ("NO", NOj * 30.01, NOj),
-        ("OH", OHj * 17.01, OHj),
-        ("N2", N2j * (14.01 * 2), N2j),
-        ("N", Nj * 14.01, Nj),
-        ("O2", O2j * (16.0 * 2), O2j),
-        ("O", Oj * 16.0, Oj),
-        ("H2", H2j * 1.008 * 2, H2j),
-        ("H", Hj * 1.008, Hj),
-        ("NH3", NH3j * 17.03, NH3j),
-        ("CH4", CH4j * 16.03, CH4j),
-    ]
-
-    if T <= 2500:
-        speciesList.extend(
-            [("CH4", CH4j * 16.03, CH4j), ("NH3", NH3j * 17.03, NH3j)]
-        )
-
-    speciesList.sort(key=lambda x: x[1], reverse=True)
-
-    B = BCO2 * CO2j + BN2CO * (N2j + COj) + BH2O * H2Oj + BH2 * H2j
-    C = CCO2 * CO2j + CN2CO * (N2j + COj) + CH2O * H2Oj + CH2 * H2j
-
-    b = (B * V**2 + n * C * V) / (V**2 + B * V + n * C)
-    p = n * R * T / (V - b) / 9.869
-
     """
     Find the internal energy of the gaseous products.
     E = MMH * (T-300K) + E1 * n/V + E2 * (n/V)**2
@@ -393,7 +306,14 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
             break
 
     DeltaT = T - 300
-    HCO2, HH2O, HCO, HH2, HN2, HOH, HNO, HO2 = (v * DeltaT for v in MMH)
+    try:
+        HCO2, HH2O, HCO, HH2, HN2, HOH, HNO, HO2, HCH4, HNH3 = (
+            v * DeltaT for v in MMH
+        )
+    except ValueError:
+        HCH4, HNH3 = 0, 0
+        HCO2, HH2O, HCO, HH2, HN2, HOH, HNO, HO2 = (v * DeltaT for v in MMH)
+
     HH, HO, HN = (2.980 * DeltaT for _ in range(3))  # monoatomic
 
     for i in range(len(E1Table) - 1):
@@ -409,6 +329,82 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     E1H2, E1N2, E1CO2, E1H2O = E1
     E1CO = E1N2
 
+    R = 82.06  # in cc atm /(K mol)
+    sqrtVdivRT = (V / (R * T)) ** 0.5
+
+    # initialize minor species.
+    Hj, OHj, NOj, Nj, Oj, O2j, CH4j, NH3j = 0, 0, 0, 0, 0, 0, 0, 0
+
+    G = Ci
+    H = Oi - Ci
+    I = 0.5 * Hi + Ci - Oi
+
+    oldCO2j = -inf
+    n = Ci + 0.5 * Hi + 0.5 * Ni  # mol/g n = None
+    K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
+    CO2j = quadratic((1 - K0), -(G + H + K0 * I), G * H)[1]
+    while True:
+        N2j = 0.5 * (Ni - Nj - NOj - NH3j)
+
+        G = Ci - CH4j
+        COj = G - CO2j
+        H = Oi - Ci - OHj - NOj - Oj - 2 * O2j + CH4j
+        H2Oj = H - CO2j
+        # fmt:off
+        I = (0.5 * Hi - Oi + Ci - 0.5 * Hj - 0.5 * OHj + 1.5 * NH3j
+             + 3 * CH4j - NOj - Oj - 2 * O2j)
+        # fmt: on
+        H2j = I + CO2j
+
+        K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
+        CO2j = quadratic((1 - K0), -(G + H + K0 * I), G * H)[1]
+
+        Hj = H2j**0.5 * sqrtVdivRT * K[1]
+        OHj = H2Oj / H2j**0.5 * sqrtVdivRT * K[2] * exp(-20 * n / V)
+        NOj = H2Oj * N2j**0.5 / H2j * sqrtVdivRT * K[3] * exp(-20 * n / V)
+        Nj = N2j**0.5 * sqrtVdivRT * K[4]
+        Oj = (H2Oj / H2j) * sqrtVdivRT**2 * K[5]
+        O2j = (H2Oj / H2j) ** 2 * sqrtVdivRT**2 * K[6]
+
+        if HCH4 != 0:
+            CH4j = COj**2 * H2j**2 / CO2j * sqrtVdivRT**-4 * K[7]
+        if HNH3 != 0:
+            NH3j = N2j**0.5 * H2j**1.5 * sqrtVdivRT**-2 * K[8]
+
+        # fmt: off
+        n = (CO2j + COj + H2Oj + H2j + Hj + OHj + NOj + Nj + Oj + O2j + CH4j
+             + NH3j + N2j)  # mol/g
+        # fmt: on
+        if abs(oldCO2j - CO2j) / CO2j < tol:
+            break
+        else:
+            print(CO2j)
+            oldCO2j = CO2j
+
+    speciesList = [
+        ("CO", COj * 28.01, COj),
+        ("CO2", CO2j * 44.01, CO2j),
+        ("H2O", H2Oj * 18.02, H2Oj),
+        ("NO", NOj * 30.01, NOj),
+        ("OH", OHj * 17.01, OHj),
+        ("N2", N2j * (14.01 * 2), N2j),
+        ("N", Nj * 14.01, Nj),
+        ("O2", O2j * (16.0 * 2), O2j),
+        ("O", Oj * 16.0, Oj),
+        ("H2", H2j * 1.008 * 2, H2j),
+        ("H", Hj * 1.008, Hj),
+        ("CH4", CH4j * 16.03, CH4j),
+        ("NH3", NH3j * 17.03, NH3j),
+    ]
+
+    speciesList.sort(key=lambda x: x[1], reverse=True)
+
+    B = BCO2 * CO2j + BN2CO * (N2j + COj) + BH2O * H2Oj + BH2 * H2j
+    C = CCO2 * CO2j + CN2CO * (N2j + COj) + CH2O * H2Oj + CH2 * H2j
+
+    b = (B * V**2 + n * C * V) / (V**2 + B * V + n * C)
+    p = n * R * T / (V - b) / 9.869
+
     """
     2nd part of Hunt table 2.08
     """
@@ -417,20 +413,11 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     HCO2 += E1CO2 * (n / V) + 220e4 * (n / V) ** 2
     HH2O += E1H2O * (n / V) + 35e4 * (n / V) ** 2
     HCO += E1CO * (n / V) + 34e4 * (n / V) ** 2
+    # fmt:off
+    E = (HCO2 * CO2j + HH2O * H2Oj + HCO * COj + HH2 * H2j + HN2 * N2j
+         + HOH * OHj + HNO * NOj + HO2 * O2j + HH * Hj + HO * Oj
+         + HN * Nj + HCH4 * CH4j + HNH3 * NH3j)  # fmt: on
 
-    E = (  # the convention in propellant work is kinda weird
-        HCO2 * CO2j
-        + HH2O * H2Oj
-        + HCO * COj
-        + HH2 * H2j
-        + HN2 * N2j
-        + HOH * OHj
-        + HNO * NOj
-        + HO2 * O2j
-        + HH * Hj
-        + HO * Oj
-        + HN * Nj
-    )
     """add the heat of formation of the products
     according to their proportions
     Table 3.4 Energies of Formation of Products from Corner
@@ -442,15 +429,14 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         COj * 26.69e3
         + CO2j * 94.03e3
         + H2Oj * 57.50e3  # this is in the gaseous form!
+        + CH4j * 17.27
+        + NH3j * 10.38
         + NOj * -21.53e3
         + OHj * -9.31e3
         + Nj * -85.25e3
         + Oj * -58.75e3
         + Hj * -51.79e3
     )
-
-    if T <= 2500:
-        Hf += CH4j * 17.27 + NH3j * 10.38
 
     f = n * T * 8.314  # 8.314 j/ mol K force constant is calculated
 
@@ -463,6 +449,22 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
 
 
 if __name__ == "__main__":
-    print(
-        balance(3100, Ci=0.02232, Hi=0.03010, Ni=0.01046, Oi=0.03469, V=1 / 0.2)
-    )
+
+    def f(T):
+        Delta, _, _, speciesList, _, _, _ = balance(
+            T, Ci=0.02238, Hi=0.03014, Ni=0.01044, Oi=0.03468, V=1 / 0.2
+        )
+        print(T, Delta)
+
+        print(" @ Product  %mass  mol/g")
+        print(
+            *[
+                "{:>2} : {:^6} {:<6.1%} {:<6,.9f}".format(i, name, mass, num)
+                for i, (name, mass, num) in enumerate(speciesList)
+            ],
+            sep="\n"
+        )
+
+    f(2500)
+    f(3000)
+    f(3073)
