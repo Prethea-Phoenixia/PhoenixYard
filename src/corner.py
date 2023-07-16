@@ -1,4 +1,4 @@
-from math import log10, exp, inf
+from math import log10, exp
 from num import quadratic
 
 """
@@ -359,21 +359,39 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     H = Oi - Ci
     I = 0.5 * Hi + Ci - Oi
 
-    oldCO2j = -inf
     n = Ci + 0.5 * Hi + 0.5 * Ni  # mol/g n = None
     if negDeltaB == 0 and neghalfDeltaC == 0:
         K0 = K[0]
     else:
         K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
+    try:
+        CO2j = [
+            v
+            for v in quadratic((1 - K0), -(G + H + K0 * I), G * H)
+            if v < Ci and v > 0
+        ][0]
+        """get a first-order estimate of CO2 concentration assuming
+        only major products (CO2, H2O, H2, CO, N2) by solving the
+        equilibrium quadratic of the water-gas balance. This equilibrium
+        is conveniently not dependent on pressure (since gas count
+        remains constant throughout), as specified by Corner.
+        """
+    except IndexError:
+        raise ValueError(
+            "Cannot get a first-estimate for CO2 molar concentration."
+        )
+    # N2j = 0.5 * Ni
+    # COj = G - CO2j
+    # H2Oj = H - CO2j
+    # H2j = I + CO2j
 
-    CO2j = [
-        v
-        for v in quadratic((1 - K0), -(G + H + K0 * I), G * H)
-        if v < Ci and v > 0
-    ][0]
+    CO2j_0 = None
+    epsilon_0 = None
+
     while True:
+        # print("thisCO2:", CO2j)
+        # Major products
         N2j = 0.5 * (Ni - Nj - NOj - NH3j)
-
         G = Ci - CH4j
         COj = G - CO2j
         H = Oi - Ci - OHj - NOj - Oj - 2 * O2j + CH4j
@@ -383,21 +401,13 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
              - 3 * CH4j + NOj + Oj + 2 * O2j)
         # fmt: on
         H2j = I + CO2j
-
-        if negDeltaB == 0 and neghalfDeltaC == 0:
-            K0 = K[0]
-        else:
-            K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
-
-        newCO2j = [
-            v
-            for v in quadratic((1 - K0), -(G + H + K0 * I), G * H)
-            if v < Ci and v > 0
-        ][0]
-
-        CO2j = (
-            CO2j + (newCO2j - CO2j) * 0.5
-        )  # damping factor to prevent overshoot
+        """
+        print("maj")
+        print(COj)
+        print(H2Oj)
+        print(H2j)
+        """
+        # Minor, Dissociation Products
 
         Hj = H2j**0.5 * sqrtVdivRT * K[1]
         OHj = H2Oj / H2j**0.5 * sqrtVdivRT * K[2] * exp(-20 * n / V)
@@ -406,21 +416,51 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         Nj = N2j**0.5 * sqrtVdivRT * K[4]
         Oj = (H2Oj / H2j) * sqrtVdivRT**2 * K[5]
         O2j = (H2Oj / H2j) ** 2 * sqrtVdivRT**2 * K[6]
-
+        """
+        print("dissos")
+        print(Hj)
+        print(OHj)
+        print(NOj)
+        print(Nj)
+        print(Oj)
+        print(O2j)
+        """
         if HCH4 != 0:
             CH4j = COj**2 * H2j**2 / CO2j * sqrtVdivRT**-4 * K[7]
         if HNH3 != 0:
             NH3j = N2j**0.5 * H2j**1.5 * sqrtVdivRT**-2 * K[8]
 
+        print(CH4j)  # complex result is caused by methane explosion
+        # print(NH3j)
+
+        if negDeltaB == 0 and neghalfDeltaC == 0:
+            K0 = K[0]
+        else:
+            K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
+
         # fmt: off
         n = (CO2j + COj + H2Oj + H2j + Hj + OHj + NOj + Nj + Oj + O2j + CH4j
              + NH3j + N2j)  # mol/g
         # fmt: on
-        if abs(oldCO2j - CO2j) / CO2j < tol:
-            break
+        epsilon = COj * H2Oj - K0 * (CO2j * H2j)  # error
+        # print("e:", epsilon)
+        # print("here")
+        if epsilon_0 is None:
+            epsilon_0 = epsilon
+            CO2j_0 = CO2j
+            CO2j *= 1 + tol
+            # we forfeit updating the first time around
+
         else:
-            oldCO2j = CO2j
-            print(CO2j)
+            # psuedo-bisection
+            CO2j_1 = CO2j - epsilon * (CO2j - CO2j_0) / (epsilon - epsilon_0)
+
+            epsilon_0 = epsilon
+            CO2j_0 = CO2j
+            CO2j = CO2j_1
+
+            if abs(epsilon) / CO2j < tol:
+                break
 
     speciesList = [
         ("CO", COj * 28.01, COj),
@@ -452,9 +492,9 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     HCO += E1CO * (n / V) + E2CO * (n / V) ** 2
 
     # fmt:off
-    E = (HCO2 * CO2j + HH2O * H2Oj + HCO * COj + HH2 * H2j + HN2 * N2j
-         + HOH * OHj + HNO * NOj + HO2 * O2j + HH * Hj + HO * Oj
-         + HN * Nj + HCH4 * CH4j + HNH3 * NH3j)
+    E = sum((HCO2 * CO2j, HH2O * H2Oj, HCO * COj, HH2 * H2j, HN2 * N2j,
+            HOH * OHj, HNO * NOj, HO2 * O2j, HH * Hj, HO * Oj,
+            HN * Nj, HCH4 * CH4j, HNH3 * NH3j))
     # fmt: on
 
     """
@@ -533,7 +573,6 @@ if __name__ == "__main__":
     f(3058, ld=0.05)
     f(3068, ld=0.1)
     f(3073, ld=0.2)
-    
     """
-    f(1175, ld=0.01)
-    f(3073, ld=0.35)
+    f(1500, ld=0.2)
+    # f(3073, ld=0.35)
