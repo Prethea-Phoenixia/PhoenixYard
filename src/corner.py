@@ -255,8 +255,17 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
 
     n: number of gram-molecules per unit mass of gas, in mol/g
     """
-    if T > 4000 or T < 1000:
+    if T > 4000 or T < 800:
         raise ValueError("T Not supported")
+
+    """
+    this disables covolume compensation for equilibrium constant
+    of the water-gas reaction for T < 1600K:
+    Notably:
+    Delta-B = B_CO + B_H2O - B_CO2 - B_H2
+    Delta-C = C_CO + C_H2O - C_CO2 - C_H2
+    """
+    negDeltaB, neghalfDeltaC = 0, 0
     for i in range(len(negDeltaTable) - 1):
         Tlow, negDeltaBlow, neghalfDeltaClow = negDeltaTable[i]
         Thigh, negDeltaBhigh, neghalfDeltaChigh = negDeltaTable[i + 1]
@@ -279,6 +288,9 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
             ]
             break
 
+    BC = [
+        0 for _ in range(8)
+    ]  # this disables covolume compensation for major products for T < 1600K
     for i in range(len(BCTable) - 1):
         Tlow, *BClow = BCTable[i]
         Thigh, *BChigh = BCTable[i + 1]
@@ -289,12 +301,6 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
 
     BH2, BN2CO, BCO2, BH2O, CH2, CN2CO, CCO2, CH2O = BC
 
-    """
-    Find the internal energy of the gaseous products.
-    E = MMH * (T-300K) + E1 * n/V + E2 * (n/V)**2
-
-    the E1 and E2 corrections are only done for major products.
-    """
     for i in range(len(MMHTable) - 1):
         Tlow, *MMHlow = MMHTable[i]
         Thigh, *MMHhigh = MMHTable[i + 1]
@@ -317,6 +323,7 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
 
     HH, HO, HN = (2.980 * DeltaT for _ in range(3))  # monoatomic
 
+    E1 = (0 for _ in range(4))
     for i in range(len(E1Table) - 1):
         Tlow, *E1low = E1Table[i]
         Thigh, *E1high = E1Table[i + 1]
@@ -329,6 +336,17 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
 
     E1H2, E1N2, E1CO2, E1H2O = E1
     E1CO = E1N2
+    """
+    Second part of Table 3.10 from Corner, Page 130 PDF/110 Book
+    "Corrections to Internal Energies"
+    """
+    if T < 1600:
+        E2H2 = E2N2 = E2CO = E2CO2 = E2H2O = 0
+    else:
+        E2H2 = 3e4
+        E2N2 = E2CO = 34e4
+        E2CO2 = 220e4
+        E2H2O = 35e4
 
     R = 82.06  # in cc atm /(K mol)
     sqrtVdivRT = (V / (R * T)) ** 0.5
@@ -336,14 +354,23 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     # initialize minor species.
     Hj, OHj, NOj, Nj, Oj, O2j, CH4j, NH3j = 0, 0, 0, 0, 0, 0, 0, 0
 
+    """set up initial value for iteration: only major products"""
     G = Ci
     H = Oi - Ci
     I = 0.5 * Hi + Ci - Oi
 
     oldCO2j = -inf
     n = Ci + 0.5 * Hi + 0.5 * Ni  # mol/g n = None
-    K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
-    CO2j = quadratic((1 - K0), -(G + H + K0 * I), G * H)[1]
+    if negDeltaB == 0 and neghalfDeltaC == 0:
+        K0 = K[0]
+    else:
+        K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
+
+    CO2j = [
+        v
+        for v in quadratic((1 - K0), -(G + H + K0 * I), G * H)
+        if v < Ci and v > 0
+    ][0]
     while True:
         N2j = 0.5 * (Ni - Nj - NOj - NH3j)
 
@@ -352,13 +379,21 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         H = Oi - Ci - OHj - NOj - Oj - 2 * O2j + CH4j
         H2Oj = H - CO2j
         # fmt:off
-        I = (0.5 * Hi - Oi + Ci - 0.5 * Hj - 0.5 * OHj + 1.5 * NH3j
-             + 3 * CH4j - NOj - Oj - 2 * O2j)
+        I = (0.5 * Hi - Oi + Ci - 0.5 * Hj + 0.5 * OHj - 1.5 * NH3j
+             - 3 * CH4j + NOj + Oj + 2 * O2j)
         # fmt: on
         H2j = I + CO2j
 
-        K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
-        CO2j = quadratic((1 - K0), -(G + H + K0 * I), G * H)[1]
+        if negDeltaB == 0 and neghalfDeltaC == 0:
+            K0 = K[0]
+        else:
+            K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
+
+        CO2j = [
+            v
+            for v in quadratic((1 - K0), -(G + H + K0 * I), G * H)
+            if v < Ci and v > 0
+        ][0]
 
         Hj = H2j**0.5 * sqrtVdivRT * K[1]
         OHj = H2Oj / H2j**0.5 * sqrtVdivRT * K[2] * exp(-20 * n / V)
@@ -381,6 +416,7 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
             break
         else:
             oldCO2j = CO2j
+            print(CO2j)
 
     speciesList = [
         ("CO", COj * 28.01, COj),
@@ -400,11 +436,31 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
 
     speciesList.sort(key=lambda x: x[1], reverse=True)
 
+    """
+    Find the internal energy of the gaseous products for major constitutents
+    E = MMH * (T-300K) + E1 * n/V + E2 * (n/V)**2
+    Correct for real gas effects of internal heat and energy content.
+    """
+    HH2 += E1H2 * (n / V) + E2H2 * (n / V) ** 2
+    HN2 += E1N2 * (n / V) + E2N2 * (n / V) ** 2
+    HCO2 += E1CO2 * (n / V) + E2CO2 * (n / V) ** 2
+    HH2O += E1H2O * (n / V) + E2H2O * (n / V) ** 2
+    HCO += E1CO * (n / V) + E2CO * (n / V) ** 2
+
+    # fmt:off
+    E = (HCO2 * CO2j + HH2O * H2Oj + HCO * COj + HH2 * H2j + HN2 * N2j
+         + HOH * OHj + HNO * NOj + HO2 * O2j + HH * Hj + HO * Oj
+         + HN * Nj + HCH4 * CH4j + HNH3 * NH3j)
+    # fmt: on
+
+    """
+    Covolume calculations:
+    """
+
     B = BCO2 * CO2j + BN2CO * (N2j + COj) + BH2O * H2Oj + BH2 * H2j
     C = CCO2 * CO2j + CN2CO * (N2j + COj) + CH2O * H2Oj + CH2 * H2j
 
     """
-
     p = nRT/(V-b) = nRT/V * (1+ B/V + nC/V^2)
     1/(V-b) = (1 + B/V + nC/V^2) / V
     V - b = V / (1+ B/V + nC/V^2)
@@ -415,19 +471,6 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     """
     b = (B * V**2 + n * C * V) / (V**2 + B * V + n * C)
     p = n * R * T / (V - b) / 9.869
-
-    """
-    2nd part of Hunt table 2.08
-    """
-    HH2 += E1H2 * (n / V) + 3e4 * (n / V) ** 2
-    HN2 += E1N2 * (n / V) + 34e4 * (n / V) ** 2
-    HCO2 += E1CO2 * (n / V) + 220e4 * (n / V) ** 2
-    HH2O += E1H2O * (n / V) + 35e4 * (n / V) ** 2
-    HCO += E1CO * (n / V) + 34e4 * (n / V) ** 2
-    # fmt:off
-    E = (HCO2 * CO2j + HH2O * H2Oj + HCO * COj + HH2 * H2j + HN2 * N2j
-         + HOH * OHj + HNO * NOj + HO2 * O2j + HH * Hj + HO * Oj
-         + HN * Nj + HCH4 * CH4j + HNH3 * NH3j)  # fmt: on
 
     """add the heat of formation of the products
     according to their proportions
@@ -482,8 +525,11 @@ if __name__ == "__main__":
         print("press:", p, "MPa")
         print("force:", f, "J/g")
 
-    f(3024, ld=0.01)
+    """f(3024, ld=0.01)
     f(3058, ld=0.05)
     f(3068, ld=0.1)
     f(3073, ld=0.2)
-    f(3073, ld=0.35)
+    
+    """
+    f(1170, ld=0.01)
+    # f(3073, ld=0.35)
