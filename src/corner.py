@@ -321,7 +321,7 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         HCH4, HNH3 = 0, 0
         HCO2, HH2O, HCO, HH2, HN2, HOH, HNO, HO2 = (v * DeltaT for v in MMH)
 
-    HH, HO, HN = (2.980 * DeltaT for _ in range(3))  # monoatomic
+    HH = HO = HN = 2.980 * DeltaT  # monoatomic
 
     E1 = (0 for _ in range(4))
     for i in range(len(E1Table) - 1):
@@ -389,11 +389,15 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         else:
             K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
 
-        CO2j = [
+        newCO2j = [
             v
             for v in quadratic((1 - K0), -(G + H + K0 * I), G * H)
             if v < Ci and v > 0
         ][0]
+
+        CO2j = (
+            CO2j + (newCO2j - CO2j) * 0.5
+        )  # damping factor to prevent overshoot
 
         Hj = H2j**0.5 * sqrtVdivRT * K[1]
         OHj = H2Oj / H2j**0.5 * sqrtVdivRT * K[2] * exp(-20 * n / V)
@@ -531,5 +535,5 @@ if __name__ == "__main__":
     f(3073, ld=0.2)
     
     """
-    f(1170, ld=0.01)
-    # f(3073, ld=0.35)
+    f(1175, ld=0.01)
+    f(3073, ld=0.35)
