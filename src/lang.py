@@ -156,11 +156,15 @@ ENGLISH = {
     "specsText": " ".join(
         (
             "Specify the propellant composition used.\n",
-            "Pure Nitrocellulose is mixed with inert plasticizer",
-            "and stabilizer to reduce burn rate and lower",
-            "flame temperature, forming single based",
-            "propellant. These have excellent mechanical strength,",
-            "low cost and high availability.\n",
+            "Pure Nitrocellulose is dissolved into a suitable organic",
+            "solvent, acetone for example, causing microscopic swelling,",
+            "reducing the burn rate by ~10^5, from detonation to",
+            "burning, or exothermic decomposition in absence of air, making",
+            "it suitable for use as propellant. Nitration level from 11%-13%",
+            "are available.",
+            "Stabilizer that improve chemical stability can be added as",
+            "well, forming single based propellant. These have excellent",
+            "mechanical strength, low cost and high availability.\n",
             "Double based propellant is formed when energetic",
             "Nitroglycerin is used as gelatinizer instead.",
             "While more energetic and less sooty,",
@@ -580,7 +584,9 @@ CHINESE = {
     ),
     "specsText": "".join(
         (
-            "   单基火药一般由硝化纤维作为主要成分，加入少许稳定剂、塑化剂，提高化学稳定性，降低燃速爆温。",
+            "   单基火药一般由硝化纤维作为主要成分。硝化纤维溶入合适有机溶剂（如丙酮）分子结构变性，",
+            "溶剂析出后燃速降低10^5倍，由爆炸转为燃烧（放热自分解），常见硝化比例从11-13%不等。",
+            "还可加入少许稳定剂、塑化剂，提高化学稳定性，降低燃速爆温。",
             "其生产工艺成熟，成本可控，且具有良好的机械性能。\n",
             "   双基火药在硝化纤维为主的基础上，溶入相当比例的硝化甘油作为胶化剂，同时积极参与火药燃烧。",
             "在提高火药力以外还有改善燃烧产物化学平衡，减少发烟的作用。除硝化甘油外，亦有二甘醇二硝酸酯",

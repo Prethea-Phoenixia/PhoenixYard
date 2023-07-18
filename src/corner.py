@@ -224,7 +224,7 @@ dissociaiton considered ,in descending order of significance:
 """
 
 
-def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
+def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     """
     Ci, Hi, Oi, Ni are in mol/g.
     Consequently,
@@ -401,12 +401,9 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
              - 3 * CH4j + NOj + Oj + 2 * O2j)
         # fmt: on
         H2j = I + CO2j
-        """
-        print("maj")
-        print(COj)
-        print(H2Oj)
-        print(H2j)
-        """
+
+        # bprint(CO2j, COj, H2Oj, H2j)
+
         # Minor, Dissociation Products
 
         Hj = H2j**0.5 * sqrtVdivRT * K[1]
@@ -416,27 +413,33 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         Nj = N2j**0.5 * sqrtVdivRT * K[4]
         Oj = (H2Oj / H2j) * sqrtVdivRT**2 * K[5]
         O2j = (H2Oj / H2j) ** 2 * sqrtVdivRT**2 * K[6]
-        """
-        print("dissos")
-        print(Hj)
-        print(OHj)
-        print(NOj)
-        print(Nj)
-        print(Oj)
-        print(O2j)
-        """
-        if HCH4 != 0:
-            CH4j = COj**2 * H2j**2 / CO2j * sqrtVdivRT**-4 * K[7]
-        if HNH3 != 0:
-            NH3j = N2j**0.5 * H2j**1.5 * sqrtVdivRT**-2 * K[8]
-
-        print(CH4j)  # complex result is caused by methane explosion
-        # print(NH3j)
 
         if negDeltaB == 0 and neghalfDeltaC == 0:
             K0 = K[0]
         else:
             K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
+
+        if HCH4 != 0:
+            CH4j = COj**2 * H2j**2 / CO2j * sqrtVdivRT**-4 * K[7]
+
+            # ensure COj > 0
+            # fmt: off
+            CH4max = (0.5 * Hi - Oi + Ci - 0.5 * Hj + 0.5 * OHj - 1.5 * NH3j
+                      - 3 * CH4j + NOj + Oj + 2 * O2j + CO2j) / 3
+            # fmt: on
+            CH4max = min(CH4max, Ci - CO2j)
+            CH4max = max(CH4max, 0)
+            # ensure H2Oj > 0
+            CH4min = -Oi + Ci + OHj + NOj + Oj + 2 * O2j + CO2j
+            CH4min = max(CH4min, 0)
+            # print("CH4min:", CH4min)
+            # print("CH4max:", CH4max)
+            CH4j = max(min(CH4max, CH4j), CH4min)
+
+            # ensure H2j > 0
+
+        if HNH3 != 0:
+            NH3j = N2j**0.5 * H2j**1.5 * sqrtVdivRT**-2 * K[8]
 
         # fmt: off
         n = (CO2j + COj + H2Oj + H2j + Hj + OHj + NOj + Nj + Oj + O2j + CH4j
@@ -454,7 +457,10 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         else:
             # psuedo-bisection
             CO2j_1 = CO2j - epsilon * (CO2j - CO2j_0) / (epsilon - epsilon_0)
-
+            """
+            if CO2j_1 == CO2j:
+                break
+            """
             epsilon_0 = epsilon
             CO2j_0 = CO2j
             CO2j = CO2j_1
@@ -523,7 +529,7 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     300K and Zero Pressure, Constant Volume Condition, Energies
     in Kilocalories per Mole.
     """
-    Hf = (
+    Hf_p = -(
         COj * 26.69e3
         + CO2j * 94.03e3
         + H2Oj * 57.50e3  # this is in the gaseous form!
@@ -536,6 +542,11 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         + Hj * -51.79e3
     )
 
+    DeltaEF = Hf_p - Hf
+    print("DeltaEF", DeltaEF)
+    zeta = E + DeltaEF
+    print("Zeta", zeta)
+
     f = n * T * 8.314  # 8.314 j/ mol K force constant is calculated
 
     """ b: covolume
@@ -544,16 +555,22 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         E: internal energy of products.
     """
 
-    return E - Hf, E, n, speciesList, b, p, f
+    return zeta, speciesList, n, E, b, p, f
 
 
 if __name__ == "__main__":
 
     def f(T, ld):
-        Delta, _, _, speciesList, b, p, f = balance(
-            T, Ci=0.02238, Hi=0.03014, Ni=0.01044, Oi=0.03468, V=1 / ld
+        _, speciesList, _, _, b, p, f = balance(
+            Hf=-470,
+            T=T,
+            Ci=0.02238,
+            Hi=0.03014,
+            Ni=0.01044,
+            Oi=0.03468,
+            V=1 / ld,
         )
-        print(T, Delta, ld)
+        print(T, ld)
 
         print(" @ Product  %mass  mol/g")
         print(
@@ -569,10 +586,9 @@ if __name__ == "__main__":
         print("press:", p, "MPa")
         print("force:", f, "J/g")
 
-    """f(3024, ld=0.01)
-    f(3058, ld=0.05)
-    f(3068, ld=0.1)
-    f(3073, ld=0.2)
-    """
-    f(1500, ld=0.2)
+    f(1200, ld=0.01)
+    # f(3024, ld=0.01)
+    # f(3058, ld=0.05)
+    # f(3068, ld=0.1)
+    # f(3073, ld=0.2)
     # f(3073, ld=0.35)
