@@ -402,7 +402,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         # fmt: on
         H2j = I + CO2j
 
-        # bprint(CO2j, COj, H2Oj, H2j)
+        # print(CO2j, COj, H2Oj, H2j)
 
         # Minor, Dissociation Products
 
@@ -420,7 +420,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
             K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
 
         if HCH4 != 0:
-            CH4j = COj**2 * H2j**2 / CO2j * sqrtVdivRT**-4 * K[7]
+            CH4j_1 = COj**2 * H2j**2 / CO2j * sqrtVdivRT**-4 * K[7]
 
             # ensure COj > 0
             # fmt: off
@@ -434,9 +434,14 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
             CH4min = max(CH4min, 0)
             # print("CH4min:", CH4min)
             # print("CH4max:", CH4max)
-            CH4j = max(min(CH4max, CH4j), CH4min)
+            CH4j_1 = max(min(CH4max, CH4j_1), CH4min)
 
             # ensure H2j > 0
+
+            CH4j = CH4j + 0.1 * (CH4j_1 - CH4j)
+            # damp out Methane oscillation
+
+            # print("CH4:", CH4j)
 
         if HNH3 != 0:
             NH3j = N2j**0.5 * H2j**1.5 * sqrtVdivRT**-2 * K[8]
@@ -446,7 +451,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
              + NH3j + N2j)  # mol/g
         # fmt: on
         epsilon = COj * H2Oj - K0 * (CO2j * H2j)  # error
-        # print("e:", epsilon)
+        print("e:", epsilon / CO2j)
         # print("here")
         if epsilon_0 is None:
             epsilon_0 = epsilon
@@ -457,6 +462,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         else:
             # psuedo-bisection
             CO2j_1 = CO2j - epsilon * (CO2j - CO2j_0) / (epsilon - epsilon_0)
+
             """
             if CO2j_1 == CO2j:
                 break
@@ -465,7 +471,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
             CO2j_0 = CO2j
             CO2j = CO2j_1
 
-            if abs(epsilon) / CO2j < tol:
+            if abs(epsilon / CO2j) < tol:
                 break
 
     speciesList = [
@@ -543,9 +549,9 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     )
 
     DeltaEF = Hf_p - Hf
-    print("DeltaEF", DeltaEF)
+    # print("DeltaEF", DeltaEF)
     zeta = E + DeltaEF
-    print("Zeta", zeta)
+    # print("Zeta", zeta)
 
     f = n * T * 8.314  # 8.314 j/ mol K force constant is calculated
 
@@ -586,7 +592,7 @@ if __name__ == "__main__":
         print("press:", p, "MPa")
         print("force:", f, "J/g")
 
-    f(1200, ld=0.01)
+    f(1150, ld=0.01)
     # f(3024, ld=0.01)
     # f(3058, ld=0.05)
     # f(3068, ld=0.1)

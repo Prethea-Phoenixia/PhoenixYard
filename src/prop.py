@@ -193,6 +193,7 @@ class GrainComp:
         return self.u_1 * p**self.n
 
     def getIsp(self, pRatio=None):
+        # Tp = Tv/gamma
         if pRatio is None:
             # infinite pressure ratio, basically vacuum
             return (2 * self.f / self.theta) ** 0.5
