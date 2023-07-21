@@ -60,7 +60,7 @@ class Recoiless:
         self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
         Labda = self.l_g / self.l_0
-        self.phi_1 = 1 + dragCoefficient  # drag work coefficient
+        self.phi_1 = 1 / (1 - dragCoefficient)  # drag work coefficient
         self.phi = self.phi_1 + self.omega / (3 * self.m)
 
         self.v_j = (

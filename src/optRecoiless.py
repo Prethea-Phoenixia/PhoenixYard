@@ -40,7 +40,7 @@ class ConstrainedRecoiless:
         self.m = shotMass
         self.propellant = propellant
         self.p_0 = startPressure
-        self.phi_1 = 1 + dragCoefficient
+        self.phi_1 = 1 / (1 - dragCoefficient)
 
         # design limits
         self.p_d = designPressure

@@ -107,7 +107,7 @@ class Gun:
         self.chi_k = chamberExpansion  # ration of l_0 / l_chamber
         self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
-        self.phi_1 = 1 + dragCoefficient  # drag work coefficient
+        self.phi_1 = 1 / (1 - dragCoefficient)  # drag work coefficient
 
         if self.p_0 == 0:
             raise NotImplementedError(
@@ -940,14 +940,18 @@ class Gun:
         Convert average chamber pressure at a certain travel to the shot base
         pressure, and to breech face pressure
         """
-        theta_0 = self.V_0 / (self.V_0 + self.S * l)
-        epsilon_prime = self.omega / (self.phi_1 * self.m)
-        factor_b = 1 + self.labda_2 * epsilon_prime * (
-            1 - 1.5 * theta_0**3 * (1 - self.chi_k**-2)
+        Labda_g = l / self.l_0
+        labda_1_prime = (
+            self.labda_1 * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
         )
-        factor_t = 1 - self.labda_1 * self.labda_2 * epsilon_prime * (
-            1 - 3 * theta_0**2 * (1 - theta_0) * (1 - self.chi_k**-2)
-        )  # p/p_t
+        labda_2_prime = (
+            self.labda_2 * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
+        )
+        factor_b = 1 + labda_2_prime * (self.omega / (self.phi_1 * self.m))
+
+        factor_t = (self.phi_1 + labda_2_prime * (self.omega / self.m)) / (
+            self.phi_1 + labda_1_prime * (self.omega / self.m)
+        )
         return p / factor_b, p / factor_t
 
 
