@@ -949,9 +949,10 @@ class Gun:
         )
         factor_b = 1 + labda_2_prime * (self.omega / (self.phi_1 * self.m))
 
-        factor_t = (self.phi_1 + labda_2_prime * (self.omega / self.m)) / (
-            self.phi_1 + labda_1_prime * (self.omega / self.m)
+        factor_t = (self.phi_1 * self.m + labda_2_prime * self.omega) / (
+            self.phi_1 * self.m + labda_1_prime * self.omega
         )
+
         return p / factor_b, p / factor_t
 
 
