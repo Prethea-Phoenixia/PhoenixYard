@@ -156,11 +156,12 @@ class Constrained:
             psi = f_psi_Z(Z)
 
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
-
+            """
             p_bar = (
                 f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
             ) / (S * l_0 * (l_bar + l_psi_bar) * f * Delta)
-
+            """
+            p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
             return p_bar
 
         """

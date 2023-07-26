@@ -155,10 +155,19 @@ class Gun:
             (1 - psi) / self.rho_p + (self.alpha * psi)
         )
 
-        p_bar = (
-            self.f * self.omega * psi
-            - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
-        ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
+        """
+        SP(l+l_psi) = f w phi - .5 * theta * phi * m * v**2
+
+        v_j**2 = 2fw/(theta phi m)
+
+        P(l_bar + l_psi_bar) = f Delta phi - 0.5 theta phi m v**2 / V_0
+                             = f Delta phi - 0.5 v_bar**2 * 2 f w / V0
+
+        P_bar = P / (f Delta)
+        Delta = w / V0
+        P_bar (l_bar + l_psi_bar) =  phi - v_bar**2
+        """
+        p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
         return p_bar
 

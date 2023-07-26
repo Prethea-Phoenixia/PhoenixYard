@@ -21,7 +21,8 @@ if __name__ == "__main__":
         print("Unknown release: ", winRelease, ", skipping DPI handling")
 
     # this allows us to set our own taskbar icon
-    myappid = "mycompany.myproduct.subproduct.version"  # arbitrary string
+    # "mycompany.myproduct.subproduct.version"
+    myappid = "Phoenix.Internal Ballistics.Solver.043"  # arbitrary string
     windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     root = Tk()
@@ -44,7 +45,7 @@ if __name__ == "__main__":
 
     root.option_add("*tearOff", False)
 
-    root.title("PIBS v0.4.2")
+    root.title("PIBS v0.4.3")
 
     ibPanel = IB(root, dpi)
 

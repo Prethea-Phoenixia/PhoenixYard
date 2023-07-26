@@ -389,8 +389,6 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     epsilon_0 = None
 
     while True:
-        # print("thisCO2:", CO2j)
-        # Major products
         N2j = 0.5 * (Ni - Nj - NOj - NH3j)
         G = Ci - CH4j
         COj = G - CO2j
@@ -402,10 +400,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         # fmt: on
         H2j = I + CO2j
 
-        # print(CO2j, COj, H2Oj, H2j)
-
         # Minor, Dissociation Products
-
         Hj = H2j**0.5 * sqrtVdivRT * K[1]
         OHj = H2Oj / H2j**0.5 * sqrtVdivRT * K[2] * exp(-20 * n / V)
         NOj = H2Oj * N2j**0.5 / H2j * sqrtVdivRT * K[3] * exp(-20 * n / V)
@@ -428,20 +423,17 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
                       - 3 * CH4j + NOj + Oj + 2 * O2j + CO2j) / 3
             # fmt: on
             CH4max = min(CH4max, Ci - CO2j)
-            CH4max = max(CH4max, 0)
-            # ensure H2Oj > 0
-            CH4min = -Oi + Ci + OHj + NOj + Oj + 2 * O2j + CO2j
-            CH4min = max(CH4min, 0)
-            # print("CH4min:", CH4min)
-            # print("CH4max:", CH4max)
-            CH4j_1 = max(min(CH4max, CH4j_1), CH4min)
+            CH4max = max(CH4max, 0)  # ensure H2Oj > 0
+            CH4min = (
+                -Oi + Ci + OHj + NOj + Oj + 2 * O2j + CO2j
+            )  # ensure H2j > 0
 
-            # ensure H2j > 0
+            CH4min = max(CH4min, 0)
+
+            CH4j_1 = max(min(CH4max, CH4j_1), CH4min)
 
             CH4j = CH4j + 0.1 * (CH4j_1 - CH4j)
             # damp out Methane oscillation
-
-            # print("CH4:", CH4j)
 
         if HNH3 != 0:
             NH3j = N2j**0.5 * H2j**1.5 * sqrtVdivRT**-2 * K[8]
@@ -451,8 +443,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
              + NH3j + N2j)  # mol/g
         # fmt: on
         epsilon = COj * H2Oj - K0 * (CO2j * H2j)  # error
-        print("e:", epsilon / CO2j)
-        # print("here")
+
         if epsilon_0 is None:
             epsilon_0 = epsilon
             CO2j_0 = CO2j
@@ -462,11 +453,6 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         else:
             # psuedo-bisection
             CO2j_1 = CO2j - epsilon * (CO2j - CO2j_0) / (epsilon - epsilon_0)
-
-            """
-            if CO2j_1 == CO2j:
-                break
-            """
             epsilon_0 = epsilon
             CO2j_0 = CO2j
             CO2j = CO2j_1
