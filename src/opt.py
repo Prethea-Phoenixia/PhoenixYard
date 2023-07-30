@@ -120,7 +120,7 @@ class Constrained:
             else:
                 raise ValueError("Unknown Solution")
 
-        phi = phi_1 + labda_2 * (omega / m) * cc
+        phi = 1 + labda_2 * omega / (phi_1 * m) * cc
         v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
         v_bar_d = v_d / v_j
 

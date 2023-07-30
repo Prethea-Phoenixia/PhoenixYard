@@ -224,7 +224,7 @@ dissociaiton considered ,in descending order of significance:
 """
 
 
-def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
+def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-6):
     """
     Ci, Hi, Oi, Ni are in mol/g.
     Consequently,
@@ -281,6 +281,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         if Tlow <= T <= Thigh:
             k = (1 / T - 1 / Tlow) / (1 / Thigh - 1 / Tlow)
             K = [
+                # Ki * (1 - k) + Kj * k
                 0
                 if any((Ki == 0, Kj == 0))
                 else 10 ** (log10(Ki) * (1 - k) + log10(Kj) * k)
@@ -307,6 +308,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         if Tlow <= T <= Thigh:
             if Tlow >= 2000:
                 k = (1 / T - 1 / Tlow) / (1 / Thigh - 1 / Tlow)
+                # print("k", k)
             else:
                 k = (T - Tlow) / (Thigh - Tlow)
             MMH = [vi * (1 - k) + vj * k for vi, vj in zip(MMHlow, MMHhigh)]
@@ -400,6 +402,8 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         # fmt: on
         H2j = I + CO2j
 
+        # print(CO2j, COj, H2Oj, H2j)
+
         # Minor, Dissociation Products
         Hj = H2j**0.5 * sqrtVdivRT * K[1]
         OHj = H2Oj / H2j**0.5 * sqrtVdivRT * K[2] * exp(-20 * n / V)
@@ -429,7 +433,6 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
             )  # ensure H2j > 0
 
             CH4min = max(CH4min, 0)
-
             CH4j_1 = max(min(CH4max, CH4j_1), CH4min)
 
             CH4j = CH4j + 0.1 * (CH4j_1 - CH4j)
@@ -451,13 +454,14 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
             # we forfeit updating the first time around
 
         else:
-            # psuedo-bisection
-            CO2j_1 = CO2j - epsilon * (CO2j - CO2j_0) / (epsilon - epsilon_0)
+            CO2j_1 = CO2j - 0.1 * epsilon * (CO2j - CO2j_0) / (
+                epsilon - epsilon_0
+            )
             epsilon_0 = epsilon
             CO2j_0 = CO2j
             CO2j = CO2j_1
 
-            if abs(epsilon / CO2j) < tol:
+            if abs(epsilon / CO2j) < tol or CO2j_1 == CO2j:
                 break
 
     speciesList = [

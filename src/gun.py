@@ -383,7 +383,8 @@ class Gun:
             1 - (1 - 1 / self.chi_k) * 2.303 * log(Labda + 1) / Labda
         )  # chamberage correction factor
 
-        self.phi = self.phi_1 + labda_2 * self.omega / self.m * cc
+        # self.phi = self.phi_1 + labda_2 * self.omega / self.m * cc # per ref.
+        self.phi = 1 + labda_2 * self.omega / (self.phi_1 * self.m) * cc
 
         self.B = (
             self.S**2

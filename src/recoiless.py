@@ -59,9 +59,9 @@ class Recoiless:
         self.chi_k = chamberExpansion
         self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
-        Labda = self.l_g / self.l_0
+        # Labda = self.l_g / self.l_0
         self.phi_1 = 1 / (1 - dragCoefficient)  # drag work coefficient
-        self.phi = self.phi_1 + self.omega / (3 * self.m)
+        self.phi = 1 + self.omega / (3 * self.phi_1 * self.m)
 
         self.v_j = (
             2 * self.f * self.omega / (self.theta * self.phi * self.m)

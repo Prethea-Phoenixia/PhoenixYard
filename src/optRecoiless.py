@@ -115,7 +115,7 @@ class ConstrainedRecoiless:
 
         gamma = theta + 1
 
-        phi = phi_1 + omega / (3 * m)
+        phi = 1 + omega / (3 * phi_1 * m)
 
         S_j_bar = 1 / (Recoiless.getCf(gamma, A_bar, tol) * chi_0)
         # S_j = S_j_bar * S
