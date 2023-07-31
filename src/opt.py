@@ -27,6 +27,7 @@ class Constrained:
                 shotMass <= 0,
                 startPressure <= 0,
                 dragCoefficient < 0,
+                dragCoefficient >= 1,
                 designPressure <= 0,
                 designVelocity <= 0,
             )
@@ -120,7 +121,7 @@ class Constrained:
             else:
                 raise ValueError("Unknown Solution")
 
-        phi = 1 + labda_2 * omega / (phi_1 * m) * cc
+        phi = phi_1 + labda_2 * omega / m * cc
         v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
         v_bar_d = v_d / v_j
 

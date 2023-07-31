@@ -27,6 +27,7 @@ class ConstrainedRecoiless:
                 shotMass <= 0,
                 startPressure <= 0,
                 dragCoefficient < 0,
+                dragCoefficient >= 1,
                 designPressure <= 0,
                 designVelocity <= 0,
                 nozzleExpansion < 1,
@@ -115,7 +116,7 @@ class ConstrainedRecoiless:
 
         gamma = theta + 1
 
-        phi = 1 + omega / (3 * phi_1 * m)
+        phi = phi_1 + omega / (3 * m)
 
         S_j_bar = 1 / (Recoiless.getCf(gamma, A_bar, tol) * chi_0)
         # S_j = S_j_bar * S

@@ -41,6 +41,7 @@ class Recoiless:
                 nozzleEfficiency > 1,
                 nozzleEfficiency <= 0,
                 dragCoefficient < 0,
+                dragCoefficient >= 1,
                 startPressure < 0,
             )
         ):
@@ -61,7 +62,7 @@ class Recoiless:
         self.l_0 = self.V_0 / self.S
         # Labda = self.l_g / self.l_0
         self.phi_1 = 1 / (1 - dragCoefficient)  # drag work coefficient
-        self.phi = 1 + self.omega / (3 * self.phi_1 * self.m)
+        self.phi = self.phi_1 + self.omega / (3 * self.m)
 
         self.v_j = (
             2 * self.f * self.omega / (self.theta * self.phi * self.m)

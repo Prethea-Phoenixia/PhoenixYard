@@ -92,6 +92,7 @@ class Gun:
                 lengthGun <= 0,
                 chamberExpansion < 1,
                 dragCoefficient < 0,
+                dragCoefficient >= 1,
             )
         ):
             raise ValueError("Invalid gun parameters")
@@ -383,8 +384,7 @@ class Gun:
             1 - (1 - 1 / self.chi_k) * 2.303 * log(Labda + 1) / Labda
         )  # chamberage correction factor
 
-        # self.phi = self.phi_1 + labda_2 * self.omega / self.m * cc # per ref.
-        self.phi = 1 + labda_2 * self.omega / (self.phi_1 * self.m) * cc
+        self.phi = self.phi_1 + labda_2 * self.omega / self.m * cc  # per ref.
 
         self.B = (
             self.S**2
@@ -512,9 +512,9 @@ class Gun:
 
             if p_bar_j > p_bar_max:
                 raise ValueError(
-                    "Nobel-Abel EoS is generally accurate enough below",
-                    +" 600MPa. However, Unreasonably high pressure ",
-                    "(>{:.0f} MPa) was encountered.".format(p_max / 1e6),
+                    "Nobel-Abel EoS is generally accurate enough below"
+                    + " 600MPa. However, Unreasonably high pressure "
+                    + "(>{:.0f} MPa) was encountered.".format(p_max / 1e6),
                 )
 
             if any(
@@ -522,7 +522,7 @@ class Gun:
             ):
                 raise ValueError(
                     "Numerical integration stalled in search of exit/burnout"
-                    + " point.",
+                    + " point."
                 )
 
             if l_bar_j >= l_g_bar:
