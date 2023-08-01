@@ -108,6 +108,11 @@ class ConstrainedRecoiless:
         chi_0 = self.chi_0
         A_bar = self.A_bar
 
+        if loadFraction > maxLF:
+            raise ValueError(
+                "Specified Load Fraction Violates Geometrical Constraint"
+            )
+
         omega = m * chargeMassRatio
         V_0 = omega / (rho_p * maxLF * loadFraction)
         Delta = omega / V_0
@@ -493,9 +498,8 @@ class ConstrainedRecoiless:
 
         if i == N - 1:
             raise ValueError(
-                "Unable to find any valid load fraction with {:d} random samples.".format(
-                    N
-                )
+                "Unable to find any valid load"
+                + " fraction with {:d} random samples.".format(N)
             )
 
         low = tol

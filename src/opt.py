@@ -104,8 +104,13 @@ class Constrained:
         chi_k = self.chi_k
         f_psi_Z = self.f_psi_Z
 
+        if loadFraction > maxLF:
+            raise ValueError(
+                "Specified Load Fraction Violates Geometrical Constraint"
+            )
+
         omega = m * chargeMassRatio
-        V_0 = omega / (rho_p * maxLF * loadFraction)
+        V_0 = omega / (rho_p * loadFraction)
         Delta = omega / V_0
         l_0 = V_0 / S
 

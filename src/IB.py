@@ -227,16 +227,20 @@ class IB(Frame):
         self.tblLb.config(text=self.getString("tblLabel"))
         self.shtLb.config(text=self.getString("shtLabel"))
         self.chgLb.config(text=self.getString("chgLabel"))
-
         self.ldfLb.config(text=self.getString("ldfLabel"))
         self.clrLb.config(text=self.getString("clrLabel"))
         self.dgcLb.config(text=self.getString("dgcLabel"))
         self.stpLb.config(text=self.getString("stpLabel"))
-
         self.vTgtLb.config(text=self.getString("vTgtLabel"))
         self.pTgtLb.config(text=self.getString("pTgtLabel"))
         self.minWebLb.config(text=self.getString("minWebLabel"))
         self.lgmaxLb.config(text=self.getString("maxLgLabel"))
+        self.ldLb.config(text=self.getString("ldLabel"))
+        self.lxLb.config(text=self.getString("lxLabel"))
+        self.vaLb.config(text=self.getString("vaLabel"))
+        self.teLb.config(text=self.getString("teffLabel"))
+        self.beLb.config(text=self.getString("beffLabel"))
+        self.cvLb.config(text=self.getString("cvLabel"))
 
         self.nozzExpLb.config(text=self.getString("nozzExpLabel"))
         self.nozzEffLb.config(text=self.getString("nozzEffLabel"))
@@ -270,20 +274,12 @@ class IB(Frame):
         self.opFrm.config(text=self.getString("opFrmLabel"))
         self.consFrm.config(text=self.getString("consFrmLabel"))
         self.topFrm.config(text=self.getString("pltOptnFrm"))
+        self.sampleFrm.config(text=self.getString("sampleFrmLabel"))
+        self.propFrm.config(text=self.getString("propFrmLabel"))
+        self.grainFrm.config(text=self.getString("grainFrmLabel"))
 
         self.useConstraint.config(text=self.getString("consButton"))
         self.optimizeLF.config(text=self.getString("minTVButton"))
-        self.sampleFrm.config(text=self.getString("sampleFrmLabel"))
-
-        self.lxLb.config(text=self.getString("lxLabel"))
-        self.vaLb.config(text=self.getString("vaLabel"))
-        self.teLb.config(text=self.getString("teffLabel"))
-        self.beLb.config(text=self.getString("beffLabel"))
-        self.cvLb.config(text=self.getString("cvLabel"))
-        self.ldpLb.config(text=self.getString("ldLabel"))
-
-        self.propFrm.config(text=self.getString("propFrmLabel"))
-        self.grainFrm.config(text=self.getString("grainFrmLabel"))
 
         for i, columnName in enumerate(self.getString("columnList")):
             self.tv.heading(i, text=columnName)
@@ -469,13 +465,13 @@ class IB(Frame):
             unitText="m³",
             justify="right",
         )
-        self.ldpLb, self.ldp, self.ld, _, _, i = self.add122Disp(
+
+        self.ldLb, self.ld, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
             labelText=self.getString("ldLabel"),
-            unitText_up="%",
-            unitText_dn="kg/m³",
-            justify_dn="right",
+            unitText="kg/m³",
+            justify="right",
         )
 
         opFrm = ttk.LabelFrame(rightFrm, text=self.getString("opFrmLabel"))
@@ -681,7 +677,6 @@ class IB(Frame):
             chamberVolume = (
                 float(self.chgkg.get())
                 / self.prop.rho_p
-                / self.prop.maxLF
                 / float(self.ldf.get())
                 * 100
             )
@@ -804,14 +799,8 @@ class IB(Frame):
                     lfpercent = roundSig(kwargs["loadFraction"] * 100)
                     self.ldf.set(lfpercent)
 
-            self.ldp.set(
-                round(self.prop.maxLF * kwargs["loadFraction"] * 100, 1)
-            )
             self.ld.set(
-                toSI(
-                    self.prop.maxLF * kwargs["loadFraction"] * self.prop.rho_p,
-                    useSN=True,
-                )
+                toSI(kwargs["loadFraction"] * self.prop.rho_p, useSN=True)
             )
 
             i = [i[0] for i in self.tableData].index("SHOT EXIT")
@@ -1794,8 +1783,8 @@ class IB(Frame):
         updates the propellant object on write to the ratio entry fields
         and, on changing the propellant or geometrical specification.
 
-        Double calling is due value validation, no workaround has been found
-        at this time!
+        Double calling is due to value validation, no workaround has been
+        found at this time!
         """
 
         geom = self.geometries[self.dropGeom.get()]
@@ -2162,7 +2151,6 @@ def calculate(
             chamberVolume = (
                 kwargs["chargeMass"]
                 / kwargs["propellant"].rho_p
-                / kwargs["propellant"].maxLF
                 / kwargs["loadFraction"]
             )
 

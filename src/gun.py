@@ -97,10 +97,16 @@ class Gun:
         ):
             raise ValueError("Invalid gun parameters")
 
+        if chargeMass / chamberVolume > (propellant.maxLF * propellant.rho_p):
+            raise ValueError(
+                "Specified Load Fraction Violates Geometrical Constraint"
+            )
+
+        self.propellant = propellant
+
         self.e_1 = 0.5 * grainSize
         self.S = (caliber / 2) ** 2 * pi
         self.m = shotMass
-        self.propellant = propellant
         self.omega = chargeMass
         self.V_0 = chamberVolume
         self.p_0 = startPressure
@@ -981,14 +987,14 @@ if __name__ == "__main__":
     M17SHC = Propellant(M17, MultPerfGeometry.SEVEN_PERF_CYLINDER, 2, 2.5)
 
     lf = 0.5
-    print("DELTA:", lf * M17SHC.maxLF)
+    print("DELTA/rho:", lf)
     test = Gun(
         caliber=0.050,
         shotMass=1.0,
         propellant=M17SHC,
         grainSize=1e-3,
         chargeMass=1,
-        chamberVolume=1.0 / M17SHC.rho_p / M17SHC.maxLF / lf,
+        chamberVolume=1.0 / M17SHC.rho_p / lf,
         startPressure=30e6,
         lengthGun=3.5,
         chamberExpansion=1.1,
