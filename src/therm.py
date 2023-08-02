@@ -288,6 +288,10 @@ class Mixture:
                 )
             )
 
+            C_v = E / (T - 300)
+            gamma = (n * 1.987 / C_v) + 1
+            print("Adiabatic index (T): {:>6.4g}".format(gamma))
+
         return speciesList
 
     def prettyPrint(self):
@@ -450,6 +454,8 @@ if __name__ == "__main__":
 
     ATKPRDS22.prettyPrint()
 
+    ATKPRDS22.balanceAt(3500)
+    """
     import matplotlib.pyplot as plt
     from math import log
     from labellines import labelLines
@@ -475,3 +481,4 @@ if __name__ == "__main__":
     labelLines(ax.get_lines())
 
     plt.show()
+    """

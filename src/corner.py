@@ -33,11 +33,13 @@ negDeltaTable = [
     [3900, 31.0, 200],
     [4000, 30.9, 195],
 ]
+
 """
 TABLE 2.04 from Hunt
 T in Kelvin, K0(T)..... K8(T)
 PDF page 111 Book page 91
 """
+
 # fmt: off
 equilibriumKT = [
  [800, 0.2478,      0,      0,      0,      0,      0,     0,   31.25, 2.91e-3],
@@ -72,10 +74,12 @@ equilibriumKT = [
  [4000, 8.775, 1.5970, 0.9495, 0.1693, 0.0554, 0.8711, 0.3157,      0,      0],
 ]
 # fmt: on
+
 """ TABLE 3.8 Corrections to Pressure from Corner
             B                    C
 T in K, H2, N2/CO, CO2, H2O, H2, N2/CO, CO2, H2O
 """
+
 BCTable = [
     [1600, 16.4, 32.1, 45.7, -4.2, 20, 210, 1385, 220],
     [1700, 16.3, 32.3, 47.3, -2.5, 20, 200, 1305, 210],
@@ -198,8 +202,6 @@ propellant work derived form Hunt.
 Eq. 2.04
 (CO) * (H2O) / [(CO2) * (H2)] = K0
 
-
-
 {C} = (CO) + (CO2)                 | + (CH4)
 {N} = 2 (N2)                       | + (NO) + (N) + (NH3)
 {H} = 2 (H2O) + 2 (H2) +           | + (H) + (OH) + 3(NH3) + 4(CH4)
@@ -207,9 +209,6 @@ Eq. 2.04
 
 Major                              Minor
 (CO) = {C} - (CO2)                 | - (CH4)
-
-
-
 
 dissociaiton considered ,in descending order of significance:
 
@@ -551,11 +550,10 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-6):
         f: propellant force, J/g
         E: internal energy of products.
     """
-
+    """
     Cv = E / (T - 300)
     gamma = (n * 1.987 / Cv) + 1
-    print(gamma)
-
+    """
     return zeta, speciesList, n, E, b, p, f
 
 
