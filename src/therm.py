@@ -246,6 +246,7 @@ class Mixture:
             self.Hf, 0.7 * Tv, Ci, Hi, Oi, Ni, V=1 / Delta, tol=tol
         )
         C_v = (E1 - E2) / (0.3 * Tv)
+        # gas constant: 1.987 cal/(mol K)
         self.gamma = (n * 1.987 / C_v) + 1
         self.n = n
         self.Ci, self.Hi, self.Oi, self.Ni = Ci, Hi, Ni, Oi

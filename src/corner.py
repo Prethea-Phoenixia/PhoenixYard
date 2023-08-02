@@ -543,13 +543,18 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-6):
     zeta = E + DeltaEF
     # print("Zeta", zeta)
 
-    f = n * T * 8.314  # 8.314 j/ mol K force constant is calculated
+    f = n * T * 8.314  # gas constant: 8.314 j/ mol K
 
-    """ b: covolume
-        p: pressure implied by load density
-        f: propellant force
+    """ n: 1/M, mol/g, gas moles per gram
+        b: covolume, cc/g
+        p: pressure implied by load density, MPa
+        f: propellant force, J/g
         E: internal energy of products.
     """
+
+    Cv = E / (T - 300)
+    gamma = (n * 1.987 / Cv) + 1
+    print(gamma)
 
     return zeta, speciesList, n, E, b, p, f
 
