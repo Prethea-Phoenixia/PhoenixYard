@@ -80,7 +80,7 @@ fontName = "Sarasa Mono SC"
 
 
 class IB(Frame):
-    def __init__(self, parent, dpi):
+    def __init__(self, parent, dpi, scale):
         Frame.__init__(self, parent)
         self.LANG = StringVar(value=list(STRING.keys())[0])
 
@@ -93,6 +93,7 @@ class IB(Frame):
         self.dpi = dpi
         self.parent = parent
         self.forceUpdOnThemeWidget = []
+        self.scale = scale
 
         menubar = Menu(parent)
 
@@ -207,8 +208,6 @@ class IB(Frame):
 
         parent.bind("<Configure>", self.resizePlot)
         self.timedLoop()
-
-        self.update_idletasks()
 
     def changeLang(self):
         self.menubar.entryconfig(0, label=self.getString("themeLabel"))
@@ -1232,9 +1231,13 @@ class IB(Frame):
             self.geomCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=0, pady=0, sticky="nsew"
             )
+        geomPlotFrm.grid_propagate(False)
+        # last ditch effort to prevent blowing up the frame
 
     def addPlotFrm(self, parent):
-        plotFrm = ttk.LabelFrame(parent, text=self.getString("plotFrmLabel"))
+        plotFrm = ttk.LabelFrame(
+            parent, height=480, width=640, text=self.getString("plotFrmLabel")
+        )
         plotFrm.grid(row=1, column=0, sticky="nsew")
         plotFrm.columnconfigure(0, weight=1)
         plotFrm.rowconfigure(0, weight=1)
@@ -1288,6 +1291,12 @@ class IB(Frame):
             self.pltCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=2, pady=2, sticky="nsew"
             )
+        """
+        Prevents blowout of the frame to (windows scaling factor x) of
+        specified size,
+        at the cost of requiring a resize to center the graph, initially.
+        """
+        plotFrm.grid_propagate(False)
 
     def resizePlot(self, event):
         # we use the bbox method here as it has already accounted for padding
