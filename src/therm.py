@@ -2,7 +2,7 @@ import difflib
 
 from corner import balance
 from num import secant
-from periodic import molarMasses
+from PERIODIC import molarMasses
 
 
 class Ingredient:
@@ -455,7 +455,7 @@ if __name__ == "__main__":
     ATKPRDS22.prettyPrint()
 
     ATKPRDS22.balanceAt(3500)
-    """
+
     import matplotlib.pyplot as plt
     from math import log
     from labellines import labelLines
@@ -464,7 +464,7 @@ if __name__ == "__main__":
 
     speciesDict = {}
 
-    Ts = list(range(1000, round(ATKPRDS22.Tv), 1))
+    Ts = list(range(1600, round(ATKPRDS22.Tv), 10))
     for T in Ts:
         speciesList = ATKPRDS22.balanceAt(T, False)
 
@@ -479,6 +479,6 @@ if __name__ == "__main__":
         ax.plot(Ts, pops, label=specie)
 
     labelLines(ax.get_lines())
+    ax.set_yscale("log")
 
     plt.show()
-    """

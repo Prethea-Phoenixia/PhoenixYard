@@ -1,4 +1,11 @@
-# the E stand for electron and D for deuterium
+"""
+Jinpeng Zhai, 翟锦鹏
+2023 07 08
+Contact: 914962409@qq.com
+
+Periodic table, coded for use with the PEPCODED.DAF and NASA
+thermo databases.
+"""
 # fmt: off
 molarMasses = {
     "H": 1.00794, "HE": 4.002602, "LI": 6.941, "BE": 9.012182,
