@@ -573,8 +573,6 @@ if __name__ == "__main__":
     hydrogen = Specie.get("H2")
     nitrogen = Specie.get("N2")
 
-    """
-
     carbon = Specie.get("C(gr)")
 
     methaneDecomposition = Reaction(
@@ -588,5 +586,3 @@ if __name__ == "__main__":
         RHS={ammonia: 1},
         LHS={hydrogen: 1.5, nitrogen: 0.5},
     )
-
-    """
