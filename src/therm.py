@@ -457,7 +457,6 @@ if __name__ == "__main__":
     ATKPRDS22.balanceAt(3500)
 
     import matplotlib.pyplot as plt
-    from math import log
     from labellines import labelLines
 
     fig, ax = plt.subplots(1, 1)
@@ -465,7 +464,8 @@ if __name__ == "__main__":
     speciesDict = {}
 
     print("HERE")
-    Ts = list(range(500, round(ATKPRDS22.Tv), 10))
+
+    Ts = list(range(500, round(ATKPRDS22.Tv), 100))
     for T in Ts:
         speciesList = ATKPRDS22.balanceAt(T, False)
 

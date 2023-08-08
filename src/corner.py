@@ -413,16 +413,20 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         raise ValueError(
             "Cannot get a first-estimate for CO2 molar concentration."
         )
-    # N2j = 0.5 * Ni
-    # COj = G - CO2j
-    # H2Oj = H - CO2j
-    # H2j = I + CO2j
+    """
+    N2j = 0.5 * Ni
+    COj = G - CO2j
+    H2Oj = H - CO2j
+    H2j = I + CO2j
+    """
+    CO2j_nmp = CO2j  # no minor product
 
     CO2j_0 = None
     epsilon_0 = None
+    epsilon = None
 
     i = 0
-
+    kappa = 0.1
     while True:
         N2j = 0.5 * (Ni - Nj - NOj - NH3j)
 
@@ -437,8 +441,18 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
              - 3 * CH4j + NOj + Oj + 2 * O2j)
         # fmt: on
         H2j = I + CO2j
-        print(i, COj, CO2j, H2j, H2Oj)
-        print(CH4j, NH3j)
+
+        if any((COj < 0, H2Oj < 0, CO2j < 0, H2j < 0)):
+            print(T, CO2j, COj, H2Oj, H2j)
+            kappa = kappa**2
+            CO2j = CO2j_nmp
+            CO2j_0 = None
+            epsilon = None
+            epsilon_0 = None
+            Hj, OHj, NOj, Nj, Oj, O2j, CH4j, NH3j = 0, 0, 0, 0, 0, 0, 0, 0
+            i += 1
+            continue
+
         # Minor, Dissociation Products
         Hj = H2j**0.5 * sqrtVdivRT * k1(T)
         OHj = H2Oj / H2j**0.5 * sqrtVdivRT * k2(T) * exp(-20 * n / V)
@@ -447,11 +461,6 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         Nj = N2j**0.5 * sqrtVdivRT * k4(T)
         Oj = (H2Oj / H2j) * sqrtVdivRT**2 * k5(T)
         O2j = (H2Oj / H2j) ** 2 * sqrtVdivRT**2 * k6(T)
-
-        if negDeltaB == 0 and neghalfDeltaC == 0:
-            K0 = k0(T)
-        else:
-            K0 = k0(T) * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
 
         CH4j_1 = COj**2 * H2j**2 / CO2j * sqrtVdivRT**-4 * k7(T)
 
@@ -465,7 +474,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         CH4min = max(CH4min, 0)
         CH4j_1 = max(min(CH4max, CH4j_1), CH4min)  # enforce
 
-        CH4j = CH4j + 0.01 * (CH4j_1 - CH4j)
+        CH4j = CH4j + kappa * (CH4j_1 - CH4j)
         # damp out Methane oscillation
 
         NH3j_1 = N2j**0.5 * H2j**1.5 * sqrtVdivRT**-2 * k8(T)
@@ -475,12 +484,17 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         # fmt: on
         NH3max = min(Ni - Nj - NOj, NH3max)
         NH3j_1 = min(NH3max, NH3j_1)
-        NH3j = NH3j + 0.01 * (NH3j_1 - NH3j)
+        NH3j = NH3j + kappa * (NH3j_1 - NH3j)
 
         # fmt: off
         n = (CO2j + COj + H2Oj + H2j + Hj + OHj + NOj + Nj + Oj + O2j + CH4j
              + NH3j + N2j)  # mol/g
         # fmt: on
+        if negDeltaB == 0 and neghalfDeltaC == 0:
+            K0 = k0(T)
+        else:
+            K0 = k0(T) * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
+
         epsilon = COj * H2Oj - K0 * (CO2j * H2j)  # error
 
         if epsilon_0 is None:
@@ -490,12 +504,16 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
             # we forfeit updating the first time around
 
         else:
-            CO2j_1 = CO2j - epsilon * (CO2j - CO2j_0) / (epsilon - epsilon_0)
-            """
-            if CO2j_1 == CO2j_0:
-                logger.warn("Solving terminated due to oscillating conditions.")
+            if epsilon_0 == epsilon:
+                logger.warn(
+                    "Solving terminated due to oscillating conditions.ε={:}".format(
+                        epsilon
+                    )
+                )
                 break
-            """
+
+            CO2j_1 = CO2j - epsilon * (CO2j - CO2j_0) / (epsilon - epsilon_0)
+
             epsilon_0 = epsilon
             CO2j_0 = CO2j
             CO2j = CO2j_1
