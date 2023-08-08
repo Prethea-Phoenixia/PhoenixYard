@@ -1,10 +1,44 @@
-from math import log10, exp
+from math import exp
 from num import quadratic
+from nasa7 import Specie, Reaction
 
-"""
-TABLE 3.9 Corrections To Equilibrium Constants from Corner.
-T in Kelvin, -DeltaB in cc/(gm.mol), -DeltaC/2 in (cc/(gm.mol))^2
-"""
+import logging
+
+# create logger
+logger = logging.getLogger("CORNER")
+logger.setLevel(logging.INFO)
+
+# create console handler and set level to info
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+
+# create formatter
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+# add formatter to ch
+ch.setFormatter(formatter)
+# add ch to logger
+logger.addHandler(ch)
+
+Specie.read("data/nasa7.dat")
+
+CO2 = Specie.get("CO2")
+H2O = Specie.get("H2O")
+CO = Specie.get("CO")
+H2 = Specie.get("H2")
+H = Specie.get("H")
+N2 = Specie.get("N2")
+OH = Specie.get("OH")
+NO = Specie.get("NO")
+N = Specie.get("N")
+O = Specie.get("O")
+O2 = Specie.get("O2")
+CH4 = Specie.get("CH4")
+NH3 = Specie.get("NH3")
+
+# TABLE 3.9 Corrections To Equilibrium Constants from Corner.
+# T in Kelvin, -DeltaB in cc/(gm.mol), -DeltaC/2 in (cc/(gm.mol))^2
 
 negDeltaTable = [
     [1600, 34.2, 490],
@@ -35,11 +69,25 @@ negDeltaTable = [
 ]
 
 
-# fmt: off
 """
 # TABLE 2.04 from Hunt
 # T in Kelvin, K0(T)..... K8(T)
 # PDF page 111 Book page 91
+#
+# P = V/RT
+#
+# K0         = [CO] [H2O] / [CO2] [H2]            CO2 + H2 <-> CO + H2O
+# K1 sqrt(P) = [H] / [H2]^0.5                       0.5 H2 <->  H
+# K2 sqrt(P) = [OH] [H2]^0.5 / [H2O]                  H2O  <-> OH + 0.5 H2
+# K3 sqrt(P) = [NO] [H2] / [H2O] [N2]^0.5     H2O + 0.5 N2 <-> NO + H2
+# K4 sqrt(P) = [N] / [N2]^0.5                       0.5 N2 <-> N
+# K5   P     = [O] [H2] / [H2O]                       H2O  <-> O + H2
+# K6   P     = [O2] [H2]^2 / [H2O]^2                 2H2O  <-> O2 + 2H2
+# K7  P^-2   = [CH4][CO2] / [CO]^2 [H2]^2     2 CO + 2 H2  <-> CH4 + CO2
+# K8  P^-1   = [NH3] / [N2]^0.5 [H2]^1.5   0.5 N2 + 1.5 H2 <-> NH3
+#
+#
+# fmt: off
 equilibriumKT = [
  [800, 0.2478,      0,      0,      0,      0,      0,     0,   31.25, 2.91e-3],
  [1000,0.7286,      0,      0,      0,      0,      0,     0, 3.72e-2, 5.64e-4],
@@ -72,42 +120,27 @@ equilibriumKT = [
  [3900, 8.710, 1.3360, 0.7589, 0.1300, 0.0417, 0.5878, 0.2132,      0,      0],
  [4000, 8.775, 1.5970, 0.9495, 0.1693, 0.0554, 0.8711, 0.3157,      0,      0],
 ]
-"""
-# Revised data produced from _fit
-equilibriumKT = [
- [1600.0, 3.132, 6e-05, 1.964e-06, 4.033e-08, 4.489e-09, 1.091e-10, 5.277e-11, 1.35e-06, 4.5e-05],
- [1700.0, 3.555, 0.0002, 6.2e-06, 1.556e-07, 1.89e-08, 7.866e-10, 3.827e-10, 4.9e-07, 3.5e-05],
- [1800.0, 3.975, 0.0004, 2e-05, 5.504e-07, 7.251e-08, 4.987e-09, 2.442e-09, 2e-07, 2.8e-05],
- [1900.0, 4.385, 0.0009, 6e-05, 1.79e-06, 2.546e-07, 2.795e-08, 1.378e-08, 9.2e-08, 2.3e-05],
- [2000.0, 4.782, 0.0016, 0.0002, 5.374e-06, 8.209e-07, 1.392e-07, 6.909e-08, 4.5e-08, 1.9e-05],
- [2100.0, 5.161, 0.0031, 0.0004, 2e-05, 2.44e-06, 6.191e-07, 3.096e-07, 2.4e-08, 1.6e-05],
- [2200.0, 5.52, 0.0057, 0.0008, 5e-05, 6.709e-06, 2.472e-06, 1.245e-06, 1.3e-08, 1.4e-05],
- [2300, 5.852, 0.0097, 0.0016, 0.0001, 1e-05, 1e-05, 4.523e-06, 7.725e-09, 1.2e-05],
- [2400.0, 6.155, 0.0159, 0.0029, 0.0002, 3e-05, 3e-05, 1e-05, 4.745e-09, 1.1e-05],
- [2500.0, 6.433, 0.0251, 0.0052, 0.0004, 7e-05, 9e-05, 3e-05, 3.032e-09, 1e-05],
- [2600.0, 6.694, 0.0383, 0.009, 0.0007, 0.0002, 0.0002, 0.0001, 2.007e-09, 9e-06],
- [2700.0, 6.939, 0.0566, 0.0146, 0.0012, 0.0003, 0.0005, 0.0002, 1.369e-09, 8e-06],
- [2800.0, 7.167, 0.0814, 0.0231, 0.002, 0.0005, 0.0012, 0.0005, 9.608e-10, 8e-06],
- [2900.0, 7.379, 0.1143, 0.0355, 0.0034, 0.0008, 0.0026, 0.001, 6.909e-10, 7.825e-06],
- [3000.0, 7.574, 0.1574, 0.0529, 0.0055, 0.0014, 0.0053, 0.002, 5.079e-10, 7.366e-06],
- [3100.0, 7.753, 0.2125, 0.0768, 0.0086, 0.0022, 0.0103, 0.0038, 3.809e-10, 6.975e-06],
- [3200.0, 7.917, 0.2813, 0.1089, 0.0129, 0.0035, 0.019, 0.0071, 2.909e-10, 6.638e-06],
- [3300.0, 8.068, 0.3658, 0.1513, 0.0188, 0.0053, 0.0339, 0.0126, 2.258e-10, 6.346e-06],
- [3400.0, 8.205, 0.4682, 0.2064, 0.0271, 0.0078, 0.0586, 0.0216, 1.779e-10, 6.09e-06],
- [3500.0, 8.33, 0.591, 0.276, 0.0387, 0.0113, 0.0978, 0.0358, 1.421e-10, 5.864e-06],
- [3600.0, 8.443, 0.7367, 0.3626, 0.0539, 0.0161, 0.1591, 0.058, 1.149e-10, 5.661e-06],
- [3700.0, 8.544, 0.9079, 0.4693, 0.0734, 0.0225, 0.2516, 0.0917, 9.398e-11, 5.477e-06],
- [3800.0, 8.633, 1.107, 0.6001, 0.0982, 0.0309, 0.3886, 0.1412, 7.769e-11, 5.306e-06],
- [3900.0, 8.71, 1.336, 0.7589, 0.13, 0.0417, 0.5878, 0.2132, 6.485e-11, 5.144e-06],
- [4000.0, 8.775, 1.597, 0.9495, 0.1693, 0.0554, 0.8711, 0.3157, 5.462e-11, 4.989e-06]
-]
 
 # fmt: on
-
-""" TABLE 3.8 Corrections to Pressure from Corner
-            B                    C
-T in K, H2, N2/CO, CO2, H2O, H2, N2/CO, CO2, H2O
 """
+
+k0 = Reaction("water-gas", LHS={CO2: 1, H2: 1}, RHS={CO: 1, H2O: 1})
+k1 = Reaction("hydrogen decomposition", LHS={H2: 0.5}, RHS={H: 1})
+k2 = Reaction("water-hydroxyl", LHS={H2O: 1}, RHS={H2: 0.5, OH: 1})
+k3 = Reaction("water-nitroxide", LHS={H2O: 1, N2: 0.5}, RHS={NO: 1, H2: 1})
+k4 = Reaction("nitrogen decomposiiton", LHS={N2: 0.5}, RHS={N: 1})
+k5 = Reaction("water-oxygen radical", LHS={H2O: 1}, RHS={O: 1, H2: 1})
+k6 = Reaction("water-decomposition", LHS={H2O: 1}, RHS={O2: 0.5, H2: 1})
+k7 = Reaction(
+    "methane synthesis w/ carbon dioxide",
+    LHS={CO: 2, H2: 2},
+    RHS={CH4: 1, CO2: 1},
+)
+k8 = Reaction("ammonia synthesis", LHS={N2: 0.5, H2: 1.5}, RHS={NH3: 1})
+
+# TABLE 3.8 Corrections to Pressure from Corner
+#            B                    C
+# T in K, H2, N2/CO, CO2, H2O, H2, N2/CO, CO2, H2O
 
 BCTable = [
     [1600, 16.4, 32.1, 45.7, -4.2, 20, 210, 1385, 220],
@@ -137,17 +170,17 @@ BCTable = [
     [4000, 14.5, 32.0, 57.8, 9.4, 10, 85, 555, 90],
 ]
 
-"""
-Table 3.2 from Corner
-Add 1.987 for constant pressure values.
-Mean molecular heats over the temperature range of 300 deg K to T deg K"
-"at zero density from Corner
-in calories per gram-mole per degree at constant volume
-T (K), CO2, H2O, CO, H2, N2, OH, NO, O2, CH4, NH3
-for monoatomic gas, take 2.980
+
+# Table 3.2 from Corner
+# Add 1.987 for constant pressure values.
+# Mean molecular heats over the temperature range of 300 deg K to T deg K"
+# "at zero density from Corner
+# in calories per gram-mole per degree at constant volume
+# T (K), CO2, H2O, CO, H2, N2, OH, NO, O2, CH4, NH3
+# for monoatomic gas, take 2.980
+
 """
 # fmt:off
-"""
 MMHTable = [
  [800,  8.896,  6.599, 5.244, 5.019, 5.179, 5.092, 5.432, 5.570,  9.870, 8.322],
  [1000, 9.409,  6.883, 5.403, 5.059, 5.326, 5.136, 5.597, 5.759, 11.129, 9.021],
@@ -180,8 +213,10 @@ MMHTable = [
  [3900, 12.013, 9.852, 6.462, 6.135, 6.404, 6.223, 6.585, 6.949],
  [4000, 12.050, 9.908, 6.477, 6.163, 6.420, 6.248, 6.599, 6.974],
 ]
-"""
 # fmt:on
+"""
+
+
 """
 Table 2.08 from Hunt
 E1 /100
@@ -254,7 +289,7 @@ dissociaiton considered ,in descending order of significance:
 """
 
 
-def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-6):
+def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     """
     Ci, Hi, Oi, Ni are in mol/g.
     Consequently,
@@ -285,16 +320,11 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-6):
 
     n: number of gram-molecules per unit mass of gas, in mol/g
     """
-    if T > 4000 or T < 1600:
+    if T > 4000 or T < max(
+        v.fitTlow for v in (CO2, H2O, CO, H2, N2, OH, NO, O2, CH4, NH3)
+    ):
         raise ValueError("T Not supported")
 
-    """
-    this disables covolume compensation for equilibrium constant
-    of the water-gas reaction for T < 1600K:
-    Notably:
-    Delta-B = B_CO + B_H2O - B_CO2 - B_H2
-    Delta-C = C_CO + C_H2O - C_CO2 - C_H2
-    """
     negDeltaB, neghalfDeltaC = 0, 0
     for i in range(len(negDeltaTable) - 1):
         Tlow, negDeltaBlow, neghalfDeltaClow = negDeltaTable[i]
@@ -303,20 +333,6 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-6):
             k = (T - Tlow) / (Thigh - Tlow)
             negDeltaB = negDeltaBlow * (1 - k) + negDeltaBhigh * k
             neghalfDeltaC = neghalfDeltaClow * (1 - k) + neghalfDeltaChigh * k
-            break
-
-    for i in range(len(equilibriumKT) - 1):
-        Tlow, *Klow = equilibriumKT[i]
-        Thigh, *Khigh = equilibriumKT[i + 1]
-        if Tlow <= T <= Thigh:
-            k = (1 / T - 1 / Tlow) / (1 / Thigh - 1 / Tlow)
-            K = [
-                # Ki * (1 - k) + Kj * k
-                0
-                if any((Ki == 0, Kj == 0))
-                else 10 ** (log10(Ki) * (1 - k) + log10(Kj) * k)
-                for Ki, Kj in zip(Klow, Khigh)
-            ]
             break
 
     BC = [
@@ -332,28 +348,13 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-6):
 
     BH2, BN2CO, BCO2, BH2O, CH2, CN2CO, CCO2, CH2O = BC
 
-    for i in range(len(MMHTable) - 1):
-        Tlow, *MMHlow = MMHTable[i]
-        Thigh, *MMHhigh = MMHTable[i + 1]
-        if Tlow <= T <= Thigh:
-            if Tlow >= 2000:
-                k = (1 / T - 1 / Tlow) / (1 / Thigh - 1 / Tlow)
-                # print("k", k)
-            else:
-                k = (T - Tlow) / (Thigh - Tlow)
-            MMH = [vi * (1 - k) + vj * k for vi, vj in zip(MMHlow, MMHhigh)]
-            break
-
     DeltaT = T - 300
-    try:
-        HCO2, HH2O, HCO, HH2, HN2, HOH, HNO, HO2, HCH4, HNH3 = (
-            v * DeltaT for v in MMH
-        )
-    except ValueError:
-        HCH4, HNH3 = 0, 0
-        HCO2, HH2O, HCO, HH2, HN2, HOH, HNO, HO2 = (v * DeltaT for v in MMH)
 
     HH = HO = HN = 2.980 * DeltaT  # monoatomic
+    HCO2, HH2O, HCO, HH2, HN2, HOH, HNO, HO2, HCH4, HNH3 = (
+        v.getMMH(T) * DeltaT
+        for v in (CO2, H2O, CO, H2, N2, OH, NO, O2, CH4, NH3)
+    )
 
     E1 = (0 for _ in range(4))
     for i in range(len(E1Table) - 1):
@@ -393,9 +394,9 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-6):
 
     n = Ci + 0.5 * Hi + 0.5 * Ni  # mol/g n = None
     if negDeltaB == 0 and neghalfDeltaC == 0:
-        K0 = K[0]
+        K0 = k0(T)
     else:
-        K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
+        K0 = k0(T) * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
     try:
         CO2j = [
             v
@@ -420,56 +421,61 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-6):
     CO2j_0 = None
     epsilon_0 = None
 
+    i = 0
+
     while True:
         N2j = 0.5 * (Ni - Nj - NOj - NH3j)
+
         G = Ci - CH4j
         COj = G - CO2j
+
         H = Oi - Ci - OHj - NOj - Oj - 2 * O2j + CH4j
         H2Oj = H - CO2j
+
         # fmt:off
         I = (0.5 * Hi - Oi + Ci - 0.5 * Hj + 0.5 * OHj - 1.5 * NH3j
              - 3 * CH4j + NOj + Oj + 2 * O2j)
         # fmt: on
         H2j = I + CO2j
-
-        # print(CO2j, COj, H2Oj, H2j)
-
+        print(i, COj, CO2j, H2j, H2Oj)
+        print(CH4j, NH3j)
         # Minor, Dissociation Products
-        Hj = H2j**0.5 * sqrtVdivRT * K[1]
-        OHj = H2Oj / H2j**0.5 * sqrtVdivRT * K[2] * exp(-20 * n / V)
-        NOj = H2Oj * N2j**0.5 / H2j * sqrtVdivRT * K[3] * exp(-20 * n / V)
+        Hj = H2j**0.5 * sqrtVdivRT * k1(T)
+        OHj = H2Oj / H2j**0.5 * sqrtVdivRT * k2(T) * exp(-20 * n / V)
+        NOj = H2Oj * N2j**0.5 / H2j * sqrtVdivRT * k3(T) * exp(-20 * n / V)
         # NO + H2 -> H2O + 0.5 * N2
-        Nj = N2j**0.5 * sqrtVdivRT * K[4]
-        Oj = (H2Oj / H2j) * sqrtVdivRT**2 * K[5]
-        O2j = (H2Oj / H2j) ** 2 * sqrtVdivRT**2 * K[6]
+        Nj = N2j**0.5 * sqrtVdivRT * k4(T)
+        Oj = (H2Oj / H2j) * sqrtVdivRT**2 * k5(T)
+        O2j = (H2Oj / H2j) ** 2 * sqrtVdivRT**2 * k6(T)
 
         if negDeltaB == 0 and neghalfDeltaC == 0:
-            K0 = K[0]
+            K0 = k0(T)
         else:
-            K0 = K[0] * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
+            K0 = k0(T) * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
 
-        if HCH4 != 0:
-            CH4j_1 = COj**2 * H2j**2 / CO2j * sqrtVdivRT**-4 * K[7]
+        CH4j_1 = COj**2 * H2j**2 / CO2j * sqrtVdivRT**-4 * k7(T)
 
-            # ensure COj > 0
-            # fmt: off
-            CH4max = (0.5 * Hi - Oi + Ci - 0.5 * Hj + 0.5 * OHj - 1.5 * NH3j
-                      - 3 * CH4j + NOj + Oj + 2 * O2j + CO2j) / 3
-            # fmt: on
-            CH4max = min(CH4max, Ci - CO2j)
-            CH4max = max(CH4max, 0)  # ensure H2Oj > 0
-            CH4min = (
-                -Oi + Ci + OHj + NOj + Oj + 2 * O2j + CO2j
-            )  # ensure H2j > 0
+        # fmt: off
+        CH4max = (0.5 * Hi - Oi + Ci - 0.5 * Hj + 0.5 * OHj - 1.5 * NH3j
+                  + NOj + Oj + 2 * O2j + CO2j) / 3  # ensure H2j > 0
+        # fmt: on
 
-            CH4min = max(CH4min, 0)
-            CH4j_1 = max(min(CH4max, CH4j_1), CH4min)
+        CH4max = min(CH4max, Ci - CO2j)  # ensure COj > 0
+        CH4min = -Oi + Ci + OHj + NOj + Oj + 2 * O2j + CO2j  # ensure H2Oj > 0
+        CH4min = max(CH4min, 0)
+        CH4j_1 = max(min(CH4max, CH4j_1), CH4min)  # enforce
 
-            CH4j = CH4j + 0.1 * (CH4j_1 - CH4j)
-            # damp out Methane oscillation
+        CH4j = CH4j + 0.01 * (CH4j_1 - CH4j)
+        # damp out Methane oscillation
 
-        if HNH3 != 0:
-            NH3j = N2j**0.5 * H2j**1.5 * sqrtVdivRT**-2 * K[8]
+        NH3j_1 = N2j**0.5 * H2j**1.5 * sqrtVdivRT**-2 * k8(T)
+        # fmt: off
+        NH3max = (0.5 * Hi - Oi + Ci - 0.5 * Hj + 0.5 * OHj
+                  - 3 * CH4j + NOj + Oj + 2 * O2j + CO2j) / 1.5
+        # fmt: on
+        NH3max = min(Ni - Nj - NOj, NH3max)
+        NH3j_1 = min(NH3max, NH3j_1)
+        NH3j = NH3j + 0.01 * (NH3j_1 - NH3j)
 
         # fmt: off
         n = (CO2j + COj + H2Oj + H2j + Hj + OHj + NOj + Nj + Oj + O2j + CH4j
@@ -480,19 +486,28 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-6):
         if epsilon_0 is None:
             epsilon_0 = epsilon
             CO2j_0 = CO2j
-            CO2j *= 1 + tol
+            CO2j *= 1 - tol
             # we forfeit updating the first time around
 
         else:
-            CO2j_1 = CO2j - 0.1 * epsilon * (CO2j - CO2j_0) / (
-                epsilon - epsilon_0
-            )
+            CO2j_1 = CO2j - epsilon * (CO2j - CO2j_0) / (epsilon - epsilon_0)
+            """
+            if CO2j_1 == CO2j_0:
+                logger.warn("Solving terminated due to oscillating conditions.")
+                break
+            """
             epsilon_0 = epsilon
             CO2j_0 = CO2j
             CO2j = CO2j_1
 
-            if abs(epsilon / CO2j) < tol or CO2j_1 == CO2j:
+            if abs(epsilon / max(H2j, H2Oj, COj, CO2j)) < tol:
                 break
+
+        i += 1
+
+    logger.info(
+        "Solved for equilibrium condition in {:} iteration(s).".format(i)
+    )
 
     speciesList = [
         ("CO", COj * 28.01, COj),
@@ -602,11 +617,11 @@ if __name__ == "__main__":
         )
         print(T, ld)
 
-        print(" @ Product  %mass  mol/g")
+        print(" @ Product  %mass  1e-6 mol/g")
         print(
             *[
                 "{:>2} : {:^6} {:<6.1%}".format(i, name, mass)
-                + "{:>10,.2f}".format(num * 1e5)
+                + "{:>10,.2f}".format(num * 1e6)
                 for i, (name, mass, num) in enumerate(speciesList)
             ],
             sep="\n"
@@ -616,9 +631,4 @@ if __name__ == "__main__":
         print("press:", p, "MPa")
         print("force:", f, "J/g")
 
-    # f(1600, ld=0.01)
-    # f(3024, ld=0.01)
-    # f(3058, ld=0.05)
-    # f(3068, ld=0.1)
-    # f(3073, ld=0.2)
-    # f(3073, ld=0.35)
+    f(200, 0.2)

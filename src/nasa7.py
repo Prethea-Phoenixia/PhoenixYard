@@ -7,6 +7,9 @@ Python code to read the NASA Glenn Thermodynamic database,
 generate fit for each specie and calcualte reaction constants
 from thermalchemical data.
 
+This author is not affiliated, nor is this code endorsed by any
+official agency anywhere.
+
 #The original NASA thermo data file format was documented in:
 #
 #S. Gordon and B.J. McBride, "Computer Program for Calculation of Complex
@@ -84,13 +87,13 @@ One such source is at
 >https://shepherd.caltech.edu/EDL/PublicResources/sdt/thermo.html
 
 Note that in practice, the Phase of species only has to values: G for gas and C for
-condensate? presumably.
+condensed phase? presumably.
 """
 
 import logging
 import difflib
-from PERIODIC import molarMasses
-from math import log
+from periodic import molarMasses
+from math import log, exp
 
 # create logger
 logger = logging.getLogger("THERMO")
@@ -119,7 +122,7 @@ class Specie:
         specieName,  # string
         date,  # string, more like a reference
         formula,  # dict:{elementNameinCaps: count}
-        phase,  # "G", "C", for gas and condensate (liquid + solid)
+        phase,  # "G", "C", for gas and condensed phase (liquid + solid)
         fitTlow,  # float
         fitTmid,  # float
         fitThigh,  # float
@@ -174,8 +177,11 @@ class Specie:
         raised.
         """
         if specieName in cls.allFits:
-            logger.info("Returning specie {:}.".format(specieName))
-            return cls.allFits[specieName]
+            specie = cls.allFits[specieName]
+            logger.info(
+                "Returning specie {:} [{:}].".format(specieName, specie.phase)
+            )
+            return specie
         else:
             closeMatch = difflib.get_close_matches(
                 specieName,
@@ -185,9 +191,10 @@ class Specie:
             )
             if len(closeMatch) > 1:
                 logger.warning(
-                    "Unknown specie name {:}, assuming {:}, did you mean: {:}.".format(
+                    "Unknown specie name {:}, assuming {:} [{:}], did you mean: {:}.".format(
                         specieName,
                         closeMatch[0],
+                        closeMatch[0].phase,
                         ", ".join(closeMatch[1:]),
                     )
                 )
@@ -195,8 +202,8 @@ class Specie:
 
             elif len(closeMatch) > 0:
                 logger.warning(
-                    "Unknown specie name {:}, assuming {:}.".format(
-                        specieName, closeMatch[0]
+                    "Unknown specie name {:}, assuming {:} [{:}].".format(
+                        specieName, closeMatch[0], closeMatch[0].phase
                     )
                 )
                 return cls.allFits[closeMatch[0]]
@@ -443,7 +450,10 @@ class Specie:
                 (T-T_ref) T_ref
 
         """
-        return (self(T, R, C)[1] - self(ref, R, C)[1]) / (T - ref)
+        if T == ref:
+            return 0
+        else:
+            return (self(T, R, C)[1] - self(ref, R, C)[1]) / (T - ref)
 
     def Cv(self, T, R="J/(molK)"):
         """
@@ -505,7 +515,7 @@ class Reaction:
             logger.info("Reaction {:} checked as balanced".format(self))
 
     def __str__(self):
-        reaction = ""
+        reaction = self.name + ": "
 
         for i, (therm, count) in enumerate(self.LHS.items()):
             if i != 0:
@@ -539,7 +549,8 @@ class Reaction:
 
         R = Specie._R(R)
 
-        return 10 ** (-Delta_G / (2.3026 * R * T))
+        # return 10 ** (-Delta_G / (2.3026 * R * T))
+        return exp(-Delta_G / (R * T))
 
     def Kp(self, T):
         """
@@ -566,6 +577,7 @@ class Reaction:
 
 
 if __name__ == "__main__":
+    # some simple examples
     Specie.read("data/nasa7.dat")
     methane = Specie.get("CH4")
     ammonia = Specie.get("NH3")
@@ -585,4 +597,4 @@ if __name__ == "__main__":
         name="Ammonia decomposition",
         RHS={ammonia: 1},
         LHS={hydrogen: 1.5, nitrogen: 0.5},
-    )
+    )  # this is k8

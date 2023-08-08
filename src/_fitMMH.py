@@ -57,7 +57,11 @@ if __name__ == "__main__":
 
     for line in MMHTable:
         T = line[0]
-        newLine = [*line[:9], methane.getMMH(T), ammonia.getMMH(T)]
+        newLine = [
+            *line[:9],
+            round(methane.getMMH(T), 3),
+            round(ammonia.getMMH(T), 3),
+        ]
         newMMH.append(newLine)
 
     print(

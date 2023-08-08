@@ -2,7 +2,7 @@ import difflib
 
 from corner import balance
 from num import secant
-from PERIODIC import molarMasses
+from periodic import molarMasses
 
 
 class Ingredient:
@@ -464,7 +464,8 @@ if __name__ == "__main__":
 
     speciesDict = {}
 
-    Ts = list(range(1600, round(ATKPRDS22.Tv), 10))
+    print("HERE")
+    Ts = list(range(500, round(ATKPRDS22.Tv), 10))
     for T in Ts:
         speciesList = ATKPRDS22.balanceAt(T, False)
 

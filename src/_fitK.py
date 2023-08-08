@@ -52,6 +52,38 @@ Kp18 = pNO2 / (pNO pO2^1/2)
 Kp19 = pNO / ( pN2^1/2 pO2^1/2)
 """
 
+from nasa7 import Specie, Reaction
+
+Specie.read("data/nasa7.dat")
+
+CO2 = Specie.get("CO2")
+H2O = Specie.get("H2O")
+CO = Specie.get("CO")
+H2 = Specie.get("H2")
+H = Specie.get("H")
+N2 = Specie.get("N2")
+OH = Specie.get("OH")
+NO = Specie.get("NO")
+N = Specie.get("N")
+O = Specie.get("O")
+O2 = Specie.get("O2")
+CH4 = Specie.get("CH4")
+NH3 = Specie.get("NH3")
+
+k0 = Reaction("water-gas", LHS={CO2: 1, H2: 1}, RHS={CO: 1, H2O: 1})
+k1 = Reaction("hydrogen decomposition", LHS={H2: 0.5}, RHS={H: 1})
+k2 = Reaction("water-hydroxyl", LHS={H2O: 1}, RHS={H2: 0.5, OH: 1})
+k3 = Reaction("water-nitroxide", LHS={H2O: 1, N2: 0.5}, RHS={NO: 1, H2: 1})
+k4 = Reaction("nitrogen decomposiiton", LHS={N2: 0.5}, RHS={N: 1})
+k5 = Reaction("water-oxygen radical", LHS={H2O: 1}, RHS={O: 1, H2: 1})
+k6 = Reaction("water-decomposition", LHS={H2O: 1}, RHS={O2: 0.5, H2: 1})
+k7 = Reaction(
+    "methane synthesis w/ carbon dioxide",
+    LHS={CO: 2, H2: 2},
+    RHS={CH4: 1, CO2: 1},
+)
+k8 = Reaction("ammonia synthesis", LHS={N2: 0.5, H2: 1.5}, RHS={NH3: 1})
+
 if __name__ == "__main__":
     import numpy as np
     from matplotlib import pyplot as plt
@@ -155,6 +187,13 @@ if __name__ == "__main__":
             f2 = np.polynomial.polynomial.Polynomial(kp1_h.coef - kp4_h.coef)
         elif i == 6:
             f2 = np.polynomial.polynomial.Polynomial(-2 * kp4_h.coef)
+
+        elif i == 8:
+            mint = 600
+            f1 = kp16_l
+            transt = 2000
+            f2 = kp16_h
+        """
         elif i == 7:
             # k7 = kp10 * kp11 / kp9^2
             f1 = np.polynomial.polynomial.Polynomial(
@@ -162,11 +201,7 @@ if __name__ == "__main__":
             )
             f2 = fit7
             invFit2 = True
-        elif i == 8:
-            mint = 600
-            f1 = kp16_l
-            transt = 2000
-            f2 = kp16_h
+        """
 
         if f1 is not None:
             t1 = np.linspace(mint, transt, 100)
@@ -177,8 +212,13 @@ if __name__ == "__main__":
 
         ax.set_yscale("log")
 
-    plt.show(block=False)
+    for i, k in enumerate((k0, k1, k2, k3, k4, k5, k6, k7, k8)):
+        t = np.linspace(800, 4000, 100)
+        ax = axs[i // 3][i % 3]
+        ax.plot(t, [k(v) for v in t], c="grey", ls="dashed")
 
+    plt.show()
+    input()
     ###########################################################################
 
     newK = []
@@ -263,9 +303,8 @@ if __name__ == "__main__":
         ),
     )
     print(newK)
-    plt.show()
-    # fmt:off
 
+    # fmt:off
     newK = [
             [1600.0, 3.132, 6e-05, 1.964e-06, 4.033e-08, 4.489e-09, 1.091e-10, 5.277e-11, 1.35e-06, 4.5e-05],
             [1700.0, 3.555, 0.0002, 6.2e-06, 1.556e-07, 1.89e-08, 7.866e-10, 3.827e-10, 4.9e-07, 3.5e-05],

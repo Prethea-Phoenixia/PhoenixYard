@@ -185,21 +185,18 @@ class IB(Frame):
         parent.rowconfigure(1, weight=1)
 
         self.addTopBar(parent)
-
         self.addRightFrm(parent)
         self.addErrFrm(parent)
+
         self.addPlotFrm(parent)
         self.addParFrm(parent)
         self.addTblFrm(parent)
-
         parent.update_idletasks()
         self.addGeomPlot()
-
         parent.update_idletasks()
         self.addFigPlot()
 
         self.typeCallback()
-
         self.updateSpec()
         self.updateGeom()
 
@@ -1204,7 +1201,8 @@ class IB(Frame):
         width = geomPlotFrm.winfo_width() - 2
         height = geomPlotFrm.winfo_height() - 2
 
-        """
+        print(width, height)
+        """ 
         geomPlotFrm.config(width=width, height=width)
         # we lock the frame the plot is put in
         geomPlotFrm.grid_propagate(False)
@@ -1224,10 +1222,7 @@ class IB(Frame):
             self.geomFig = fig
             self.geomAx = fig.add_subplot(111)
 
-            self.geomCanvas = FigureCanvasTkAgg(
-                fig,
-                master=geomPlotFrm,
-            )
+            self.geomCanvas = FigureCanvasTkAgg(fig, master=geomPlotFrm)
             self.geomCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=0, pady=0, sticky="nsew"
             )
@@ -1288,20 +1283,20 @@ class IB(Frame):
             self.fig = fig
 
             self.pltCanvas = FigureCanvasTkAgg(fig, master=plotFrm)
+
             self.pltCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=2, pady=2, sticky="nsew"
             )
+
         """
-        Prevents blowout of the frame to (windows scaling factor x) of
-        specified size,
-        at the cost of requiring a resize to center the graph, initially.
+        For some reason the above specification is not strictly adhered to
+        in practice, this might be a bug on tkAgg or matplotlib backend.
         """
         plotFrm.grid_propagate(False)
 
     def resizePlot(self, event):
         # we use the bbox method here as it has already accounted for padding
         # so no adjustment here is necessary
-
         _, _, width, height = self.plotFrm.bbox("insert")
 
         dpi = self.dpi
