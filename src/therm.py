@@ -190,10 +190,14 @@ class Ingredient:
 
 
 class Mixture:
-    def __init__(self, name, compoDict, Delta=0.2, tol=1e-6):
+    def __init__(
+        self, name, compoDict, Delta=0.2, tol=1e-3, tol_b=1e-12, its=1000
+    ):
         self.name = name
         self.Delta = Delta  # load density in g/cc
         self.tol = tol
+        self.its = its
+        self.tol_b = tol_b
 
         # Normalize the given composition such that the fractions sums to 1
 
@@ -228,33 +232,35 @@ class Mixture:
 
         def f(T):
             zeta, _, _, _, _, _, _ = balance(
-                self.Hf, T, Ci, Hi, Oi, Ni, V=1 / Delta, tol=tol
+                self.Hf, T, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b
             )
 
             return zeta
 
+        # zeta on the order of 0.5 per degree
         Tv, _ = secant(f, 2500, 3500, x_min=1600, x_max=4000, tol=tol)
 
         _, self.speciesList, n, E, self.b, self.p, self.f = balance(
-            self.Hf, Tv, Ci, Hi, Oi, Ni, V=1 / Delta, tol=tol
+            self.Hf, Tv, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b
         )
         # see Corner ss 3.4
         _, _, _, E1, _, _, _ = balance(
-            self.Hf, Tv, Ci, Hi, Oi, Ni, V=1 / Delta, tol=tol
+            self.Hf, Tv, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b
         )
         _, _, _, E2, _, _, _ = balance(
-            self.Hf, 0.7 * Tv, Ci, Hi, Oi, Ni, V=1 / Delta, tol=tol
+            self.Hf, 0.7 * Tv, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b
         )
         C_v = (E1 - E2) / (0.3 * Tv)
         # gas constant: 1.987 cal/(mol K)
         self.gamma = (n * 1.987 / C_v) + 1
         self.n = n
-        self.Ci, self.Hi, self.Oi, self.Ni = Ci, Hi, Ni, Oi
+
+        self.Ci, self.Hi, self.Oi, self.Ni = Ci, Hi, Oi, Ni
 
         self.Tv = Tv
         self.Hf = Hf
 
-    def balanceAt(self, T, verbose=True):
+    def balanceAt(self, T, verbose=True, its=1000, tol=1e-12):
         Delta, speciesList, n, E, b, p, f = balance(
             self.Hf,
             T,
@@ -263,7 +269,8 @@ class Mixture:
             self.Oi,
             self.Ni,
             V=1 / self.Delta,
-            tol=self.tol,
+            its=its,
+            tol=tol,
         )
 
         if verbose:
@@ -273,7 +280,7 @@ class Mixture:
             print(
                 *[
                     "{:>2} : {:^6} {:<6.1%} {:<6.4f}".format(i, name, mass, num)
-                    for i, (name, mass, num) in enumerate(self.speciesList)
+                    for i, (name, mass, num) in enumerate(speciesList)
                 ],
                 sep="\n"
             )
@@ -454,7 +461,7 @@ if __name__ == "__main__":
 
     ATKPRDS22.prettyPrint()
 
-    ATKPRDS22.balanceAt(3500)
+    print(ATKPRDS22.balanceAt(3581))
 
     import matplotlib.pyplot as plt
     from labellines import labelLines
@@ -465,7 +472,7 @@ if __name__ == "__main__":
 
     print("HERE")
 
-    Ts = list(range(500, round(ATKPRDS22.Tv), 100))
+    Ts = list(range(1600, 4000, 100))
     for T in Ts:
         speciesList = ATKPRDS22.balanceAt(T, False)
 
@@ -479,7 +486,8 @@ if __name__ == "__main__":
     for specie, pops in speciesDict.items():
         ax.plot(Ts, pops, label=specie)
 
-    labelLines(ax.get_lines())
     ax.set_yscale("log")
+    ax.set_ylim((1e-6, 1))
+    labelLines(ax.get_lines())
 
     plt.show()

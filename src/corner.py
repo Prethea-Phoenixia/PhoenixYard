@@ -289,7 +289,7 @@ dissociaiton considered ,in descending order of significance:
 """
 
 
-def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
+def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=1000, tol=1e-12):
     """
     Ci, Hi, Oi, Ni are in mol/g.
     Consequently,
@@ -387,7 +387,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     # initialize minor species.
     Hj, OHj, NOj, Nj, Oj, O2j, CH4j, NH3j = 0, 0, 0, 0, 0, 0, 0, 0
 
-    """set up initial value for iteration: only major products"""
+    # set up initial value for iteration: only major products
     G = Ci
     H = Oi - Ci
     I = 0.5 * Hi + Ci - Oi
@@ -421,13 +421,17 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
     """
     CO2j_nmp = CO2j  # no minor product
 
+    i = its
     CO2j_0 = None
+    CO2j_1 = None
     epsilon_0 = None
     epsilon = None
+    kappa = 0.11
+    delta = None
+    olds = None
 
-    i = 0
-    kappa = 0.1
-    while True:
+    firstRun = True
+    while i > 0:
         N2j = 0.5 * (Ni - Nj - NOj - NH3j)
 
         G = Ci - CH4j
@@ -442,15 +446,18 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         # fmt: on
         H2j = I + CO2j
 
+        epsilon = COj * H2Oj - K0 * (CO2j * H2j)  # error
+
         if any((COj < 0, H2Oj < 0, CO2j < 0, H2j < 0)):
-            print(T, CO2j, COj, H2Oj, H2j)
+            logger.warning("Kappa-")
             kappa = kappa**2
             CO2j = CO2j_nmp
             CO2j_0 = None
             epsilon = None
             epsilon_0 = None
             Hj, OHj, NOj, Nj, Oj, O2j, CH4j, NH3j = 0, 0, 0, 0, 0, 0, 0, 0
-            i += 1
+            i = its
+            firstRun = True
             continue
 
         # Minor, Dissociation Products
@@ -486,28 +493,49 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         NH3j_1 = min(NH3max, NH3j_1)
         NH3j = NH3j + kappa * (NH3j_1 - NH3j)
 
+        if firstRun:
+            # fmt:off
+            olds = (CO2j, COj, H2Oj, H2j, Hj, OHj, NOj, Nj, Oj, O2j, CH4j, NH3j, N2j)
+            # fmt: on
+
+        else:
+            delta = sum(
+                abs(v - v0)
+                for v, v0 in zip(
+                    # fmt:off
+                    (CO2j_1 if CO2j_1 is not None else CO2j, COj, H2Oj, H2j, Hj, OHj, NOj, Nj, Oj, O2j, CH4j_1, NH3j_1, N2j),
+                    # fmt: on
+                    olds,
+                )
+            )
+            # fmt:off
+            olds = (CO2j, COj, H2Oj, H2j, Hj, OHj, NOj, Nj, Oj, O2j, CH4j, NH3j, N2j)
+            # fmt: on
+
         # fmt: off
         n = (CO2j + COj + H2Oj + H2j + Hj + OHj + NOj + Nj + Oj + O2j + CH4j
              + NH3j + N2j)  # mol/g
         # fmt: on
+
+        # print(CO2j, COj, H2Oj, H2j)
         if negDeltaB == 0 and neghalfDeltaC == 0:
-            K0 = k0(T)
+            pass
         else:
             K0 = k0(T) * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
 
-        epsilon = COj * H2Oj - K0 * (CO2j * H2j)  # error
-
-        if epsilon_0 is None:
+        if firstRun:
             epsilon_0 = epsilon
             CO2j_0 = CO2j
-            CO2j *= 1 - tol
+
+            CO2j *= 1
+
             # we forfeit updating the first time around
 
         else:
             if epsilon_0 == epsilon:
-                logger.warn(
-                    "Solving terminated due to oscillating conditions.ε={:}".format(
-                        epsilon
+                logger.warning(
+                    "Solving terminated due to oscillating conditions.Δ={:}".format(
+                        delta
                     )
                 )
                 break
@@ -516,17 +544,20 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
 
             epsilon_0 = epsilon
             CO2j_0 = CO2j
-            CO2j = CO2j_1
+            CO2j += kappa * (CO2j_1 - CO2j)
 
-            if abs(epsilon / max(H2j, H2Oj, COj, CO2j)) < tol:
+            if delta < tol and i < 50:
                 break
 
-        i += 1
+        if firstRun:
+            firstRun = False
+
+        i -= 1
 
     logger.info(
         "Solved for equilibrium condition in {:} iteration(s).".format(i)
+        + "Δ = {:.2e}.".format(delta)
     )
-
     speciesList = [
         ("CO", COj * 28.01, COj),
         ("CO2", CO2j * 44.01, CO2j),
@@ -649,4 +680,4 @@ if __name__ == "__main__":
         print("press:", p, "MPa")
         print("force:", f, "J/g")
 
-    f(200, 0.2)
+    f(1200, 0.2)
