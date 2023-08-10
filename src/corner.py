@@ -289,7 +289,7 @@ dissociaiton considered ,in descending order of significance:
 """
 
 
-def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=1000, tol=1e-12):
+def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=100, tol=1e-9):
     """
     Ci, Hi, Oi, Ni are in mol/g.
     Consequently,
@@ -554,8 +554,13 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=1000, tol=1e-12):
 
         i -= 1
 
+    if i == 0:
+        logger.warning(
+            "Equilibirum finding terminated on maximum iterations. Result may not be correct."
+        )
+
     logger.info(
-        "Solved for equilibrium condition in {:} iteration(s).".format(i)
+        "Solved for equilibrium condition in {:} iteration(s).".format(its - i)
         + "Δ = {:.2e}.".format(delta)
     )
     speciesList = [

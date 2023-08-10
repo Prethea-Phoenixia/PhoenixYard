@@ -1201,7 +1201,6 @@ class IB(Frame):
         width = geomPlotFrm.winfo_width() - 2
         height = geomPlotFrm.winfo_height() - 2
 
-        print(width, height)
         """ 
         geomPlotFrm.config(width=width, height=width)
         # we lock the frame the plot is put in

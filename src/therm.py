@@ -191,11 +191,11 @@ class Ingredient:
 
 class Mixture:
     def __init__(
-        self, name, compoDict, Delta=0.2, tol=1e-3, tol_b=1e-12, its=1000
+        self, name, compoDict, Delta=0.2, tol_z=1e-3, tol_b=1e-9, its=100
     ):
         self.name = name
         self.Delta = Delta  # load density in g/cc
-        self.tol = tol
+        self.tol_z = tol_z  # tolerance for zeta
         self.its = its
         self.tol_b = tol_b
 
@@ -238,7 +238,7 @@ class Mixture:
             return zeta
 
         # zeta on the order of 0.5 per degree
-        Tv, _ = secant(f, 2500, 3500, x_min=1600, x_max=4000, tol=tol)
+        Tv, _ = secant(f, 2500, 3500, x_min=1600, x_max=4000, tol=tol_z)
 
         _, self.speciesList, n, E, self.b, self.p, self.f = balance(
             self.Hf, Tv, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b
@@ -260,7 +260,7 @@ class Mixture:
         self.Tv = Tv
         self.Hf = Hf
 
-    def balanceAt(self, T, verbose=True, its=1000, tol=1e-12):
+    def balanceAt(self, T, verbose=True, its=100, tol=1e-9):
         Delta, speciesList, n, E, b, p, f = balance(
             self.Hf,
             T,
@@ -272,7 +272,7 @@ class Mixture:
             its=its,
             tol=tol,
         )
-
+        print(Delta)
         if verbose:
             print("Mixture: {:} At: {:}K".format(self.name, T))
 
@@ -318,10 +318,10 @@ class Mixture:
         print("C {:.2%} H {:.2%} N {:.2%} O {:.2%}".format(C, H, N, O))
         print("")
         print("Calculated Properties:---------------------------")
-        print("Density            : {:>6.4g} g/cc".format(self.rho))
-        print("Heat of Formation  : {:>6.3g} cal/g".format(self.Hf))
+        print("Density            : {:>8.4g} g/cc".format(self.rho))
+        print("Heat of Formation  : {:>8.0f} cal/g".format(self.Hf))
         print(
-            "Flame Temperature  : {:>6.4g} K (Isochoric Adiabatic)".format(
+            "Flame Temperature  : {:>8.6g} K (Isochoric Adiabatic)".format(
                 self.Tv
             )
         )
@@ -333,12 +333,12 @@ class Mixture:
             ],
             sep="\n"
         )
-        print("Impetus / Force    : {:>6.5g} J/g".format(self.f))
-        print("Covolume           : {:>6.4g} cc/g".format(self.b))
+        print("Impetus / Force    : {:>8.5g} J/g".format(self.f))
+        print("Covolume           : {:>8.4g} cc/g".format(self.b))
         # print(" @Temperature      : {:>6.0f} K".format(self.Tv))
-        print(" @ Load Density    : {:>6.4g} g/cc".format(self.Delta))
-        print(" @ Pressure        : {:>6.4g} MPa".format(self.p))
-        print("avg Adb. index     : {:>6.4g}".format(self.gamma))
+        print(" @ Load Density    : {:>8.6g} g/cc".format(self.Delta))
+        print(" @ Pressure        : {:>8.1f} MPa".format(self.p))
+        print("avg Adb. index     : {:>8.5g}".format(self.gamma))
         print("")
 
 
@@ -460,9 +460,7 @@ if __name__ == "__main__":
     )
 
     ATKPRDS22.prettyPrint()
-
-    print(ATKPRDS22.balanceAt(3581))
-
+    """
     import matplotlib.pyplot as plt
     from labellines import labelLines
 
@@ -491,3 +489,4 @@ if __name__ == "__main__":
     labelLines(ax.get_lines())
 
     plt.show()
+    """

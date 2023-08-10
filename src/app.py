@@ -36,8 +36,6 @@ if __name__ == "__main__":
 
     dpi = root.winfo_fpixels("1i")
 
-    print(dpi)
-
     # Tk was originally developed for a dpi of 72
     # root.tk.call("tk", "scaling", "-displayof", ".", dpi / 72.0)
     scale = 1.0 * dpi / 72.0
