@@ -282,7 +282,12 @@ class Propellant:
         .labda_s
 
         """
-        if any((R1 < 0, R2 < 0)):
+        if any(
+            (
+                R1 < 0 if R1 is not None else False,
+                R2 < 0 if R1 is not None else False,
+            )
+        ):
             raise ValueError("Geometry is impossible")
 
         self.composition = composition

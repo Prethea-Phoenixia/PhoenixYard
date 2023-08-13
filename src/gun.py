@@ -496,7 +496,7 @@ class Gun:
             try:
                 if Z_j > Z_b:
                     Z_j = Z_b
-                t_bar_j, l_bar_j, v_bar_j = RKF78(
+                Z, (t_bar_j, l_bar_j, v_bar_j), _ = RKF78(
                     self._ode_Z,
                     (t_bar_i, l_bar_i, v_bar_i),
                     Z_i,
@@ -506,30 +506,40 @@ class Gun:
                     minTol=minTol,
                     abortFunc=abort,
                     record=ztlv_record_i,
-                )[1]
+                )
 
                 p_bar_j = self._fp_bar(Z_j, l_bar_j, v_bar_j)
 
             except ValueError as e:
+                """
+                Z, t_bar, l_bar, v_bar = (
+                    ztlv_record[-1][0],
+                    *ztlv_record[-1][1],
+                )
+                dt_bar, dl_bar, dv_bar = self._ode_Z(Z, t_bar, l_bar, v_bar)
+                p_bar = self._fp_bar(Z, l_bar, v_bar)
+                """
+                raise e
+
+            if any(v < 0 for v in (t_bar_j, l_bar_j, v_bar_j, p_bar_j)):
                 raise ValueError(
-                    "Unable to integrate due to ill defined system, requiring"
-                    + " vanishingly step size."
+                    "Numerical Integration diverged: negative"
+                    + " values encountered in results.\n"
+                    + "{:.0f} ms, {:.0f} mm, {:.0f} m/s, {:.0f} MPa".format(
+                        t_bar_j * tScale * 1e3,
+                        l_bar_j * self.l_0 * 1e3,
+                        v_bar_j * self.v_j,
+                        p_bar_j * pScale / 1e6,
+                    )
                 )
 
-            if p_bar_j > p_bar_max:
-                raise ValueError(
-                    "Nobel-Abel EoS is generally accurate enough below"
-                    + " 600MPa. However, Unreasonably high pressure "
-                    + "(>{:.0f} MPa) was encountered.".format(p_max / 1e6),
-                )
-
-            if any(
-                (t_bar_i == t_bar_j, l_bar_i == l_bar_j, v_bar_i == v_bar_j)
-            ):
-                raise ValueError(
-                    "Numerical integration stalled in search of exit/burnout"
-                    + " point."
-                )
+            if Z != Z_j:
+                if p_bar_j > p_bar_max:
+                    raise ValueError(
+                        "Nobel-Abel EoS is generally accurate enough below"
+                        + " 600MPa. However, Unreasonably high pressure "
+                        + "(>{:.0f} MPa) was encountered.".format(p_max / 1e6),
+                    )  # in practice most press-related spikes are captured here
 
             if l_bar_j >= l_g_bar:
                 if abs(l_bar_i - l_g_bar) / (l_g_bar) > tol or l_bar_i == 0:
@@ -550,13 +560,13 @@ class Gun:
                 Z_j += Delta_Z / N
 
         if t_bar_i == 0:
-            raise ValueError("exit/burnout point found to be at the origin.")
+            raise ValueError("burnout point found to be at the origin.")
 
         """
         Cludge code to force the SoE past the discontinuity at Z = Z_b, since
         we wrote the SoE to be be piecewise continous from (0, Z_b] and (Z_b,
         +inf) it is necessary to do this to prevent the RKF integrator coming
-        up with irreducible error estimates and driving the step size to 0 
+        up with irreducible error estimates and driving the step size to 0
         around Z = Z_b
         """
         if isBurnOutContained:
@@ -585,7 +595,11 @@ class Gun:
         """
 
         ltzv_record = []
-        _, (t_bar_e, Z_e, v_bar_e), (t_bar_err, Z_err, v_bar_err) = RKF78(
+        (
+            l_bar,
+            (t_bar_e, Z_e, v_bar_e),
+            (t_bar_err, Z_err, v_bar_err),
+        ) = RKF78(
             self._ode_l,
             (t_bar_i, Z_i, v_bar_i),
             l_bar_i,
@@ -595,6 +609,13 @@ class Gun:
             minTol=minTol,
             record=ltzv_record,
         )
+
+        if l_bar != l_g_bar:
+            if v_bar_e <= 0:
+                raise ValueError(
+                    "Squib load condition detected post burnout:"
+                    + " Round stopped in bore at {:}".format(l_bar * self.l_0)
+                )
 
         if record is not None:
             record.extend(

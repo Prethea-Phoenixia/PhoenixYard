@@ -22,7 +22,7 @@ ENGLISH = {
     "plotFrmLabel": "Plot",
     "errFrmLabel": "Exceptions",
     "parFrmLabel": "Parameters",
-    "specFrmLabel": "Design Summary",
+    "specFrmLabel": "Design",
     "opFrmLabel": "Operations",
     "consFrmLabel": "Constraints",
     "consButton": "Constrain Design",

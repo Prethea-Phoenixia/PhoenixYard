@@ -1,1 +1,0 @@
-auto-py-to-exe -c multifile-laptop.json -o %UserProfile%/Documents/GitHub/PhoenixYard/build

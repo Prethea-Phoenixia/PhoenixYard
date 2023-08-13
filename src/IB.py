@@ -1,5 +1,7 @@
 from tkinter import Frame, Menu, Text
 from tkinter import StringVar, IntVar
+
+
 from tkinter import ttk
 
 
@@ -76,7 +78,8 @@ FIG_CONTEXT = {
     "font.family": ["Sarasa Mono SC"],  # fallback
 }
 
-fontName = "Sarasa Mono SC"
+FONTNAME = "Sarasa Mono SC"
+FONTSIZE = 8
 
 
 class IB(Frame):
@@ -84,7 +87,7 @@ class IB(Frame):
         Frame.__init__(self, parent)
         self.LANG = StringVar(value=list(STRING.keys())[0])
 
-        default_font = tkFont.Font(family=fontName, size=8)
+        default_font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
         self.option_add("*Font", default_font)
 
         self.queue = Queue()
@@ -185,6 +188,8 @@ class IB(Frame):
         parent.rowconfigure(1, weight=1)
 
         self.addTopBar(parent)
+
+        self.addLeftFrm(parent)
         self.addRightFrm(parent)
         self.addErrFrm(parent)
 
@@ -402,13 +407,17 @@ class IB(Frame):
         self.plotBurnup.trace_add("write", self.updateFigPlot)
         self.plotVel.trace_add("write", self.updateFigPlot)
 
-    def addRightFrm(self, parent):
-        rightFrm = ttk.Frame(parent)
-        rightFrm.grid(row=0, column=2, rowspan=4, sticky="nsew")
-        rightFrm.columnconfigure(0, weight=1)
-        rightFrm.rowconfigure(0, weight=1)
+    def addLeftFrm(self, parent):
+        """
+        t_Font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
+        fontWidth = t_Font.measure("m")
+        """
+        leftFrm = ttk.Frame(parent)
+        leftFrm.grid(row=0, column=1, rowspan=4, sticky="nsew")
+        leftFrm.columnconfigure(0, weight=1)
+        leftFrm.rowconfigure(0, weight=1)
 
-        specFrm = ttk.LabelFrame(rightFrm, text=self.getString("specFrmLabel"))
+        specFrm = ttk.LabelFrame(leftFrm, text=self.getString("specFrmLabel"))
         specFrm.grid(row=0, column=0, sticky="nsew")
         specFrm.columnconfigure(0, weight=1)
         self.specFrm = specFrm
@@ -422,8 +431,8 @@ class IB(Frame):
             labelText=self.getString("lxLabel"),
             unitText_up="Cal",
             unitText_dn="Cal",
-            justify_up="right",
-            justify_dn="right",
+            # justify_up="right",
+            # justify_dn="right",
             infotext=self.lxTip,
         )
 
@@ -433,7 +442,7 @@ class IB(Frame):
             rowIndex=i,
             labelText=self.getString("vaLabel"),
             unitText="m/s",
-            justify="right",
+            # justify="right",
             infotext=self.vinfTip,
         )
 
@@ -459,7 +468,7 @@ class IB(Frame):
             rowIndex=i,
             labelText=self.getString("cvLabel"),
             unitText="m³",
-            justify="right",
+            # justify="right",
         )
 
         self.ldLb, self.ld, _, i = self.add12Disp(
@@ -467,8 +476,14 @@ class IB(Frame):
             rowIndex=i,
             labelText=self.getString("ldLabel"),
             unitText="kg/m³",
-            justify="right",
+            # justify="right",
         )
+
+    def addRightFrm(self, parent):
+        rightFrm = ttk.Frame(parent)
+        rightFrm.grid(row=0, column=3, rowspan=4, sticky="nsew")
+        rightFrm.columnconfigure(0, weight=1)
+        rightFrm.rowconfigure(0, weight=1)
 
         opFrm = ttk.LabelFrame(rightFrm, text=self.getString("opFrmLabel"))
         opFrm.grid(row=1, column=0, sticky="nsew")
@@ -870,14 +885,14 @@ class IB(Frame):
             wrap="word",
             height=5,
             width=0,
-            font=("Sarasa Mono SC", 8),
+            font=(FONTNAME, FONTSIZE),
         )
 
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
     def addParFrm(self, parent):
         parFrm = ttk.LabelFrame(parent, text=self.getString("parFrmLabel"))
-        parFrm.grid(row=0, column=1, rowspan=4, sticky="nsew")
+        parFrm.grid(row=0, column=2, rowspan=4, sticky="nsew")
         parFrm.columnconfigure(0, weight=1)
         self.parFrm = parFrm
         # validation
@@ -989,11 +1004,10 @@ class IB(Frame):
             # wrap=WORD,
             wrap="none",
             height=5,
-            width=0,
-            # width=28,
+            width=35,
             yscrollcommand=specScroll.set,
             xscrollcommand=specHScroll.set,
-            font=("Sarasa Mono SC", 8),
+            font=(FONTNAME, FONTSIZE),
         )
         self.specs.grid(row=1, column=0, sticky="nsew")
         specScroll.config(command=self.specs.yview)
@@ -1058,7 +1072,6 @@ class IB(Frame):
 
         self.dropGeom.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropGeom.current(0)
-        # self.dropGeom.configure(width=28)  # this is the limiting value
 
         self.dropGeom.grid(
             row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
@@ -1585,23 +1598,23 @@ class IB(Frame):
         self.tv.tag_configure(POINT_BURNOUT, foreground="red")
         self.tv.tag_configure(POINT_FRACTURE, foreground="brown")
 
-        t_Font = tkFont.Font(family="Sarasa Mono SC", size=8)
+        t_Font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
 
         self.tv.tag_configure("monospace", font=t_Font)
         self.tv.tag_configure("error", font=t_Font, foreground="grey")
 
         # we use a fixed width font so any char will do
-        width, _ = t_Font.measure("m"), t_Font.metrics("linespace")
+        fontWidth, _ = t_Font.measure("m"), t_Font.metrics("linespace")
 
         for i, column in enumerate(columnList):  # foreach column
             self.tv.heading(
-                i, text=column
+                i, text=column, anchor="e"
             )  # let the column heading = column name
             self.tv.column(
                 column,
                 stretch=True,  # will adjust to window resizing
-                width=width * 12,
-                minwidth=width * 12,
+                width=fontWidth * 16,
+                minwidth=fontWidth * 16,
                 anchor="e",
             )
 
@@ -1861,7 +1874,7 @@ class IB(Frame):
         labelText,
         default="1.0",
         validation=None,
-        entryWidth=5,
+        entryWidth=15,
         formatter=formatFloatInput,
         color=None,
         infotext=None,
@@ -1913,7 +1926,7 @@ class IB(Frame):
         unitText="",
         default="0.0",
         validation=None,
-        entryWidth=10,
+        entryWidth=15,
         formatter=formatFloatInput,
         color=None,
         infotext=None,
@@ -1945,7 +1958,7 @@ class IB(Frame):
         labelText="",
         unitText="",
         default="0.0",
-        entryWidth=5,
+        entryWidth=15,
         justify="center",
         infotext=None,
         reverse=False,
@@ -1999,7 +2012,7 @@ class IB(Frame):
         unitText_dn="",
         default_up="0.0",
         default_dn="0.0",
-        entryWidth=5,
+        entryWidth=15,
         justify_up="center",
         justify_dn="center",
         infotext=None,
@@ -2047,28 +2060,35 @@ class IB(Frame):
 
     def useTheme(self):
         style = ttk.Style(self)
-        if self.themeRadio.get() == 0:
+        choice = self.themeRadio.get()
+        if choice == 0:
             style.theme_use("awdark")
-        else:
+        elif choice == 1:
             style.theme_use("awlight")
+
         self.setTheme()
 
     def setTheme(self):
         dpi = self.dpi
+
         style = ttk.Style(self)
         # ensure that the treeview rows are roughly the same height
         # regardless of dpi. on Windows, default is Segoe UI at 9 points
         # so the default row height should be around 12
 
-        style.configure("Treeview", rowheight=round(12 * dpi / 72.0))
-        style.configure("Treeview.Heading", font=(fontName, 8))
-        style.configure("TButton", font=(fontName, 10, "bold"))
-        style.configure("TLabelframe.Label", font=(fontName, 10, "bold"))
+        style.configure(
+            "Treeview", rowheight=round(12 * (FONTSIZE / 8) * dpi / 72.0)
+        )
+        style.configure("Treeview.Heading", font=(FONTNAME, FONTSIZE))
+        style.configure("TButton", font=(FONTNAME, FONTSIZE + 2, "bold"))
+        style.configure(
+            "TLabelframe.Label", font=(FONTNAME, FONTSIZE + 2, "bold")
+        )
         style.configure(
             "SubLabelFrame.TLabelframe.Label",
-            font=(fontName, 10),
+            font=(FONTNAME, FONTSIZE + 2),
         )
-        style.configure("TCheckbutton", font=(fontName, 8))
+        style.configure("TCheckbutton", font=(FONTNAME, FONTSIZE))
 
         bgc = str(style.lookup("TFrame", "background"))
         fgc = str(style.lookup("TFrame", "foreground"))

@@ -237,14 +237,10 @@ class ConstrainedRecoiless:
 
                 deta = C_A * S_j_bar * p_bar / tau**0.5 * dt_bar  # deta / dZ
                 dtau = (
-                    (
-                        (1 - tau) * (dpsi / dt_bar)
-                        - 2 * v_bar * (dv_bar / dt_bar)
-                        - theta * tau * (deta / dt_bar)
-                    )
-                    / (psi - eta)
-                    * dt_bar
-                )
+                    (1 - tau) * (dpsi)
+                    - 2 * v_bar * (dv_bar)
+                    - theta * tau * (deta)
+                ) / (psi - eta)
 
                 return (dt_bar, dl_bar, dv_bar, deta, dtau)
 
@@ -397,13 +393,11 @@ class ConstrainedRecoiless:
 
             deta = C_A * S_j_bar * p_bar / tau**0.5 * dt_bar  # deta / dv_bar
             dtau = (
-                (
-                    (1 - tau) * (dpsi * dZ / dt_bar)  # dZ/dt_bar
-                    - 2 * v_bar / dt_bar  # dv_bar/dt_bar
-                    - theta * tau * (deta / dt_bar)  # deta/dt_bar
-                )
-                / (psi - eta)
-                * dt_bar
+                (1 - tau) * (dpsi * dZ)  # dZ/dt_bar
+                - 2 * v_bar  # dv_bar/dt_bar
+                - theta * tau * (deta)  # deta/dt_bar
+            ) / (
+                psi - eta
             )  # dtau/dt_bar
 
             return (dt_bar, dZ, dl_bar, deta, dtau)

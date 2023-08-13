@@ -126,6 +126,15 @@ def GSS(f, a, b, yRelTol, xTol=0, findMin=True):
         return (c, b)
 
 
+"""
+Constants to be used for Runge-Kutta-Fehlberg 7(8), see:
+
+Classical Fifth-, Sixth- Seventh- and Eighth-Order Runge-Kutta
+Formulas With Stepsize Control
+Erwin Fehlberg, George C. Marshall Spcae Flight Center
+Huntsville, Ala.
+NASA, Washington D.C., October 1968
+"""
 a2 = 2 / 27
 a3 = 1 / 9
 a4 = 1 / 6
@@ -226,9 +235,9 @@ def RKF78(
     relTol,
     absTol,
     minTol=1e-16,
+    adaptTo=True,
     abortFunc=None,
     record=None,
-    show=False,
 ):
     """
     use Runge Kutta Fehlberg of 7(8)th power to solve system of Equation dFunc
@@ -236,29 +245,33 @@ def RKF78(
     Arguments:
         dFunc   : d/dx|x=x(y1, y2, y3....) = dFunc(x, y1, y2, y3...)
         iniVal  : initial values for (y1, y2, y3...)
-        x_0, x_1: integration
+        x_0, x_1: integration limits
         relTol  : relative tolerance, per component
         absTol  : absolute tolerance, per component
 
+
         abortFunc
                 : optional, accepts following arguments:
-            x   : current value of integrand
-            ys  : current value of the SoE
-            dys : estimated first derivative
-                and terminates the integrator on a boolean value of True
+                x   : current value of integrand
+                ys  : current value of the SoE
+                dys : estimated first derivative
+                    and terminates the integrator on a boolean value of True
 
-
+        adaptTo : optional, values used to control error
+                : = True
+                    adapt to control error in every component
+                : = [Boolean] * nbr. of components
+                    adapt to component where True.
 
         minTol  : optional, minimum magnitude of error
-
-        record  : optional, if supplied will record all committed datapoints
+        record  : optional, if supplied will record all committed steps
 
 
 
     Returns:
         (y1, y2, y3...)|x = x_1, (e1, e2, e3....)
         where e1, e2, e3...
-        is the estimated maximum deviation (in absolute) for that individual
+        are the estimated maximum deviation (in absolute) for that individual
         component
     """
     y_this = iniVal
@@ -266,16 +279,28 @@ def RKF78(
 
     beta = 0.84  # "safety" factor
     """
-    When beta<1: 
+    When beta<1:
         to reject the initial choice of h at the ith step and repeat the calculations using beta h
     , and
     When q≥1
-        to accept the computed value at the ith step using the step size h, but change the step size 
+        to accept the computed value at the ith step using the step size h, but change the step size
         to beta h for the (i + 1)st step.
     """
     h = x_1 - x_0  # initial step size
 
     Rm = [0 for _ in iniVal]
+
+    if adaptTo is True:
+        adaptTo = [True] * len(iniVal)
+    elif isinstance(adaptTo, list) or isinstance(adaptTo, tuple):
+        if len(adaptTo) != len(iniVal):
+            raise ValueError("adaptTo and dFunc length mismatch")
+        if all(not b for b in adaptTo):
+            raise ValueError("At least 1 variable must be specified in adaptTo")
+        else:
+            pass
+    else:
+        raise ValueError("Unclear variables to adapt stepsize for.")
 
     allK = [[] for _ in range(13)]
 
@@ -497,10 +522,13 @@ def RKF78(
         """
         # print(*Rs)
 
+        # Rs = [R for (R, adapt) in zip(Rs, adaptTo) if adapt]
+
         if absTol is None:
             R = max(
                 abs(r) / (minTol + relTol * min(abs(y1), abs(y2)))
-                for r, y1, y2 in zip(Rs, y_this, y_next)
+                for r, y1, y2, adapt in zip(Rs, y_this, y_next, adaptTo)
+                if adapt
             )
         else:
             R = max(
@@ -512,7 +540,8 @@ def RKF78(
                         absTol,
                     )
                 )
-                for r, y1, y2 in zip(Rs, y_this, y_next)
+                for r, y1, y2, adapt in zip(Rs, y_this, y_next, adaptTo)
+                if adapt
             )
 
         delta = 1
@@ -527,10 +556,6 @@ def RKF78(
             x += h
             Rm = [max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs)]
 
-            # print(x, *y_this)
-
-            if show:
-                print(x, y_this)
             if abortFunc is not None and abortFunc(
                 x=x, ys=y_this, o_x=ox, o_ys=y_last
             ):  # premature terminating cond. is met
@@ -557,6 +582,7 @@ def RKF78(
         """
 
     if abs((x - x_1) / (x_1 - x_0)) > relTol:
+        # print(dFunc(x, *y_this))
         raise ValueError(
             "Premature Termination of Integration due to vanishing step size,"
             + " x at {}, h at {}.".format(x, h)

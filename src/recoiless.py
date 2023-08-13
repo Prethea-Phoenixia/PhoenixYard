@@ -227,14 +227,13 @@ class Recoiless:
         deta = (
             self.C_A * self.S_j_bar * p_bar / tau**0.5 * dt_bar
         )  # deta / dl_bar
+
         dtau = (
-            (
-                (1 - tau) * (dpsi * dZ / dt_bar)  # dpsi/dt_bar
-                - 2 * v_bar * (dv_bar / dt_bar)  # dv_bar/dt_bar
-                - self.theta * tau * (deta / dt_bar)
-            )
-            / (psi - eta)
-            * dt_bar
+            (1 - tau) * (dpsi * dZ)
+            - 2 * v_bar * (dv_bar)
+            - self.theta * tau * (deta)
+        ) / (
+            psi - eta
         )  # dtau/dl_bar
 
         return (dt_bar, dZ, dv_bar, deta, dtau)
@@ -273,15 +272,12 @@ class Recoiless:
         deta = (
             self.C_A * self.S_j_bar * p_bar / tau**0.5 * dt_bar
         )  # deta / dZ
+
         dtau = (
-            (
-                (1 - tau) * (dpsi / dt_bar)
-                - 2 * v_bar * (dv_bar / dt_bar)
-                - self.theta * tau * (deta / dt_bar)
-            )
-            / (psi - eta)
-            * dt_bar
-        )
+            (1 - tau) * (dpsi)
+            - 2 * v_bar * (dv_bar)
+            - self.theta * tau * (deta)
+        ) / (psi - eta)
 
         return (dt_bar, dl_bar, dv_bar, deta, dtau)
 
@@ -438,7 +434,9 @@ class Recoiless:
 
             p_bar = self._fp_bar(Z, l_bar, eta, tau)
 
-            return l_bar > l_g_bar or p_bar > p_bar_max
+            return any(
+                (l_bar > l_g_bar, p_bar > p_bar_max, v_bar <= 0, p_bar < 0)
+            )
 
         while Z_i < Z_b:  # terminates if burnout is achieved
             ztlvet_record_i = []
@@ -449,7 +447,8 @@ class Recoiless:
             try:
                 if Z_j > Z_b:
                     Z_j = Z_b
-                t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j = RKF78(
+
+                Z, (t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j), _ = RKF78(
                     self._ode_Z,
                     (t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i),
                     Z_i,
@@ -459,34 +458,68 @@ class Recoiless:
                     minTol=minTol,
                     abortFunc=abort,
                     record=ztlvet_record_i,
-                )[1]
+                    adaptTo=(True, True, True, True, False),
+                )
 
                 p_bar_j = self._fp_bar(Z_j, l_bar_j, eta_j, tau_j)
 
             except ValueError as e:
-                raise ValueError(
-                    "Unable to integrate due to ill defined system, requiring"
-                    + " vanishingly step size."
+                Z, t_bar, l_bar, v_bar, eta, tau = (
+                    ztlvet_record_i[-1][0],
+                    *ztlvet_record_i[-1][1],
                 )
-
-            if p_bar_j > p_bar_max:
-                raise ValueError(
-                    "Nobel-Abel EoS is generally accurate enough below 600MPa. However,"
-                    + " Unreasonably high pressure (>{:.0f} MPa) was encountered.".format(
-                        p_max / 1e6
+                dt_bar, dl_bar, dv_bar, deta, dtau = self._ode_Z(
+                    Z, t_bar, l_bar, v_bar, eta, tau
+                )
+                p_bar = self._fp_bar(Z, l_bar, eta, tau)
+                if all((dt_bar > 0, dl_bar > 0, dv_bar < 0)):
+                    raise ValueError(
+                        "Extremely low propulsive effort exerted on shot,"
+                        + " impossible to integrate down to numerical precision.\n"
+                        + "Shot last calculated at {:.0f} mm with velocity {:.0f} mm/s after {:.0f} ms\n".format(
+                            l_bar * self.l_0 * 1e3,
+                            v_bar * self.v_j * 1e3,
+                            t_bar * tScale * 1e3,
+                        )
                     )
-                )
+                else:
+                    raise e  # unknown issues
 
-            if any(
-                (
-                    t_bar_i == t_bar_j,
-                    l_bar_i == l_bar_j,
-                    v_bar_i == v_bar_j,
-                )
-            ):
+            if Z != Z_j:  # early stop detection
+                if v_bar_j <= 0:
+                    Z, t_bar, l_bar, v_bar, eta, tau = (
+                        ztlvet_record_i[-1][0],
+                        *ztlvet_record_i[-1][1],
+                    )
+
+                    raise ValueError(
+                        "Squib load condition detected: Shot stopped in bore.\n"
+                        + "Shot is last calculate at {:.0f} mm at {:.0f} mm/s after {:.0f} ms".format(
+                            l_bar * self.l_0 * 1e3,
+                            v_bar * self.v_j * 1e3,
+                            t_bar * tScale * 1e3,
+                        )
+                    )
+
+                elif p_bar_j > p_bar_max:
+                    raise ValueError(
+                        "Nobel-Abel EoS is generally accurate enough below 600MPa. However,"
+                        + " Unreasonably high pressure (>{:.0f} MPa) was encountered.".format(
+                            p_max / 1e6
+                        )  # in practice most of the pressure-realted spikes are captured here.
+                    )
+
+            if any(v < 0 for v in (t_bar_j, l_bar_j, v_bar_j, p_bar_j)):
                 raise ValueError(
-                    "Numerical integration stalled in search of exit/burnout point."
-                )
+                    "Numerical Integration diverged: negative"
+                    + " values encountered in results.\n"
+                    + "{:.0f} ms, {:.0f} mm, {:.0f} m/s, {:.0f} MPa".format(
+                        t_bar_j * tScale * 1e3,
+                        l_bar_j * self.l_0 * 1e3,
+                        v_bar_j * self.v_j,
+                        p_bar_j * pScale / 1e6,
+                    )
+                )  # this will catch any case where t, l, p are negative
 
             if l_bar_j >= l_g_bar:
                 if abs(l_bar_i - l_g_bar) / (l_g_bar) > tol or l_bar_i == 0:
@@ -519,12 +552,12 @@ class Recoiless:
                 Z_j += Delta_Z / N
 
         if t_bar_i == 0:
-            raise ValueError("exit/burnout point found to be at the origin.")
+            raise ValueError("burnout point found to be at the origin.")
 
         """
-        Cludge code to force the SoE past the discontinuity at Z = Z_b, since 
+        Cludge code to force the SoE past the discontinuity at Z = Z_b, since
         we wrote the SoE to be be piecewise continous from (0, Z_b] and (Z_b, +inf)
-        it is necessary to do this to prevent the RKF integrator coming up with 
+        it is necessary to do this to prevent the RKF integrator coming up with
         irreducible error estimates and driving the step size to 0 around Z = Z_b
         """
         if isBurnOutContained:
@@ -817,7 +850,6 @@ class Recoiless:
         """
         populate data for output purposes
         """
-
         try:
             if dom == DOMAIN_TIME:
                 (Z_j, l_bar_j, v_bar_j, t_bar_j, eta_j, tau_j) = (
@@ -1064,19 +1096,20 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
 
     M17 = compositions["M17"]
+    M1 = compositions["M1"]
     from prop import SimpleGeometry
 
-    M17SHC = Propellant(M17, SimpleGeometry.SPHERE, 2, 2.5)
-
+    M17C = Propellant(M17, SimpleGeometry.CYLINDER, None, 2.5)
+    M1C = Propellant(M1, SimpleGeometry.CYLINDER, None, 10)
     lf = 0.3
     print("DELTA/rho:", lf)
     test = Recoiless(
         caliber=0.082,
         shotMass=2,
-        propellant=M17SHC,
-        grainSize=1e-5,
+        propellant=M1C,
+        grainSize=3e-3,
         chargeMass=0.3,
-        chamberVolume=0.3 / M17SHC.rho_p / lf,
+        chamberVolume=0.3 / M1C.rho_p / lf,
         startPressure=30e6,
         lengthGun=3.5,
         nozzleExpansion=2.0,
@@ -1087,15 +1120,15 @@ if __name__ == "__main__":
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(0, 1e-6, dom=DOMAIN_TIME)[0],
-            headers=("tag", "t", "l", "phi", "v", "p", "T"),
+            test.integrate(0, 1e-3, dom=DOMAIN_TIME)[0],
+            headers=("tag", "t", "l", "psi", "v", "p", "T", "eta"),
         )
     )
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(0, 1e-6, dom=DOMAIN_LENG)[0],
-            headers=("tag", "t", "l", "phi", "v", "p", "T"),
+            test.integrate(0, 1e-3, dom=DOMAIN_LENG)[0],
+            headers=("tag", "t", "l", "psi", "v", "p", "T", "eta"),
         )
     )
     # print(test.getEff(942))

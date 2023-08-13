@@ -7,6 +7,7 @@ import multiprocessing
 
 from matplotlib import font_manager
 
+
 # import matplotlib.font_manager as font_manager
 
 if __name__ == "__main__":
@@ -46,13 +47,13 @@ if __name__ == "__main__":
 
     root.option_add("*tearOff", False)
 
-    root.title("PIBS v0.4.3")
+    root.title("PIBS v0.4.4")
 
     ibPanel = IB(root, dpi, scale)
 
     center(root)
 
-    # print(font.families())
+    root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
+    root.state("zoomed")  # maximize window
 
-    # root.minsize(root.winfo_width(), root.winfo_height())
     root.mainloop()
