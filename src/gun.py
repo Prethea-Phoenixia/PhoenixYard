@@ -162,18 +162,6 @@ class Gun:
             (1 - psi) / self.rho_p + (self.alpha * psi)
         )
 
-        """
-        SP(l+l_psi) = f w phi - .5 * theta * phi * m * v**2
-
-        v_j**2 = 2fw/(theta phi m)
-
-        P(l_bar + l_psi_bar) = f Delta phi - 0.5 theta phi m v**2 / V_0
-                             = f Delta phi - 0.5 v_bar**2 * 2 f w / V0
-
-        P_bar = P / (f Delta)
-        Delta = w / V0
-        P_bar (l_bar + l_psi_bar) =  phi - v_bar**2
-        """
         p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
         return p_bar
@@ -968,14 +956,10 @@ class Gun:
         be = te / self.phi
         return te, be
 
-    def toPbPt(
-        self,
-        l,
-        p,
-    ):
+    def toPbPt(self, l, p):
         """
-        Convert average chamber pressure at a certain travel to the shot base
-        pressure, and to breech face pressure
+        Convert average chamber pressure at a certain travel to
+        shot base pressure, and breech face pressure
         """
         Labda_g = l / self.l_0
         labda_1_prime = (
@@ -984,13 +968,197 @@ class Gun:
         labda_2_prime = (
             self.labda_2 * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
         )
-        factor_b = 1 + labda_2_prime * (self.omega / (self.phi_1 * self.m))
+
+        factor_b = 1 + labda_2_prime * (
+            self.omega / (self.phi_1 * self.m)
+        )  # factor_b = P/P_b = phi / phi_1
 
         factor_t = (self.phi_1 * self.m + labda_2_prime * self.omega) / (
             self.phi_1 * self.m + labda_1_prime * self.omega
         )
 
         return p / factor_b, p / factor_t
+
+    def hugoniot(self, p_e, T_e):
+        """
+        Implement the Hugoniot solution after shot exit.
+        Inputs:
+            Pe  : (Breech) Pressure at exit
+            Te  : Avg. Temperature at shot exit
+
+        Note significantly this doesn't take into account chamberage
+        effects at all
+        """
+        U = self.V_0 + self.l_g * self.S  # total volume after shot exit
+        theta = self.theta
+        gamma = theta + 1  # gamma, adiabatic index
+        alpha = self.alpha  # covolume
+        omega = self.omega  # C, charge weight
+        S = self.S
+
+        def p(t):
+            t_scale = (
+                ((2 * U) / (theta * S))
+                * (1 + 0.13 * alpha * omega / U)
+                * (
+                    (1 / gamma * (0.5 * (gamma + 1)) ** ((gamma + 1) / theta))
+                    * (omega / (U * p_e * (1 - alpha * omega / U) ** gamma))
+                )
+                ** 0.5
+            )  # Eq.85, this makes it independent of the ballistic approximation used
+
+            inv_rho = (U / omega + 1.07 * alpha) * (1 + t / t_scale) ** (
+                2 / theta
+            ) - 1.07 * alpha
+
+            return (
+                p_e * (U / omega - alpha) ** gamma * (inv_rho - alpha) ** -gamma
+            )  # breech pressure at time t.
+
+        for i in range(10):
+            print(i * 1e-3, p(i * 1e-3))
+
+    def corner(self, v_0, P_e, T_e):
+        """
+        Implement the Corner solution after shot exit.
+        Inputs:
+            Pe  : (Breech) Pressure at exit
+            Te  : Avg. Temperature at shot exit
+
+        Z = xi(t)
+        at the point reached by the front of rarefraction wave at time t
+
+        Corner Solution assumes the Lagrange distribution
+        No chamberage correction
+        Took the first term of Taylor expansion, valid at small C/W
+        """
+        Labda_g = self.l_g / self.l_0
+        labda_1_prime = (
+            self.labda_1 * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
+        )
+        labda_2_prime = (
+            self.labda_2 * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
+        )
+
+        theta = self.theta
+        gamma = theta + 1  # gamma, adiabatic index
+        # R = self.f / self.T_v  # R_0 / M, specific gas constant.
+        U = self.V_0 + self.l_g * self.S  # total volume after shot exit
+
+        alpha = self.alpha  # covolume
+
+        S = self.S
+        C = self.omega
+        C__W = C / (self.phi_1 * self.m)
+
+        kappa_1 = (self.phi_1 * self.m + labda_1_prime * self.omega) / (
+            self.phi_1 * self.m + labda_2_prime * self.omega
+        )  # ratio of chamber pressure to average pressure
+
+        kappa_2 = (
+            labda_1_prime
+            * self.omega
+            / (self.phi_1 * self.m)
+            / (1 + labda_2_prime * self.omega / (self.phi_1 * self.m))
+        )
+
+        RT_e = P_e * (U - alpha) / kappa_1
+
+        epsilon = alpha / (U / C - alpha)
+        # uses the Lagrange approximation
+
+        v_d = (gamma * RT_e) ** 0.5 * (1 + alpha / (U / C - alpha))
+
+        def tau(t):
+            return v_0 * S * t / U
+
+        def f(tau, xi):
+            """
+            Calculate v,p as a function of (xi, tau), with
+                xi : xi = x A / U
+                    x as in distance from breech
+                    = 1 for muzzle condition
+                    = 0 for breech condition
+                tau: tau = V0 * A t / U
+                    t measured since shot ejection
+                    = 0 for moment of shot ejection
+            """
+            v = (xi * v_0 / (1 + tau)) * (
+                1
+                + (C__W * RT_e / (v_0**2 * (2 - gamma)))
+                * ((1 + tau) ** (-theta) - (1 + tau) ** -1)
+            )
+            p = (RT_e / ((U / C - alpha) * (1 + tau) ** gamma)) * (
+                kappa_1
+                - (epsilon * gamma * tau / (1 + tau))
+                - (kappa_2 * xi**2 / (1 + tau) ** 2)
+                - (gamma / (2 - gamma) * C__W * RT_e / v_0**2)
+                * (
+                    (2 - gamma) / theta
+                    + (1 / (1 + tau))
+                    - 1 / (theta * (1 + tau) ** theta)
+                )
+            )
+
+            return v, p
+
+        for i in range(10):
+            print(i * 1e-3, f(tau(i * 1e-3), 0))
+
+        if (
+            v_0 <= v_d
+        ):  # case 1: shot velocity less than local velocity of sound
+            tau_0 = 0
+
+        def Z(tau):
+            RHS = (1 / (1 + tau_0)) * (
+                1
+                + (C__W * RT_e / ((2 - gamma) * v_0**2))
+                * (1 / (theta * (1 + tau_0) ** theta) - 1 / (1 + tau_0))
+            )
+
+            RHS += (
+                (4 * gamma * RT_e) ** 0.5
+                / (theta * v_0 * (1 + tau) ** (0.5 * theta))
+            ) * (
+                1
+                - (0.5 * epsilon * theta * tau / (1 + tau))
+                + (C__W * RT_e / v_0**2)
+                * (
+                    (gamma + 1) / (6 * (2 - gamma) * theta * (1 + tau) ** theta)
+                    - 0.5
+                    - 0.5 * theta / ((2 - gamma) * (1 + tau))
+                )
+            )
+
+            RHS -= (
+                (4 * gamma * RT_e) ** 0.5
+                / (theta * v_0 * (1 + tau_0) ** (0.5 * theta))
+            ) * (
+                1
+                - (0.5 * epsilon * theta * tau_0 / (1 + tau_0))
+                + (
+                    (C__W * RT_e / v_0**2)
+                    * (
+                        (
+                            (gamma + 1)
+                            / (6 * (2 - gamma) * theta * (1 + tau_0) ** theta)
+                        )
+                        - 0.5
+                        - (0.5 * theta / ((2 - gamma) * (1 + tau_0)))
+                    )
+                )
+            )
+
+            LHS = (1 / (1 + tau)) * (
+                1
+                + (C__W * RT_e / ((2 - gamma) * v_0**2))
+                * ((1 / (theta * (1 + tau) ** theta)) - (1 / (1 + tau)))
+            )
+
+            Z = RHS / LHS
+
+            return Z
 
 
 if __name__ == "__main__":
@@ -1011,31 +1179,41 @@ if __name__ == "__main__":
     print("DELTA/rho:", lf)
     test = Gun(
         caliber=0.050,
-        shotMass=1.0,
+        shotMass=2.0,
         propellant=M17SHC,
-        grainSize=1e-3,
+        grainSize=8e-4,
         chargeMass=1,
         chamberVolume=1.0 / M17SHC.rho_p / lf,
         startPressure=30e6,
         lengthGun=3.5,
-        chamberExpansion=1.1,
+        chamberExpansion=1.0,
+        dragCoefficient=0.1,
     )
-    # try:
+    """
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(200, 1e-6, dom=DOMAIN_TIME)[0],
+            test.integrate(0, 1e-6, dom=DOMAIN_TIME)[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T", "eta"),
         )
     )
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(200, 1e-6, dom=DOMAIN_LENG, sol=SOL_MAMONTOV)[0],
+            test.integrate(0, 1e-6, dom=DOMAIN_LENG, sol=SOL_MAMONTOV)[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T", "eta"),
         )
     )
+    """
+    result = test.integrate(0, 1e-6, dom=DOMAIN_TIME, sol=SOL_LAGRANGE)
 
+    exitLine = result[0][[v[0] for v in result[0]].index(POINT_EXIT)]
+    print(exitLine)
+    Le, Ve, Pe, Te = exitLine[2], exitLine[4], exitLine[5], exitLine[6]
+    Pb, Pt = test.toPbPt(Le, Pe)
+    print(Pb, Pt)
+    test.hugoniot(Pt, Te)
+    test.corner(Ve, Pt, Te)
     # density:  lbs/in^3 -> kg/m^3, multiply by 27680
     # covolume: in^3/lbs -> m^3/kg, divide by 27680
     # force:    ft-lbs per lb ->J/kg multiply by 2.98907
