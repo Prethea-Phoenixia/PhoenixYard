@@ -1,5 +1,5 @@
 from math import pi, log, inf, exp
-from num import gss, RKF78, cubic, intg, bisect
+from num import gss, RKF78, cubic, intg, bisect, secant
 from prop import GrainComp, Propellant
 
 DOMAIN_TIME = "Time"
@@ -1015,10 +1015,7 @@ class Gun:
                 p_e * (U / omega - alpha) ** gamma * (inv_rho - alpha) ** -gamma
             )  # breech pressure at time t.
 
-        for i in range(10):
-            print(i * 1e-3, p(i * 1e-3))
-
-    def corner(self, v_0, P_e, T_e):
+    def corner(self, v_0, P_e, tol):
         """
         Implement the Corner solution after shot exit.
         Inputs:
@@ -1067,10 +1064,11 @@ class Gun:
         epsilon = alpha / (U / C - alpha)
         # uses the Lagrange approximation
 
-        v_d = (gamma * RT_e) ** 0.5 * (1 + alpha / (U / C - alpha))
-
-        def tau(t):
+        def to_tau(t):
             return v_0 * S * t / U
+
+        def to_t(tau):
+            return tau * U / (v_0 * S)
 
         def f(tau, xi):
             """
@@ -1082,6 +1080,9 @@ class Gun:
                 tau: tau = V0 * A t / U
                     t measured since shot ejection
                     = 0 for moment of shot ejection
+
+            This is valid before the rarefraction wave from the
+            breech has arrived, or xi < Z
             """
             v = (xi * v_0 / (1 + tau)) * (
                 1
@@ -1099,18 +1100,44 @@ class Gun:
                     - 1 / (theta * (1 + tau) ** theta)
                 )
             )
+            c = (gamma * RT_e / (1 + tau) ** theta) ** 0.5 * (
+                1
+                + epsilon * (1 - (0.5 * (gamma + 1) * tau / (tau + 1)))
+                + (C__W * RT_e / v_0**2)
+                * 0.5
+                * (
+                    1 / ((2 - gamma) * (1 + tau) ** theta)
+                    - 1
+                    - theta / ((2 - gamma) * (1 + tau))
+                )
+            )
 
-            return v, p
+            return v, p, c
 
-        for i in range(10):
-            print(i * 1e-3, f(tau(i * 1e-3), 0))
+        v_d = (gamma * RT_e) ** 0.5 * (1 + alpha / (U / C - alpha))
 
         if (
             v_0 <= v_d
         ):  # case 1: shot velocity less than local velocity of sound
             tau_0 = 0
 
+        else:
+            # case 2: muzzle velocity greater than the local velocity of sound
+            def g(tau):
+                v, p, c = f(tau, 1)
+                return v - c
+
+            t_0, _ = secant(g, 1, 2, tol=v_0 * tol, x_min=0)
+            tau_0 = to_tau(t_0)
+
         def Z(tau):
+            """
+            The value of xi at the point reached by the front of rarefraction wave
+            at time t (or in this formulation, the scaled time tau)
+
+            at xi <= Z the gas behaviour is entirely described by the EoS
+            at xi > Z conditions outside of the muzzle must be considered
+            """
             RHS = (1 / (1 + tau_0)) * (
                 1
                 + (C__W * RT_e / ((2 - gamma) * v_0**2))
@@ -1160,6 +1187,15 @@ class Gun:
 
             return Z
 
+        # we find the time it takes for the rarefraction wave to hit the breech
+        # this being the upper bound of applicability for our purposes.
+        if tau_0 == 0:
+            tau_1, _ = secant(Z, 1, 2, tol=tol, x_min=0)
+        else:
+            tau_1, _ = secant(Z, tau_0, 2 * tau_0, tol=tol, x_min=0)
+
+        print(to_t(tau_1))
+
 
 if __name__ == "__main__":
     """standard 7 hole cylinder has d_0=e_1, hole dia = 0.5 * arc width
@@ -1182,10 +1218,10 @@ if __name__ == "__main__":
         shotMass=2.0,
         propellant=M17SHC,
         grainSize=8e-4,
-        chargeMass=1,
-        chamberVolume=1.0 / M17SHC.rho_p / lf,
+        chargeMass=0.75,
+        chamberVolume=0.75 / M17SHC.rho_p / lf,
         startPressure=30e6,
-        lengthGun=3.5,
+        lengthGun=3,
         chamberExpansion=1.0,
         dragCoefficient=0.1,
     )
@@ -1213,7 +1249,7 @@ if __name__ == "__main__":
     Pb, Pt = test.toPbPt(Le, Pe)
     print(Pb, Pt)
     test.hugoniot(Pt, Te)
-    test.corner(Ve, Pt, Te)
+    test.corner(Ve, Pt, tol=1e-6)
     # density:  lbs/in^3 -> kg/m^3, multiply by 27680
     # covolume: in^3/lbs -> m^3/kg, divide by 27680
     # force:    ft-lbs per lb ->J/kg multiply by 2.98907
