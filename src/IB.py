@@ -1627,8 +1627,8 @@ class IB(Frame):
                         # len = 1: 1/2
                         # len = 2: 1/3, 2/3
                         k = (i + 1) / (len(outflowLines) + 1)
-                        x = xs[-1] * k + xmax * (1 - k)
-                        labelLine(line, x=x, align=True)
+                        x = xs[-1] * (1 - k) + xmax * k
+                        labelLine(line, x=x, align=True, va="bottom")
 
                 self.ax.set_xlim(left=0, right=xmax)
                 self.ax.set_ylim(bottom=0, top=1.05)
