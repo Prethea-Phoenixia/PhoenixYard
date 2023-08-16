@@ -472,6 +472,7 @@ class Recoiless:
                     Z, t_bar, l_bar, v_bar, eta, tau
                 )
                 p_bar = self._fp_bar(Z, l_bar, eta, tau)
+
                 if all((dt_bar > 0, dl_bar > 0, dv_bar < 0)):
                     raise ValueError(
                         "Extremely low propulsive effort exerted on shot,"
@@ -484,6 +485,14 @@ class Recoiless:
                     )
                 else:
                     raise e  # unknown issues
+
+            if p_bar_j > p_bar_max:
+                raise ValueError(
+                    "Nobel-Abel EoS is generally accurate enough below 600MPa. However,"
+                    + " Unreasonably high pressure (>{:.0f} MPa) was encountered.".format(
+                        p_max / 1e6
+                    )  # in practice most of the pressure-realted spikes are captured here.
+                )
 
             if Z != Z_j:  # early stop detection
                 if v_bar_j <= 0:
@@ -499,14 +508,6 @@ class Recoiless:
                             v_bar * self.v_j * 1e3,
                             t_bar * tScale * 1e3,
                         )
-                    )
-
-                elif p_bar_j > p_bar_max:
-                    raise ValueError(
-                        "Nobel-Abel EoS is generally accurate enough below 600MPa. However,"
-                        + " Unreasonably high pressure (>{:.0f} MPa) was encountered.".format(
-                            p_max / 1e6
-                        )  # in practice most of the pressure-realted spikes are captured here.
                     )
 
             if any(v < 0 for v in (t_bar_j, l_bar_j, v_bar_j, p_bar_j)):

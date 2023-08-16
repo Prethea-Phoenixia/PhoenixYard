@@ -521,13 +521,13 @@ class Gun:
                     )
                 )
 
-            if Z != Z_j:
-                if p_bar_j > p_bar_max:
-                    raise ValueError(
-                        "Nobel-Abel EoS is generally accurate enough below"
-                        + " 600MPa. However, Unreasonably high pressure "
-                        + "(>{:.0f} MPa) was encountered.".format(p_max / 1e6),
-                    )  # in practice most press-related spikes are captured here
+            # if Z != Z_j:
+            if p_bar_j > p_bar_max:
+                raise ValueError(
+                    "Nobel-Abel EoS is generally accurate enough below"
+                    + " 600MPa. However, Unreasonably high pressure "
+                    + "(>{:.0f} MPa) was encountered.".format(p_max / 1e6),
+                )  # in practice most press-related spikes are captured here
 
             if l_bar_j >= l_g_bar:
                 if abs(l_bar_i - l_g_bar) / (l_g_bar) > tol or l_bar_i == 0:
