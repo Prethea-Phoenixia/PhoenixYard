@@ -53,6 +53,7 @@ ENGLISH = {
     "plotNozzleV": "Throat Vel.",
     "plotBurnup": "Burnup",
     "plotEta": "Escape",
+    "plotOutflow": "Outflow",
     "stepLabel": "step",
     "calcLabel": "CALCULATE",
     "CONVENTIONAL": "Conventional Gun",
@@ -467,6 +468,7 @@ ENGLISH = {
     "figPsi": "Volume Burnup",
     "figOutV": "Outflow Vel.",
     "figOutMuzzP": "Muzzle P.",
+    "figOutBP": "Breech P.",
     "solLabel": "Solution",
     "atmosLabel": "Atmospheric Drag",
 }
@@ -525,6 +527,7 @@ CHINESE = {
     "plotNozzleV": "喉口流出速度",
     "plotBurnup": "火药燃去比例",
     "plotEta": "燃气流出比例",
+    "plotOutflow": "出膛后",
     "stepLabel": "采样点",
     "calcLabel": "计算",
     "CONVENTIONAL": "常规火炮",
@@ -794,6 +797,7 @@ CHINESE = {
     "figPsi": "燃去比例",
     "figOutV": "炮口燃气流出速率",
     "figOutMuzzP": "炮口压强",
+    "figOutBP": "膛底压强",
     "solLabel": "计算选项",
     "atmosLabel": "计算弹前空气阻力",
 }

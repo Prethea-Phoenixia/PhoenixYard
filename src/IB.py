@@ -299,6 +299,7 @@ class IB(Frame):
         self.plotNozzleVCheck.config(text=self.getString("plotNozzleV"))
         self.plotBurnupCheck.config(text=self.getString("plotBurnup"))
         self.plotEtaCheck.config(text=self.getString("plotEta"))
+        self.plotOutflowCheck.config(text=self.getString("plotOutflow"))
 
         self.stepLb.config(text=self.getString("stepLabel"))
         self.calButton.config(text=self.getString("calcLabel"))
@@ -341,12 +342,12 @@ class IB(Frame):
         topFrm.grid(row=0, column=0, sticky="nsew")
         self.topFrm = topFrm
 
-        for i in range(8):
+        for i in range(9):
             topFrm.columnconfigure(i, weight=1)
 
         self.pbar = ttk.Progressbar(topFrm, mode="indeterminate", maximum=100)
         self.pbar.grid(
-            row=0, column=0, columnspan=8, sticky="nsew", padx=2, pady=2
+            row=0, column=0, columnspan=9, sticky="nsew", padx=2, pady=2
         )
 
         self.plotAvgP = IntVar(value=1)
@@ -402,6 +403,14 @@ class IB(Frame):
         )
         self.plotEtaCheck.grid(row=1, column=7, sticky="nsew")
 
+        self.plotOutflow = IntVar(value=0)
+        self.plotOutflowCheck = ttk.Checkbutton(
+            topFrm,
+            text=self.getString("plotOutflow"),
+            variable=self.plotOutflow,
+        )
+        self.plotOutflowCheck.grid(row=1, column=8, sticky="nsew")
+
         self.plotAvgP.trace_add("write", self.updateFigPlot)
         self.plotBaseP.trace_add("write", self.updateFigPlot)
         self.plotBreechNozzleP.trace_add("write", self.updateFigPlot)
@@ -410,6 +419,7 @@ class IB(Frame):
         self.plotNozzleV.trace_add("write", self.updateFigPlot)
         self.plotBurnup.trace_add("write", self.updateFigPlot)
         self.plotVel.trace_add("write", self.updateFigPlot)
+        self.plotOutflow.trace_add("write", self.updateFigPlot)
 
     def addLeftFrm(self, parent):
         """
@@ -1575,7 +1585,11 @@ class IB(Frame):
 
                 xmax = xs[-1]
 
-                if self.outflowData is not None and dom == DOMAIN_TIME:
+                if (
+                    self.outflowData is not None
+                    and dom == DOMAIN_TIME
+                    and self.plotOutflow.get()
+                ):
                     xo = []
                     Pto = []
                     Pmo = []
@@ -1605,11 +1619,11 @@ class IB(Frame):
                             xo,
                             Pto,
                             "seagreen",
-                            # label=self.getString("figBreech"),
+                            label=self.getString("figOutBP"),
                             linestyle="dotted",
                             alpha=0.75,
                         )
-                        # outflowLines.append(l)
+                        outflowLines.append(l)
 
                     if self.plotBaseP.get():
                         (l,) = self.axP.plot(
@@ -1629,6 +1643,8 @@ class IB(Frame):
                         k = (i + 1) / (len(outflowLines) + 1)
                         x = xs[-1] * (1 - k) + xmax * k
                         labelLine(line, x=x, align=True, va="bottom")
+
+                    self.ax.axvline(x=xs[-1], color="grey", ls=":")
 
                 self.ax.set_xlim(left=0, right=xmax)
                 self.ax.set_ylim(bottom=0, top=1.05)
