@@ -33,7 +33,7 @@ from math import ceil
 
 import matplotlib.pyplot as mpl
 from matplotlib.figure import Figure
-from labellines import labelLines
+from labellines import labelLines, labelLine
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # from matplotlib.widgets import Cursor
@@ -92,6 +92,10 @@ class IB(Frame):
 
         self.queue = Queue()
         self.process = None
+
+        self.tableData = None
+        self.outflowData = None
+
         self.pos = -1
         self.dpi = dpi
         self.parent = parent
@@ -757,10 +761,6 @@ class IB(Frame):
             self.updateFigPlot()
 
     def getValue(self):
-        constrain = self.kwargs["con"]
-        optimize = self.kwargs["opt"]
-        # gunType = self.kwargs["typ"]
-
         queue = self.queue
 
         try:
@@ -791,6 +791,10 @@ class IB(Frame):
         except Empty:
             return
 
+        constrain = self.kwargs["con"]
+        optimize = self.kwargs["opt"]
+        gunType = self.kwargs["typ"]
+
         self.pos = -1
         kwargs = self.kwargs
 
@@ -815,10 +819,20 @@ class IB(Frame):
             )
 
             i = [i[0] for i in self.tableData].index("SHOT EXIT")
-            vg = self.tableData[i][4]
-            te, be = self.gun.getEff(vg)
-            self.te.set(round(te * 100, 1))
-            self.be.set(round(te / self.gun.phi * 100, 1))
+            _, te, lg, _, vg, pe, _, _ = self.tableData[i]
+
+            if gunType == CONVENTIONAL:
+                _, pt = self.gun.toPbPt(lg, pe)
+                self.outflowData = self.gun.corner(
+                    vg, pt, tol=kwargs["tol"], n=kwargs["step"], t_offset=te
+                )
+            else:
+                self.outflowData = None
+
+            eta_t, eta_b = self.gun.getEff(vg)
+
+            self.te.set(round(eta_t * 100, 1))
+            self.be.set(round(eta_b * 100, 1))
 
             i = [i[0] for i in self.tableData].index("PEAK PRESSURE")
             _, tp, lp, _, vp, pp, Tp, etap = self.tableData[i]
@@ -834,6 +848,8 @@ class IB(Frame):
                 )
             )
             self.va.set(toSI(self.gun.v_j))
+
+        # populate the table with new values
 
         self.tv.delete(*self.tv.get_children())
         useSN = (False, False, False, True, False, False, True, True)
@@ -1424,18 +1440,13 @@ class IB(Frame):
 
                 self.axP.spines.right.set_position(("data", xPeak))
 
-                self.ax.set_xlim(left=0, right=xs[-1])
-                self.ax.set_ylim(bottom=0, top=1.05)
-
-                self.axP.set(ylim=(0, max(Ps + Pbs + Pts + P0s + Pxs) * 1.05))
-                self.axv.set(ylim=(0, max(vs) * 1.05))
-
                 (xs, vs, vxs, Ps, Pbs, Pts, P0s, Pxs, psis, etas) = zip(
                     *sorted(
                         zip(xs, vs, vxs, Ps, Pbs, Pts, P0s, Pxs, psis, etas),
                         key=lambda line: line[0],
                     )
                 )
+
                 if self.plotVel.get():
                     self.axv.plot(
                         xs,
@@ -1535,6 +1546,7 @@ class IB(Frame):
                     marker=5,  # caret right:5
                     label=self.getString("figTgtP"),
                 )
+
                 if self.plotBurnup.get():
                     self.ax.plot(
                         xs,
@@ -1545,18 +1557,7 @@ class IB(Frame):
                         alpha=1,
                     )
 
-                tkw = dict(size=4, width=1.5)
-                self.ax.yaxis.tick_right()
-                self.ax.tick_params(axis="y", colors="tab:red", **tkw)
-                self.axv.tick_params(axis="y", colors="tab:blue", **tkw)
-                self.axP.tick_params(axis="y", colors="tab:green", **tkw)
-                self.ax.tick_params(axis="x", **tkw)
-
-                if dom == DOMAIN_TIME:
-                    self.ax.set_xlabel(self.getString("figTimeDomain"))
-                else:
-                    self.ax.set_xlabel(self.getString("figLengDomain"))
-
+                linesLabeled = []
                 for lines, xvals in zip(
                     (
                         self.axP.get_lines(),
@@ -1570,6 +1571,82 @@ class IB(Frame):
                     ),
                 ):
                     labelLines(lines, align=True, xvals=xvals)
+                    linesLabeled.append(lines)
+
+                xmax = xs[-1]
+
+                if self.outflowData is not None and dom == DOMAIN_TIME:
+                    xo = []
+                    Pto = []
+                    Pmo = []
+                    vo = []
+                    for t, Pt, Pm, v in self.outflowData:
+                        xo.append(t * 1e3)
+                        Pto.append(Pt / 1e6)
+                        Pmo.append(Pm / 1e6)
+                        vo.append(v)
+
+                    outflowLines = []
+
+                    if self.plotVel.get():
+                        (l,) = self.axv.plot(
+                            xo,
+                            vo,
+                            "tab:blue",
+                            label=self.getString("figOutV"),
+                            # marker=".",
+                            linestyle="dotted",
+                            alpha=1,
+                        )
+                        outflowLines.append(l)
+
+                    if self.plotBreechNozzleP.get():
+                        (l,) = self.axP.plot(
+                            xo,
+                            Pto,
+                            "seagreen",
+                            # label=self.getString("figBreech"),
+                            linestyle="dotted",
+                            alpha=0.75,
+                        )
+                        # outflowLines.append(l)
+
+                    if self.plotBaseP.get():
+                        (l,) = self.axP.plot(
+                            xo,
+                            Pmo,
+                            "olive",
+                            label=self.getString("figOutMuzzP"),
+                            linestyle="dotted",
+                            alpha=0.75,
+                        )
+                        outflowLines.append(l)
+
+                    xmax = xo[-1]
+                    for i, line in enumerate(outflowLines):
+                        # len = 1: 1/2
+                        # len = 2: 1/3, 2/3
+                        k = (i + 1) / (len(outflowLines) + 1)
+                        x = xs[-1] * k + xmax * (1 - k)
+                        labelLine(line, x=x, align=True)
+
+                self.ax.set_xlim(left=0, right=xmax)
+                self.ax.set_ylim(bottom=0, top=1.05)
+
+                self.axP.set(ylim=(0, max(Ps + Pbs + Pts + P0s + Pxs) * 1.05))
+                self.axv.set(ylim=(0, max(vs) * 1.05))
+
+                tkw = dict(size=4, width=1.5)
+                self.ax.yaxis.tick_right()
+                self.ax.tick_params(axis="y", colors="tab:red", **tkw)
+                self.axv.tick_params(axis="y", colors="tab:blue", **tkw)
+                self.axP.tick_params(axis="y", colors="tab:green", **tkw)
+                self.ax.tick_params(axis="x", **tkw)
+
+                if dom == DOMAIN_TIME:
+                    self.ax.set_xlabel(self.getString("figTimeDomain"))
+                else:
+                    self.ax.set_xlabel(self.getString("figLengDomain"))
 
             else:
                 self.axP.spines.right.set_position(("axes", 0.5))

@@ -465,6 +465,8 @@ ENGLISH = {
     "figShotBase": "Shot Base",
     "figTgtP": "P. Target",
     "figPsi": "Volume Burnup",
+    "figOutV": "Outflow Vel.",
+    "figOutMuzzP": "Muzzle P.",
     "solLabel": "Solution",
     "atmosLabel": "Atmospheric Drag",
 }
@@ -790,6 +792,8 @@ CHINESE = {
     "figShotBase": "弹底",
     "figTgtP": "设计压强",
     "figPsi": "燃去比例",
+    "figOutV": "炮口燃气流出速率",
+    "figOutMuzzP": "炮口压强",
     "solLabel": "计算选项",
     "atmosLabel": "计算弹前空气阻力",
 }

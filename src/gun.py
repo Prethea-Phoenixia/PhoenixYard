@@ -1018,9 +1018,7 @@ class Gun:
                 p_e * (U / omega - alpha) ** gamma * (inv_rho - alpha) ** -gamma
             )  # breech pressure at time t.
 
-        print("Hugoniot", p(0.013))
-
-    def corner(self, v_0, P_e, tol):
+    def corner(self, v_0, P_e, tol, n=10, t_offset=0):
         """
         Implement the Corner solution after shot exit.
         Inputs:
@@ -1033,7 +1031,9 @@ class Gun:
         Corner Solution assumes the Lagrange distribution
         No chamberage correction
         Took the first term of Taylor expansion, valid at small C/W
+
         """
+
         Labda_g = self.l_g / self.l_0
         labda_1_prime = (
             self.labda_1 * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
@@ -1064,7 +1064,7 @@ class Gun:
             / (1 + labda_2_prime * self.omega / (self.phi_1 * self.m))
         )
 
-        RT_e = P_e * (U - alpha) / kappa_1
+        RT_e = P_e * (U / C - alpha) / kappa_1
 
         epsilon = alpha / (U / C - alpha)
         # uses the Lagrange approximation
@@ -1196,10 +1196,18 @@ class Gun:
 
         t_0, t_1 = to_t(tau_0), to_t(tau_1)
 
-        print(t_1)
+        data = []
 
-        print(f(tau_1, 0))
-        print(f(tau_1, 0))
+        n = max(1, n)
+        for i in range(n + 1):
+            t_i = i / n * t_1
+
+            vt, pt, ct = f(to_tau(t_i), 0)  # breech condiitons
+            vm, pm, cm = f(to_tau(t_i), 1)  # muzzle conditions
+
+            data.append((t_i + t_offset, pt, pm, vm))
+
+        return data
 
 
 if __name__ == "__main__":
@@ -1218,13 +1226,14 @@ if __name__ == "__main__":
 
     lf = 0.5
     print("DELTA/rho:", lf)
+    cm = 0.5
     test = Gun(
         caliber=0.050,
-        shotMass=2.0,
+        shotMass=1.0,
         propellant=M17SHC,
         grainSize=8e-4,
-        chargeMass=0.75,
-        chamberVolume=0.75 / M17SHC.rho_p / lf,
+        chargeMass=cm,
+        chamberVolume=cm / M17SHC.rho_p / lf,
         startPressure=30e6,
         lengthGun=3.5,
         chamberExpansion=1.0,
@@ -1253,8 +1262,22 @@ if __name__ == "__main__":
     Le, Ve, Pe, Te = exitLine[2], exitLine[4], exitLine[5], exitLine[6]
     Pb, Pt = test.toPbPt(Le, Pe)
     print(Pb, Pt)
-    test.hugoniot(Pt, Te)
-    test.corner(Ve, Pt, tol=1e-6)
+    # test.hugoniot(Pt, Te)
+    data = test.corner(Ve, Pt, tol=1e-6)
+
+    from tabulate import tabulate
+
+    print(
+        tabulate(
+            data,
+            headers=(
+                "time",
+                "breech",
+                "muzzle",
+                "outflow",
+            ),
+        )
+    )
     # density:  lbs/in^3 -> kg/m^3, multiply by 27680
     # covolume: in^3/lbs -> m^3/kg, divide by 27680
     # force:    ft-lbs per lb ->J/kg multiply by 2.98907
