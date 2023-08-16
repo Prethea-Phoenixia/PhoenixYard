@@ -960,6 +960,9 @@ class Gun:
         """
         Convert average chamber pressure at a certain travel to
         shot base pressure, and breech face pressure
+        Pb is short for Pressure at base/bullet
+        Pt is short for Pressure at 炮膛, pronounced Pao Tang, meaning
+        breech in Chinese
         """
         Labda_g = l / self.l_0
         labda_1_prime = (
@@ -1014,6 +1017,8 @@ class Gun:
             return (
                 p_e * (U / omega - alpha) ** gamma * (inv_rho - alpha) ** -gamma
             )  # breech pressure at time t.
+
+        print("Hugoniot", p(0.013))
 
     def corner(self, v_0, P_e, tol):
         """
@@ -1096,7 +1101,7 @@ class Gun:
                 - (gamma / (2 - gamma) * C__W * RT_e / v_0**2)
                 * (
                     (2 - gamma) / theta
-                    + (1 / (1 + tau))
+                    + 1 / (1 + tau)
                     - 1 / (theta * (1 + tau) ** theta)
                 )
             )
@@ -1127,8 +1132,7 @@ class Gun:
                 v, p, c = f(tau, 1)
                 return v - c
 
-            t_0, _ = secant(g, 1, 2, tol=v_0 * tol, x_min=0)
-            tau_0 = to_tau(t_0)
+            tau_0, _ = secant(g, 1, 2, tol=v_0 * tol, x_min=0)
 
         def Z(tau):
             """
@@ -1150,11 +1154,11 @@ class Gun:
             ) * (
                 1
                 - (0.5 * epsilon * theta * tau / (1 + tau))
-                + (C__W * RT_e / v_0**2)
+                + (0.5 * C__W * RT_e / v_0**2)
                 * (
-                    (gamma + 1) / (6 * (2 - gamma) * theta * (1 + tau) ** theta)
-                    - 0.5
-                    - 0.5 * theta / ((2 - gamma) * (1 + tau))
+                    (gamma + 1) / (3 * (2 - gamma) * theta * (1 + tau) ** theta)
+                    - 1
+                    - theta / ((2 - gamma) * (1 + tau))
                 )
             )
 
@@ -1165,14 +1169,12 @@ class Gun:
                 1
                 - (0.5 * epsilon * theta * tau_0 / (1 + tau_0))
                 + (
-                    (C__W * RT_e / v_0**2)
+                    (0.5 * C__W * RT_e / v_0**2)
                     * (
-                        (
-                            (gamma + 1)
-                            / (6 * (2 - gamma) * theta * (1 + tau_0) ** theta)
-                        )
-                        - 0.5
-                        - (0.5 * theta / ((2 - gamma) * (1 + tau_0)))
+                        (gamma + 1)
+                        / (3 * (2 - gamma) * theta * (1 + tau_0) ** theta)
+                        - 1
+                        - theta / ((2 - gamma) * (1 + tau_0))
                     )
                 )
             )
@@ -1180,12 +1182,10 @@ class Gun:
             LHS = (1 / (1 + tau)) * (
                 1
                 + (C__W * RT_e / ((2 - gamma) * v_0**2))
-                * ((1 / (theta * (1 + tau) ** theta)) - (1 / (1 + tau)))
+                * (1 / (theta * (1 + tau) ** theta) - 1 / (1 + tau))
             )
 
-            Z = RHS / LHS
-
-            return Z
+            return RHS / LHS
 
         # we find the time it takes for the rarefraction wave to hit the breech
         # this being the upper bound of applicability for our purposes.
@@ -1194,7 +1194,12 @@ class Gun:
         else:
             tau_1, _ = secant(Z, tau_0, 2 * tau_0, tol=tol, x_min=0)
 
-        print(to_t(tau_1))
+        t_0, t_1 = to_t(tau_0), to_t(tau_1)
+
+        print(t_1)
+
+        print(f(tau_1, 0))
+        print(f(tau_1, 0))
 
 
 if __name__ == "__main__":
@@ -1221,7 +1226,7 @@ if __name__ == "__main__":
         chargeMass=0.75,
         chamberVolume=0.75 / M17SHC.rho_p / lf,
         startPressure=30e6,
-        lengthGun=3,
+        lengthGun=3.5,
         chamberExpansion=1.0,
         dragCoefficient=0.1,
     )
