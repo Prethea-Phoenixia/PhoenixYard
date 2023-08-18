@@ -8,8 +8,9 @@ def countlines(start, lines=0, header=True, begin_start=None):
 
     for thing in os.listdir(start):
         thing = os.path.join(start, thing)
+
         if os.path.isfile(thing):
-            if thing.endswith(".py"):
+            if thing.endswith(".py") and "_" not in thing:
                 with open(thing, "r", encoding="utf-8") as f:
                     newlines = f.readlines()
                     newlines = len(newlines)

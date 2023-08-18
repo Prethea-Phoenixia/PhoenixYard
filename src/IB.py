@@ -46,40 +46,41 @@ import sys
 RECOILESS = "Recoiless Gun"
 CONVENTIONAL = "Conventional Gun"
 
+
+FONTNAME = "Sarasa Fixed SC"
+FONTSIZE = 10
+
 GEOM_CONTEXT = {
-    "font.size": 8,
-    "axes.titlesize": 8,
-    "axes.labelsize": 8,
-    "xtick.labelsize": 8,
-    "ytick.labelsize": 8,
-    "legend.fontsize": 8,
-    "figure.titlesize": 10,
-    "lines.markersize": 2,
+    "font.size": FONTSIZE,
+    "axes.titlesize": FONTSIZE,
+    "axes.labelsize": FONTSIZE,
+    "xtick.labelsize": FONTSIZE,
+    "ytick.labelsize": FONTSIZE,
+    "legend.fontsize": FONTSIZE,
+    "figure.titlesize": FONTSIZE + 2,
+    "lines.markersize": FONTSIZE / 4,
     "axes.axisbelow": True,
     # "path.simplify_threshold": 1,
     "font.family": "Sarasa Fixed SC",
 }
 
 FIG_CONTEXT = {
-    "font.size": 8,
-    "axes.titlesize": 8,
-    "axes.labelsize": 8,
-    "xtick.labelsize": 8,
-    "ytick.labelsize": 8,
-    "legend.fontsize": 8,
-    "figure.titlesize": 10,
+    "font.size": FONTSIZE,
+    "axes.titlesize": FONTSIZE,
+    "axes.labelsize": FONTSIZE,
+    "xtick.labelsize": FONTSIZE,
+    "ytick.labelsize": FONTSIZE,
+    "legend.fontsize": FONTSIZE,
+    "figure.titlesize": FONTSIZE + 2,
     "lines.linewidth": 1,
     "font.weight": "bold",
-    "lines.markersize": 4,
+    "lines.markersize": FONTSIZE / 2,
     "axes.axisbelow": False,
     "axes.labelweight": "bold",
     "yaxis.labellocation": "top",
     # "path.simplify_threshold": 1,
-    "font.family": ["Sarasa Fixed SC"],  # fallback
+    "font.family": "Sarasa Fixed SC",
 }
-
-FONTNAME = "Sarasa Fixed SC"
-FONTSIZE = 8
 
 
 class IB(Frame):
@@ -124,7 +125,7 @@ class IB(Frame):
         self.useTheme()
 
         self.DEBUG = IntVar()
-        self.DEBUG.set(1)
+        self.DEBUG.set(0)
 
         self.soln = IntVar()
         self.soln.set(0)
@@ -246,6 +247,8 @@ class IB(Frame):
         self.teLb.config(text=self.getString("teffLabel"))
         self.beLb.config(text=self.getString("beffLabel"))
         self.cvLb.config(text=self.getString("cvLabel"))
+        self.ambPLb.config(text=self.getString("ambPresLabel"))
+        self.ambRhoLb.config(text=self.getString("ambRhoLabel"))
 
         self.nozzExpLb.config(text=self.getString("nozzExpLabel"))
         self.nozzEffLb.config(text=self.getString("nozzEffLabel"))
@@ -282,6 +285,7 @@ class IB(Frame):
         self.sampleFrm.config(text=self.getString("sampleFrmLabel"))
         self.propFrm.config(text=self.getString("propFrmLabel"))
         self.grainFrm.config(text=self.getString("grainFrmLabel"))
+        self.envFrm.config(text=self.getString("envFrmLabel"))
 
         self.useConstraint.config(text=self.getString("consButton"))
         self.optimizeLF.config(text=self.getString("minTVButton"))
@@ -431,7 +435,13 @@ class IB(Frame):
         leftFrm.columnconfigure(0, weight=1)
         leftFrm.rowconfigure(0, weight=1)
 
-        specFrm = ttk.LabelFrame(leftFrm, text=self.getString("specFrmLabel"))
+    def addRightFrm(self, parent):
+        rightFrm = ttk.Frame(parent)
+        rightFrm.grid(row=0, column=3, rowspan=4, sticky="nsew")
+        rightFrm.columnconfigure(0, weight=1)
+        rightFrm.rowconfigure(0, weight=1)
+
+        specFrm = ttk.LabelFrame(rightFrm, text=self.getString("specFrmLabel"))
         specFrm.grid(row=0, column=0, sticky="nsew")
         specFrm.columnconfigure(0, weight=1)
         self.specFrm = specFrm
@@ -493,19 +503,39 @@ class IB(Frame):
             # justify="right",
         )
 
-    def addRightFrm(self, parent):
-        rightFrm = ttk.Frame(parent)
-        rightFrm.grid(row=0, column=3, rowspan=4, sticky="nsew")
-        rightFrm.columnconfigure(0, weight=1)
-        rightFrm.rowconfigure(0, weight=1)
-
-        opFrm = ttk.LabelFrame(rightFrm, text=self.getString("opFrmLabel"))
-        opFrm.grid(row=1, column=0, sticky="nsew")
-        opFrm.columnconfigure(1, weight=1)
-        self.opFrm = opFrm
-
         validationNN = parent.register(validateNN)
         validationPI = parent.register(validatePI)
+
+        envFrm = ttk.LabelFrame(rightFrm, text=self.getString("envFrmLabel"))
+        envFrm.grid(row=1, column=0, sticky="nsew")
+        envFrm.columnconfigure(0, weight=1)
+        self.envFrm = envFrm
+
+        i = 0
+        self.ambPLb, self.ambP, _, _, i = self.add3Input(
+            parent=envFrm,
+            rowIndex=i,
+            colIndex=0,
+            labelText=self.getString("ambPresLabel"),
+            unitText="kPa",
+            default="101.325",
+            validation=validationNN,
+        )
+
+        self.ambRhoLb, self.ambRho, _, _, i = self.add3Input(
+            parent=envFrm,
+            rowIndex=i,
+            colIndex=0,
+            labelText=self.getString("ambRhoLabel"),
+            unitText="kg/m³",
+            default="1.204",
+            validation=validationNN,
+        )
+
+        opFrm = ttk.LabelFrame(rightFrm, text=self.getString("opFrmLabel"))
+        opFrm.grid(row=2, column=0, sticky="nsew")
+        opFrm.columnconfigure(1, weight=1)
+        self.opFrm = opFrm
 
         i = 0
 
@@ -522,7 +552,7 @@ class IB(Frame):
 
         self.vTgtLb, self.vTgt, _, _, j = self.add3Input(
             parent=consFrm,
-            rowIndex=0,
+            rowIndex=j,
             colIndex=0,
             labelText=self.getString("vTgtLabel"),
             unitText="m/s",
@@ -692,7 +722,12 @@ class IB(Frame):
         }
 
         if atmosphere:
-            self.kwargs.update({"ambientP": 101.325e3, "ambientRho": 1.204})
+            self.kwargs.update(
+                {
+                    "ambientP": float(self.ambP.get()) * 1e3,
+                    "ambientRho": float(self.ambRho.get()),
+                }
+            )
         else:
             self.kwargs.update({"ambientP": 0, "ambientRho": 0})
 
@@ -980,7 +1015,7 @@ class IB(Frame):
         )
 
         # allow propellant specification to grow
-        parFrm.rowconfigure(i, weight=3)
+        parFrm.rowconfigure(i, weight=1)
 
         propFrm = ttk.LabelFrame(
             parFrm,
@@ -1063,10 +1098,7 @@ class IB(Frame):
             grainFrm,
             text="σ(Z)",
             style="SubLabelFrame.TLabelframe",
-            width=100,
-            height=100,
-        )  # set an arbitrary initial size here
-        # to prevent matplotlib giving a fit when adding geomFig.
+        )
 
         geomPlotFrm.grid(
             row=0,
@@ -1233,14 +1265,15 @@ class IB(Frame):
 
     def addGeomPlot(self):
         geomPlotFrm = self.geomPlotFrm
-        geomPlotFrm.columnconfigure(0, weight=1)
-        geomPlotFrm.rowconfigure(0, weight=1)
 
         # _, _, width, height = self.geomPlotFrm.bbox("insert")
         width = geomPlotFrm.winfo_width() - 2
         height = geomPlotFrm.winfo_height() - 2
 
-        """ 
+        geomPlotFrm.columnconfigure(0, weight=1)
+        geomPlotFrm.rowconfigure(0, weight=1)
+
+        """
         geomPlotFrm.config(width=width, height=width)
         # we lock the frame the plot is put in
         geomPlotFrm.grid_propagate(False)
@@ -1250,6 +1283,7 @@ class IB(Frame):
         window, and everything would be fine, ironically.
         (in this case, dpi = dpi)
         """
+
         dpi = self.dpi
         with mpl.rc_context(GEOM_CONTEXT):
             fig = Figure(
@@ -1321,7 +1355,6 @@ class IB(Frame):
             self.fig = fig
 
             self.pltCanvas = FigureCanvasTkAgg(fig, master=plotFrm)
-
             self.pltCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=2, pady=2, sticky="nsew"
             )
@@ -2041,6 +2074,7 @@ class IB(Frame):
         ulb.grid(
             row=rowIndex, column=colIndex + 2, sticky="nsew", padx=2, pady=2
         )
+
         return lb, e, en, ulb, rowIndex + 1
 
     def add12Disp(

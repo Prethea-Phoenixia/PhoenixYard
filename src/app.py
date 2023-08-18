@@ -35,9 +35,8 @@ if __name__ == "__main__":
     font_manager.fontManager.addfont(
         resolvepath("ui/sarasa-fixed-sc-regular.ttf")
     )
-    from tkinter import font
-
-    print(font.families())
+    # from tkinter import font
+    # print(font.families())
 
     dpi = root.winfo_fpixels("1i")
 

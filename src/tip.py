@@ -1,6 +1,7 @@
 from tkinter import StringVar, Toplevel, Label, LEFT, SOLID
 import tkinter.font as tkFont
 
+
 # import textwrap
 
 
@@ -29,10 +30,10 @@ class ToolTip(object):
         tw.wm_overrideredirect(1)
         root = self.widget.winfo_toplevel()
 
-        t_Font = tkFont.Font(family="Sarasa Fixed SC", size=8)
+        t_Font = tkFont.Font(family="Sarasa Fixed SC", size=10)
 
         # we use a fixed width font so any char will do
-        columnWidth = 60
+        columnWidth = 80
         # apparnetly this doesn't work correctly with CJK fonts.....
         width, height = t_Font.measure(" "), t_Font.metrics("linespace")
 
@@ -57,18 +58,16 @@ class ToolTip(object):
             text=self.text,
             justify=LEFT,
             background="#ffffe0",
-            width=columnWidth - 4,
+            width=columnWidth - 2,
             # height=0,
-            wraplength=(columnWidth - 4) * width,
+            wraplength=(columnWidth - 2) * width,
             relief=SOLID,
             borderwidth=0,
             font=t_Font,
         )
-        label.pack(
-            ipadx=2 * width, ipady=height * 0.25, anchor="nw", fill="both"
-        )
-        # tw.update_idletasks()
+        label.pack(ipadx=width, ipady=height * 0.25, anchor="nw", fill="both")
 
+        tw.update_idletasks()
         wheight = tw.winfo_height()
 
         margin = (
