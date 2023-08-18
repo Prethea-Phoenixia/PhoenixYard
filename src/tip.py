@@ -1,5 +1,7 @@
-from tkinter import StringVar, Toplevel, Label, LEFT, SOLID, Menu
+from tkinter import StringVar, Toplevel, Label, LEFT, SOLID
 import tkinter.font as tkFont
+
+# import textwrap
 
 
 class ToolTip(object):
@@ -27,11 +29,12 @@ class ToolTip(object):
         tw.wm_overrideredirect(1)
         root = self.widget.winfo_toplevel()
 
-        t_Font = tkFont.Font(family="Sarasa Mono SC", size=8)
+        t_Font = tkFont.Font(family="Sarasa Fixed SC", size=8)
+
         # we use a fixed width font so any char will do
-        columnWidth = 55
+        columnWidth = 60
         # apparnetly this doesn't work correctly with CJK fonts.....
-        width, height = t_Font.measure("m"), t_Font.metrics("linespace")
+        width, height = t_Font.measure(" "), t_Font.metrics("linespace")
 
         x, y, _, _ = self.widget.bbox("insert")
         # rx, ry, crx, cry = root.bbox()
@@ -41,27 +44,30 @@ class ToolTip(object):
             x + self.widget.winfo_rootx()
             > root.winfo_rootx() + 0.5 * root.winfo_width()
         ):
-            x = x + self.widget.winfo_rootx() - width * (columnWidth + 2 + 1)
+            x = x + self.widget.winfo_rootx() - width * columnWidth
             y = y + self.widget.winfo_rooty()
         else:
             x = x + self.widget.winfo_rootx() + self.widget.winfo_width()
             y = y + self.widget.winfo_rooty()
+
+        # wrappedText = textwrap.fill(self.text, width=columnWidth - 10)
 
         label = Label(
             tw,
             text=self.text,
             justify=LEFT,
             background="#ffffe0",
-            wraplength=width * columnWidth,
+            width=columnWidth - 4,
+            # height=0,
+            wraplength=(columnWidth - 4) * width,
             relief=SOLID,
             borderwidth=0,
             font=t_Font,
         )
-
-        label.config(width=columnWidth)  # characters
-        label.pack(ipadx=width, ipady=0.25 * height)
-
-        tw.update_idletasks()
+        label.pack(
+            ipadx=2 * width, ipady=height * 0.25, anchor="nw", fill="both"
+        )
+        # tw.update_idletasks()
 
         wheight = tw.winfo_height()
 
@@ -73,6 +79,14 @@ class ToolTip(object):
             y -= margin
 
         tw.wm_geometry("+%d+%d" % (x, y))
+        """
+        tw.bind(
+            "<Configure>",
+            lambda event: label.configure(
+                wraplength=label.winfo_width() * 0.75
+            ),
+        )
+        """
 
     def hidetip(self):
         tw = self.tipwindow

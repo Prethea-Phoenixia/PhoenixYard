@@ -87,14 +87,14 @@ ENGLISH = {
             "distributed, and pressure, quadraticaly. Pidduck merely assumed",
             "isentropic (∂S/∂x = 0) expansion from uniform inital condition,",
             "calculating in detail the wave systems generated as shot",
-            "starts after the complete combustion of propellant gas,"
+            "starts after the complete combustion of propellant gas,",
             "which was found to also imply a linear velocity distribution,",
             "but exponentially distributed pressure, in the limit of weak",
             "perturbations.",
             "The M.A.Mamontov (Ма́монтов) solution is the limiting solution",
             "to the Pidduck approximation as adiabatic index approaches 1,",
             "implying an even temperature distribution (∂T/∂x = 0), with",
-            "a similar distribution to that of Pidduck's.\n"
+            "a similar distribution to that of Pidduck's.\n",
             "The validity of Lagrange's approximation can be explained by,",
             "as the charge to (fictitious, adjusted for drag and friction)",
             "mass ratio is very small, any pressure disturbances, propagating",
@@ -107,7 +107,7 @@ ENGLISH = {
             "wave phenomena, and represents the limiting behaviour when",
             "the rarefraction waves are quickly damped, which is",
             "not necessarily true at higher charge to shot ratio,",
-            "and finite rate or combustion,"
+            "and finite rate or combustion,",
             "which could generate shockwaves due to ignition",
             "instabilities.\n",
             "The Mamontov approximation is considered by some to be",
@@ -186,7 +186,7 @@ ENGLISH = {
             "the weakest, and Nitroguanidine availability is",
             "limited. Mixed Nitrate Ether propellants are",
             "available that delivers similar level of performance",
-            "with higher availability.\n"
+            "with higher availability.\n",
             "Nitramine propellants mix nitramines like RDX or HMX",
             "with small fraction of organic nitro propellant.",
             "Nitramines are normally explosives, but their",
@@ -258,7 +258,7 @@ ENGLISH = {
     "perfLRText": " ".join(
         (
             "Specify length to diameter ratio of the grain, for",
-            "mutli perforated grains this is usually in the range of"
+            "mutli perforated grains this is usually in the range of",
             " 1.82 to 3.57. A higher value facilitate progressive",
             "burning. If this is too low its possible for",
             "propellant to exhibit regressive burning behaviour,",
@@ -285,7 +285,7 @@ ENGLISH = {
     "tolText": " ".join(
         (
             "The maximum tolerated error, ε, for each component of the",
-            "integrands\n"
+            "integrands\n",
             "The absolute difference between the 8th order estimate and the",
             "7th order estimate, as constructed from the Runge-Kutta-",
             "Fehlberg 7(8) method, is taken to be the local truncation error.",
@@ -306,7 +306,7 @@ ENGLISH = {
         (
             "Starting Pressure, parameter used to model projectile engraving",
             "to simplfy internal ballistic solutions.\n",
-            "The engraving process is often simplified to be instantaneouse."
+            "The engraving process is often simplified to be instantaneouse.",
             "That is, propellant burns in an isochoric fashion until the",
             "pressure at base of projectile is enough to overcome starting",
             "pressure, at which point starting pressure vanish, projectile",
@@ -320,7 +320,7 @@ ENGLISH = {
             "somewhat increase the peak pressure, an initial resistance is",
             "necessary to improve the consistency of propellant ignition.",
             "Thus, even for smoothbore guns it is necessary provide some",
-            "starting resistance.\n"
+            "starting resistance.\n",
             "It is generally accepted now that projectile engraving is",
             "actually a dynamic process, with the projectile already moving",
             "at some speed. The resistance is also correspondingly higher,",
@@ -349,7 +349,7 @@ ENGLISH = {
     "dgcText": " ".join(
         (
             "Drag coefficient is used to model all resistive forces",
-            "that are proportional to shot base pressure.\n"
+            "that are proportional to shot base pressure.\n",
             "2%-7% is commonly reported, with small arms that engages with",
             "the rifling with the entire projectile on the high end,",
             "and large caliber projectiles with driving band on the lower",

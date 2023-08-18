@@ -1,4 +1,6 @@
 from tkinter import Tk
+
+
 from IB import IB
 from misc import center, loadfont, resolvepath
 from ctypes import windll
@@ -29,11 +31,13 @@ if __name__ == "__main__":
     root = Tk()
     root.iconbitmap(resolvepath("ui/logo.ico"))
 
-    loadfont(resolvepath("ui/sarasa-mono-sc-regular.ttf"), False, True)
-
+    loadfont(resolvepath("ui/sarasa-fixed-sc-regular.ttf"), False, True)
     font_manager.fontManager.addfont(
-        resolvepath("ui/sarasa-mono-sc-regular.ttf")
+        resolvepath("ui/sarasa-fixed-sc-regular.ttf")
     )
+    from tkinter import font
+
+    print(font.families())
 
     dpi = root.winfo_fpixels("1i")
 

@@ -57,7 +57,7 @@ GEOM_CONTEXT = {
     "lines.markersize": 2,
     "axes.axisbelow": True,
     # "path.simplify_threshold": 1,
-    "font.family": "Sarasa Mono SC",
+    "font.family": "Sarasa Fixed SC",
 }
 
 FIG_CONTEXT = {
@@ -75,10 +75,10 @@ FIG_CONTEXT = {
     "axes.labelweight": "bold",
     "yaxis.labellocation": "top",
     # "path.simplify_threshold": 1,
-    "font.family": ["Sarasa Mono SC"],  # fallback
+    "font.family": ["Sarasa Fixed SC"],  # fallback
 }
 
-FONTNAME = "Sarasa Mono SC"
+FONTNAME = "Sarasa Fixed SC"
 FONTSIZE = 8
 
 
