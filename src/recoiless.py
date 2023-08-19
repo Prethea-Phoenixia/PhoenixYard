@@ -101,7 +101,8 @@ class Recoiless:
             self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0
         )
         # pick a valid solution between 0 and 1
-        Zs = tuple(
+
+        Zs = sorted(
             Z
             for Z in Zs
             if not isinstance(Z, complex) and (Z > 0.0 and Z < 1.0)
@@ -112,7 +113,7 @@ class Recoiless:
                 + " start pressure, or has burnt to post fracture."
             )
 
-        self.Z_0 = Zs[0]
+        self.Z_0 = Zs[0]  # pick the smallest solution
 
         # additional calculation for recoiless weapons:
         gamma = self.theta + 1
@@ -135,10 +136,11 @@ class Recoiless:
         except:
             raise AttributeError("object has no '%s'" % attrName)
 
-    def _fp_bar(self, Z, l_bar, eta, tau):
-        psi = self.f_psi_Z(Z)
+    def _fp_bar(self, Z, l_bar, eta, tau, psi=None):
+        if psi is None:
+            psi = self.f_psi_Z(Z)
         l_psi_bar = 1 - self.Delta * (
-            (1 - psi) / self.rho_p - self.alpha * (psi - eta)
+            (1 - psi) / self.rho_p + self.alpha * (psi - eta)
         )
 
         p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
@@ -148,11 +150,7 @@ class Recoiless:
     def _ode_t(self, t_bar, Z, l_bar, v_bar, eta, tau):
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
-
-        l_psi_bar = 1 - self.Delta * (
-            (1 - psi) / self.rho_p - self.alpha * (psi - eta)
-        )
-        p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
+        p_bar = self._fp_bar(Z, l_bar, eta, tau, psi)
 
         if self.c_1_bar != 0:
             k = 1 + self.theta  # gamma
@@ -195,11 +193,7 @@ class Recoiless:
 
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
-
-        l_psi_bar = 1 - self.Delta * (
-            (1 - psi) / self.rho_p - self.alpha * (psi - eta)
-        )
-        p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
+        p_bar = self._fp_bar(Z, l_bar, eta, tau, psi)
 
         if self.c_1_bar != 0:
             k = 1 + self.theta  # gamma
@@ -219,8 +213,6 @@ class Recoiless:
         dv_bar = self.theta * 0.5 * (p_bar - p_2_bar) / v_bar  # dv_bar/dl_bar
         dt_bar = 1 / v_bar  # dt_bar / dl_bar
 
-        # dp_bar = tau / (l_bar + l_psi_bar) * (psi - eta) * dt_bar
-
         deta = (
             self.C_A * self.S_j_bar * p_bar / tau**0.5 * dt_bar
         )  # deta / dl_bar
@@ -238,11 +230,7 @@ class Recoiless:
     def _ode_Z(self, Z, t_bar, l_bar, v_bar, eta, tau):
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
-
-        l_psi_bar = 1 - self.Delta * (
-            (1 - psi) / self.rho_p - self.alpha * (psi - eta)
-        )
-        p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
+        p_bar = self._fp_bar(Z, l_bar, eta, tau, psi)
 
         if self.c_1_bar != 0:
             k = 1 + self.theta  # gamma
@@ -1067,7 +1055,7 @@ class Recoiless:
         # velocity impinging upon the rear of the breech before nozzle constriction
 
         if l == 0:
-            return self.p_0, self.p_0, self.p_0, 0
+            return self.p_0, self.p_0, 0, 0
         else:
             H = min(vx / v, 2 * self.phi_1 * self.m / (self.omega - y) + 1)
 

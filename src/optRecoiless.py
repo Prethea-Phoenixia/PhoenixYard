@@ -17,6 +17,7 @@ class ConstrainedRecoiless:
         designVelocity,
         nozzleExpansion,
         nozzleEfficiency,
+        chamberExpansion,
         **_,
     ):
         # constants for constrained designs
@@ -33,6 +34,7 @@ class ConstrainedRecoiless:
                 nozzleExpansion < 1,
                 nozzleEfficiency > 1,
                 nozzleEfficiency <= 0,
+                chamberExpansion < 1,
             )
         ):
             raise ValueError("Invalid parameters for constrained design")
@@ -49,6 +51,8 @@ class ConstrainedRecoiless:
 
         self.chi_0 = nozzleEfficiency
         self.A_bar = nozzleExpansion
+
+        self.chi_k = chamberExpansion
 
     def __getattr__(self, attrName):
         try:
@@ -183,7 +187,7 @@ class ConstrainedRecoiless:
 
         def _fp_bar(Z, l_bar, eta, tau):
             psi = f_psi_Z(Z)
-            l_psi_bar = 1 - Delta * ((1 - psi) / rho_p - alpha * (psi - eta))
+            l_psi_bar = 1 - Delta * ((1 - psi) / rho_p + alpha * (psi - eta))
             p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
             return p_bar
@@ -215,7 +219,7 @@ class ConstrainedRecoiless:
                 dpsi = f_sigma_Z(Z)  # dpsi/dZ
 
                 l_psi_bar = 1 - Delta * (
-                    (1 - psi) / rho_p - alpha * (psi - eta)
+                    (1 - psi) / rho_p + alpha * (psi - eta)
                 )
                 p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
@@ -281,7 +285,7 @@ class ConstrainedRecoiless:
                 record=record,
             )
 
-            p_bar_j = _fp_bar(Z_j, l_bar_j, eta_j, tau_j)
+            # p_bar_j = _fp_bar(Z_j, l_bar_j, eta_j, tau_j)
 
             if len(record) > 1:
                 Z_i, (t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i) = record[-2]
@@ -374,7 +378,7 @@ class ConstrainedRecoiless:
             psi = f_psi_Z(Z)
             dpsi = f_sigma_Z(Z)  # dpsi/dZ
 
-            l_psi_bar = 1 - Delta * ((1 - psi) / rho_p - alpha * (psi - eta))
+            l_psi_bar = 1 - Delta * ((1 - psi) / rho_p + alpha * (psi - eta))
             p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
             if c_1_bar != 0:
@@ -597,6 +601,7 @@ if __name__ == "__main__":
         designVelocity=800,
         nozzleExpansion=2,
         nozzleEfficiency=0.92,
+        chamberExpansion=1,
     )
 
     print(test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-3))

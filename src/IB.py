@@ -1568,6 +1568,7 @@ class IB(Frame):
                     P0s.append(P0 / 1e6)
                     Pxs.append(Px / 1e6)
                     vxs.append(vx)
+
                     psis.append(psi)
                     etas.append(eta)
 

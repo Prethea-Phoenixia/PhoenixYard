@@ -136,7 +136,7 @@ class Gun:
             self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0
         )
         # pick a valid solution between 0 and 1
-        Zs = tuple(
+        Zs = sorted(
             Z
             for Z in Zs
             if not isinstance(Z, complex) and (Z > 0.0 and Z < 1.0)
@@ -147,7 +147,7 @@ class Gun:
                 + " overcome start pressure, or has burnt to post fracture."
             )
 
-        self.Z_0 = Zs[0]
+        self.Z_0 = Zs[0]  # pick the smallest solution
 
     def __getattr__(self, attrName):
         try:
