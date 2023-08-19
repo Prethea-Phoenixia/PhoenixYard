@@ -1,4 +1,8 @@
 ENGLISH = {
+    "fileLabel": "File",
+    "saveLabel": "Save Gun",
+    "loadLabel": "Load Gun",
+    "exportLabel": "Export Table as CSV",
     "themeLabel": "Theme",
     "lightLabel": "Light",
     "darkLabel": "Dark",
@@ -474,8 +478,16 @@ ENGLISH = {
     "figOutBP": "Breech P.",
     "solLabel": "Solution",
     "atmosLabel": "Atmospheric Drag",
+    "expExcTitle": "Exception Exporting",
+    "expNoDataMsg": "No data to save.",
+    "expSucTitle": "Export Success",
+    "expSavedMsg": "Saved file as {:}",
 }
 CHINESE = {
+    "fileLabel": "文件",
+    "saveLabel": "保存设计",
+    "loadLabel": "读取设计",
+    "exportLabel": "导出表格",
     "themeLabel": "界面主题",
     "lightLabel": "浅色",
     "darkLabel": "深色",
@@ -806,5 +818,9 @@ CHINESE = {
     "figOutBP": "膛底压强",
     "solLabel": "计算选项",
     "atmosLabel": "计算弹前空气阻力",
+    "expExcTitle": "导出错误",
+    "expNoDataMsg": "无表格数据",
+    "expSucTitle": "导出成功",
+    "expSavedMsg": "文件保存至 {:}",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}

@@ -89,6 +89,7 @@ class ConstrainedRecoiless:
         theta = self.theta
         f = self.f
         chi = self.chi
+        chi_k = self.chi_k
         labda = self.labda
         mu = self.mu
         S = self.S
@@ -124,6 +125,12 @@ class ConstrainedRecoiless:
         phi = phi_1 + omega / (3 * m)
 
         S_j_bar = 1 / (Recoiless.getCf(gamma, A_bar, tol) * chi_0)
+        if S_j_bar > chi_k:
+            raise ValueError(
+                "Achieving recoiless condition necessitates"
+                + " a larger throat area than could be fit into"
+                + " breech face."
+            )
         # S_j = S_j_bar * S
 
         K_0 = (2 / (gamma + 1)) ** (

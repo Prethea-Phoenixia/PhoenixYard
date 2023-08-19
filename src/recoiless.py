@@ -121,14 +121,11 @@ class Recoiless:
         throat.
         """
 
-        self.K_0 = (2 / (gamma + 1)) ** (
-            (gamma + 1) / (2 * (gamma - 1))
-        ) * gamma**0.5
-
         phi_2 = 1
         self.C_A = (
             (0.5 * self.theta * self.phi * self.m / self.omega) ** 0.5
-            * self.K_0
+            * gamma**0.5
+            * (2 / (gamma + 1)) ** (0.5 * (gamma + 1) / self.theta)
             * phi_2
         )  # flow rate value
 
@@ -322,7 +319,8 @@ class Recoiless:
         if self.S_j_bar > self.chi_k:
             raise ValueError(
                 "Achieving recoiless condition necessitates"
-                + " higher nozzle expansion ratio than is specified."
+                + " a larger throat area than could be fit into"
+                + " breech face."
             )
         self.S_j = self.S_j_bar * self.S
 
@@ -503,7 +501,7 @@ class Recoiless:
 
                     raise ValueError(
                         "Squib load condition detected: Shot stopped in bore.\n"
-                        + "Shot is last calculate at {:.0f} mm at {:.0f} mm/s after {:.0f} ms".format(
+                        + "Shot is last calculated at {:.0f} mm at {:.0f} mm/s after {:.0f} ms".format(
                             l_bar * self.l_0 * 1e3,
                             v_bar * self.v_j * 1e3,
                             t_bar * tScale * 1e3,
@@ -1040,27 +1038,49 @@ class Recoiless:
         return te, be
 
     def toPbP0PxVx(self, l, v, p, T, eta):
+        """
+        Diagramatic explanation of the calculated values:
+            ----\___     __________________
+                    |---|                  |_________________________________
+                       ==                                       |        \
+           Nozzle Breech|    Chamber                  Barrel    |  Shot  |>
+                       ==                   ____________________|________/____
+                 ___|---|__________________|
+            ----/
+        Cross section of the breech face:
+           _
+         *- -*
+        | 0 0 |   0+0: Nozzle throat area, S_j
+         *-_-*
+
+        Pb  : Shot base pressure
+        Px  : Breech pressure, chamber pressure at rearward of chamber
+        P0  : Stagnation point pressure
+        vx  : Rearward flow velocity at the rear of chamber
+        """
         tau = T / self.T_v
         y = self.omega * eta
-        m_dot = self.C_A * self.v_j * self.S * p / (self.f * tau**0.5)
-        vx = m_dot * (self.V_0 + self.S * l) / (self.S_j * (self.omega - y))
+        m_dot = self.C_A * self.v_j * self.S_j * p / (self.f * tau**0.5)
+        # mass flow rate, rearward
+        Sx = self.S * self.chi_k
+        vx = m_dot * (self.V_0 + self.S * l) / (Sx * (self.omega - y))
+        # velocity impinging upon the rear of the breech before nozzle constriction
+
         if l == 0:
-            H = inf
+            return self.p_0, self.p_0, self.p_0, 0
         else:
-            H = vx / v
+            H = min(vx / v, 2 * self.phi_1 * self.m / (self.omega - y) + 1)
 
-        H = min(H, 2 * self.phi_1 * self.m / (self.omega - y) + 1)
-
-        pb = p / (
-            1 + (self.omega - y) / (3 * self.phi_1 * self.m) * (1 - 0.5 * H)
-        )  # shot base pressure
-        p0 = pb * (
-            1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 + H) ** -1
-        )
-        px = pb * (
-            1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 - H)
-        )  # muzzle pressure
-        return pb, p0, px, vx
+            pb = p / (
+                1 + (self.omega - y) / (3 * self.phi_1 * self.m) * (1 - 0.5 * H)
+            )  # shot base pressure
+            p0 = pb * (
+                1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 + H) ** -1
+            )  # stagnation point pressure
+            px = pb * (
+                1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 - H)
+            )  # breech pressure
+            return pb, p0, px, vx
 
     @staticmethod
     def getCf(gamma, Sr, tol=1e-5):
@@ -1108,7 +1128,7 @@ if __name__ == "__main__":
         caliber=0.082,
         shotMass=2,
         propellant=M1C,
-        grainSize=3e-3,
+        grainSize=1e-4,
         chargeMass=0.3,
         chamberVolume=0.3 / M1C.rho_p / lf,
         startPressure=30e6,

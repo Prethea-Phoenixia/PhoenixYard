@@ -10,8 +10,6 @@ import multiprocessing
 from matplotlib import font_manager
 
 
-# import matplotlib.font_manager as font_manager
-
 if __name__ == "__main__":
     multiprocessing.freeze_support()
     # this tells windows that our program will handle scaling ourselves

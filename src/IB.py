@@ -1,9 +1,8 @@
 from tkinter import Frame, Menu, Text
+from tkinter import filedialog, messagebox
 from tkinter import StringVar, IntVar
 
-
 from tkinter import ttk
-
 
 import tkinter.font as tkFont
 import traceback
@@ -42,6 +41,8 @@ from multiprocessing import Process, Queue
 from queue import Empty
 
 import sys
+
+import csv
 
 RECOILESS = "Recoiless Gun"
 CONVENTIONAL = "Conventional Gun"
@@ -94,7 +95,7 @@ class IB(Frame):
         self.queue = Queue()
         self.process = None
 
-        self.tableData = None
+        # self.tableData = None
         self.outflowData = None
 
         self.pos = -1
@@ -107,15 +108,26 @@ class IB(Frame):
 
         self.menubar = menubar
 
+        fileMenu = Menu(menubar)
+        menubar.add_cascade(
+            label=self.getString("fileLabel"), menu=fileMenu, underline=0
+        )
         themeMenu = Menu(menubar)
-        menubar.add_cascade(label=self.getString("themeLabel"), menu=themeMenu)
+        menubar.add_cascade(
+            label=self.getString("themeLabel"), menu=themeMenu, underline=0
+        )
         debugMenu = Menu(menubar)
-        menubar.add_cascade(label=self.getString("debugLabel"), menu=debugMenu)
+        menubar.add_cascade(
+            label=self.getString("debugLabel"), menu=debugMenu, underline=0
+        )
         langMenu = Menu(menubar)
-        menubar.add_cascade(label="Lang 语言", menu=langMenu)
+        menubar.add_cascade(label="Lang 语言", menu=langMenu, underline=0)
         solMenu = Menu(menubar)
-        menubar.add_cascade(label=self.getString("solLabel"), menu=solMenu)
+        menubar.add_cascade(
+            label=self.getString("solLabel"), menu=solMenu, underline=0
+        )
 
+        self.fileMenu = fileMenu
         self.themeMenu = themeMenu
         self.debugMenu = debugMenu
         self.solMenu = solMenu
@@ -133,17 +145,31 @@ class IB(Frame):
         self.inAtmos = IntVar()
         self.inAtmos.set(1)
 
+        fileMenu.add_command(
+            label=self.getString("saveLabel"), command=self.save, underline=0
+        )
+        fileMenu.add_command(
+            label=self.getString("loadLabel"), command=self.load, underline=0
+        )
+        fileMenu.add_command(
+            label=self.getString("exportLabel"),
+            command=self.export,
+            underline=0,
+        )
+
         themeMenu.add_radiobutton(
             label=self.getString("darkLabel"),
             variable=self.themeRadio,
             value=0,
             command=self.useTheme,
+            underline=0,
         )
         themeMenu.add_radiobutton(
             label=self.getString("lightLabel"),
             variable=self.themeRadio,
             value=1,
             command=self.useTheme,
+            underline=0,
         )
 
         debugMenu.add_checkbutton(
@@ -151,22 +177,33 @@ class IB(Frame):
             variable=self.DEBUG,
             onvalue=1,
             offvalue=0,
+            underline=0,
         )
 
         solMenu.add_radiobutton(
-            label=self.getString("SOL_LAGRANGE"), variable=self.soln, value=0
+            label=self.getString("SOL_LAGRANGE"),
+            variable=self.soln,
+            value=0,
+            underline=0,
         )
         solMenu.add_radiobutton(
-            label=self.getString("SOL_PIDDUCK"), variable=self.soln, value=1
+            label=self.getString("SOL_PIDDUCK"),
+            variable=self.soln,
+            value=1,
+            underline=0,
         )
         solMenu.add_radiobutton(
-            label=self.getString("SOL_MAMONTOV"), variable=self.soln, value=2
+            label=self.getString("SOL_MAMONTOV"),
+            variable=self.soln,
+            value=2,
+            underline=0,
         )
         solMenu.add_checkbutton(
             label=self.getString("atmosLabel"),
             variable=self.inAtmos,
             onvalue=1,
             offvalue=0,
+            underline=0,
         )
 
         for lang in STRING.keys():
@@ -175,6 +212,7 @@ class IB(Frame):
                 variable=self.LANG,
                 value=lang,
                 command=self.changeLang,
+                underline=0,
             )
 
         parent.config(menu=menubar)
@@ -216,14 +254,100 @@ class IB(Frame):
         parent.bind("<Configure>", self.resizePlot)
         self.timedLoop()
 
+    def save(self):
+        filedialog.asksaveasfile(
+            filetypes=(("Gun Design File", "*.gun"),),
+        )
+
+    def load(self):
+        filedialog.askopenfile(
+            filetypes=(("Gun Design File", "*.gun"),),
+        )
+
+    def export(self):
+        gun = self.gun
+        if gun is None:
+            messagebox.showinfo(
+                self.getString("expExcTitle"), self.getString("expNoDataMsg")
+            )
+            return
+
+        fileName = filedialog.asksaveasfilename(
+            title="Export Data As,",
+            filetypes=(("Comma Separated File", "*.csv"),),
+            defaultextension=".csv",
+        )
+        try:
+            gunType = self.kwargs["typ"]
+            with open(fileName, "w", encoding="utf-8", newline="") as csvFile:
+                csvWriter = csv.writer(
+                    csvFile, delimiter=",", quoting=csv.QUOTE_MINIMAL
+                )
+
+                if gunType == CONVENTIONAL:
+                    headers = (
+                        "",
+                        "T - s",
+                        "L - m",
+                        "V - m/s",
+                        "P_l=L - Pa",
+                        "1/L ∫{0->L} P_l dl - Pa",
+                        "P_l=0 - Pa",
+                        "ψ - 1",
+                        "T - K",
+                    )
+                elif gunType == RECOILESS:
+                    headers = (
+                        "",
+                        "T - s",
+                        "L - m",
+                        "V - m/s",
+                        "V_l=0 - m/s",
+                        "P_l=L - Pa",
+                        "1/L ∫{0->L} P_l dl - Pa",
+                        "P_v=0 - Pa",
+                        "P_l=0 - Pa",
+                        "ψ - 1",
+                        "η - 1",
+                        "T - K",
+                    )
+
+                csvWriter.writerow(headers)
+
+                for line in self.tableData:
+                    tag, t, l, psi, v, P, T, eta = line
+
+                    if gunType == CONVENTIONAL:
+                        Pb, Pt = gun.toPbPt(l, P)
+                        csvWriter.writerow((tag, t, l, v, Pb, P, Pt, psi, T))
+                    elif gunType == RECOILESS:
+                        Pb, P0, Px, vx = gun.toPbP0PxVx(l, v, P, T, eta)
+                        csvWriter.writerow(
+                            (tag, t, l, v, vx, Pb, P, P0, Px, psi, eta, T)
+                        )
+
+            messagebox.showinfo(
+                self.getString("expSucTitle"),
+                self.getString("expSavedMsg").format(fileName),
+            )
+
+        except Exception as e:
+            messagebox.showinfo(self.getString("expExcTitle"), str(e))
+
     def changeLang(self):
-        self.menubar.entryconfig(0, label=self.getString("themeLabel"))
-        self.menubar.entryconfig(1, label=self.getString("debugLabel"))
+        self.menubar.entryconfig(0, label=self.getString("fileLabel"))
+        self.menubar.entryconfig(1, label=self.getString("themeLabel"))
+        self.menubar.entryconfig(2, label=self.getString("debugLabel"))
+        self.menubar.entryconfig(4, label=self.getString("solLabel"))
+
+        self.fileMenu.entryconfig(0, label=self.getString("saveLabel"))
+        self.fileMenu.entryconfig(1, label=self.getString("loadLabel"))
+        self.fileMenu.entryconfig(2, label=self.getString("exportLabel"))
+
         self.themeMenu.entryconfig(0, label=self.getString("darkLabel"))
         self.themeMenu.entryconfig(1, label=self.getString("lightLabel"))
         self.debugMenu.entryconfig(0, label=self.getString("enableLabel"))
 
-        self.menubar.entryconfig(3, label=self.getString("solLabel"))
         self.solMenu.entryconfig(0, label=self.getString("SOL_LAGRANGE"))
         self.solMenu.entryconfig(1, label=self.getString("SOL_PIDDUCK"))
         self.solMenu.entryconfig(2, label=self.getString("SOL_MAMONTOV"))
@@ -853,8 +977,8 @@ class IB(Frame):
                 self.arcmm.set(webmm)
 
                 lgmm = roundSig(kwargs["lengthGun"] * 1e3)
-
                 self.tblmm.set(lgmm)
+
                 if optimize:
                     lfpercent = roundSig(kwargs["loadFraction"] * 100)
                     self.ldf.set(lfpercent)
@@ -1427,15 +1551,18 @@ class IB(Frame):
                         xs.append(t * 1000)
                     elif dom == DOMAIN_LENG:
                         xs.append(l)
+
                     vs.append(v)
                     Ps.append(p / 1e6)
+
                     if gunType == CONVENTIONAL:
                         Pb, Pt = gun.toPbPt(l, p)
                         P0, Px = 0, 0
                         vx = 0
-                    else:
+                    elif gunType == RECOILESS:
                         Pb, P0, Px, vx = gun.toPbP0PxVx(l, v, p, T, eta)
                         Pt = 0
+
                     Pbs.append(Pb / 1e6)
                     Pts.append(Pt / 1e6)
                     P0s.append(P0 / 1e6)
@@ -1469,7 +1596,7 @@ class IB(Frame):
                         Pb, Pt = gun.toPbPt(l, p)
                         P0, Px = 0, 0
                         vx = 0
-                    else:
+                    elif gunType == RECOILESS:
                         Pb, P0, Px, vx = gun.toPbP0PxVx(l, v, p, T, eta)
                         Pt = 0
 
@@ -1694,7 +1821,7 @@ class IB(Frame):
 
                 if dom == DOMAIN_TIME:
                     self.ax.set_xlabel(self.getString("figTimeDomain"))
-                else:
+                elif dom == DOMAIN_LENG:
                     self.ax.set_xlabel(self.getString("figLengDomain"))
 
             else:
@@ -1975,7 +2102,7 @@ class IB(Frame):
             self.nozzEffw.grid_remove()
             self.nozzEffU.grid_remove()
 
-        else:
+        elif gunType == RECOILESS:
             self.nozzExpw.config(state="normal")
             self.nozzEffw.config(state="normal")
 
@@ -2284,14 +2411,12 @@ def calculate(
         if constrain:
             if gunType == CONVENTIONAL:
                 constrained = Constrained(**kwargs)
-            else:
+            elif gunType == RECOILESS:
                 constrained = ConstrainedRecoiless(**kwargs)
 
             if optimize:
                 l_f, e_1, l_g = constrained.findMinV(**kwargs)
-
                 kwargs.update({"loadFraction": roundSig(l_f)})
-
             else:
                 e_1, l_g = constrained.solve(**kwargs)
 
@@ -2303,15 +2428,11 @@ def calculate(
                 / kwargs["propellant"].rho_p
                 / kwargs["loadFraction"]
             )
-
             kwargs.update({"chamberVolume": chamberVolume})
-
-        else:
-            pass
 
         if gunType == CONVENTIONAL:
             gun = Gun(**kwargs)
-        else:
+        elif gunType == RECOILESS:
             gun = Recoiless(**kwargs)
 
         tableData, errorData = gun.integrate(
