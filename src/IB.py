@@ -206,6 +206,8 @@ class IB(Frame):
             underline=0,
         )
 
+        self.inAtmos.trace_add("write", self.ambCallback)
+
         for lang in STRING.keys():
             langMenu.add_radiobutton(
                 label=lang,
@@ -244,7 +246,9 @@ class IB(Frame):
         parent.update_idletasks()
         self.addFigPlot()
 
+        self.ambCallback()
         self.typeCallback()
+        self.ctrlCallback()
         self.updateSpec()
         self.updateGeom()
 
@@ -333,6 +337,12 @@ class IB(Frame):
 
         except Exception as e:
             messagebox.showinfo(self.getString("expExcTitle"), str(e))
+
+    def ambCallback(self, *args):
+        self.ambPw.config(state="normal" if self.inAtmos.get() else "disabled")
+        self.ambRhow.config(
+            state="normal" if self.inAtmos.get() else "disabled"
+        )
 
     def changeLang(self):
         self.menubar.entryconfig(0, label=self.getString("fileLabel"))
@@ -636,7 +646,7 @@ class IB(Frame):
         self.envFrm = envFrm
 
         i = 0
-        self.ambPLb, self.ambP, _, _, i = self.add3Input(
+        self.ambPLb, self.ambP, self.ambPw, _, i = self.add3Input(
             parent=envFrm,
             rowIndex=i,
             colIndex=0,
@@ -646,7 +656,7 @@ class IB(Frame):
             validation=validationNN,
         )
 
-        self.ambRhoLb, self.ambRho, _, _, i = self.add3Input(
+        self.ambRhoLb, self.ambRho, self.ambRhow, _, i = self.add3Input(
             parent=envFrm,
             rowIndex=i,
             colIndex=0,
@@ -696,7 +706,7 @@ class IB(Frame):
             infotext=self.pTgtTip,
         )
 
-        self.minWebLb, self.minWeb, _, _, j = self.add3Input(
+        self.minWebLb, self.minWeb, self.minWebw, _, j = self.add3Input(
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
@@ -706,7 +716,7 @@ class IB(Frame):
             validation=validationNN,
             color="red",
         )
-        self.lgmaxLb, self.lgmax, _, _, j = self.add3Input(
+        self.lgmaxLb, self.lgmax, self.lgmaxw, _, j = self.add3Input(
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
@@ -724,7 +734,7 @@ class IB(Frame):
             consFrm, text=self.getString("consButton"), variable=self.solve_W_Lg
         )
         self.useConstraint.grid(row=j, column=0, columnspan=3, sticky="nsew")
-        self.solve_W_Lg.trace_add("write", self.setCD)
+        self.solve_W_Lg.trace_add("write", self.ctrlCallback)
 
         self.useConstraintTip = StringVar(value=self.getString("useConsText"))
         CreateToolTip(self.useConstraint, self.useConstraintTip)
@@ -736,7 +746,6 @@ class IB(Frame):
             consFrm, text=self.getString("minTVButton"), variable=self.opt_lf
         )
         self.optimizeLF.grid(row=j, column=0, columnspan=3, sticky="nsew")
-        self.setCD()
         self.optimizeLFTip = StringVar(value=self.getString("optLFText"))
         CreateToolTip(self.optimizeLF, self.optimizeLFTip)
         i += 1
@@ -2114,11 +2123,15 @@ class IB(Frame):
             self.nozzEffw.grid()
             self.nozzEffU.grid()
 
-    def setCD(self, *args):
+    def ctrlCallback(self, *args):
         if self.solve_W_Lg.get() == 0:
             self.optimizeLF.config(state="disabled")
+            self.minWebw.config(state="disabled")
+            self.lgmaxw.config(state="disabled")
         else:
             self.optimizeLF.config(state="normal")
+            self.minWebw.config(state="normal")
+            self.lgmaxw.config(state="normal")
 
     def add2Input(
         self,

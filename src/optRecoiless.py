@@ -433,6 +433,8 @@ class ConstrainedRecoiless:
             absTol=tol,
             abortFunc=abort,
         )
+        # todo: something up here.
+
         if l_bar_g > l_bar_d:
             raise ValueError(
                 "Solution requires excessive tube length ({:.3e} m)".format(
