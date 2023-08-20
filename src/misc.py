@@ -2,7 +2,6 @@ import os
 import sys
 from ctypes import windll, byref, create_unicode_buffer, create_string_buffer
 from math import log, floor, log10
-from tkinter import *
 
 from win32api import GetMonitorInfo, MonitorFromPoint
 
@@ -158,11 +157,11 @@ def validatePI(inp):
 def formatFloatInput(event):
     v = event.widget.get()
     if v == "" or v == ".":
-        event.widget.delete(0, END)
+        event.widget.delete(0, "end")
         event.widget.insert(0, event.widget.default)
 
     else:
-        event.widget.delete(0, END)
+        event.widget.delete(0, "end")
         event.widget.insert(0, float(v))
 
 
@@ -171,7 +170,7 @@ def formatIntInput(event):
     if v == "":
         event.widget.insert(0, event.widget.default)
     else:
-        event.widget.delete(0, END)
+        event.widget.delete(0, "end")
         event.widget.insert(0, int(v))
 
 

@@ -30,7 +30,7 @@ class ToolTip(object):
         tw.wm_overrideredirect(1)
         root = self.widget.winfo_toplevel()
 
-        t_Font = tkFont.Font(family="Sarasa Fixed SC", size=10)
+        t_Font = tkFont.Font(family="Sarasa Fixed SC", size=9)
 
         # we use a fixed width font so any char will do
         columnWidth = 60

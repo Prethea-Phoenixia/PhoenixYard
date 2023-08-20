@@ -52,6 +52,7 @@ ENGLISH = {
     "envFrmLabel": "Atmos. Cond.",
     "ambPresLabel": "Pres.",
     "ambRhoLabel": "Dens.",
+    "ammoLabel": "Cartridge",
     "plotAvgP": "Avg. P.",
     "plotBaseP": "Base P.",
     "plotBreechNozzleP": "Breech/Nozzle P.",
@@ -480,6 +481,7 @@ ENGLISH = {
     "atmosLabel": "Atmospheric Drag",
     "expExcTitle": "Exception Exporting",
     "expNoDataMsg": "No data to save.",
+    "expCancelMsg": "Export canceled",
     "expSucTitle": "Export Success",
     "expSavedMsg": "Saved file as {:}",
 }
@@ -537,6 +539,7 @@ CHINESE = {
     "envFrmLabel": "大气参数",
     "ambPresLabel": "压强",
     "ambRhoLabel": "密度",
+    "ammoLabel": "弹药",
     "plotAvgP": "空间平均压强",
     "plotBaseP": "弹底压强",
     "plotBreechNozzleP": "膛底/喷口压强",
@@ -820,6 +823,7 @@ CHINESE = {
     "atmosLabel": "计算弹前空气阻力",
     "expExcTitle": "导出错误",
     "expNoDataMsg": "无表格数据",
+    "expCancelMsg": "已取消",
     "expSucTitle": "导出成功",
     "expSavedMsg": "文件保存至 {:}",
 }

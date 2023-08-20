@@ -28,7 +28,7 @@ from misc import (
     resolvepath,
     roundSig,
 )
-from math import ceil
+from math import ceil, pi
 
 import matplotlib.pyplot as mpl
 from matplotlib.figure import Figure
@@ -49,7 +49,7 @@ CONVENTIONAL = "Conventional Gun"
 
 
 FONTNAME = "Sarasa Fixed SC"
-FONTSIZE = 10
+FONTSIZE = 9
 
 GEOM_CONTEXT = {
     "font.size": FONTSIZE,
@@ -231,9 +231,7 @@ class IB(Frame):
 
         parent.columnconfigure(0, weight=1)
         parent.rowconfigure(1, weight=1)
-
-        self.addTopBar(parent)
-
+        self.addTopFrm(parent)
         self.addLeftFrm(parent)
         self.addRightFrm(parent)
         self.addErrFrm(parent)
@@ -268,6 +266,30 @@ class IB(Frame):
             filetypes=(("Gun Design File", "*.gun"),),
         )
 
+    def getDescriptive(self):
+        if self.gun is None:
+            return "Unknown Design"
+        else:
+            kwargs = self.kwargs
+            typ = kwargs["typ"]
+            cal = kwargs["caliber"]
+            blr = kwargs["lengthGun"] / cal
+            car_len = kwargs["chamberVolume"] / (
+                pi * (0.5 * cal) ** 2 * kwargs["chamberExpansion"]
+            )
+            w = kwargs["shotMass"]
+            return (
+                "{:} {:.3g}x{:.4g}mm L{:.0f} ".format(
+                    "{:.4g} g".format(w * 1e3)
+                    if w < 1
+                    else "{:.4g} kg".format(w),
+                    cal * 1e3,
+                    car_len * 1e3,
+                    blr,
+                )
+                + typ
+            )
+
     def export(self):
         gun = self.gun
         if gun is None:
@@ -280,7 +302,14 @@ class IB(Frame):
             title="Export Data As,",
             filetypes=(("Comma Separated File", "*.csv"),),
             defaultextension=".csv",
+            initialfile=self.getDescriptive(),
         )
+
+        if fileName == "":
+            messagebox.showinfo(
+                self.getString("expExcTitle"), self.getString("expCancelMsg")
+            )
+            return
         try:
             gunType = self.kwargs["typ"]
             with open(fileName, "w", encoding="utf-8", newline="") as csvFile:
@@ -383,6 +412,7 @@ class IB(Frame):
         self.cvLb.config(text=self.getString("cvLabel"))
         self.ambPLb.config(text=self.getString("ambPresLabel"))
         self.ambRhoLb.config(text=self.getString("ambRhoLabel"))
+        self.ammoLb.config(text=self.getString("ammoLabel"))
 
         self.nozzExpLb.config(text=self.getString("nozzExpLabel"))
         self.nozzEffLb.config(text=self.getString("nozzEffLabel"))
@@ -415,7 +445,7 @@ class IB(Frame):
         self.specFrm.config(text=self.getString("specFrmLabel"))
         self.opFrm.config(text=self.getString("opFrmLabel"))
         self.consFrm.config(text=self.getString("consFrmLabel"))
-        self.topFrm.config(text=self.getString("pltOptnFrm"))
+        self.pltOptnFrm.config(text=self.getString("pltOptnFrm"))
         self.sampleFrm.config(text=self.getString("sampleFrmLabel"))
         self.propFrm.config(text=self.getString("propFrmLabel"))
         self.grainFrm.config(text=self.getString("grainFrmLabel"))
@@ -475,79 +505,96 @@ class IB(Frame):
         except KeyError:
             return STRING["English"][name]
 
-    def addTopBar(self, parent):
-        topFrm = ttk.LabelFrame(parent, text=self.getString("pltOptnFrm"))
+    def addTopFrm(self, parent):
+        topFrm = ttk.Frame(parent)
         topFrm.grid(row=0, column=0, sticky="nsew")
-        self.topFrm = topFrm
+
+        topFrm.columnconfigure(0, weight=1)
+        topFrm.rowconfigure(0, weight=1)
+
+        pltOptnFrm = ttk.LabelFrame(topFrm, text=self.getString("pltOptnFrm"))
+        pltOptnFrm.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
+        self.pltOptnFrm = pltOptnFrm
 
         for i in range(9):
-            topFrm.columnconfigure(i, weight=1)
+            pltOptnFrm.columnconfigure(i, weight=1)
 
-        self.pbar = ttk.Progressbar(topFrm, mode="indeterminate", maximum=100)
-        self.pbar.grid(
-            row=0, column=0, columnspan=9, sticky="nsew", padx=2, pady=2
+        j = 0
+
+        self.pbar = ttk.Progressbar(
+            pltOptnFrm, mode="indeterminate", maximum=100
         )
+        self.pbar.grid(
+            row=j, column=0, columnspan=9, sticky="nsew", padx=2, pady=2
+        )
+
+        j += 1
 
         self.plotAvgP = IntVar(value=1)
-
         self.plotAvgPCheck = ttk.Checkbutton(
-            topFrm, text=self.getString("plotAvgP"), variable=self.plotAvgP
+            pltOptnFrm, text=self.getString("plotAvgP"), variable=self.plotAvgP
         )
-        self.plotAvgPCheck.grid(row=1, column=0, sticky="nsew")
+        self.plotAvgPCheck.grid(row=j, column=0, sticky="nsew")
 
         self.plotBaseP = IntVar(value=1)
         self.plotBasePCheck = ttk.Checkbutton(
-            topFrm, text=self.getString("plotBaseP"), variable=self.plotBaseP
+            pltOptnFrm,
+            text=self.getString("plotBaseP"),
+            variable=self.plotBaseP,
         )
-        self.plotBasePCheck.grid(row=1, column=1, sticky="nsew")
+        self.plotBasePCheck.grid(row=j, column=1, sticky="nsew")
 
         self.plotBreechNozzleP = IntVar(value=1)
         self.plotBreechNozzlePCheck = ttk.Checkbutton(
-            topFrm,
+            pltOptnFrm,
             text=self.getString("plotBreechNozzleP"),
             variable=self.plotBreechNozzleP,
         )
-        self.plotBreechNozzlePCheck.grid(row=1, column=2, sticky="nsew")
+        self.plotBreechNozzlePCheck.grid(row=j, column=2, sticky="nsew")
 
         self.plotStagP = IntVar(value=1)
         self.plotStagPCheck = ttk.Checkbutton(
-            topFrm, text=self.getString("plotStagP"), variable=self.plotStagP
+            pltOptnFrm,
+            text=self.getString("plotStagP"),
+            variable=self.plotStagP,
         )
-        self.plotStagPCheck.grid(row=1, column=3, sticky="nsew")
+        self.plotStagPCheck.grid(row=j, column=3, sticky="nsew")
 
         self.plotVel = IntVar(value=1)
         self.plotVelCheck = ttk.Checkbutton(
-            topFrm, text=self.getString("plotVel"), variable=self.plotVel
+            pltOptnFrm, text=self.getString("plotVel"), variable=self.plotVel
         )
-        self.plotVelCheck.grid(row=1, column=4, sticky="nsew")
+        self.plotVelCheck.grid(row=j, column=4, sticky="nsew")
 
         self.plotNozzleV = IntVar(value=1)
         self.plotNozzleVCheck = ttk.Checkbutton(
-            topFrm,
+            pltOptnFrm,
             text=self.getString("plotNozzleV"),
             variable=self.plotNozzleV,
         )
-        self.plotNozzleVCheck.grid(row=1, column=5, sticky="nsew")
+        self.plotNozzleVCheck.grid(row=j, column=5, sticky="nsew")
 
         self.plotBurnup = IntVar(value=1)
         self.plotBurnupCheck = ttk.Checkbutton(
-            topFrm, text=self.getString("plotBurnup"), variable=self.plotBurnup
+            pltOptnFrm,
+            text=self.getString("plotBurnup"),
+            variable=self.plotBurnup,
         )
-        self.plotBurnupCheck.grid(row=1, column=6, sticky="nsew")
+        self.plotBurnupCheck.grid(row=j, column=6, sticky="nsew")
 
         self.plotEta = IntVar(value=1)
         self.plotEtaCheck = ttk.Checkbutton(
-            topFrm, text=self.getString("plotEta"), variable=self.plotEta
+            pltOptnFrm, text=self.getString("plotEta"), variable=self.plotEta
         )
-        self.plotEtaCheck.grid(row=1, column=7, sticky="nsew")
+        self.plotEtaCheck.grid(row=j, column=7, sticky="nsew")
 
         self.plotOutflow = IntVar(value=0)
         self.plotOutflowCheck = ttk.Checkbutton(
-            topFrm,
+            pltOptnFrm,
             text=self.getString("plotOutflow"),
             variable=self.plotOutflow,
         )
-        self.plotOutflowCheck.grid(row=1, column=8, sticky="nsew")
+        self.plotOutflowCheck.grid(row=j, column=8, sticky="nsew")
 
         self.plotAvgP.trace_add("write", self.updateFigPlot)
         self.plotBaseP.trace_add("write", self.updateFigPlot)
@@ -560,14 +607,13 @@ class IB(Frame):
         self.plotOutflow.trace_add("write", self.updateFigPlot)
 
     def addLeftFrm(self, parent):
-        """
-        t_Font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
-        fontWidth = t_Font.measure("m")
-        """
         leftFrm = ttk.Frame(parent)
         leftFrm.grid(row=0, column=1, rowspan=4, sticky="nsew")
         leftFrm.columnconfigure(0, weight=1)
         leftFrm.rowconfigure(0, weight=1)
+
+        """
+        left for future expansion"""
 
     def addRightFrm(self, parent):
         rightFrm = ttk.Frame(parent)
@@ -589,9 +635,15 @@ class IB(Frame):
             labelText=self.getString("lxLabel"),
             unitText_up="Cal",
             unitText_dn="Cal",
-            # justify_up="right",
-            # justify_dn="right",
             infotext=self.lxTip,
+        )
+
+        self.ammoLb, self.ammo, _, i = self.add12Disp(
+            parent=specFrm,
+            rowIndex=i,
+            labelText=self.getString("ammoLabel"),
+            unitText="",
+            default="0.00 x 0.000 mm",
         )
 
         self.vinfTip = StringVar(value=self.getString("vinfText"))
@@ -1027,6 +1079,14 @@ class IB(Frame):
             )
             self.va.set(toSI(self.gun.v_j))
 
+            caliber = kwargs["caliber"]
+            cartridge_len = kwargs["chamberVolume"] / (
+                pi * (0.5 * caliber) ** 2 * kwargs["chamberExpansion"]
+            )
+            self.ammo.set(
+                "{:.3g} x {:.4g} mm".format(caliber * 1e3, cartridge_len * 1e3)
+            )
+            print(self.getDescriptive())
         # populate the table with new values
 
         self.tv.delete(*self.tv.get_children())
@@ -2136,9 +2196,9 @@ class IB(Frame):
     def add2Input(
         self,
         parent,
-        rowIndex,
-        colIndex,
-        labelText,
+        rowIndex=0,
+        colIndex=0,
+        labelText="",
         default="1.0",
         validation=None,
         entryWidth=15,
@@ -2188,7 +2248,8 @@ class IB(Frame):
     def add3Input(
         self,
         parent,
-        rowIndex,
+        rowIndex=0,
+        colIndex=0,
         labelText="",
         unitText="",
         default="0.0",
@@ -2197,19 +2258,18 @@ class IB(Frame):
         formatter=formatFloatInput,
         color=None,
         infotext=None,
-        colIndex=0,
     ):
         lb, e, en, _ = self.add2Input(
-            parent,
-            rowIndex,
-            colIndex,
-            labelText,
-            default,
-            validation,
-            entryWidth,
-            formatter,
-            color,
-            infotext,
+            parent=parent,
+            rowIndex=rowIndex,
+            colIndex=colIndex,
+            labelText=labelText,
+            default=default,
+            validation=validation,
+            entryWidth=entryWidth,
+            formatter=formatter,
+            color=color,
+            infotext=infotext,
         )
         ulb = ttk.Label(parent, text=unitText)
         ulb.grid(
@@ -2221,7 +2281,7 @@ class IB(Frame):
     def add12Disp(
         self,
         parent,
-        rowIndex,
+        rowIndex=0,
         colIndex=0,
         labelText="",
         unitText="",
@@ -2273,7 +2333,7 @@ class IB(Frame):
     def add122Disp(
         self,
         parent,
-        rowIndex,
+        rowIndex=0,
         colIndex=0,
         labelText="",
         unitText_up="",
