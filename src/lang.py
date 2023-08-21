@@ -484,6 +484,8 @@ ENGLISH = {
     "expCancelMsg": "Export canceled",
     "expSucTitle": "Export Success",
     "expSavedMsg": "Saved file as {:}",
+    "useCVLabel": "Specify Chamber Volume",
+    "useLFLabel": "Specify Load Fraction",
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -826,5 +828,7 @@ CHINESE = {
     "expCancelMsg": "已取消",
     "expSucTitle": "导出成功",
     "expSavedMsg": "文件保存至 {:}",
+    "useCVLabel": "按药室容积计算",
+    "useLFLabel": "按装填系数计算",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}

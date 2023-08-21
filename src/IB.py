@@ -132,18 +132,16 @@ class IB(Frame):
         self.debugMenu = debugMenu
         self.solMenu = solMenu
 
-        self.themeRadio = IntVar()
-        self.themeRadio.set(0)
+        self.themeRadio = IntVar(value=0)
         self.useTheme()
 
-        self.DEBUG = IntVar()
-        self.DEBUG.set(0)
+        self.DEBUG = IntVar(value=0)
 
-        self.soln = IntVar()
-        self.soln.set(0)
+        self.soln = IntVar(value=0)
 
-        self.inAtmos = IntVar()
-        self.inAtmos.set(1)
+        self.inAtmos = IntVar(value=1)
+
+        self.useCv = IntVar(value=0)
 
         fileMenu.add_command(
             label=self.getString("saveLabel"), command=self.save, underline=0
@@ -198,6 +196,7 @@ class IB(Frame):
             value=2,
             underline=0,
         )
+        solMenu.add_separator()
         solMenu.add_checkbutton(
             label=self.getString("atmosLabel"),
             variable=self.inAtmos,
@@ -205,8 +204,17 @@ class IB(Frame):
             offvalue=0,
             underline=0,
         )
+        solMenu.add_separator()
+
+        solMenu.add_checkbutton(
+            label=self.getString("useLFLabel"), variable=self.useCv, onvalue=0
+        )
+        solMenu.add_checkbutton(
+            label=self.getString("useCVLabel"), variable=self.useCv, onvalue=1
+        )
 
         self.inAtmos.trace_add("write", self.ambCallback)
+        self.useCv.trace_add("write", self.cvlfCallback)
 
         for lang in STRING.keys():
             langMenu.add_radiobutton(
@@ -245,9 +253,12 @@ class IB(Frame):
         self.addFigPlot()
 
         self.ambCallback()
+        self.cvlfCallback()
         self.typeCallback()
         self.ctrlCallback()
+
         self.updateSpec()
+
         self.updateGeom()
 
         self.forceUpdOnThemeWidget.append(self.errorText)
@@ -373,6 +384,12 @@ class IB(Frame):
             state="normal" if self.inAtmos.get() else "disabled"
         )
 
+    def cvlfCallback(self, *args):
+        useCv = self.useCv.get()
+
+        self.ldfw.config(state="disabled" if useCv else "normal")
+        self.cvLw.config(state="normal" if useCv else "disabled")
+
     def changeLang(self):
         self.menubar.entryconfig(0, label=self.getString("fileLabel"))
         self.menubar.entryconfig(1, label=self.getString("themeLabel"))
@@ -390,7 +407,11 @@ class IB(Frame):
         self.solMenu.entryconfig(0, label=self.getString("SOL_LAGRANGE"))
         self.solMenu.entryconfig(1, label=self.getString("SOL_PIDDUCK"))
         self.solMenu.entryconfig(2, label=self.getString("SOL_MAMONTOV"))
-        self.solMenu.entryconfig(3, label=self.getString("atmosLabel"))
+        # separator @ 3
+        self.solMenu.entryconfig(4, label=self.getString("atmosLabel"))
+        # seaparator @ 5
+        self.solMenu.entryconfig(6, label=self.getString("useCVLabel"))
+        self.solMenu.entryconfig(7, label=self.getString("useLFLabel"))
 
         self.calLb.config(text=self.getString("calLabel"))
         self.tblLb.config(text=self.getString("tblLabel"))
@@ -409,7 +430,7 @@ class IB(Frame):
         self.vaLb.config(text=self.getString("vaLabel"))
         self.teLb.config(text=self.getString("teffLabel"))
         self.beLb.config(text=self.getString("beffLabel"))
-        self.cvLb.config(text=self.getString("cvLabel"))
+        self.cvLLb.config(text=self.getString("cvLabel"))
         self.ambPLb.config(text=self.getString("ambPresLabel"))
         self.ambRhoLb.config(text=self.getString("ambRhoLabel"))
         self.ammoLb.config(text=self.getString("ammoLabel"))
@@ -612,9 +633,6 @@ class IB(Frame):
         leftFrm.columnconfigure(0, weight=1)
         leftFrm.rowconfigure(0, weight=1)
 
-        """
-        left for future expansion"""
-
     def addRightFrm(self, parent):
         rightFrm = ttk.Frame(parent)
         rightFrm.grid(row=0, column=3, rowspan=4, sticky="nsew")
@@ -673,6 +691,7 @@ class IB(Frame):
             unitText="%",
             infotext=self.beffTip,
         )
+        """
         self.cvLb, self.cv, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
@@ -680,6 +699,7 @@ class IB(Frame):
             unitText="m³",
             # justify="right",
         )
+        """
 
         self.ldLb, self.ld, _, i = self.add12Disp(
             parent=specFrm,
@@ -857,7 +877,7 @@ class IB(Frame):
             rowIndex=i,
             colIndex=0,
             labelText="-log10(ε)",
-            default="3",
+            default="4",
             validation=validationPI,
             formatter=formatIntInput,
             color="red",
@@ -919,12 +939,15 @@ class IB(Frame):
         self.process = None
 
         try:
-            chamberVolume = (
-                float(self.chgkg.get())
-                / self.prop.rho_p
-                / float(self.ldf.get())
-                * 100
-            )
+            if self.useCv.get():
+                chamberVolume = float(self.cvL.get()) * 1e-3
+            else:
+                chamberVolume = (
+                    float(self.chgkg.get())
+                    / self.prop.rho_p
+                    / float(self.ldf.get())
+                    * 100
+                )
 
             self.kwargs.update(
                 {
@@ -1029,10 +1052,6 @@ class IB(Frame):
         kwargs = self.kwargs
 
         if self.gun is not None:
-            chamberVolume = kwargs["chamberVolume"]
-
-            self.cv.set(toSI(chamberVolume, useSN=True))
-
             if constrain:
                 webmm = roundSig(1e3 * kwargs["grainSize"])
                 self.arcmm.set(webmm)
@@ -1041,8 +1060,10 @@ class IB(Frame):
                 self.tblmm.set(lgmm)
 
                 if optimize:
-                    lfpercent = roundSig(kwargs["loadFraction"] * 100)
-                    self.ldf.set(lfpercent)
+                    if self.useCv.get():
+                        self.cvL.set(roundSig(kwargs["chamberVolume"] * 1e3))
+                    else:
+                        self.ldf.set(roundSig(kwargs["loadFraction"] * 100))
 
             self.ld.set(
                 toSI(kwargs["loadFraction"] * self.prop.rho_p, useSN=True)
@@ -1086,7 +1107,7 @@ class IB(Frame):
             self.ammo.set(
                 "{:.3g} x {:.4g} mm".format(caliber * 1e3, cartridge_len * 1e3)
             )
-            print(self.getDescriptive())
+
         # populate the table with new values
 
         self.tv.delete(*self.tv.get_children())
@@ -1370,7 +1391,7 @@ class IB(Frame):
 
         i += 1
         self.ldfTip = StringVar(value=self.getString("ldfText"))
-        self.ldfLb, self.ldf, _, _, i = self.add3Input(
+        self.ldfLb, self.ldf, self.ldfw, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
             labelText=self.getString("ldfLabel"),
@@ -1379,6 +1400,18 @@ class IB(Frame):
             validation=validationNN,
             infotext=self.ldfTip,
         )
+
+        self.cvLLb, self.cvL, self.cvLw, _, i = self.add3Input(
+            parent=parFrm,
+            rowIndex=i,
+            labelText=self.getString("cvLabel"),
+            unitText="L",
+            default="20",
+            validation=validationNN,
+        )
+
+        self.cvL.trace_add("write", self.cvlfConsisCallback)
+        self.ldf.trace_add("write", self.cvlfConsisCallback)
 
         self.clrTip = StringVar(value=self.getString("clrText"))
         self.clrLb, self.clr, _, _, i = self.add3Input(
@@ -2016,6 +2049,7 @@ class IB(Frame):
         # this updates the specification description
 
         self.callback()
+        self.cvlfConsisCallback()  # update the chamber volume / load fraction with current data
 
         return True
 
@@ -2192,6 +2226,23 @@ class IB(Frame):
             self.optimizeLF.config(state="normal")
             self.minWebw.config(state="normal")
             self.lgmaxw.config(state="normal")
+
+    def cvlfConsisCallback(self, *args):
+        try:
+            if self.useCv.get():  # use Cv
+                cv = float(self.cvL.get()) / 1e3
+                w = float(self.shtkg.get())
+                rho = self.prop.rho_p
+                self.ldf.set(roundSig(w / cv / rho * 100))
+
+            else:  # using load fraction
+                w = float(self.shtkg.get())
+                lf = float(self.ldf.get()) / 100
+                rho = self.prop.rho_p
+                self.cvL.set(roundSig((w / rho / lf) * 1e3))
+
+        except (ZeroDivisionError, ValueError):
+            return
 
     def add2Input(
         self,
