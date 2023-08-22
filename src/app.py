@@ -12,6 +12,7 @@ from matplotlib import font_manager
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
+
     # this tells windows that our program will handle scaling ourselves
     winRelease = platform.release()
     if winRelease in ("8", "10"):
@@ -55,6 +56,6 @@ if __name__ == "__main__":
     center(root)
 
     root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
-    root.state("zoomed")  # maximize window
+    # root.state("zoomed")  # maximize window
 
     root.mainloop()

@@ -258,7 +258,6 @@ class IB(Frame):
         self.ctrlCallback()
 
         self.updateSpec()
-
         self.updateGeom()
 
         self.forceUpdOnThemeWidget.append(self.errorText)
@@ -1229,7 +1228,7 @@ class IB(Frame):
         )
 
         # allow propellant specification to grow
-        parFrm.rowconfigure(i, weight=1)
+        parFrm.rowconfigure(i, weight=4)
 
         propFrm = ttk.LabelFrame(
             parFrm,
@@ -1255,7 +1254,7 @@ class IB(Frame):
         )
         self.dropProp.option_add("*TCombobox*Listbox.Justify", "center")
         self.dropProp.current(0)
-        # self.dropProp.configure(width=10)
+
         self.dropProp.grid(
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
@@ -1493,6 +1492,9 @@ class IB(Frame):
         geomPlotFrm = self.geomPlotFrm
 
         # _, _, width, height = self.geomPlotFrm.bbox("insert")
+
+        geomPlotFrm.config(height=0.5 * geomPlotFrm.winfo_width())
+
         width = geomPlotFrm.winfo_width() - 2
         height = geomPlotFrm.winfo_height() - 2
 
@@ -1513,7 +1515,7 @@ class IB(Frame):
         dpi = self.dpi
         with mpl.rc_context(GEOM_CONTEXT):
             fig = Figure(
-                figsize=(width / dpi, max(height / dpi, 0.5 * width / dpi)),
+                figsize=(width / dpi, max(height / dpi, width / dpi / 2)),
                 dpi=96,
                 layout="constrained",
             )
@@ -1524,24 +1526,34 @@ class IB(Frame):
             self.geomCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=0, pady=0, sticky="nsew"
             )
+            fig.set_layout_engine(None)
+            self.geomCanvas.draw_idle()
+
         geomPlotFrm.grid_propagate(False)
         # last ditch effort to prevent blowing up the frame
 
     def addPlotFrm(self, parent):
         plotFrm = ttk.LabelFrame(
-            parent, height=480, width=640, text=self.getString("plotFrmLabel")
+            parent, text=self.getString("plotFrmLabel"), width=640, height=480
         )
         plotFrm.grid(row=1, column=0, sticky="nsew")
         plotFrm.columnconfigure(0, weight=1)
         plotFrm.rowconfigure(0, weight=1)
 
         self.plotFrm = plotFrm
-
         self.plotTip = StringVar(value=self.getString("plotText"))
         CreateToolTip(self.plotFrm, self.plotTip)
 
     def addFigPlot(self):
         plotFrm = self.plotFrm
+
+        self.plotFrm.config(
+            width=0.1 * plotFrm.winfo_width(),
+            height=0.1 * plotFrm.winfo_height(),
+        )
+        # this will force a resize event to ensure the inserted
+        # graph is of the correct size.
+
         # this is necessary here because winfo_width() will return
         # valid values with simply update_idletask()
         width = plotFrm.winfo_width() - 6
@@ -1585,6 +1597,8 @@ class IB(Frame):
                 row=0, column=0, padx=2, pady=2, sticky="nsew"
             )
 
+            self.pltCanvas.draw_idle()
+
         """
         For some reason the above specification is not strictly adhered to
         in practice, this might be a bug on tkAgg or matplotlib backend.
@@ -1597,7 +1611,6 @@ class IB(Frame):
         _, _, width, height = self.plotFrm.bbox("insert")
 
         dpi = self.dpi
-
         with mpl.rc_context(FIG_CONTEXT):
             self.axv.spines.right.set_position(
                 ("axes", 1 + 45 * dpi / 96 / width)
@@ -1932,6 +1945,7 @@ class IB(Frame):
                 self.ax.set_xlabel(" ")
 
             self.axP.yaxis.set_ticks(self.axP.get_yticks()[1:-1:])
+            self.fig.set_layout_engine("constrained")
             self.pltCanvas.draw_idle()
 
     def addTblFrm(self, parent):
@@ -2142,7 +2156,7 @@ class IB(Frame):
                 self.geomAx.yaxis.set_ticks(
                     [i * 0.5 for i in range(ceil(max(ys) / 0.5) + 1)]
                 )
-
+            self.geomFig.set_layout_engine("constrained")
             self.geomCanvas.draw_idle()
 
     def updateError(self):
