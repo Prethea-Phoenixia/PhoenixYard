@@ -131,7 +131,14 @@ def validateNN(inp):
     in the latter case, the empty field will be handled by tracing
     change in variable.
     """
-    if inp == "" or inp == ".":
+    if (
+        inp == ""
+        or inp == "."
+        or (inp.count("e") == 1 and inp[-1] == "e")  # scientific input
+        or (
+            inp.count("e") == 1 and inp[-2:] == "e-"
+        )  # scientific input with negative exponent
+    ):
         return True
     try:
         if float(inp) >= 0:

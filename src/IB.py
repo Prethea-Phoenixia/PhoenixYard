@@ -1411,6 +1411,7 @@ class IB(Frame):
 
         self.cvL.trace_add("write", self.cvlfConsisCallback)
         self.ldf.trace_add("write", self.cvlfConsisCallback)
+        self.chgkg.trace_add("write", self.cvlfConsisCallback)
 
         self.clrTip = StringVar(value=self.getString("clrText"))
         self.clrLb, self.clr, _, _, i = self.add3Input(
@@ -2245,12 +2246,12 @@ class IB(Frame):
         try:
             if self.useCv.get():  # use Cv
                 cv = float(self.cvL.get()) / 1e3
-                w = float(self.shtkg.get())
+                w = float(self.chgkg.get())
                 rho = self.prop.rho_p
                 self.ldf.set(roundSig(w / cv / rho * 100))
 
             else:  # using load fraction
-                w = float(self.shtkg.get())
+                w = float(self.chgkg.get())
                 lf = float(self.ldf.get()) / 100
                 rho = self.prop.rho_p
                 self.cvL.set(roundSig((w / rho / lf) * 1e3))
