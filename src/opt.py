@@ -413,6 +413,8 @@ class Constrained:
                 ambientRho=ambientRho,
                 ambientP=ambientP,
             )
+            # TODO: Maximum recursion depth exceeded in comparison is
+            # occasionally thrown here. Investigate why.
         else:
             return e_1, l_bar_g * l_0
 

@@ -955,8 +955,9 @@ class IB(Frame):
                     "propellant": self.prop,
                     "grainSize": float(self.arcmm.get()) * 1e-3,
                     "chargeMass": float(self.chgkg.get()),
-                    "chargeMassRatio": float(self.chgkg.get())
-                    / float(self.shtkg.get()),
+                    "chargeMassRatio": (
+                        float(self.chgkg.get()) / float(self.shtkg.get())
+                    ),
                     "chamberVolume": chamberVolume,
                     "startPressure": float(self.stpMPa.get()) * 1e6,
                     "lengthGun": float(self.tblmm.get()) * 1e-3,
