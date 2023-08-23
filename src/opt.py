@@ -48,7 +48,7 @@ class Constrained:
     def __getattr__(self, attrName):
         try:
             return getattr(self.propellant, attrName)
-        except:
+        except AttributeError:
             raise AttributeError("object has no '%s'" % attrName)
 
     def solve(
@@ -485,7 +485,7 @@ class Constrained:
                 _, lt_i, lg_i = f(startProbe)
                 records.append((startProbe, lt_i))
                 break
-            except ValueError as e:
+            except ValueError:
                 pass
 
         if i == N - 1:
@@ -506,7 +506,7 @@ class Constrained:
                 web_i, lt_i, lg_i = f(new_low)
                 records.append((new_low, lt_i))
                 probe = new_low
-            except ValueError as e:
+            except ValueError:
                 delta_low *= 0.5
             finally:
                 new_low = probe + delta_low
@@ -525,7 +525,7 @@ class Constrained:
                 _, lt_i, lg_i = f(new_high, actMinWeb)
                 records.append((new_high, lt_i))
                 probe = new_high
-            except ValueError as e:
+            except ValueError:
                 delta_high *= 0.5
             finally:
                 new_high = probe + delta_high

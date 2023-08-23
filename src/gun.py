@@ -105,7 +105,7 @@ class Gun:
         self.propellant = propellant
 
         self.e_1 = 0.5 * grainSize
-        self.S = (caliber / 2) ** 2 * pi
+        self.S = (0.5 * caliber) ** 2 * pi
         self.m = shotMass
         self.omega = chargeMass
         self.V_0 = chamberVolume

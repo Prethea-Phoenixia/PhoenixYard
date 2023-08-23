@@ -110,7 +110,7 @@ class GrainComp:
         covolume,
         density,
         redAdbIndex,
-        detVel,
+        burnVel,
         pressureExp,
         flameTemp,
     ):
@@ -130,7 +130,7 @@ class GrainComp:
         self.alpha = covolume
         self.rho_p = density
         self.theta = redAdbIndex
-        self.u_1 = detVel
+        self.u_1 = burnVel
         self.n = pressureExp
         self.T_v = flameTemp  # isochoric (const volume) adiabatic temperature
         self.R = self.f / self.T_v

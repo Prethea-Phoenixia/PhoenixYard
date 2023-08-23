@@ -39,7 +39,7 @@ class ConstrainedRecoiless:
         ):
             raise ValueError("Invalid parameters for constrained design")
 
-        self.S = (caliber / 2) ** 2 * pi
+        self.S = (0.5 * caliber) ** 2 * pi
         self.m = shotMass
         self.propellant = propellant
         self.p_0 = startPressure
@@ -57,7 +57,7 @@ class ConstrainedRecoiless:
     def __getattr__(self, attrName):
         try:
             return getattr(self.propellant, attrName)
-        except:
+        except AttributeError:
             raise AttributeError("object has no '%s'" % attrName)
 
     def solve(
