@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     # this allows us to set our own taskbar icon
     # "mycompany.myproduct.subproduct.version"
-    myappid = "Phoenix.Internal Ballistics.Solver.043"  # arbitrary string
+    myappid = "Phoenix.Internal Ballistics.Solver.046"  # arbitrary string
     windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     root = Tk()
@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     root.option_add("*tearOff", False)
 
-    root.title("PIBS v0.4.5")
+    root.title("PIBS v0.4.6")
 
     ibPanel = IB(root, dpi, scale)
 

@@ -232,8 +232,10 @@ class IB(Frame):
 
         self.compositions = GrainComp.readFile(
             resolvepath("data/propellants.csv")
-        )
+        )  # dict of composition.name (string) -> composition (object)
         self.geometries = {self.getString(k): v for k, v in GEOMETRIES.items()}
+        # dict of localized name (string) -> geometry (object)
+
         self.prop = None
         self.gun = None
         self.errorLst = []
@@ -297,18 +299,20 @@ class IB(Frame):
         gun = self.gun
         if gun is None:
             messagebox.showinfo(
-                "Exception Saving Design", "No Gun Design to Save"
+                self.getString("excTitle"), self.getString("noDataMsg")
             )
             return
 
         fileName = filedialog.asksaveasfilename(
-            title="Save Gun Design As,",
+            title=self.getString("saveLabel"),
             filetypes=(("Gun Design File", "*.gun"),),
             defaultextension=".gun",
             initialfile=self.getDescriptive(),
         )
         if fileName == "":
-            messagebox.showinfo("Exception Saving Design", "No File Selected")
+            messagebox.showinfo(
+                self.getString("excTitle"), self.getString("cancelMsg")
+            )
             return
 
         commentLines = []
@@ -347,30 +351,35 @@ class IB(Frame):
                 file.write("DESIGN BEG\n")
                 for desc, value, unit in zip(
                     (
+                        "SIGNIFICANT FIGURE",
                         "TYPE",
                         "CALIBER",
                         "TUBE LENGTH",
                         "SHOT MASS",
                         "CHAMBER VOLUME",
                         "CHAMBRAGE",
+                        "ENGRAVING PRESSURE",
+                        "NOZZLE EFFICIENCY",
+                        "NOZZLE EXPANSION R.",
                         "CHARGE MASS",
-                        "TYPE",
+                        "PROPELLANT",
                         "GEOMETRY",
                         "2xWEB",
                         "1/ALPHA",
                         "1/BETA",
                         "DRAG COEFFICIENT",
-                        "ENGRAVING PRESSURE",
-                        "NOZZLE EFFICIENCY",
-                        "NOZZLE EXPANSION R.",
                     ),
                     (
+                        sigfig,
                         kwargs["typ"],
                         kwargs["caliber"] * 1e3,
                         kwargs["lengthGun"] * 1e3,
                         kwargs["shotMass"],
                         kwargs["chamberVolume"] * 1e3,
                         kwargs["chambrage"],
+                        kwargs["startPressure"] * 1e-6,
+                        kwargs["nozzleEfficiency"] * 1e2,
+                        kwargs["nozzleExpansion"],
                         kwargs["chargeMass"],
                         kwargs["propellant"].composition.name,
                         kwargs["propellant"].geometry.name,
@@ -378,17 +387,18 @@ class IB(Frame):
                         kwargs["propellant"].R1,
                         kwargs["propellant"].R2,
                         kwargs["dragCoefficient"] * 1e2,
-                        kwargs["startPressure"] * 1e-6,
-                        kwargs["nozzleEfficiency"] * 1e2,
-                        kwargs["nozzleExpansion"],
                     ),
                     (
+                        "",
                         "",
                         "mm",
                         "mm",
                         "kg",
                         "L",
                         "",
+                        "MPa",
+                        "%",
+                        "",
                         "kg",
                         "",
                         "",
@@ -396,10 +406,6 @@ class IB(Frame):
                         "",
                         "",
                         "%",
-                        "MPa",
-                        "%",
-                        "",
-                        "",
                     ),
                 ):
                     file.write(
@@ -414,16 +420,16 @@ class IB(Frame):
                 file.write("DESIGN END\n")
 
             messagebox.showinfo(
-                "Success Saving Desing",
-                "File saved as {:}".format(fileName),
+                self.getString("sucTitle"),
+                self.getString("savedLocMsg").format(fileName),
             )
 
         except Exception as e:
-            messagebox.showinfo("Exception while Saving", str(e))
+            messagebox.showinfo(self.getString("excTitle"), str(e))
 
     def load(self):
         fileName = filedialog.askopenfilename(
-            title="Load Gun Design:",
+            title=self.getString("loadLabel"),
             filetypes=(("Gun Design File", "*.gun"),),
             defaultextension=".gun",
             initialfile=self.getDescriptive(),
@@ -443,42 +449,60 @@ class IB(Frame):
                 if isDesign:
                     desc = line[:20].strip()
                     try:
-                        val = float(line[20:40].strip())
+                        if desc == "SIGNIFICANT FIGURE":
+                            val = int(line[20:40].strip())
+                        else:
+                            val = float(line[20:40].strip())
                     except ValueError:
                         val = line[20:40].strip()
                     fileKwargs.update({desc: val})
                 if line[:10] == "DESIGN BEG":
                     isDesign = True
 
+            self.typeOptn.set(
+                self.typeOptn["values"][
+                    (CONVENTIONAL, RECOILESS).index(fileKwargs["TYPE"])
+                ]
+            )
             self.calmm.set(fileKwargs["CALIBER"])
             self.tblmm.set(fileKwargs["TUBE LENGTH"])
 
             self.shtkg.set(fileKwargs["SHOT MASS"])
             self.chgkg.set(fileKwargs["CHARGE MASS"])
-
-            self.arcmm.set(fileKwargs["2xWEB"])
             self.useCv.set(1)
             self.cvL.set(fileKwargs["CHAMBER VOLUME"])
-
             self.clr.set(fileKwargs["CHAMBRAGE"])
             self.stpMPa.set(fileKwargs["ENGRAVING PRESSURE"])
-            self.dgc.set(fileKwargs["DRAG COEFFICIENT"])
             self.nozzEff.set(fileKwargs["NOZZLE EFFICIENCY"])
             self.nozzExp.set(fileKwargs["NOZZLE EXPANSION R."])
 
+            self.dropGeom.set(
+                self.dropGeom["values"][
+                    list(GEOMETRIES.keys()).index(fileKwargs["GEOMETRY"])
+                ]
+            )  # since self.geomtries maps the localized name to object, while
+            # we are saving the non-localized .name.
+            self.dropProp.set(fileKwargs["PROPELLANT"])
+            self.arcmm.set(fileKwargs["2xWEB"])
+            self.grdR.set(fileKwargs["1/ALPHA"])
+            self.grlR.set(fileKwargs["1/BETA"])
+
+            self.dgc.set(fileKwargs["DRAG COEFFICIENT"])
+            self.accExp.set(fileKwargs["SIGNIFICANT FIGURE"])
+
         except Exception as e:
-            messagebox.showinfo("Exception while Loading", str(e))
+            messagebox.showinfo(self.getString("excTitle"), str(e))
 
     def export(self):
         gun = self.gun
         if gun is None:
             messagebox.showinfo(
-                self.getString("expExcTitle"), self.getString("expNoDataMsg")
+                self.getString("excTitle"), self.getString("noDataMsg")
             )
             return
 
         fileName = filedialog.asksaveasfilename(
-            title="Export Data As,",
+            title=self.getString("exportLabel"),
             filetypes=(("Comma Separated File", "*.csv"),),
             defaultextension=".csv",
             initialfile=self.getDescriptive(),
@@ -486,7 +510,7 @@ class IB(Frame):
 
         if fileName == "":
             messagebox.showinfo(
-                self.getString("expExcTitle"), self.getString("expCancelMsg")
+                self.getString("excTitle"), self.getString("cancelMsg")
             )
             return
         try:
@@ -539,12 +563,12 @@ class IB(Frame):
                         )
 
             messagebox.showinfo(
-                self.getString("expSucTitle"),
-                self.getString("expSavedMsg").format(fileName),
+                self.getString("sucTitle"),
+                self.getString("savedLocMsg").format(fileName),
             )
 
         except Exception as e:
-            messagebox.showinfo(self.getString("expExcTitle"), str(e))
+            messagebox.showinfo(self.getString("excTitle"), str(e))
 
     def ambCallback(self, *args):
         self.ambPw.config(state="normal" if self.inAtmos.get() else "disabled")
@@ -681,6 +705,7 @@ class IB(Frame):
 
         geomIndex = self.dropGeom["values"].index(self.dropGeom.get())
         self.geometries = {self.getString(k): v for k, v in GEOMETRIES.items()}
+        # mapping of the localized string to the object.
         self.dropGeom.config(values=tuple(self.geometries.keys()))
         self.dropGeom.current(geomIndex)
 
@@ -1220,20 +1245,25 @@ class IB(Frame):
 
         self.pos = -1
         kwargs = self.kwargs
+        sigfig = int(-log10(kwargs["tol"]))
 
         if self.gun is not None:
             if constrain:
-                webmm = roundSig(1e3 * kwargs["grainSize"])
+                webmm = roundSig(1e3 * kwargs["grainSize"], n=sigfig)
                 self.arcmm.set(webmm)
 
-                lgmm = roundSig(kwargs["lengthGun"] * 1e3)
+                lgmm = roundSig(kwargs["lengthGun"] * 1e3, n=sigfig)
                 self.tblmm.set(lgmm)
 
                 if optimize:
                     if self.useCv.get():
-                        self.cvL.set(roundSig(kwargs["chamberVolume"] * 1e3))
+                        self.cvL.set(
+                            roundSig(kwargs["chamberVolume"] * 1e3, n=sigfig)
+                        )
                     else:
-                        self.ldf.set(roundSig(kwargs["loadFraction"] * 100))
+                        self.ldf.set(
+                            roundSig(kwargs["loadFraction"] * 100, n=sigfig)
+                        )
 
             self.ld.set(
                 toSI(kwargs["loadFraction"] * self.prop.rho_p, useSN=True)
@@ -1580,6 +1610,7 @@ class IB(Frame):
         self.cvL.trace_add("write", self.cvlfConsisCallback)
         self.ldf.trace_add("write", self.cvlfConsisCallback)
         self.chgkg.trace_add("write", self.cvlfConsisCallback)
+        self.accExp.trace_add("write", self.cvlfConsisCallback)
 
         self.clrTip = StringVar(value=self.getString("clrText"))
         self.clrLb, self.clr, _, _, i = self.add3Input(
@@ -2411,17 +2442,18 @@ class IB(Frame):
 
     def cvlfConsisCallback(self, *args):
         try:
+            sigfig = int(self.accExp.get())
             if self.useCv.get():  # use Cv
                 cv = float(self.cvL.get()) / 1e3
                 w = float(self.chgkg.get())
                 rho = self.prop.rho_p
-                self.ldf.set(roundSig(w / cv / rho * 100))
+                self.ldf.set(roundSig(w / cv / rho * 100, n=sigfig))
 
             else:  # using load fraction
                 w = float(self.chgkg.get())
                 lf = float(self.ldf.get()) / 100
                 rho = self.prop.rho_p
-                self.cvL.set(roundSig((w / rho / lf) * 1e3))
+                self.cvL.set(roundSig((w / rho / lf) * 1e3, n=sigfig))
 
         except (ZeroDivisionError, ValueError):
             return
@@ -2714,6 +2746,9 @@ def calculate(
     constrain = kwargs["con"]
     optimize = kwargs["opt"]
     debug = kwargs["deb"]
+
+    sigfig = int(-log10(kwargs["tol"]))
+
     try:
         if constrain:
             if gunType == CONVENTIONAL:
@@ -2723,12 +2758,12 @@ def calculate(
 
             if optimize:
                 l_f, e_1, l_g = constrained.findMinV(**kwargs)
-                kwargs.update({"loadFraction": roundSig(l_f)})
+                kwargs.update({"loadFraction": roundSig(l_f, n=sigfig)})
             else:
                 e_1, l_g = constrained.solve(**kwargs)
 
-            kwargs.update({"grainSize": roundSig(2 * e_1)})
-            kwargs.update({"lengthGun": roundSig(l_g)})
+            kwargs.update({"grainSize": roundSig(2 * e_1, n=sigfig)})
+            kwargs.update({"lengthGun": roundSig(l_g, n=sigfig)})
 
             chamberVolume = (
                 kwargs["chargeMass"]

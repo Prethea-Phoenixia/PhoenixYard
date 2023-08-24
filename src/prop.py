@@ -1,8 +1,12 @@
+"""
+GEOMETRIES:
+    lookup dictionary mapping gemoetrical descriptions
+    to relevant geometrical object
+
+"""
 from enum import Enum
 import csv
 from math import pi
-
-import traceback
 
 
 class MultPerfGeometry(Enum):
@@ -458,4 +462,7 @@ class Propellant:
 
 if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
+    print(compositions)
     GrainComp.check()
+
+    print(GEOMETRIES)
