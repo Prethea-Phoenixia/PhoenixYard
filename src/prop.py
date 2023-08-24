@@ -2,6 +2,8 @@ from enum import Enum
 import csv
 from math import pi
 
+import traceback
+
 
 class MultPerfGeometry(Enum):
     """table 1-4 from ref[1] page 33"""
@@ -282,6 +284,9 @@ class Propellant:
         .labda_s
 
         """
+        self.R1 = R1
+        self.R2 = R2
+
         if any(
             (
                 R1 < 0 if R1 is not None else False,
@@ -411,10 +416,18 @@ class Propellant:
             )
 
     def __getattr__(self, attrName):
-        try:
-            return getattr(self.composition, attrName)
-        except Exception as e:
-            raise AttributeError("object has no attribute '%s'" % attrName)
+        if "composition" in vars(self) and not (
+            attrName.startswith("__") and attrName.endswith("__")
+        ):
+            try:
+                return getattr(self.composition, attrName)
+            except AttributeError:
+                raise AttributeError(
+                    "%r object has no attribute %r"
+                    % (self.__class__.__name__, attrName)
+                )
+        else:
+            raise AttributeError
 
     def f_sigma_Z(self, Z):
         # is the first derivative of psi(Z)

@@ -78,7 +78,7 @@ class Gun:
         chamberVolume,
         startPressure,
         lengthGun,
-        chamberExpansion,
+        chambrage,
         dragCoefficient=0,
         **_,
     ):
@@ -90,7 +90,7 @@ class Gun:
                 grainSize <= 0,
                 chamberVolume <= 0,
                 lengthGun <= 0,
-                chamberExpansion < 1,
+                chambrage < 1,
                 dragCoefficient < 0,
                 dragCoefficient >= 1,
             )
@@ -111,7 +111,7 @@ class Gun:
         self.V_0 = chamberVolume
         self.p_0 = startPressure
         self.l_g = lengthGun
-        self.chi_k = chamberExpansion  # ration of l_0 / l_chamber
+        self.chi_k = chambrage  # ration of l_0 / l_chamber
         self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
         self.phi_1 = 1 / (1 - dragCoefficient)  # drag work coefficient
@@ -150,10 +150,18 @@ class Gun:
         self.Z_0 = Zs[0]  # pick the smallest solution
 
     def __getattr__(self, attrName):
-        try:
-            return getattr(self.propellant, attrName)
-        except Exception as e:
-            raise AttributeError("object has no '%s'" % attrName)
+        if "propellant" in vars(self) and not (
+            attrName.startswith("__") and attrName.endswith("__")
+        ):
+            try:
+                return getattr(self.propellant, attrName)
+            except AttributeError:
+                AttributeError(
+                    "%r object has no attribute %r"
+                    % (self.__class__.__name__, attrName)
+                )
+        else:
+            raise AttributeError
 
     def _fp_bar(self, Z, l_bar, v_bar):
         psi = self.f_psi_Z(Z)
@@ -376,7 +384,7 @@ class Gun:
         Labda = self.l_g / self.l_0
         cc = (
             1 - (1 - 1 / self.chi_k) * 2.303 * log(Labda + 1) / Labda
-        )  # chamberage correction factor
+        )  # chambrage correction factor
 
         self.phi = self.phi_1 + labda_2 * self.omega / self.m * cc  # per ref.
 
@@ -989,7 +997,7 @@ class Gun:
             Pe  : (Breech) Pressure at exit
             Te  : Avg. Temperature at shot exit
 
-        Note significantly this doesn't take into account chamberage
+        Note significantly this doesn't take into account chambrage
         effects at all
         """
         U = self.V_0 + self.l_g * self.S  # total volume after shot exit
@@ -1029,7 +1037,7 @@ class Gun:
         at the point reached by the front of rarefraction wave at time t
 
         Corner Solution assumes the Lagrange distribution
-        No chamberage correction
+        No chambrage correction
         Took the first term of Taylor expansion, valid at small C/W
 
         """
@@ -1236,7 +1244,7 @@ if __name__ == "__main__":
         chamberVolume=cm / M17SHC.rho_p / lf,
         startPressure=30e6,
         lengthGun=3.5,
-        chamberExpansion=1.0,
+        chambrage=1.0,
         dragCoefficient=0.1,
     )
     """

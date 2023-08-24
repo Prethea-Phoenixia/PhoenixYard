@@ -23,7 +23,7 @@ class Recoiless:
         chamberVolume,
         startPressure,
         lengthGun,
-        chamberExpansion,
+        chambrage,
         nozzleExpansion,
         dragCoefficient=0,
         nozzleEfficiency=0.92,
@@ -63,7 +63,7 @@ class Recoiless:
         self.l_g = lengthGun
         self.chi_0 = nozzleEfficiency
         self.A_bar = nozzleExpansion
-        self.chi_k = chamberExpansion
+        self.chi_k = chambrage
         self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
         # Labda = self.l_g / self.l_0
@@ -131,10 +131,18 @@ class Recoiless:
         )  # flow rate value
 
     def __getattr__(self, attrName):
-        try:
-            return getattr(self.propellant, attrName)
-        except:
-            raise AttributeError("object has no '%s'" % attrName)
+        if "propellant" in vars(self) and not (
+            attrName.startswith("__") and attrName.endswith("__")
+        ):
+            try:
+                return getattr(self.propellant, attrName)
+            except AttributeError:
+                AttributeError(
+                    "%r object has no attribute %r"
+                    % (self.__class__.__name__, attrName)
+                )
+        else:
+            raise AttributeError
 
     def _fp_bar(self, Z, l_bar, eta, tau, psi=None):
         if psi is None:
@@ -1122,7 +1130,7 @@ if __name__ == "__main__":
         startPressure=30e6,
         lengthGun=3.5,
         nozzleExpansion=2.0,
-        chamberExpansion=1.0,
+        chambrage=1.0,
     )
     record = []
 

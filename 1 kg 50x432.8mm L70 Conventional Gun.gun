@@ -1,0 +1,22 @@
+GUN      1 kg 50x432.8mm L70 Conventional Gun
+LAST MODIFIED                2023-08-24 15:30
+COMMENT BEG
+COMMENT END
+DESIGN BEG
+TYPE                    Conventional Gun     
+CALIBER                             0.05 m   
+TUBE LENGTH                          3.5 m   
+SHOT MASS                            1.0 kg  
+CHAMBER VOLUME                  0.001275 cu.m
+CHAMBRAGE                            1.5     
+CHARGE MASS                          1.0 kg  
+TYPE                                  M1     
+GEOMETRY                          SPHERE     
+2xWEB                              0.001 m   
+1/ALPHA                              1.0     
+1/BETA                               2.5     
+DRAG COEFFICIENT                    0.05     
+ENGRAVING PRESSURE            10000000.0 Pa  
+NOZZLE EFFICIENCY                   0.92     
+NOZZLE EXPANSION R.                  4.0     
+DESIGN END

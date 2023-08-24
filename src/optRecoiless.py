@@ -17,7 +17,7 @@ class ConstrainedRecoiless:
         designVelocity,
         nozzleExpansion,
         nozzleEfficiency,
-        chamberExpansion,
+        chambrage,
         **_,
     ):
         # constants for constrained designs
@@ -34,7 +34,7 @@ class ConstrainedRecoiless:
                 nozzleExpansion < 1,
                 nozzleEfficiency > 1,
                 nozzleEfficiency <= 0,
-                chamberExpansion < 1,
+                chambrage < 1,
             )
         ):
             raise ValueError("Invalid parameters for constrained design")
@@ -52,13 +52,21 @@ class ConstrainedRecoiless:
         self.chi_0 = nozzleEfficiency
         self.A_bar = nozzleExpansion
 
-        self.chi_k = chamberExpansion
+        self.chi_k = chambrage
 
     def __getattr__(self, attrName):
-        try:
-            return getattr(self.propellant, attrName)
-        except AttributeError:
-            raise AttributeError("object has no '%s'" % attrName)
+        if "propellant" in vars(self) and not (
+            attrName.startswith("__") and attrName.endswith("__")
+        ):
+            try:
+                return getattr(self.propellant, attrName)
+            except AttributeError:
+                raise AttributeError(
+                    "%r object has no attribute %r"
+                    % (self.__class__.__name__, attrName)
+                )
+        else:
+            raise AttributeError
 
     def solve(
         self,
@@ -147,7 +155,7 @@ class ConstrainedRecoiless:
         )  # flow rate value
 
         """
-        it is impossible to account for the chamberage effect given unspecified
+        it is impossible to account for the chambrage effect given unspecified
         barrel length, in our formulation
         """
         v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
@@ -603,7 +611,7 @@ if __name__ == "__main__":
         designVelocity=800,
         nozzleExpansion=2,
         nozzleEfficiency=0.92,
-        chamberExpansion=1,
+        chambrage=1,
     )
 
     print(test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-3))

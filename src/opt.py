@@ -16,7 +16,7 @@ class Constrained:
         dragCoefficient,
         designPressure,
         designVelocity,
-        chamberExpansion,
+        chambrage,
         **_,
     ):
         # constants for constrained designs
@@ -43,13 +43,21 @@ class Constrained:
         # design limits
         self.p_d = designPressure
         self.v_d = designVelocity
-        self.chi_k = chamberExpansion
+        self.chi_k = chambrage
 
     def __getattr__(self, attrName):
-        try:
-            return getattr(self.propellant, attrName)
-        except AttributeError:
-            raise AttributeError("object has no '%s'" % attrName)
+        if "propellant" in vars(self) and not (
+            attrName.startswith("__") and attrName.endswith("__")
+        ):
+            try:
+                return getattr(self.propellant, attrName)
+            except AttributeError:
+                raise AttributeError(
+                    "%r object has no attribute %r"
+                    % (self.__class__.__name__, attrName)
+                )
+        else:
+            raise AttributeError
 
     def solve(
         self,
@@ -393,7 +401,7 @@ class Constrained:
         if abs((v - v_d) / v_d) > tol:
             raise ValueError("Velocity specification is not met")
 
-        # calculate the averaged chamberage correction factor
+        # calculate the averaged chambrage correction factor
         # implied by this solution
         cc_n = 1 - (1 - 1 / chi_k) * 2.303 * log(l_bar_g + 1) / l_bar_g
 
@@ -586,7 +594,7 @@ if __name__ == "__main__":
         dragCoefficient=5e-2,
         designPressure=350e6,
         designVelocity=1500,
-        chamberExpansion=1.5,
+        chambrage=1.5,
     )
 
     for i in range(10):

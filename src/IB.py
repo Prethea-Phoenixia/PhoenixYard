@@ -28,7 +28,7 @@ from misc import (
     resolvepath,
     roundSig,
 )
-from math import ceil, pi
+from math import ceil, pi, log10
 
 import matplotlib.pyplot as mpl
 from matplotlib.figure import Figure
@@ -43,6 +43,9 @@ from queue import Empty
 import sys
 
 import csv
+
+import datetime
+
 
 RECOILESS = "Recoiless Gun"
 CONVENTIONAL = "Conventional Gun"
@@ -266,16 +269,6 @@ class IB(Frame):
         parent.bind("<Configure>", self.resizePlot)
         self.timedLoop()
 
-    def save(self):
-        filedialog.asksaveasfile(
-            filetypes=(("Gun Design File", "*.gun"),),
-        )
-
-    def load(self):
-        filedialog.askopenfile(
-            filetypes=(("Gun Design File", "*.gun"),),
-        )
-
     def getDescriptive(self):
         if self.gun is None:
             return "Unknown Design"
@@ -285,7 +278,7 @@ class IB(Frame):
             cal = kwargs["caliber"]
             blr = kwargs["lengthGun"] / cal
             car_len = kwargs["chamberVolume"] / (
-                pi * (0.5 * cal) ** 2 * kwargs["chamberExpansion"]
+                pi * (0.5 * cal) ** 2 * kwargs["chambrage"]
             )
             w = kwargs["shotMass"]
             return (
@@ -299,6 +292,166 @@ class IB(Frame):
                 )
                 + typ
             )
+
+    def save(self):
+        gun = self.gun
+        if gun is None:
+            messagebox.showinfo(
+                "Exception Saving Design", "No Gun Design to Save"
+            )
+            return
+
+        fileName = filedialog.asksaveasfilename(
+            title="Save Gun Design As,",
+            filetypes=(("Gun Design File", "*.gun"),),
+            defaultextension=".gun",
+            initialfile=self.getDescriptive(),
+        )
+        if fileName == "":
+            messagebox.showinfo("Exception Saving Design", "No File Selected")
+            return
+
+        commentLines = []
+        try:
+            with open(fileName, "r", encoding="utf-8", newline="\n") as file:
+                lines = file.readlines()
+
+                isComment = False
+                for line in lines:
+                    if line[:11] == "COMMENT END":
+                        isComment = False
+                    if isComment:
+                        commentLines.append(line)
+                    if line[:11] == "COMMENT BEG":
+                        isComment = True
+
+        except Exception:
+            pass  # either file DNE or some exception occured during reading.
+
+        try:
+            kwargs = self.kwargs
+            sigfig = int(-log10(kwargs["tol"]))
+
+            with open(fileName, "w", encoding="utf-8", newline="\n") as file:
+                file.write("GUN  {:>40}\n".format(self.getDescriptive()))
+                # using now() to get current time
+                file.write(
+                    "LAST MODIFIED  {:>30}\n".format(
+                        datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                    )
+                )
+                file.write("COMMENT BEG\n")
+                for line in commentLines:
+                    file.write(line)
+                file.write("COMMENT END\n")
+                file.write("DESIGN BEG\n")
+                for desc, value, unit in zip(
+                    (
+                        "TYPE",
+                        "CALIBER",
+                        "TUBE LENGTH",
+                        "SHOT MASS",
+                        "CHAMBER VOLUME",
+                        "CHAMBRAGE",
+                        "CHARGE MASS",
+                        "TYPE",
+                        "GEOMETRY",
+                        "2xWEB",
+                        "1/ALPHA",
+                        "1/BETA",
+                        "DRAG COEFFICIENT",
+                        "ENGRAVING PRESSURE",
+                        "NOZZLE EFFICIENCY",
+                        "NOZZLE EXPANSION R.",
+                    ),
+                    (
+                        kwargs["typ"],
+                        kwargs["caliber"],
+                        kwargs["lengthGun"],
+                        kwargs["shotMass"],
+                        kwargs["chamberVolume"],
+                        kwargs["chambrage"],
+                        kwargs["chargeMass"],
+                        kwargs["propellant"].composition.name,
+                        kwargs["propellant"].geometry.name,
+                        kwargs["grainSize"],
+                        kwargs["propellant"].R1,
+                        kwargs["propellant"].R2,
+                        kwargs["dragCoefficient"],
+                        kwargs["startPressure"],
+                        kwargs["nozzleEfficiency"],
+                        kwargs["nozzleExpansion"],
+                    ),
+                    (
+                        "",
+                        "m",
+                        "m",
+                        "kg",
+                        "cu.m",
+                        "",
+                        "kg",
+                        "",
+                        "",
+                        "m",
+                        "",
+                        "",
+                        "",
+                        "Pa",
+                        "",
+                        "",
+                        "",
+                    ),
+                ):
+                    file.write(
+                        "{:<20}{:>20} {:<4}\n".format(
+                            desc,
+                            roundSig(value, sigfig)
+                            if isinstance(value, float)
+                            else value,
+                            unit,
+                        )
+                    )
+                file.write("DESIGN END\n")
+
+            messagebox.showinfo(
+                "Success Saving Desing",
+                "File saved as {:}".format(fileName),
+            )
+
+        except Exception as e:
+            messagebox.showinfo("Exception while Saving", str(e))
+
+    def load(self):
+        fileName = filedialog.askopenfilename(
+            title="Load Gun Design:",
+            filetypes=(("Gun Design File", "*.gun"),),
+            defaultextension=".gun",
+            initialfile=self.getDescriptive(),
+        )
+        if fileName == "":
+            messagebox.showinfo("Exception Loading Design", "No File Selected")
+            return
+
+        try:
+            fileKwargs = {}
+            with open(fileName, "r", encoding="utf-8", newline="\n") as file:
+                lines = file.readlines()
+                isDesign = False
+                for line in lines:
+                    if line[:10] == "DESIGN END":
+                        isDesign = False
+                    if isDesign:
+                        desc = line[:20].strip()
+                        try:
+                            val = float(line[20:40].strip())
+                        except ValueError:
+                            val = line[20:40].strip()
+                        fileKwargs.update({desc: val})
+                    if line[:10] == "DESIGN BEG":
+                        isDesign = True
+
+        except Exception as e:
+            messagebox.showinfo("Exception while Loading", str(e))
 
     def export(self):
         gun = self.gun
@@ -938,6 +1091,9 @@ class IB(Frame):
         self.process = None
 
         try:
+            if self.prop is None:
+                raise ValueError("Invalid propellant.")
+
             if self.useCv.get():
                 chamberVolume = float(self.cvL.get()) * 1e-3
             else:
@@ -961,9 +1117,7 @@ class IB(Frame):
                     "chamberVolume": chamberVolume,
                     "startPressure": float(self.stpMPa.get()) * 1e6,
                     "lengthGun": float(self.tblmm.get()) * 1e-3,
-                    "chamberExpansion": float(
-                        self.clr.get()
-                    ),  # chamber expansion
+                    "chambrage": float(self.clr.get()),  # chamber expansion
                     "nozzleExpansion": float(
                         self.nozzExp.get()
                     ),  # nozzle expansion
@@ -1091,10 +1245,7 @@ class IB(Frame):
             self.lx.set(toSI(kwargs["lengthGun"] / kwargs["caliber"]))
             self.tlx.set(
                 toSI(
-                    (
-                        kwargs["lengthGun"]
-                        + self.gun.l_0 / kwargs["chamberExpansion"]
-                    )
+                    (kwargs["lengthGun"] + self.gun.l_0 / kwargs["chambrage"])
                     / kwargs["caliber"]
                 )
             )
@@ -1102,7 +1253,7 @@ class IB(Frame):
 
             caliber = kwargs["caliber"]
             cartridge_len = kwargs["chamberVolume"] / (
-                pi * (0.5 * caliber) ** 2 * kwargs["chamberExpansion"]
+                pi * (0.5 * caliber) ** 2 * kwargs["chambrage"]
             )
             self.ammo.set(
                 "{:.3g} x {:.4g} mm".format(caliber * 1e3, cartridge_len * 1e3)
@@ -2144,15 +2295,14 @@ class IB(Frame):
                 xs.append(xs[-1])
                 ys.append(0)
 
-                # xs, ys = zip(*sorted(zip(xs, ys), key=lambda x: x[0]))
                 self.geomAx.plot(xs, ys)
                 self.geomAx.grid(
                     which="major", color="grey", linestyle="dotted"
                 )
                 self.geomAx.minorticks_on()
-                self.geomAx.set_xlim(left=0, right=prop.Z_b)
+                self.geomAx.set_xlim(left=0, right=min(prop.Z_b, 2))
                 self.geomAx.xaxis.set_ticks(
-                    [i * 0.5 for i in range(ceil(prop.Z_b / 0.5) + 1)]
+                    [i * 0.5 for i in range(ceil(min(prop.Z_b, 2) / 0.5) + 1)]
                 )
                 self.geomAx.set_ylim(bottom=0, top=max(ys))
                 self.geomAx.yaxis.set_ticks(
