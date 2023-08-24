@@ -316,14 +316,14 @@ class IB(Frame):
             with open(fileName, "r", encoding="utf-8", newline="\n") as file:
                 lines = file.readlines()
 
-                isComment = False
-                for line in lines:
-                    if line[:11] == "COMMENT END":
-                        isComment = False
-                    if isComment:
-                        commentLines.append(line)
-                    if line[:11] == "COMMENT BEG":
-                        isComment = True
+            isComment = False
+            for line in lines:
+                if line[:11] == "COMMENT END":
+                    isComment = False
+                if isComment:
+                    commentLines.append(line)
+                if line[:11] == "COMMENT BEG":
+                    isComment = True
 
         except Exception:
             pass  # either file DNE or some exception occured during reading.
@@ -333,7 +333,7 @@ class IB(Frame):
             sigfig = int(-log10(kwargs["tol"]))
 
             with open(fileName, "w", encoding="utf-8", newline="\n") as file:
-                file.write("GUN  {:>40}\n".format(self.getDescriptive()))
+                file.write("{:>45}\n".format(self.getDescriptive()))
                 # using now() to get current time
                 file.write(
                     "LAST MODIFIED  {:>30}\n".format(
@@ -366,38 +366,38 @@ class IB(Frame):
                     ),
                     (
                         kwargs["typ"],
-                        kwargs["caliber"],
-                        kwargs["lengthGun"],
+                        kwargs["caliber"] * 1e3,
+                        kwargs["lengthGun"] * 1e3,
                         kwargs["shotMass"],
-                        kwargs["chamberVolume"],
+                        kwargs["chamberVolume"] * 1e3,
                         kwargs["chambrage"],
                         kwargs["chargeMass"],
                         kwargs["propellant"].composition.name,
                         kwargs["propellant"].geometry.name,
-                        kwargs["grainSize"],
+                        kwargs["grainSize"] * 1e3,
                         kwargs["propellant"].R1,
                         kwargs["propellant"].R2,
-                        kwargs["dragCoefficient"],
-                        kwargs["startPressure"],
-                        kwargs["nozzleEfficiency"],
+                        kwargs["dragCoefficient"] * 1e2,
+                        kwargs["startPressure"] * 1e-6,
+                        kwargs["nozzleEfficiency"] * 1e2,
                         kwargs["nozzleExpansion"],
                     ),
                     (
                         "",
-                        "m",
-                        "m",
+                        "mm",
+                        "mm",
                         "kg",
-                        "cu.m",
+                        "L",
                         "",
                         "kg",
                         "",
                         "",
-                        "m",
+                        "mm",
                         "",
                         "",
-                        "",
-                        "Pa",
-                        "",
+                        "%",
+                        "MPa",
+                        "%",
                         "",
                         "",
                     ),
@@ -436,19 +436,35 @@ class IB(Frame):
             fileKwargs = {}
             with open(fileName, "r", encoding="utf-8", newline="\n") as file:
                 lines = file.readlines()
-                isDesign = False
-                for line in lines:
-                    if line[:10] == "DESIGN END":
-                        isDesign = False
-                    if isDesign:
-                        desc = line[:20].strip()
-                        try:
-                            val = float(line[20:40].strip())
-                        except ValueError:
-                            val = line[20:40].strip()
-                        fileKwargs.update({desc: val})
-                    if line[:10] == "DESIGN BEG":
-                        isDesign = True
+            isDesign = False
+            for line in lines:
+                if line[:10] == "DESIGN END":
+                    isDesign = False
+                if isDesign:
+                    desc = line[:20].strip()
+                    try:
+                        val = float(line[20:40].strip())
+                    except ValueError:
+                        val = line[20:40].strip()
+                    fileKwargs.update({desc: val})
+                if line[:10] == "DESIGN BEG":
+                    isDesign = True
+
+            self.calmm.set(fileKwargs["CALIBER"])
+            self.tblmm.set(fileKwargs["TUBE LENGTH"])
+
+            self.shtkg.set(fileKwargs["SHOT MASS"])
+            self.chgkg.set(fileKwargs["CHARGE MASS"])
+
+            self.arcmm.set(fileKwargs["2xWEB"])
+            self.useCv.set(1)
+            self.cvL.set(fileKwargs["CHAMBER VOLUME"])
+
+            self.clr.set(fileKwargs["CHAMBRAGE"])
+            self.stpMPa.set(fileKwargs["ENGRAVING PRESSURE"])
+            self.dgc.set(fileKwargs["DRAG COEFFICIENT"])
+            self.nozzEff.set(fileKwargs["NOZZLE EFFICIENCY"])
+            self.nozzExp.set(fileKwargs["NOZZLE EXPANSION R."])
 
         except Exception as e:
             messagebox.showinfo("Exception while Loading", str(e))
