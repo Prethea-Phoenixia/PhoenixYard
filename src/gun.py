@@ -270,6 +270,7 @@ class Gun:
                 + 0.25 * k * (k + 1) * v_r**2
                 + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
             ) * self.p_1_bar
+            # print(p_bar, p_2_bar)
         else:
             p_2_bar = 0
 
@@ -481,7 +482,7 @@ class Gun:
 
             p_bar = self._fp_bar(Z, l_bar, v_bar)
 
-            return l_bar > l_g_bar or p_bar > p_bar_max
+            return l_bar > l_g_bar or p_bar > p_bar_max or v_bar < 0
 
         while Z_i < Z_b:  # terminates if burnout is achieved
             ztlv_record_i = []
@@ -517,7 +518,22 @@ class Gun:
                 """
                 raise e
 
-            if any(v < 0 for v in (t_bar_j, l_bar_j, v_bar_j, p_bar_j)):
+            if v_bar_j <= 0:
+                Z, t_bar, l_bar, v_bar = (
+                    ztlv_record_i[-1][0],
+                    *ztlv_record_i[-1][1],
+                )
+
+                raise ValueError(
+                    "Squib load condition detected: Shot stopped in bore.\n"
+                    + "Shot is last calculated at {:.0f} mm at {:.0f} mm/s after {:.0f} ms".format(
+                        l_bar * self.l_0 * 1e3,
+                        v_bar * self.v_j * 1e3,
+                        t_bar * tScale * 1e3,
+                    )
+                )
+
+            if any(v < 0 for v in (t_bar_j, l_bar_j, p_bar_j)):
                 raise ValueError(
                     "Numerical Integration diverged: negative"
                     + " values encountered in results.\n"
@@ -1234,31 +1250,31 @@ if __name__ == "__main__":
 
     lf = 0.5
     print("DELTA/rho:", lf)
-    cm = 0.5
+    cm = 1.0
     test = Gun(
-        caliber=0.050,
+        caliber=0.5,
         shotMass=1.0,
         propellant=M17SHC,
-        grainSize=8e-4,
+        grainSize=1e-3,
         chargeMass=cm,
         chamberVolume=cm / M17SHC.rho_p / lf,
         startPressure=30e6,
         lengthGun=3.5,
         chambrage=1.0,
-        dragCoefficient=0.1,
+        dragCoefficient=0.05,
     )
-    """
+
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(0, 1e-6, dom=DOMAIN_TIME)[0],
+            test.integrate(100, 1e-6, dom=DOMAIN_TIME)[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T", "eta"),
         )
     )
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(0, 1e-6, dom=DOMAIN_LENG, sol=SOL_MAMONTOV)[0],
+            test.integrate(100, 1e-6, dom=DOMAIN_LENG, sol=SOL_MAMONTOV)[0],
             headers=("tag", "t", "l", "phi", "v", "p", "T", "eta"),
         )
     )
@@ -1286,6 +1302,7 @@ if __name__ == "__main__":
             ),
         )
     )
+    """
     # density:  lbs/in^3 -> kg/m^3, multiply by 27680
     # covolume: in^3/lbs -> m^3/kg, divide by 27680
     # force:    ft-lbs per lb ->J/kg multiply by 2.98907

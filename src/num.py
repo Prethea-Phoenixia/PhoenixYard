@@ -587,7 +587,10 @@ def RKF78(
             "Premature Termination of Integration due to vanishing step size,"
             + " x at {}, h at {}.".format(x, h)
         )
-
+    """
+    if record is not None:
+        print(*record, sep="\n")
+    """
     return x, y_this, Rm
 
 

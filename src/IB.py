@@ -338,7 +338,6 @@ class IB(Frame):
 
             with open(fileName, "w", encoding="utf-8", newline="\n") as file:
                 file.write("{:>45}\n".format(self.getDescriptive()))
-                # using now() to get current time
                 file.write(
                     "LAST MODIFIED  {:>30}\n".format(
                         datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
