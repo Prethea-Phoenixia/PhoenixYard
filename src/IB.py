@@ -1157,6 +1157,7 @@ class IB(Frame):
                 {
                     "ambientP": float(self.ambP.get()) * 1e3,
                     "ambientRho": float(self.ambRho.get()),
+                    "ambientGamma": float(self.ambGam.get()),
                 }
             )
         else:
