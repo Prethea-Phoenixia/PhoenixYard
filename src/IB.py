@@ -142,8 +142,6 @@ class IB(Frame):
 
         self.soln = IntVar(value=0)
 
-        self.inAtmos = IntVar(value=1)
-
         self.useCv = IntVar(value=0)
 
         fileMenu.add_command(
@@ -200,6 +198,7 @@ class IB(Frame):
             underline=0,
         )
         solMenu.add_separator()
+        """
         solMenu.add_checkbutton(
             label=self.getString("atmosLabel"),
             variable=self.inAtmos,
@@ -208,7 +207,7 @@ class IB(Frame):
             underline=0,
         )
         solMenu.add_separator()
-
+        """
         solMenu.add_checkbutton(
             label=self.getString("useLFLabel"), variable=self.useCv, onvalue=0
         )
@@ -216,7 +215,6 @@ class IB(Frame):
             label=self.getString("useCVLabel"), variable=self.useCv, onvalue=1
         )
 
-        self.inAtmos.trace_add("write", self.ambCallback)
         self.useCv.trace_add("write", self.cvlfCallback)
 
         for lang in STRING.keys():
@@ -269,6 +267,7 @@ class IB(Frame):
         self.forceUpdOnThemeWidget.append(self.specs)
 
         parent.bind("<Configure>", self.resizePlot)
+
         self.timedLoop()
 
     def getDescriptive(self):
@@ -598,11 +597,13 @@ class IB(Frame):
         self.solMenu.entryconfig(0, label=self.getString("SOL_LAGRANGE"))
         self.solMenu.entryconfig(1, label=self.getString("SOL_PIDDUCK"))
         self.solMenu.entryconfig(2, label=self.getString("SOL_MAMONTOV"))
+        """
         # separator @ 3
         self.solMenu.entryconfig(4, label=self.getString("atmosLabel"))
-        # seaparator @ 5
-        self.solMenu.entryconfig(6, label=self.getString("useCVLabel"))
-        self.solMenu.entryconfig(7, label=self.getString("useLFLabel"))
+        """
+        # seaparator @ 3
+        self.solMenu.entryconfig(4, label=self.getString("useCVLabel"))
+        self.solMenu.entryconfig(5, label=self.getString("useLFLabel"))
 
         self.calLb.config(text=self.getString("calLabel"))
         self.tblLb.config(text=self.getString("tblLabel"))
@@ -680,6 +681,8 @@ class IB(Frame):
         self.plotBurnupCheck.config(text=self.getString("plotBurnup"))
         self.plotEtaCheck.config(text=self.getString("plotEta"))
         self.plotOutflowCheck.config(text=self.getString("plotOutflow"))
+
+        self.inAtmosCheck.config(text=self.getString("atmosLabel"))
 
         self.stepLb.config(text=self.getString("stepLabel"))
         self.calButton.config(text=self.getString("calcLabel"))
@@ -910,6 +913,14 @@ class IB(Frame):
         self.envFrm = envFrm
 
         i = 0
+        self.inAtmos = IntVar(value=1)
+        self.inAtmos.trace_add("write", self.ambCallback)
+        self.inAtmosCheck = ttk.Checkbutton(
+            envFrm, text=self.getString("atmosLabel"), variable=self.inAtmos
+        )
+        self.inAtmosCheck.grid(row=i, column=0, columnspan=3, sticky="nsew")
+        i += 1
+
         self.ambPLb, self.ambP, self.ambPw, _, i = self.add3Input(
             parent=envFrm,
             rowIndex=i,
@@ -1051,7 +1062,7 @@ class IB(Frame):
             rowIndex=j,
             colIndex=0,
             labelText=self.getString("stepLabel"),
-            default="25",
+            default="100",
             validation=validationNN,
             formatter=formatIntInput,
             reverse=True,
@@ -1714,7 +1725,7 @@ class IB(Frame):
         dpi = self.dpi
         with mpl.rc_context(GEOM_CONTEXT):
             fig = Figure(
-                figsize=(width / dpi, max(height / dpi, width / dpi / 2)),
+                figsize=(width / dpi, max(height / dpi, 0.5 * width / dpi)),
                 dpi=96,
                 layout="constrained",
             )
@@ -1746,10 +1757,6 @@ class IB(Frame):
     def addFigPlot(self):
         plotFrm = self.plotFrm
 
-        self.plotFrm.config(
-            width=0.1 * plotFrm.winfo_width(),
-            height=0.1 * plotFrm.winfo_height(),
-        )
         # this will force a resize event to ensure the inserted
         # graph is of the correct size.
 
@@ -2144,6 +2151,7 @@ class IB(Frame):
                 self.ax.set_xlabel(" ")
 
             self.axP.yaxis.set_ticks(self.axP.get_yticks()[1:-1:])
+
             self.fig.set_layout_engine("constrained")
             self.pltCanvas.draw_idle()
 
@@ -2354,6 +2362,7 @@ class IB(Frame):
                 self.geomAx.yaxis.set_ticks(
                     [i * 0.5 for i in range(ceil(max(ys) / 0.5) + 1)]
                 )
+
             self.geomFig.set_layout_engine("constrained")
             self.geomCanvas.draw_idle()
 

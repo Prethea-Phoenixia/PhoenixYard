@@ -56,6 +56,6 @@ if __name__ == "__main__":
     center(root)
 
     root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
-    # root.state("zoomed")  # maximize window
+    root.state("zoomed")  # maximize window
 
     root.mainloop()

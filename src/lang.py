@@ -478,7 +478,7 @@ ENGLISH = {
     "figOutMuzzP": "Muzzle P.",
     "figOutBP": "Breech P.",
     "solLabel": "Solution",
-    "atmosLabel": "Atmospheric Drag",
+    "atmosLabel": "Account for Drag",
     "excTitle": "Exception",
     "noDataMsg": "Invalid Design or Data",
     "cancelMsg": "File Operation Was Canceled",
