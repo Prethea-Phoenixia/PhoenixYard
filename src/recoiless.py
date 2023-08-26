@@ -303,7 +303,7 @@ class Recoiless:
         if any((step < 0, tol < 0)):
             raise ValueError("Invalid integration specification")
 
-        if any((ambientP < 0, ambientRho < 0)):
+        if any((ambientP < 0, ambientRho < 0, ambientGamma < 1)):
             raise ValueError("Invalid ambient condition")
 
         gamma = self.theta + 1
