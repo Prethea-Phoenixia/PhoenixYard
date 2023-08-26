@@ -189,7 +189,7 @@ class Gun:
         ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
 
         if self.c_1_bar != 0:
-            k = 1 + self.theta  # gamma
+            k = self.k_1  # gamma
             v_r = v_bar / self.c_1_bar
             p_2_bar = (
                 1
@@ -228,7 +228,7 @@ class Gun:
         ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
 
         if self.c_1_bar != 0:
-            k = 1 + self.theta  # gamma
+            k = self.k_1  # gamma
             v_r = v_bar / self.c_1_bar
             p_2_bar = (
                 1
@@ -263,7 +263,7 @@ class Gun:
         ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
 
         if self.c_1_bar != 0:
-            k = 1 + self.theta  # gamma
+            k = self.k_1  # gamma
             v_r = v_bar / self.c_1_bar
             p_2_bar = (
                 1
@@ -333,6 +333,7 @@ class Gun:
         sol=SOL_PIDDUCK,
         ambientRho=1.204,
         ambientP=101.325e3,
+        ambientGamma=1.4,
         record=None,
         **_,
     ):
@@ -362,7 +363,7 @@ class Gun:
         if any((step < 0, tol < 0)):
             raise ValueError("Invalid integration specification")
 
-        if any((ambientP < 0, ambientRho < 0)):
+        if any((ambientP < 0, ambientRho < 0, ambientGamma < 1)):
             raise ValueError("Invalid ambient condition")
 
         if sol == SOL_LAGRANGE:
@@ -407,10 +408,12 @@ class Gun:
         self.p_1_bar = ambientP / pScale
         if ambientRho != 0:
             self.c_1_bar = (
-                (self.theta + 1) * ambientP / ambientRho
+                ambientGamma * ambientP / ambientRho
             ) ** 0.5 / self.v_j
         else:
             self.c_1_bar = 0
+
+        self.k_1 = ambientGamma
 
         l_g_bar = self.l_g / self.l_0
         p_bar_0 = self.p_0 / pScale
@@ -1221,6 +1224,8 @@ class Gun:
         t_0, t_1 = to_t(tau_0), to_t(tau_1)
 
         data = []
+        # print(tau_1)
+        # print((1 + tau_1) ** 0.6)
 
         n = max(1, n)
         for i in range(n + 1):
@@ -1252,10 +1257,10 @@ if __name__ == "__main__":
     print("DELTA/rho:", lf)
     cm = 1.0
     test = Gun(
-        caliber=0.5,
+        caliber=0.05,
         shotMass=1.0,
         propellant=M17SHC,
-        grainSize=1e-3,
+        grainSize=0.66e-3,
         chargeMass=cm,
         chamberVolume=cm / M17SHC.rho_p / lf,
         startPressure=30e6,
@@ -1263,6 +1268,7 @@ if __name__ == "__main__":
         chambrage=1.0,
         dragCoefficient=0.05,
     )
+    """
 
     print("\nnumerical: time")
     print(
@@ -1309,3 +1315,4 @@ if __name__ == "__main__":
     # burn rate coefficient:
     # mm/s/(MPa)**exponent -> m/s/Pa**exponent * 1e-3 /(1e6)**exponent
     # cm/s/(MPa)**exponent -> m/s/Pa**exponent * 1e-2 /(1e6)**exponent
+    """

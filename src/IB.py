@@ -1,8 +1,14 @@
-from tkinter import Frame, Menu, Text
-from tkinter import filedialog, messagebox
-from tkinter import StringVar, IntVar
-
-from tkinter import ttk
+from tkinter import (
+    Frame,
+    Menu,
+    Text,
+    filedialog,
+    messagebox,
+    StringVar,
+    IntVar,
+    Tk,
+    ttk,
+)
 
 import tkinter.font as tkFont
 import traceback
@@ -27,6 +33,8 @@ from misc import (
     dot_aligned,
     resolvepath,
     roundSig,
+    center,
+    loadfont,
 )
 from math import ceil, pi, log10
 
@@ -35,16 +43,18 @@ from matplotlib.figure import Figure
 from labellines import labelLines, labelLine
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-# from matplotlib.widgets import Cursor
-
 from multiprocessing import Process, Queue
 from queue import Empty
 
 import sys
-
 import csv
-
 import datetime
+
+from ctypes import windll
+import platform
+import multiprocessing
+
+from matplotlib import font_manager
 
 
 RECOILESS = "Recoiless Gun"
@@ -573,6 +583,9 @@ class IB(Frame):
         self.ambRhow.config(
             state="normal" if self.inAtmos.get() else "disabled"
         )
+        self.ambGamw.config(
+            state="normal" if self.inAtmos.get() else "disabled"
+        )
 
     def cvlfCallback(self, *args):
         useCv = self.useCv.get()
@@ -625,6 +638,7 @@ class IB(Frame):
         self.cvLLb.config(text=self.getString("cvLabel"))
         self.ambPLb.config(text=self.getString("ambPresLabel"))
         self.ambRhoLb.config(text=self.getString("ambRhoLabel"))
+        self.ambGamLb.config(text=self.getString("ambGamLabel"))
         self.ammoLb.config(text=self.getString("ammoLabel"))
 
         self.nozzExpLb.config(text=self.getString("nozzExpLabel"))
@@ -938,6 +952,15 @@ class IB(Frame):
             labelText=self.getString("ambRhoLabel"),
             unitText="kg/m³",
             default="1.204",
+            validation=validationNN,
+        )
+
+        self.ambGamLb, self.ambGam, self.ambGamw, _, i = self.add3Input(
+            parent=envFrm,
+            rowIndex=i,
+            colIndex=0,
+            labelText=self.getString("ambGamLabel"),
+            default="1.400",
             validation=validationNN,
         )
 
@@ -1822,15 +1845,7 @@ class IB(Frame):
                 ("axes", 1 + 45 * dpi / 96 / width)
             )
 
-        # self.resized = True
-
     def timedLoop(self):
-        """
-        if self.resized:
-            self.updateSpec(None, None, None)
-            self.resized = False
-        """
-
         if self.pos >= 0:  # and not self.process.is_alive():
             self.getValue()
 
@@ -2811,3 +2826,54 @@ def calculate(
     queue.put(tableData)
     queue.put(errorData)
     queue.put(errorReport)
+
+
+if __name__ == "__main__":
+    multiprocessing.freeze_support()
+
+    # this tells windows that our program will handle scaling ourselves
+    winRelease = platform.release()
+    if winRelease in ("8", "10"):
+        windll.shcore.SetProcessDpiAwareness(1)
+    elif winRelease in ("7", "Vista"):
+        windll.user32.SetProcessDPIAware()
+    else:
+        print("Unknown release: ", winRelease, ", skipping DPI handling")
+
+    # this allows us to set our own taskbar icon
+    # "mycompany.myproduct.subproduct.version"
+    myappid = "Phoenix.Internal Ballistics.Solver.046"  # arbitrary string
+    windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
+    root = Tk()
+    root.iconbitmap(resolvepath("ui/logo.ico"))
+
+    loadfont(resolvepath("ui/sarasa-fixed-sc-regular.ttf"), False, True)
+    font_manager.fontManager.addfont(
+        resolvepath("ui/sarasa-fixed-sc-regular.ttf")
+    )
+    # from tkinter import font
+    # print(font.families())
+
+    dpi = root.winfo_fpixels("1i")
+
+    # Tk was originally developed for a dpi of 72
+    # root.tk.call("tk", "scaling", "-displayof", ".", dpi / 72.0)
+    scale = 1.0 * dpi / 72.0
+    root.tk.call("tk", "scaling", scale)
+
+    root.tk.call("lappend", "auto_path", resolvepath("ui/awthemes-10.4.0"))
+    root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
+
+    root.option_add("*tearOff", False)
+
+    root.title("PIBS v0.4.6")
+
+    ibPanel = IB(root, dpi, scale)
+
+    center(root)
+
+    root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
+    root.state("zoomed")  # maximize window
+
+    root.mainloop()

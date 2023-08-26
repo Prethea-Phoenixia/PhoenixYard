@@ -161,7 +161,7 @@ class Recoiless:
         p_bar = self._fp_bar(Z, l_bar, eta, tau, psi)
 
         if self.c_1_bar != 0:
-            k = 1 + self.theta  # gamma
+            k = self.k_1  # gamma
             v_r = v_bar / self.c_1_bar
             p_2_bar = (
                 1
@@ -204,7 +204,7 @@ class Recoiless:
         p_bar = self._fp_bar(Z, l_bar, eta, tau, psi)
 
         if self.c_1_bar != 0:
-            k = 1 + self.theta  # gamma
+            k = self.k_1  # gamma
             v_r = v_bar / self.c_1_bar
             p_2_bar = (
                 1
@@ -241,7 +241,7 @@ class Recoiless:
         p_bar = self._fp_bar(Z, l_bar, eta, tau, psi)
 
         if self.c_1_bar != 0:
-            k = 1 + self.theta  # gamma
+            k = self.k_1  # gamma
             v_r = v_bar / self.c_1_bar
             p_2_bar = (
                 1
@@ -282,6 +282,7 @@ class Recoiless:
         record=None,
         ambientRho=1.204,
         ambientP=101.325e3,
+        ambientGamma=1.4,
         **_,
     ):
         """
@@ -327,10 +328,12 @@ class Recoiless:
         self.p_1_bar = ambientP / pScale
         if ambientRho != 0:
             self.c_1_bar = (
-                (self.theta + 1) * ambientP / ambientRho
+                ambientGamma * ambientP / ambientRho
             ) ** 0.5 / self.v_j
         else:
             self.c_1_bar = 0
+
+        self.k_1 = ambientGamma
 
         l_g_bar = self.l_g / self.l_0
         p_bar_0 = self.p_0 / pScale

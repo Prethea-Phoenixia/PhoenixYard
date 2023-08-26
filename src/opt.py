@@ -72,6 +72,7 @@ class Constrained:
         sol=SOL_PIDDUCK,
         ambientRho=1.204,
         ambientP=101.325e3,
+        ambientGamma=1.4,
         **_,
     ):
         if any(
@@ -139,11 +140,13 @@ class Constrained:
         v_bar_d = v_d / v_j
 
         if ambientRho != 0:
-            c_1_bar = (gamma * ambientP / ambientRho) ** 0.5 / v_j
+            c_1_bar = (ambientGamma * ambientP / ambientRho) ** 0.5 / v_j
             p_1_bar = ambientP / (f * Delta)
         else:
             c_1_bar = 0
             p_1_bar = 0
+
+        gamma_1 = ambientGamma
 
         if v_j < v_d:
             raise ValueError(
@@ -214,10 +217,10 @@ class Constrained:
                     v_r = v_bar / c_1_bar
                     p_2_bar = (
                         1
-                        + 0.25 * gamma * (gamma + 1) * v_r**2
-                        + gamma
+                        + 0.25 * gamma_1 * (gamma_1 + 1) * v_r**2
+                        + gamma_1
                         * v_r
-                        * (1 + (0.25 * (gamma + 1)) ** 2 * v_r**2) ** 0.5
+                        * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5
                     ) * p_1_bar
                 else:
                     p_2_bar = 0
@@ -352,10 +355,10 @@ class Constrained:
                 v_r = v_bar / c_1_bar
                 p_2_bar = (
                     1
-                    + 0.25 * gamma * (gamma + 1) * v_r**2
-                    + gamma
+                    + 0.25 * gamma_1 * (gamma_1 + 1) * v_r**2
+                    + gamma_1
                     * v_r
-                    * (1 + (0.25 * (gamma + 1)) ** 2 * v_r**2) ** 0.5
+                    * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5
                 ) * p_1_bar
             else:
                 p_2_bar = 0
