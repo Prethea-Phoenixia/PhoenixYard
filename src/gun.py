@@ -6,7 +6,9 @@ DOMAIN_TIME = "Time"
 DOMAIN_LENG = "Length"
 
 POINT_START = "SHOT START"
-POINT_PEAK = "PEAK PRESSURE"
+POINT_PEAK = "PEAK AVG P"
+POINT_PEAK_BREECH = "PEAK BREECH P"
+POINT_PEAK_SHOT = "PEAK SHOT P"
 POINT_FRACTURE = "FRACTURE"
 POINT_BURNOUT = "BURNOUT"
 POINT_EXIT = "SHOT EXIT"
@@ -734,7 +736,55 @@ class Gun:
         to point e, i.e. inside the barrel.
         """
 
-        def f(t):
+        def findPeak(f, tag):
+            """
+            tolerance is specified a bit differently for gold section search
+            GSS tol is the length between the upper bound and lower bound
+            of the maxima/minima, thus by our definition of tolerance (one
+            sided), we take the median value.
+            """
+            t_bar_tol = tol * min(
+                t for t in (t_bar_e, t_bar_b, t_bar_f) if t is not None
+            )
+
+            t_bar_1, t_bar_2 = gss(
+                f,
+                0,
+                t_bar_e if t_bar_b is None else t_bar_b,
+                tol=t_bar_tol,
+                findMin=False,
+            )
+
+            t_bar = 0.5 * (t_bar_1 + t_bar_2)
+
+            (
+                _,
+                (Z, l_bar, v_bar),
+                (Z_err, l_bar_err, v_bar_err),
+            ) = RKF78(
+                self._ode_t,
+                (Z_0, 0, 0),
+                0,
+                t_bar,
+                relTol=tol,
+                absTol=tol,
+                minTol=minTol,
+            )
+            t_bar_err = 0.5 * t_bar_tol
+
+            updBarData(
+                tag=tag,
+                t_bar=t_bar,
+                l_bar=l_bar,
+                Z=Z,
+                v_bar=v_bar,
+                t_bar_err=t_bar_err,
+                l_bar_err=l_bar_err,
+                Z_err=Z_err,
+                v_bar_err=v_bar_err,
+            )
+
+        def f(t, m="a"):
             Z, l_bar, v_bar = RKF78(
                 self._ode_t,
                 (Z_0, 0, 0),
@@ -744,80 +794,21 @@ class Gun:
                 absTol=tol,
                 minTol=minTol,
             )[1]
-            return self._fp_bar(Z, l_bar, v_bar)
 
-        """
-            tolerance is specified a bit differently for gold section search
-            GSS tol is the length between the upper bound and lower bound
-            of the maxima/minima, thus by our definition of tolerance (one
-            sided), we take the median value.
-        """
+            p_bar = self._fp_bar(Z, l_bar, v_bar)
 
-        t_bar_tol = tol * min(
-            t for t in (t_bar_e, t_bar_b, t_bar_f) if t is not None
-        )
+            if m == "a":
+                return p_bar
 
-        t_bar_p_1, t_bar_p_2 = gss(
-            f,
-            0,
-            t_bar_e if t_bar_b is None else t_bar_b,
-            tol=t_bar_tol,
-            findMin=False,
-        )
+            Ps, Pb = self.toPsPb(l_bar * self.l_0, p_bar * pScale)
+            if m == "s":
+                return Ps
+            elif m == "b":
+                return Pb
 
-        t_bar_p = 0.5 * (t_bar_p_1 + t_bar_p_2)
-
-        if t_bar_f is not None and abs(t_bar_p - t_bar_f) / t_bar_p < tol:
-            # peak pressure occurs sufficiently close to fracture.
-            Z_p = 1
-            l_bar_p = l_bar_f
-            v_bar_p = v_bar_f
-            t_bar_p = t_bar_f
-
-            Z_err_p = 0
-            l_bar_err_p = l_bar_err_f
-            v_bar_err_p = v_bar_err_f
-            t_bar_err_p = t_bar_err_f
-
-        elif t_bar_b is not None and abs(t_bar_p - t_bar_b) / t_bar_p < tol:
-            # peak pressure occurs sufficiently close to burnout.
-            Z_p = Z_b
-            l_bar_p = l_bar_b
-            v_bar_p = v_bar_b
-            t_bar_p = t_bar_b
-
-            Z_err_p = 0
-            l_bar_err_p = l_bar_err_b
-            v_bar_err_p = v_bar_err_b
-            t_bar_err_p = t_bar_err_b
-
-        else:
-            (
-                _,
-                (Z_p, l_bar_p, v_bar_p),
-                (Z_err_p, l_bar_err_p, v_bar_err_p),
-            ) = RKF78(
-                self._ode_t,
-                (Z_0, 0, 0),
-                0,
-                t_bar_p,
-                relTol=tol,
-                absTol=tol,
-                minTol=minTol,
-            )
-            t_bar_err_p = 0.5 * t_bar_tol
-
-        updBarData(
-            tag=POINT_PEAK,
-            t_bar=t_bar_p,
-            l_bar=l_bar_p,
-            Z=Z_p,
-            v_bar=v_bar_p,
-            t_bar_err=t_bar_err_p,
-            l_bar_err=l_bar_err_p,
-            Z_err=Z_err_p,
-            v_bar_err=v_bar_err_p,
-        )
+        findPeak(lambda x: f(x, "a"), POINT_PEAK)
+        findPeak(lambda x: f(x, "s"), POINT_PEAK_SHOT)
+        findPeak(lambda x: f(x, "b"), POINT_PEAK_BREECH)
 
         """
         populate data for output purposes
@@ -983,13 +974,13 @@ class Gun:
         be = te / self.phi
         return te, be
 
-    def toPbPt(self, l, p):
+    def toPsPb(self, l, p):
         """
         Convert average chamber pressure at a certain travel to
         shot base pressure, and breech face pressure
-        Pb is short for Pressure at base/bullet
-        Pt is short for Pressure at 炮膛, pronounced Pao Tang, meaning
-        breech in Chinese
+
+        Ps: pressure at shot
+        Pb: pressure at breech
         """
         Labda_g = l / self.l_0
         labda_1_prime = (
@@ -999,15 +990,15 @@ class Gun:
             self.labda_2 * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
         )
 
-        factor_b = 1 + labda_2_prime * (
+        factor_s = 1 + labda_2_prime * (
             self.omega / (self.phi_1 * self.m)
         )  # factor_b = P/P_b = phi / phi_1
 
-        factor_t = (self.phi_1 * self.m + labda_2_prime * self.omega) / (
+        factor_b = (self.phi_1 * self.m + labda_2_prime * self.omega) / (
             self.phi_1 * self.m + labda_1_prime * self.omega
         )
 
-        return p / factor_b, p / factor_t
+        return p / factor_s, p / factor_b
 
     def hugoniot(self, p_e, T_e):
         """
@@ -1265,7 +1256,7 @@ if __name__ == "__main__":
         chamberVolume=cm / M17SHC.rho_p / lf,
         startPressure=30e6,
         lengthGun=3.5,
-        chambrage=1.0,
+        chambrage=1.5,
         dragCoefficient=0.05,
     )
     """
@@ -1286,14 +1277,18 @@ if __name__ == "__main__":
     )
     """
     result = test.integrate(0, 1e-6, dom=DOMAIN_TIME, sol=SOL_LAGRANGE)
+    print(
+        tabulate(
+            result[0],
+            headers=("tag", "t", "l", "phi", "v", "p", "T", "eta"),
+        )
+    )
 
     exitLine = result[0][[v[0] for v in result[0]].index(POINT_EXIT)]
     print(exitLine)
     Le, Ve, Pe, Te = exitLine[2], exitLine[4], exitLine[5], exitLine[6]
-    Pb, Pt = test.toPbPt(Le, Pe)
-    print(Pb, Pt)
-    # test.hugoniot(Pt, Te)
-    data = test.corner(Ve, Pt, tol=1e-6)
+    Ps, Pb = test.toPsPb(Le, Pe)
+    data = test.corner(Ve, Pb, tol=1e-6)
 
     from tabulate import tabulate
 

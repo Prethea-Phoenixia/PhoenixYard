@@ -14,7 +14,14 @@ import tkinter.font as tkFont
 import traceback
 
 from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
-from gun import POINT_PEAK, POINT_BURNOUT, POINT_FRACTURE
+from gun import (
+    POINT_PEAK,
+    POINT_BURNOUT,
+    POINT_FRACTURE,
+    POINT_EXIT,
+    POINT_PEAK_SHOT,
+    POINT_PEAK_BREECH,
+)
 from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
 from recoiless import Recoiless
 
@@ -562,12 +569,12 @@ class IB(Frame):
                     tag, t, l, psi, v, P, T, eta = line
 
                     if gunType == CONVENTIONAL:
-                        Pb, Pt = gun.toPbPt(l, P)
+                        Pb, Pt = gun.toPsPb(l, P)
                         csvWriter.writerow((tag, t, l, v, Pb, P, Pt, psi, T))
                     elif gunType == RECOILESS:
-                        Pb, P0, Px, vx = gun.toPbP0PxVx(l, v, P, T, eta)
+                        Ps, P0, Px, vx = gun.toPsP0PxVx(l, v, P, T, eta)
                         csvWriter.writerow(
-                            (tag, t, l, v, vx, Pb, P, P0, Px, psi, eta, T)
+                            (tag, t, l, v, vx, Ps, P, P0, Px, psi, eta, T)
                         )
 
             messagebox.showinfo(
@@ -728,6 +735,10 @@ class IB(Frame):
         self.updateGeom()
         self.updateSpec()
         self.updateFigPlot()
+
+    def readTable(self, tag):
+        i = [line[0] for line in self.tableData].index(tag)
+        return self.tableData[i]
 
     def getString(self, name):
         try:
@@ -1303,13 +1314,12 @@ class IB(Frame):
                 toSI(kwargs["loadFraction"] * self.prop.rho_p, useSN=True)
             )
 
-            i = [i[0] for i in self.tableData].index("SHOT EXIT")
-            _, te, lg, _, vg, pe, _, _ = self.tableData[i]
+            _, te, lg, _, vg, pe, _, _ = self.readTable(POINT_EXIT)
 
             if gunType == CONVENTIONAL:
-                _, pt = self.gun.toPbPt(lg, pe)
+                _, pb = self.gun.toPsPb(lg, pe)
                 self.outflowData = self.gun.corner(
-                    vg, pt, tol=kwargs["tol"], n=kwargs["step"], t_offset=te
+                    vg, pb, tol=kwargs["tol"], n=kwargs["step"], t_offset=te
                 )
             else:
                 self.outflowData = None
@@ -1318,9 +1328,6 @@ class IB(Frame):
 
             self.te.set(round(eta_t * 100, 1))
             self.be.set(round(eta_b * 100, 1))
-
-            i = [i[0] for i in self.tableData].index("PEAK PRESSURE")
-            _, tp, lp, _, vp, pp, Tp, etap = self.tableData[i]
 
             self.lx.set(toSI(kwargs["lengthGun"] / kwargs["caliber"]))
             self.tlx.set(
@@ -1868,15 +1875,15 @@ class IB(Frame):
             )
             gun = self.gun
             if gun is not None:
+                vTgt = self.kwargs["designVelocity"]
                 gunType = self.kwargs["typ"]
                 dom = self.kwargs["dom"]
                 xs = []
                 vs = []
-                Ps = []
+                Pas = []
+                Pss = []
                 Pbs = []
-                Pts = []
                 P0s = []
-                Pxs = []
                 psis = []
                 etas = []
                 vxs = []
@@ -1890,31 +1897,35 @@ class IB(Frame):
                         xs.append(l)
 
                     vs.append(v)
-                    Ps.append(p / 1e6)
+                    Pas.append(p / 1e6)
 
                     if gunType == CONVENTIONAL:
-                        Pb, Pt = gun.toPbPt(l, p)
-                        P0, Px = 0, 0
+                        Ps, Pb = gun.toPsPb(l, p)
+                        P0 = 0
                         vx = 0
                     elif gunType == RECOILESS:
-                        Pb, P0, Px, vx = gun.toPbP0PxVx(l, v, p, T, eta)
-                        Pt = 0
+                        Ps, P0, Pb, vx = gun.toPsP0PxVx(l, v, p, T, eta)
 
+                    Pss.append(Ps / 1e6)
                     Pbs.append(Pb / 1e6)
-                    Pts.append(Pt / 1e6)
                     P0s.append(P0 / 1e6)
-                    Pxs.append(Px / 1e6)
                     vxs.append(vx)
 
                     psis.append(psi)
                     etas.append(eta)
 
                 if self.plotVel.get():
-                    self.axv.scatter(xs, vs, color="tab:blue", marker="s", s=8)
+                    self.axv.scatter(
+                        xs, vs, color="tab:blue", marker="s", s=FONTSIZE
+                    )
                 if self.plotAvgP.get():
-                    self.axP.scatter(xs, Ps, color="tab:green", marker="s", s=8)
+                    self.axP.scatter(
+                        xs, Pas, color="tab:green", marker="s", s=FONTSIZE
+                    )
                 if self.plotBurnup.get():
-                    self.ax.scatter(xs, psis, color="tab:red", marker="s", s=8)
+                    self.ax.scatter(
+                        xs, psis, color="tab:red", marker="s", s=FONTSIZE
+                    )
 
                 xPeak = 0
                 for i, (tag, t, l, psi, v, p, T, eta) in enumerate(
@@ -1928,29 +1939,27 @@ class IB(Frame):
                     if tag == POINT_PEAK:
                         xPeak = x
                     vs.append(v)
-                    Ps.append(p / 1e6)
+                    Pas.append(p / 1e6)
 
                     if gunType == CONVENTIONAL:
-                        Pb, Pt = gun.toPbPt(l, p)
-                        P0, Px = 0, 0
+                        Ps, Pb = gun.toPsPb(l, p)
+                        P0 = 0
                         vx = 0
                     elif gunType == RECOILESS:
-                        Pb, P0, Px, vx = gun.toPbP0PxVx(l, v, p, T, eta)
-                        Pt = 0
+                        Ps, P0, Pb, vx = gun.toPsP0PxVx(l, v, p, T, eta)
 
+                    Pss.append(Ps / 1e6)
                     Pbs.append(Pb / 1e6)
-                    Pts.append(Pt / 1e6)
                     P0s.append(P0 / 1e6)
-                    Pxs.append(Px / 1e6)
                     vxs.append(vx)
                     psis.append(psi)
                     etas.append(eta)
 
                 self.axP.spines.right.set_position(("data", xPeak))
 
-                (xs, vs, vxs, Ps, Pbs, Pts, P0s, Pxs, psis, etas) = zip(
+                (xs, vs, vxs, Pas, Pss, Pbs, P0s, psis, etas) = zip(
                     *sorted(
-                        zip(xs, vs, vxs, Ps, Pbs, Pts, P0s, Pxs, psis, etas),
+                        zip(xs, vs, vxs, Pas, Pss, Pbs, P0s, psis, etas),
                         key=lambda line: line[0],
                     )
                 )
@@ -1964,27 +1973,30 @@ class IB(Frame):
                         marker=".",
                         alpha=1,
                     )
-                vd = float(self.vTgt.get())
                 self.axv.scatter(
                     xs[-1],
-                    vd,
-                    8**2,
-                    "tab:blue",
+                    vTgt,
+                    s=FONTSIZE**2,
+                    c="tab:blue",
                     marker=5,
                     alpha=1,
                 )
 
-                if gunType == CONVENTIONAL:
-                    if self.plotBreechNozzleP.get():
-                        self.axP.plot(
-                            xs,
-                            Pts,
-                            "seagreen",
-                            label=self.getString("figBreech"),
-                            linestyle="dashed",
-                            alpha=0.75,
-                        )
-                else:
+                if self.plotBreechNozzleP.get():
+                    self.axP.plot(
+                        xs,
+                        Pbs,
+                        "seagreen",
+                        label=self.getString("figBreech")
+                        if gunType == CONVENTIONAL
+                        else self.getString("figNozzleP")
+                        if gunType == RECOILESS
+                        else "",
+                        linestyle="dashed",
+                        alpha=0.75,
+                    )
+
+                if gunType == RECOILESS:
                     if self.plotStagP.get():
                         self.axP.plot(
                             xs,
@@ -1995,15 +2007,6 @@ class IB(Frame):
                             alpha=0.75,
                         )
 
-                    if self.plotBreechNozzleP.get():
-                        self.axP.plot(
-                            xs,
-                            Pxs,
-                            "seagreen",
-                            label=self.getString("figNozzleP"),
-                            linestyle="dashdot",
-                            alpha=0.75,
-                        )
                     if self.plotNozzleV.get():
                         self.axv.plot(
                             xs,
@@ -2027,7 +2030,7 @@ class IB(Frame):
                 if self.plotAvgP.get():
                     self.axP.plot(
                         xs,
-                        Ps,
+                        Pas,
                         "tab:green",
                         label=self.getString("figAvgP"),
                         marker=".",
@@ -2037,7 +2040,7 @@ class IB(Frame):
                 if self.plotBaseP.get():
                     self.axP.plot(
                         xs,
-                        Pbs,
+                        Pss,
                         "olive",
                         label=self.getString("figShotBase"),
                         linestyle="dotted",
@@ -2048,7 +2051,7 @@ class IB(Frame):
                 self.axP.scatter(
                     xPeak,
                     Pd,
-                    s=8**2,
+                    s=FONTSIZE**2,
                     c="tab:green",
                     alpha=1,
                     marker=5,  # caret right:5
@@ -2089,12 +2092,12 @@ class IB(Frame):
                     and self.plotOutflow.get()
                 ):
                     xo = []
-                    Pto = []
+                    Pbo = []
                     Pmo = []
                     vo = []
-                    for t, Pt, Pm, v in self.outflowData:
+                    for t, Pb, Pm, v in self.outflowData:
                         xo.append(t * 1e3)
-                        Pto.append(Pt / 1e6)
+                        Pbo.append(Pb / 1e6)
                         Pmo.append(Pm / 1e6)
                         vo.append(v)
 
@@ -2115,7 +2118,7 @@ class IB(Frame):
                     if self.plotBreechNozzleP.get():
                         (l,) = self.axP.plot(
                             xo,
-                            Pto,
+                            Pbo,
                             "seagreen",
                             label=self.getString("figOutBP"),
                             linestyle="dotted",
@@ -2144,10 +2147,44 @@ class IB(Frame):
 
                     self.ax.axvline(x=xs[-1], color="grey", ls=":")
 
+                _, ti, li, _, vi, pi, Ti, etai = self.readTable(POINT_PEAK_SHOT)
+
+                if gunType == CONVENTIONAL:
+                    pi, _ = self.gun.toPsPb(li, pi)
+                elif gunType == RECOILESS:
+                    pi, _, _, _ = self.gun.toPsP0PxVx(li, vi, pi, Ti, etai)
+
+                if self.plotBaseP.get():
+                    self.axP.scatter(
+                        ti * 1e3 if dom == DOMAIN_TIME else li,
+                        pi / 1e6,
+                        marker="+",
+                        s=FONTSIZE**2,
+                        c="olive",
+                    )
+
+                _, ti, li, _, vi, pi, Ti, etai = self.readTable(
+                    POINT_PEAK_BREECH
+                )
+
+                if gunType == CONVENTIONAL:
+                    _, pi = self.gun.toPsPb(li, pi)
+                elif gunType == RECOILESS:
+                    _, _, pi, _ = self.gun.toPsP0PxVx(li, vi, pi, Ti, etai)
+
+                if self.plotBreechNozzleP.get():
+                    self.axP.scatter(
+                        ti * 1e3 if dom == DOMAIN_TIME else li,
+                        pi / 1e6,
+                        marker="+",
+                        s=FONTSIZE**2,
+                        c="seagreen",
+                    )
+
                 self.ax.set_xlim(left=0, right=xmax)
                 self.ax.set_ylim(bottom=0, top=1.05)
 
-                self.axP.set(ylim=(0, max(Ps + Pbs + Pts + P0s + Pxs) * 1.05))
+                self.axP.set(ylim=(0, max(Pas + Pbs + Pss + P0s) * 1.05))
                 self.axv.set(ylim=(0, max(vs) * 1.05))
 
                 tkw = dict(size=4, width=1.5)

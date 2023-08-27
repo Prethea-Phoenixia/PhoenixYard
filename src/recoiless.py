@@ -1,4 +1,4 @@
-from math import pi, inf
+from math import pi
 from num import gss, RKF78, cubic
 from prop import GrainComp, Propellant
 
@@ -6,6 +6,8 @@ from gun import DOMAIN_TIME, DOMAIN_LENG
 from gun import (
     POINT_START,
     POINT_PEAK,
+    POINT_PEAK_SHOT,
+    POINT_PEAK_BREECH,
     POINT_FRACTURE,
     POINT_BURNOUT,
     POINT_EXIT,
@@ -736,7 +738,7 @@ class Recoiless:
         to point e, i.e. inside the barrel.
         """
 
-        def f(t):
+        def f(t, m="a"):
             Z, l_bar, v_bar, eta, tau = RKF78(
                 self._ode_t,
                 (Z_0, 0, 0, 0, 1),
@@ -746,103 +748,86 @@ class Recoiless:
                 absTol=tol,
                 minTol=minTol,
             )[1]
+            p_bar = self._fp_bar(Z, l_bar, eta, tau)
 
-            return self._fp_bar(Z, l_bar, eta, tau)
+            if m == "a":
+                return p_bar
 
-        """
+            Ps, P0, Px, Vx = self.toPsP0PxVx(
+                l_bar * self.l_0,
+                v_bar * self.v_j,
+                p_bar * pScale,
+                tau * self.T_v,
+                eta,
+            )
+
+            if m == "b":
+                return Px
+            elif m == "s":
+                return Ps
+
+        def findPeak(f, tag):
+            """
             tolerance is specified a bit differently for gold section search
             GSS tol is the length between the upper bound and lower bound
             of the maxima/minima, thus by our definition of tolerance (one sided),
             we take the median value.
-        """
+            """
 
-        t_bar_tol = tol * min(
-            t for t in (t_bar_e, t_bar_b, t_bar_f) if t is not None
-        )
+            t_bar_tol = tol * min(
+                t for t in (t_bar_e, t_bar_b, t_bar_f) if t is not None
+            )
 
-        t_bar_p_1, t_bar_p_2 = gss(
-            f,
-            0,
-            t_bar_e if t_bar_b is None else t_bar_b,
-            tol=t_bar_tol,
-            findMin=False,
-        )
+            t_bar_1, t_bar_2 = gss(
+                f,
+                0,
+                t_bar_e if t_bar_b is None else t_bar_b,
+                tol=t_bar_tol,
+                findMin=False,
+            )
 
-        t_bar_p = 0.5 * (t_bar_p_1 + t_bar_p_2)
+            t_bar = 0.5 * (t_bar_1 + t_bar_2)
 
-        if t_bar_f is not None and abs(t_bar_p - t_bar_f) / t_bar_p < tol:
-            # peak pressure occurs sufficiently close to fracture.
-            Z_p = 1
-            l_bar_p = l_bar_f
-            v_bar_p = v_bar_f
-            t_bar_p = t_bar_f
-
-            eta_p = eta_f
-            tau_p = tau_f
-
-            Z_err_p = 0
-            l_bar_err_p = l_bar_err_f
-            v_bar_err_p = v_bar_err_f
-            t_bar_err_p = t_bar_err_f
-
-            eta_err_p = eta_err_f
-            tau_err_p = tau_err_f
-
-        elif t_bar_b is not None and abs(t_bar_p - t_bar_b) / t_bar_p < tol:
-            # peak pressure occurs sufficiently close to burnout.
-            Z_p = Z_b
-            l_bar_p = l_bar_b
-            v_bar_p = v_bar_b
-            t_bar_p = t_bar_b
-
-            eta_p = eta_b
-            tau_p = tau_b
-
-            Z_err_p = 0
-            l_bar_err_p = l_bar_err_b
-            v_bar_err_p = v_bar_err_b
-            t_bar_err_p = t_bar_err_b
-
-            eta_err_p = eta_err_b
-            tau_err_p = tau_err_b
-
-        else:
             (
                 _,
-                (Z_p, l_bar_p, v_bar_p, eta_p, tau_p),
+                (Z, l_bar, v_bar, eta, tau),
                 (
-                    Z_err_p,
-                    l_bar_err_p,
-                    v_bar_err_p,
-                    eta_err_p,
-                    tau_err_p,
+                    Z_err,
+                    l_bar_err,
+                    v_bar_err,
+                    eta_err,
+                    tau_err,
                 ),
             ) = RKF78(
                 self._ode_t,
                 (Z_0, 0, 0, 0, 1),
                 0,
-                t_bar_p,
+                t_bar,
                 relTol=tol,
                 absTol=tol,
                 minTol=minTol,
             )
-            t_bar_err_p = 0.5 * t_bar_tol
+            t_bar_err = 0.5 * t_bar_tol
 
-        updBarData(
-            tag=POINT_PEAK,
-            t_bar=t_bar_p,
-            l_bar=l_bar_p,
-            Z=Z_p,
-            v_bar=v_bar_p,
-            eta=eta_p,
-            tau=tau_p,
-            t_bar_err=t_bar_err_p,
-            l_bar_err=l_bar_err_p,
-            Z_err=Z_err_p,
-            v_bar_err=v_bar_err_p,
-            eta_err=eta_err_p,
-            tau_err=tau_err_p,
-        )
+            updBarData(
+                tag=tag,
+                t_bar=t_bar,
+                l_bar=l_bar,
+                Z=Z,
+                v_bar=v_bar,
+                eta=eta,
+                tau=tau,
+                t_bar_err=t_bar_err,
+                l_bar_err=l_bar_err,
+                Z_err=Z_err,
+                v_bar_err=v_bar_err,
+                eta_err=eta_err,
+                tau_err=tau_err,
+            )
+
+        findPeak(lambda x: f(x, "a"), POINT_PEAK)
+        findPeak(lambda x: f(x, "s"), POINT_PEAK_SHOT)
+        findPeak(lambda x: f(x, "b"), POINT_PEAK_BREECH)
 
         """
         populate data for output purposes
@@ -1035,7 +1020,7 @@ class Recoiless:
         be = te / self.phi
         return te, be
 
-    def toPbP0PxVx(self, l, v, p, T, eta):
+    def toPsP0PxVx(self, l, v, p, T, eta):
         """
         Diagramatic explanation of the calculated values:
             ----\___     __________________
@@ -1051,7 +1036,7 @@ class Recoiless:
         | 0 0 |   0+0: Nozzle throat area, S_j
          *-_-*
 
-        Pb  : Shot base pressure
+        Ps  : Shot base pressure
         Px  : Breech pressure, chamber pressure at rearward of chamber
         P0  : Stagnation point pressure
         vx  : Rearward flow velocity at the rear of chamber
@@ -1069,16 +1054,16 @@ class Recoiless:
         else:
             H = min(vx / v, 2 * self.phi_1 * self.m / (self.omega - y) + 1)
 
-            pb = p / (
+            ps = p / (
                 1 + (self.omega - y) / (3 * self.phi_1 * self.m) * (1 - 0.5 * H)
             )  # shot base pressure
-            p0 = pb * (
+            p0 = ps * (
                 1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 + H) ** -1
             )  # stagnation point pressure
-            px = pb * (
+            px = ps * (
                 1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 - H)
             )  # breech pressure
-            return pb, p0, px, vx
+            return ps, p0, px, vx
 
     @staticmethod
     def getCf(gamma, Sr, tol=1e-5):
