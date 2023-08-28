@@ -651,6 +651,10 @@ class IB(Frame):
         self.nozzExpLb.config(text=self.getString("nozzExpLabel"))
         self.nozzEffLb.config(text=self.getString("nozzEffLabel"))
 
+        self.pamaxLb.config(text=self.getString("pamaxLabel"))
+        self.pbmaxLb.config(text=self.getString("pbmaxLabel"))
+        self.psmaxLb.config(text=self.getString("psmaxLabel"))
+
         self.useConstraintTip.set(self.getString("useConsText"))
         self.optimizeLFTip.set(self.getString("optLFText"))
         self.chgTip.set(self.getString("chgText"))
@@ -889,8 +893,6 @@ class IB(Frame):
             parent=specFrm,
             rowIndex=i,
             labelText=self.getString("vaLabel"),
-            unitText="m/s",
-            # justify="right",
             infotext=self.vinfTip,
         )
 
@@ -911,15 +913,6 @@ class IB(Frame):
             unitText="%",
             infotext=self.beffTip,
         )
-        """
-        self.cvLb, self.cv, _, i = self.add12Disp(
-            parent=specFrm,
-            rowIndex=i,
-            labelText=self.getString("cvLabel"),
-            unitText="m³",
-            # justify="right",
-        )
-        """
 
         self.ldLb, self.ld, _, i = self.add12Disp(
             parent=specFrm,
@@ -927,6 +920,16 @@ class IB(Frame):
             labelText=self.getString("ldLabel"),
             unitText="kg/m³",
             # justify="right",
+        )
+
+        self.pamaxLb, self.pamax, _, i = self.add12Disp(
+            parent=specFrm, rowIndex=i, labelText=self.getString("pamaxLabel")
+        )
+        self.pbmaxLb, self.pbmax, _, i = self.add12Disp(
+            parent=specFrm, rowIndex=i, labelText=self.getString("pbmaxLabel")
+        )
+        self.psmaxLb, self.psmax, _, i = self.add12Disp(
+            parent=specFrm, rowIndex=i, labelText=self.getString("psmaxLabel")
         )
 
         validationNN = parent.register(validateNN)
@@ -1321,13 +1324,37 @@ class IB(Frame):
                 self.outflowData = self.gun.corner(
                     vg, pb, tol=kwargs["tol"], n=kwargs["step"], t_offset=te
                 )
-            else:
+            elif gunType == RECOILESS:
                 self.outflowData = None
 
             eta_t, eta_b = self.gun.getEff(vg)
 
             self.te.set(round(eta_t * 100, 1))
             self.be.set(round(eta_b * 100, 1))
+
+            _, tp, lp, _, vp, pp, Tp, etap = self.readTable(POINT_PEAK)
+
+            self.pamax.set(toSI(pp, unit="Pa"))
+
+            _, tp, lp, _, vp, pp, Tp, etap = self.readTable(POINT_PEAK_BREECH)
+
+            if gunType == CONVENTIONAL:
+                _, pb = self.gun.toPsPb(lp, pp)
+
+            elif gunType == RECOILESS:
+                _, _, pb, _ = self.gun.toPsP0PxVx(lp, vp, pp, Tp, etap)
+
+            self.pbmax.set(toSI(pb, unit="Pa"))
+
+            _, tp, lp, _, vp, pp, Tp, etap = self.readTable(POINT_PEAK_SHOT)
+
+            if gunType == CONVENTIONAL:
+                ps, _ = self.gun.toPsPb(lp, pp)
+
+            elif gunType == RECOILESS:
+                ps, _, _, _ = self.gun.toPsP0PxVx(lp, vp, pp, Tp, etap)
+
+            self.psmax.set(toSI(ps, unit="Pa"))
 
             self.lx.set(toSI(kwargs["lengthGun"] / kwargs["caliber"]))
             self.tlx.set(
@@ -1336,7 +1363,7 @@ class IB(Frame):
                     / kwargs["caliber"]
                 )
             )
-            self.va.set(toSI(self.gun.v_j))
+            self.va.set(toSI(self.gun.v_j, unit="m/s"))
 
             caliber = kwargs["caliber"]
             cartridge_len = kwargs["chamberVolume"] / (
@@ -1356,12 +1383,8 @@ class IB(Frame):
             units=units,
             useSN=useSN,
         )
+
         errorData = dot_aligned(self.errorData, units=units, useSN=useSN)
-        # negErr, posErr = arrErr(self.errorData, units=units, useSN=useSN)
-        """
-        t_Font = tkFont.Font(family="Sarasa Mono SC", size=8)
-        width, _ = t_Font.measure("m"), t_Font.metrics("linespace")
-        """
 
         for i, (row, erow) in enumerate(zip(tableData, errorData)):
             self.tv.insert(

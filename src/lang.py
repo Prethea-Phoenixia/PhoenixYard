@@ -36,8 +36,8 @@ ENGLISH = {
     "lxLabel": "Length Ratio",
     "vaLabel": "Asymptotic Vel.",
     "pPLabel": "Peak Pressure",
-    "teffLabel": "Thermal Eff.",
-    "beffLabel": "Ballistic Eff.",
+    "teffLabel": "Thermal Efficiency",
+    "beffLabel": "Ballistic Efficiency",
     "cvLabel": "Chamber Volume",
     "ldLabel": "Loading Density",
     "propFrmLabel": "Propellant",
@@ -52,7 +52,7 @@ ENGLISH = {
     "envFrmLabel": "Atmos. Cond.",
     "ambPresLabel": "Pres.",
     "ambRhoLabel": "Dens.",
-    "ambGamLabel": "Adb. I.",
+    "ambGamLabel": "Adb. I. ",
     "ammoLabel": "Cartridge",
     "plotAvgP": "Avg. P.",
     "plotBaseP": "Base P.",
@@ -487,6 +487,9 @@ ENGLISH = {
     "savedLocMsg": "Saved File As {:}",
     "useCVLabel": "Specify Chamber Volume",
     "useLFLabel": "Specify Load Fraction",
+    "pamaxLabel": "Maximum Average Pressure",
+    "pbmaxLabel": "Maximum Breech Pressure",
+    "psmaxLabel": "Maximum Shot Pressure",
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -832,5 +835,8 @@ CHINESE = {
     "savedLocMsg": "文件保存至 {:}",
     "useCVLabel": "按药室容积计算",
     "useLFLabel": "按装填系数计算",
+    "pamaxLabel": "最大平均压强",
+    "pbmaxLabel": "最大膛底压强",
+    "psmaxLabel": "最大弹底压强",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}
