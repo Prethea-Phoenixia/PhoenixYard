@@ -1000,233 +1000,78 @@ class Gun:
 
         return p / factor_s, p / factor_b
 
-    def hugoniot(self, p_e, T_e):
+    def hugoniot(self, T_e, n=100, t_offset=0, theta_max=0.5):
         """
         Implement the Hugoniot solution after shot exit.
         Inputs:
-            Pe  : (Breech) Pressure at exit
             Te  : Avg. Temperature at shot exit
 
         Note significantly this doesn't take into account chambrage
         effects at all
         """
-        U = self.V_0 + self.l_g * self.S  # total volume after shot exit
-        theta = self.theta
-        gamma = theta + 1  # gamma, adiabatic index
-        alpha = self.alpha  # covolume
-        omega = self.omega  # C, charge weight
-        S = self.S
+        gamma = self.theta + 1  # gamma, adiabatic index
+        eta = self.alpha  # covolume
+        A = self.S
 
-        def p(t):
-            t_scale = (
-                ((2 * U) / (theta * S))
-                * (1 + 0.13 * alpha * omega / U)
+        Mc = self.omega
+        Mp = self.m * self.phi_1
+
+        Vt = self.V_0 + self.l_g * self.S
+
+        RT0 = self.f / self.T_v * T_e
+
+        theta = (Vt / (6 * A * (gamma - 1))) * (
+            (0.5 * (gamma + 1)) ** ((gamma + 1) / (gamma - 1))
+            / (gamma * RT0 * (1 + (gamma - 1) * Mc / (6 * gamma * Mp)))
+        ) ** 0.5
+
+        def f(t):
+            Q = (
+                (12 * Mc * A / Vt)
+                * (1 + Mc / (6 * gamma * Mp))
+                * (1 + t / theta) ** ((1 + gamma) / (1 - gamma))
                 * (
-                    (1 / gamma * (0.5 * (gamma + 1)) ** ((gamma + 1) / theta))
-                    * (omega / (U * p_e * (1 - alpha * omega / U) ** gamma))
+                    (gamma * RT0)
+                    * (1 + (gamma - 1) * Mc / (6 * gamma * Mp))
+                    * (2 / (gamma + 1)) ** ((gamma + 1) / (gamma - 1))
                 )
                 ** 0.5
-            )  # Eq.85, this makes it independent of the ballistic approximation used
+            )  # mass flow rate, kg/s
 
-            inv_rho = (U / omega + 1.07 * alpha) * (1 + t / t_scale) ** (
-                2 / theta
-            ) - 1.07 * alpha
+            F = (
+                (12 * A * RT0 * Mc * gamma / Vt)
+                * (1 + Mc / (6 * Mp))
+                * (2 / (gamma + 1)) ** (gamma / (gamma - 1))
+                * (1 + t / theta) ** (2 * gamma / (1 - gamma))
+            )  # force exerted on the propellant, N
 
-            return (
-                p_e * (U / omega - alpha) ** gamma * (inv_rho - alpha) ** -gamma
-            )  # breech pressure at time t.
-
-    def corner(self, v_0, P_e, tol, n=10, t_offset=0):
-        """
-        Implement the Corner solution after shot exit.
-        Inputs:
-            Pe  : (Breech) Pressure at exit
-            Te  : Avg. Temperature at shot exit
-
-        Z = xi(t)
-        at the point reached by the front of rarefraction wave at time t
-
-        Corner Solution assumes the Lagrange distribution
-        No chambrage correction
-        Took the first term of Taylor expansion, valid at small C/W
-
-        """
-
-        Labda_g = self.l_g / self.l_0
-        labda_1_prime = (
-            self.labda_1 * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
-        )
-        labda_2_prime = (
-            self.labda_2 * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
-        )
-
-        theta = self.theta
-        gamma = theta + 1  # gamma, adiabatic index
-        # R = self.f / self.T_v  # R_0 / M, specific gas constant.
-        U = self.V_0 + self.l_g * self.S  # total volume after shot exit
-
-        alpha = self.alpha  # covolume
-
-        S = self.S
-        C = self.omega
-        C__W = C / (self.phi_1 * self.m)
-
-        kappa_1 = (self.phi_1 * self.m + labda_1_prime * self.omega) / (
-            self.phi_1 * self.m + labda_2_prime * self.omega
-        )  # ratio of chamber pressure to average pressure
-
-        kappa_2 = (
-            labda_1_prime
-            * self.omega
-            / (self.phi_1 * self.m)
-            / (1 + labda_2_prime * self.omega / (self.phi_1 * self.m))
-        )
-
-        RT_e = P_e * (U / C - alpha) / kappa_1
-
-        epsilon = alpha / (U / C - alpha)
-        # uses the Lagrange approximation
-
-        def to_tau(t):
-            return v_0 * S * t / U
-
-        def to_t(tau):
-            return tau * U / (v_0 * S)
-
-        def f(tau, xi):
-            """
-            Calculate v,p as a function of (xi, tau), with
-                xi : xi = x A / U
-                    x as in distance from breech
-                    = 1 for muzzle condition
-                    = 0 for breech condition
-                tau: tau = V0 * A t / U
-                    t measured since shot ejection
-                    = 0 for moment of shot ejection
-
-            This is valid before the rarefraction wave from the
-            breech has arrived, or xi < Z
-            """
-            v = (xi * v_0 / (1 + tau)) * (
-                1
-                + (C__W * RT_e / (v_0**2 * (2 - gamma)))
-                * ((1 + tau) ** (-theta) - (1 + tau) ** -1)
-            )
-            p = (RT_e / ((U / C - alpha) * (1 + tau) ** gamma)) * (
-                kappa_1
-                - (epsilon * gamma * tau / (1 + tau))
-                - (kappa_2 * xi**2 / (1 + tau) ** 2)
-                - (gamma / (2 - gamma) * C__W * RT_e / v_0**2)
-                * (
-                    (2 - gamma) / theta
-                    + 1 / (1 + tau)
-                    - 1 / (theta * (1 + tau) ** theta)
-                )
-            )
-            c = (gamma * RT_e / (1 + tau) ** theta) ** 0.5 * (
-                1
-                + epsilon * (1 - (0.5 * (gamma + 1) * tau / (tau + 1)))
-                + (C__W * RT_e / v_0**2)
-                * 0.5
-                * (
-                    1 / ((2 - gamma) * (1 + tau) ** theta)
-                    - 1
-                    - theta / ((2 - gamma) * (1 + tau))
-                )
-            )
-
-            return v, p, c
-
-        v_d = (gamma * RT_e) ** 0.5 * (1 + alpha / (U / C - alpha))
-
-        if (
-            v_0 <= v_d
-        ):  # case 1: shot velocity less than local velocity of sound
-            tau_0 = 0
-
-        else:
-            # case 2: muzzle velocity greater than the local velocity of sound
-            def g(tau):
-                v, p, c = f(tau, 1)
-                return v - c
-
-            tau_0, _ = secant(g, 1, 2, tol=v_0 * tol, x_min=0)
-
-        def Z(tau):
-            """
-            The value of xi at the point reached by the front of rarefraction wave
-            at time t (or in this formulation, the scaled time tau)
-
-            at xi <= Z the gas behaviour is entirely described by the EoS
-            at xi > Z conditions outside of the muzzle must be considered
-            """
-            RHS = (1 / (1 + tau_0)) * (
-                1
-                + (C__W * RT_e / ((2 - gamma) * v_0**2))
-                * (1 / (theta * (1 + tau_0) ** theta) - 1 / (1 + tau_0))
-            )
-
-            RHS += (
-                (4 * gamma * RT_e) ** 0.5
-                / (theta * v_0 * (1 + tau) ** (0.5 * theta))
-            ) * (
-                1
-                - (0.5 * epsilon * theta * tau / (1 + tau))
-                + (0.5 * C__W * RT_e / v_0**2)
-                * (
-                    (gamma + 1) / (3 * (2 - gamma) * theta * (1 + tau) ** theta)
-                    - 1
-                    - theta / ((2 - gamma) * (1 + tau))
-                )
-            )
-
-            RHS -= (
-                (4 * gamma * RT_e) ** 0.5
-                / (theta * v_0 * (1 + tau_0) ** (0.5 * theta))
-            ) * (
-                1
-                - (0.5 * epsilon * theta * tau_0 / (1 + tau_0))
-                + (
-                    (0.5 * C__W * RT_e / v_0**2)
-                    * (
-                        (gamma + 1)
-                        / (3 * (2 - gamma) * theta * (1 + tau_0) ** theta)
-                        - 1
-                        - theta / ((2 - gamma) * (1 + tau_0))
-                    )
-                )
-            )
-
-            LHS = (1 / (1 + tau)) * (
-                1
-                + (C__W * RT_e / ((2 - gamma) * v_0**2))
-                * (1 / (theta * (1 + tau) ** theta) - 1 / (1 + tau))
-            )
-
-            return RHS / LHS
-
-        # we find the time it takes for the rarefraction wave to hit the breech
-        # this being the upper bound of applicability for our purposes.
-        if tau_0 == 0:
-            tau_1, _ = secant(Z, 1, 2, tol=tol, x_min=0)
-        else:
-            tau_1, _ = secant(Z, tau_0, 2 * tau_0, tol=tol, x_min=0)
-
-        t_0, t_1 = to_t(tau_0), to_t(tau_1)
+            M = (
+                Mc
+                * RT0**0.5
+                * (2 / (gamma + 1)) ** 1.5
+                * (1 + (gamma + 1) * Mc / (12 * gamma * Mp))
+                * (1.0 - (1 + t / theta) ** ((1 + gamma) / (1 - gamma)))
+            )  # (cumulative) momentum from moment of ejection,
+            return Q, F, M
 
         data = []
-        # print(tau_1)
-        # print((1 + tau_1) ** 0.6)
 
-        n = max(1, n)
         for i in range(n + 1):
-            t_i = i / n * t_1
+            t = theta * (i) / n * theta_max
+            Q, F, M = f(t)
+            data.append((t + t_offset, Q, F, M))
 
-            vt, pt, ct = f(to_tau(t_i), 0)  # breech condiitons
-            vm, pm, cm = f(to_tau(t_i), 1)  # muzzle conditions
+        I = (
+            Mc
+            * (gamma * RT0) ** 0.5
+            * (2 / (gamma + 1)) ** 1.5
+            * (1 + (gamma + 1) * Mc / (12 * gamma * Mp))
+        )  # Total ejected momentum to infinite time
 
-            data.append((t_i + t_offset, pt, pm, vm))
-
+        """
+        from tabulate import tabulate
+        print(tabulate(data, headers=("time", "Force", "Momentum")))
+        """
         return data
 
 
@@ -1285,9 +1130,12 @@ if __name__ == "__main__":
     )
 
     exitLine = result[0][[v[0] for v in result[0]].index(POINT_EXIT)]
-    print(exitLine)
+
     Le, Ve, Pe, Te = exitLine[2], exitLine[4], exitLine[5], exitLine[6]
     Ps, Pb = test.toPsPb(Le, Pe)
+
+    test.hugoniot(Te)
+    """
     data = test.corner(Ve, Pb, tol=1e-6)
 
     from tabulate import tabulate
@@ -1303,6 +1151,7 @@ if __name__ == "__main__":
             ),
         )
     )
+    """
     """
     # density:  lbs/in^3 -> kg/m^3, multiply by 27680
     # covolume: in^3/lbs -> m^3/kg, divide by 27680

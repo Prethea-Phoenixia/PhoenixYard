@@ -651,9 +651,9 @@ class IB(Frame):
         self.nozzExpLb.config(text=self.getString("nozzExpLabel"))
         self.nozzEffLb.config(text=self.getString("nozzEffLabel"))
 
+        self.psmaxLb.config(text=self.getString("psmaxLabel"))
         self.pamaxLb.config(text=self.getString("pamaxLabel"))
         self.pbmaxLb.config(text=self.getString("pbmaxLabel"))
-        self.psmaxLb.config(text=self.getString("psmaxLabel"))
 
         self.useConstraintTip.set(self.getString("useConsText"))
         self.optimizeLFTip.set(self.getString("optLFText"))
@@ -706,6 +706,8 @@ class IB(Frame):
         self.plotBurnupCheck.config(text=self.getString("plotBurnup"))
         self.plotEtaCheck.config(text=self.getString("plotEta"))
         self.plotOutflowCheck.config(text=self.getString("plotOutflow"))
+
+        self.plotRecoilCheck.config(text=self.getString("plotRecoil"))
 
         self.inAtmosCheck.config(text=self.getString("atmosLabel"))
 
@@ -761,7 +763,7 @@ class IB(Frame):
         pltOptnFrm.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
         self.pltOptnFrm = pltOptnFrm
 
-        for i in range(9):
+        for i in range(10):
             pltOptnFrm.columnconfigure(i, weight=1)
 
         j = 0
@@ -770,7 +772,7 @@ class IB(Frame):
             pltOptnFrm, mode="indeterminate", maximum=100
         )
         self.pbar.grid(
-            row=j, column=0, columnspan=9, sticky="nsew", padx=2, pady=2
+            row=j, column=0, columnspan=10, sticky="nsew", padx=2, pady=2
         )
 
         j += 1
@@ -841,6 +843,14 @@ class IB(Frame):
         )
         self.plotOutflowCheck.grid(row=j, column=8, sticky="nsew")
 
+        self.plotRecoil = IntVar(value=0)
+        self.plotRecoilCheck = ttk.Checkbutton(
+            pltOptnFrm,
+            text=self.getString("plotRecoil"),
+            variable=self.plotRecoil,
+        )
+        self.plotRecoilCheck.grid(row=j, column=9, sticky="nsew")
+
         self.plotAvgP.trace_add("write", self.updateFigPlot)
         self.plotBaseP.trace_add("write", self.updateFigPlot)
         self.plotBreechNozzleP.trace_add("write", self.updateFigPlot)
@@ -850,6 +860,7 @@ class IB(Frame):
         self.plotBurnup.trace_add("write", self.updateFigPlot)
         self.plotVel.trace_add("write", self.updateFigPlot)
         self.plotOutflow.trace_add("write", self.updateFigPlot)
+        self.plotRecoil.trace_add("write", self.updateFigPlot)
 
     def addLeftFrm(self, parent):
         leftFrm = ttk.Frame(parent)
@@ -1317,12 +1328,14 @@ class IB(Frame):
                 toSI(kwargs["loadFraction"] * self.prop.rho_p, useSN=True)
             )
 
-            _, te, lg, _, vg, pe, _, _ = self.readTable(POINT_EXIT)
+            _, te, lg, _, vg, pe, Te, _ = self.readTable(POINT_EXIT)
 
             if gunType == CONVENTIONAL:
                 _, pb = self.gun.toPsPb(lg, pe)
-                self.outflowData = self.gun.corner(
-                    vg, pb, tol=kwargs["tol"], n=kwargs["step"], t_offset=te
+                self.outflowData = self.gun.hugoniot(
+                    Te,
+                    n=kwargs["step"],
+                    t_offset=te,  # tol=kwargs["tol"],
                 )
             elif gunType == RECOILESS:
                 self.outflowData = None
@@ -1838,8 +1851,10 @@ class IB(Frame):
             ax = axes
             axP = ax.twinx()
             axv = ax.twinx()
+            axF = ax.twinx()
 
             ax.yaxis.tick_right()
+            axF.yaxis.tick_left()
             ax.set_xlabel(" ")
 
             axv.spines.right.set_position(("axes", 1.0 + 45 * dpi / 96 / width))
@@ -1850,6 +1865,7 @@ class IB(Frame):
             self.ax = ax
             self.axP = axP
             self.axv = axv
+            self.axF = axF
             self.fig = fig
 
             self.pltCanvas = FigureCanvasTkAgg(fig, master=plotFrm)
@@ -1887,9 +1903,8 @@ class IB(Frame):
             self.ax.cla()
             self.axP.cla()
             self.axv.cla()
+            self.axF.cla()
 
-            self.axv.set_axisbelow(False)
-            self.axP.set_axisbelow(False)
             dpi = self.dpi
             size = self.fig.get_size_inches() * self.fig.dpi
 
@@ -1907,6 +1922,7 @@ class IB(Frame):
                 Pss = []
                 Pbs = []
                 P0s = []
+                Frs = []  # recoil forces
                 psis = []
                 etas = []
                 vxs = []
@@ -1929,10 +1945,14 @@ class IB(Frame):
                     elif gunType == RECOILESS:
                         Ps, P0, Pb, vx = gun.toPsP0PxVx(l, v, p, T, eta)
 
+                    Fr = Pb * (gun.S * gun.chi_k)
+
                     Pss.append(Ps / 1e6)
                     Pbs.append(Pb / 1e6)
                     P0s.append(P0 / 1e6)
                     vxs.append(vx)
+
+                    Frs.append(Fr / 1e6)
 
                     psis.append(psi)
                     etas.append(eta)
@@ -1971,6 +1991,8 @@ class IB(Frame):
                     elif gunType == RECOILESS:
                         Ps, P0, Pb, vx = gun.toPsP0PxVx(l, v, p, T, eta)
 
+                    Fr = Pb * (gun.S * gun.chi_k)
+
                     Pss.append(Ps / 1e6)
                     Pbs.append(Pb / 1e6)
                     P0s.append(P0 / 1e6)
@@ -1978,11 +2000,13 @@ class IB(Frame):
                     psis.append(psi)
                     etas.append(eta)
 
+                    Frs.append(Fr / 1e6)
+
                 self.axP.spines.right.set_position(("data", xPeak))
 
-                (xs, vs, vxs, Pas, Pss, Pbs, P0s, psis, etas) = zip(
+                (xs, vs, vxs, Pas, Pss, Pbs, P0s, psis, etas, Frs) = zip(
                     *sorted(
-                        zip(xs, vs, vxs, Pas, Pss, Pbs, P0s, psis, etas),
+                        zip(xs, vs, vxs, Pas, Pss, Pbs, P0s, psis, etas, Frs),
                         key=lambda line: line[0],
                     )
                 )
@@ -2009,7 +2033,7 @@ class IB(Frame):
                     self.axP.plot(
                         xs,
                         Pbs,
-                        "seagreen",
+                        c="limegreen",
                         label=self.getString("figBreech")
                         if gunType == CONVENTIONAL
                         else self.getString("figNozzleP")
@@ -2024,7 +2048,7 @@ class IB(Frame):
                         self.axP.plot(
                             xs,
                             P0s,
-                            "yellowgreen",
+                            "lawngreen",
                             label=self.getString("figStagnation"),
                             linestyle="dashed",
                             alpha=0.75,
@@ -2037,7 +2061,7 @@ class IB(Frame):
                             "royalblue",
                             label=self.getString("figNozzleV"),
                             alpha=0.75,
-                            linestyle="dotted",
+                            linestyle="dashed",
                         )
 
                     if self.plotEta.get():
@@ -2047,7 +2071,7 @@ class IB(Frame):
                             "tab:orange",
                             label=self.getString("figOutflow"),
                             alpha=0.75,
-                            linestyle="dotted",
+                            linestyle="dashed",
                         )
 
                 if self.plotAvgP.get():
@@ -2064,9 +2088,9 @@ class IB(Frame):
                     self.axP.plot(
                         xs,
                         Pss,
-                        "olive",
+                        "gold",
                         label=self.getString("figShotBase"),
-                        linestyle="dotted",
+                        linestyle="dashed",
                         alpha=0.75,
                     )
 
@@ -2085,10 +2109,19 @@ class IB(Frame):
                     self.ax.plot(
                         xs,
                         psis,
-                        "tab:red",
+                        c="tab:red",
                         label=self.getString("figPsi"),
                         marker=".",
                         alpha=1,
+                    )
+
+                if self.plotRecoil.get():
+                    self.axF.plot(
+                        xs,
+                        Frs,
+                        c="limegreen",
+                        label=self.getString("figRecoil"),
+                        linestyle="dotted",
                     )
 
                 linesLabeled = []
@@ -2097,17 +2130,21 @@ class IB(Frame):
                         self.axP.get_lines(),
                         self.ax.get_lines(),
                         self.axv.get_lines(),
+                        self.axF.get_lines(),
                     ),
                     (
                         (0.2 * xs[-1] + 0.8 * xPeak, xs[-1]),
                         (0, xPeak),
                         (xPeak, 0.2 * xs[-1] + 0.8 * xPeak),
+                        (0, xPeak),
                     ),
                 ):
-                    labelLines(lines, align=True, xvals=xvals)
+                    labelLines(lines, align=True, xvals=xvals, outline_width=2)
                     linesLabeled.append(lines)
 
                 xmax = xs[-1]
+
+                Fo = None
 
                 if (
                     self.outflowData is not None
@@ -2115,58 +2152,28 @@ class IB(Frame):
                     and self.plotOutflow.get()
                 ):
                     xo = []
-                    Pbo = []
-                    Pmo = []
-                    vo = []
-                    for t, Pb, Pm, v in self.outflowData:
+                    Fo = []
+
+                    for t, Q, F, M in self.outflowData:
                         xo.append(t * 1e3)
-                        Pbo.append(Pb / 1e6)
-                        Pmo.append(Pm / 1e6)
-                        vo.append(v)
-
-                    outflowLines = []
-
-                    if self.plotVel.get():
-                        (l,) = self.axv.plot(
-                            xo,
-                            vo,
-                            "tab:blue",
-                            label=self.getString("figOutV"),
-                            # marker=".",
-                            linestyle="dotted",
-                            alpha=1,
-                        )
-                        outflowLines.append(l)
-
-                    if self.plotBreechNozzleP.get():
-                        (l,) = self.axP.plot(
-                            xo,
-                            Pbo,
-                            "seagreen",
-                            label=self.getString("figOutBP"),
-                            linestyle="dotted",
-                            alpha=0.75,
-                        )
-                        outflowLines.append(l)
-
-                    if self.plotBaseP.get():
-                        (l,) = self.axP.plot(
-                            xo,
-                            Pmo,
-                            "olive",
-                            label=self.getString("figOutMuzzP"),
-                            linestyle="dotted",
-                            alpha=0.75,
-                        )
-                        outflowLines.append(l)
+                        Fo.append(F / 1e6)
 
                     xmax = xo[-1]
-                    for i, line in enumerate(outflowLines):
-                        # len = 1: 1/2
-                        # len = 2: 1/3, 2/3
-                        k = (i + 1) / (len(outflowLines) + 1)
-                        x = xs[-1] * (1 - k) + xmax * k
-                        labelLine(line, x=x, align=True, va="bottom")
+
+                    if self.plotRecoil.get():
+                        (l,) = self.axF.plot(
+                            xo,
+                            Fo,
+                            c="limegreen",
+                            label=self.getString("figRecoil"),
+                            linestyle="dotted",
+                        )
+                        labelLine(
+                            l,
+                            x=0.5 * (xs[-1] + xmax),
+                            align=True,
+                            outline_width=2,
+                        )
 
                     self.ax.axvline(x=xs[-1], color="grey", ls=":")
 
@@ -2183,7 +2190,7 @@ class IB(Frame):
                         pi / 1e6,
                         marker="+",
                         s=FONTSIZE**2,
-                        c="olive",
+                        c="gold",
                     )
 
                 _, ti, li, _, vi, pi, Ti, etai = self.readTable(
@@ -2201,20 +2208,23 @@ class IB(Frame):
                         pi / 1e6,
                         marker="+",
                         s=FONTSIZE**2,
-                        c="seagreen",
+                        c="limegreen",
                     )
 
                 self.ax.set_xlim(left=0, right=xmax)
                 self.ax.set_ylim(bottom=0, top=1.05)
-
-                self.axP.set(ylim=(0, max(Pas + Pbs + Pss + P0s) * 1.05))
+                pmax = max(Pas + Pbs + Pss + P0s)
+                self.axP.set(ylim=(0, pmax * 1.05))
                 self.axv.set(ylim=(0, max(vs) * 1.05))
+                self.axF.set(ylim=(0, pmax * gun.chi_k * gun.S * 1.05))
 
                 tkw = dict(size=4, width=1.5)
                 self.ax.yaxis.tick_right()
+                self.axF.yaxis.tick_left()
                 self.ax.tick_params(axis="y", colors="tab:red", **tkw)
                 self.axv.tick_params(axis="y", colors="tab:blue", **tkw)
                 self.axP.tick_params(axis="y", colors="tab:green", **tkw)
+                self.axF.tick_params(axis="y", colors="limegreen", **tkw)
                 self.ax.tick_params(axis="x", **tkw)
 
                 if dom == DOMAIN_TIME:
@@ -2778,12 +2788,14 @@ class IB(Frame):
                 "axes.edgecolor": fgc,
                 "axes.facecolor": ebgc,
                 "figure.facecolor": bgc,
+                "figure.edgecolor": fgc,
             }
         )
 
         FIG_CONTEXT.update(
             {
                 "figure.facecolor": bgc,
+                "figure.edgecolor": fgc,
                 "axes.edgecolor": fgc,
                 "axes.facecolor": ebgc,
                 "axes.labelcolor": fgc,
@@ -2801,7 +2813,9 @@ class IB(Frame):
             self.fig.set_facecolor(bgc)
             self.geomFig.set_facecolor(bgc)
 
-            for ax in (self.ax, self.axv, self.axP, self.geomAx):
+            # this is necessary because twinned axis does not necessarily
+            # follow the rcParams
+            for ax in (self.ax, self.axv, self.axP, self.geomAx, self.axF):
                 ax.set_facecolor(ebgc)
                 ax.spines["top"].set_color(fgc)
                 ax.spines["bottom"].set_color(fgc)
