@@ -435,16 +435,29 @@ class ConstrainedRecoiless:
             t_bar, Z, l_bar, eta, tau = ys
             return l_bar > l_bar_d
 
-        (v_bar_g, (t_bar_g, Z_g, l_bar_g, eta, tau), (_, _, _, _, _)) = RKF78(
-            dFunc=_ode_v,
-            iniVal=(0, Z_0, 0, 0, 1),
-            x_0=0,
-            x_1=v_bar_d,
-            relTol=tol,
-            absTol=tol,
-            abortFunc=abort,
-        )
-        # todo: something up here.
+        vtzlet_record = []
+        try:
+            (
+                v_bar_g,
+                (t_bar_g, Z_g, l_bar_g, eta, tau),
+                (_, _, _, _, _),
+            ) = RKF78(
+                dFunc=_ode_v,
+                iniVal=(0, Z_0, 0, 0, 1),
+                x_0=0,
+                x_1=v_bar_d,
+                relTol=tol,
+                absTol=tol,
+                abortFunc=abort,
+                record=vtzlet_record,  # debug
+            )
+            # todo: something up here
+        except ValueError:
+            vmax = vtzlet_record[-1][0] * v_j
+            raise ValueError(
+                "Diminishing gains for velocity beyond {:.4g} m/s.".format(vmax)
+                + " This indicates an excessive velocity target."
+            )
 
         if l_bar_g > l_bar_d:
             raise ValueError(
@@ -611,7 +624,7 @@ if __name__ == "__main__":
         startPressure=10e6,
         dragCoefficient=5e-2,
         designPressure=350e6,
-        designVelocity=800,
+        designVelocity=1800,
         nozzleExpansion=2,
         nozzleEfficiency=0.92,
         chambrage=1,

@@ -284,7 +284,8 @@ class IB(Frame):
         self.forceUpdOnThemeWidget.append(self.specs)
 
         parent.bind("<Configure>", self.resizePlot)
-
+        root.protocol("WM_DELETE_WINDOW", self.quit)
+        self.tLid = None
         self.timedLoop()
 
     def getDescriptive(self):
@@ -946,8 +947,22 @@ class IB(Frame):
         validationNN = parent.register(validateNN)
         validationPI = parent.register(validatePI)
 
+        outflowFrm = ttk.LabelFrame(rightFrm, text="Outflow")
+        outflowFrm.grid(row=1, column=0, sticky="nsew")
+        outflowFrm.columnconfigure(0, weight=1)
+        self.outflowFrm = outflowFrm
+
+        i = 0
+        self.outflowToLb, self.outflowTo, _, _, i = self.add3Input(
+            parent=outflowFrm,
+            rowIndex=i,
+            labelText="To",
+            validation=validationNN,
+            unitText="ms  ",
+        )
+
         envFrm = ttk.LabelFrame(rightFrm, text=self.getString("envFrmLabel"))
-        envFrm.grid(row=1, column=0, sticky="nsew")
+        envFrm.grid(row=2, column=0, sticky="nsew")
         envFrm.columnconfigure(0, weight=1)
         self.envFrm = envFrm
 
@@ -990,7 +1005,7 @@ class IB(Frame):
         )
 
         opFrm = ttk.LabelFrame(rightFrm, text=self.getString("opFrmLabel"))
-        opFrm.grid(row=2, column=0, sticky="nsew")
+        opFrm.grid(row=3, column=0, sticky="nsew")
         opFrm.columnconfigure(1, weight=1)
         self.opFrm = opFrm
 
@@ -1896,7 +1911,14 @@ class IB(Frame):
         if self.pos >= 0:  # and not self.process.is_alive():
             self.getValue()
 
-        self.parent.after(100, self.timedLoop)
+        self.tLid = self.parent.after(100, self.timedLoop)
+
+    def quit(self):
+        root = self.parent
+        if self.tLid is not None:
+            root.after_cancel(self.tLid)
+        root.quit()
+        # root.destroy()
 
     def updateFigPlot(self, *args):
         with mpl.rc_context(FIG_CONTEXT):
@@ -1916,15 +1938,12 @@ class IB(Frame):
                 vTgt = self.kwargs["designVelocity"]
                 gunType = self.kwargs["typ"]
                 dom = self.kwargs["dom"]
-                xs = []
-                vs = []
-                Pas = []
-                Pss = []
-                Pbs = []
-                P0s = []
+                tol = self.kwargs["tol"]
+
+                xs, vs = [], []
+                Pas, Pss, Pbs, P0s = [], [], [], []
                 Frs = []  # recoil forces
-                psis = []
-                etas = []
+                psis, etas = [], []
                 vxs = []
 
                 for i, (t, (l, psi, v, p, T, eta)) in enumerate(
@@ -2121,7 +2140,7 @@ class IB(Frame):
                     self.axF.plot(
                         xs,
                         Frs,
-                        c="xkcd:goldenrod",
+                        c="tab:green",
                         label=self.getString("figRecoil"),
                         linestyle="dotted",
                     )
@@ -2156,9 +2175,12 @@ class IB(Frame):
                     xo = []
                     Fo = []
 
+                    Cf = Recoiless.getCf(gun.theta + 1, 1, tol)
+                    # outflow force is multiplied by thrust factor
+
                     for t, Q, F, M in self.outflowData:
                         xo.append(t * 1e3)
-                        Fo.append(F / 1e6)
+                        Fo.append(F * Cf / 1e6)
 
                     xmax = xo[-1]
 
@@ -2166,7 +2188,7 @@ class IB(Frame):
                         (l,) = self.axF.plot(
                             xo,
                             Fo,
-                            c="xkcd:goldenrod",
+                            c="tab:green",
                             label=self.getString("figRecoil"),
                             linestyle="dotted",
                         )
@@ -2226,7 +2248,7 @@ class IB(Frame):
                 self.ax.tick_params(axis="y", colors="tab:red", **tkw)
                 self.axv.tick_params(axis="y", colors="tab:blue", **tkw)
                 self.axP.tick_params(axis="y", colors="tab:green", **tkw)
-                self.axF.tick_params(axis="y", colors="xkcd:goldenrod", **tkw)
+                self.axF.tick_params(axis="y", colors="tab:green", **tkw)
                 self.ax.tick_params(axis="x", **tkw)
 
                 if dom == DOMAIN_TIME:

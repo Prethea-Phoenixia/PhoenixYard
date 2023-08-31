@@ -582,15 +582,18 @@ def RKF78(
         """
 
     if abs((x - x_1) / (x_1 - x_0)) > relTol:
-        # print(dFunc(x, *y_this))
+        """
+        # debug code
+        print(x, *y_this)
+        print(dFunc(x, *y_this))
+        if record is not None:
+            print(*record, sep="\n")
+        """
         raise ValueError(
             "Premature Termination of Integration due to vanishing step size,"
             + " x at {}, h at {}.".format(x, h)
         )
-    """
-    if record is not None:
-        print(*record, sep="\n")
-    """
+
     return x, y_this, Rm
 
 
