@@ -314,7 +314,8 @@ class Recoiless:
             self.getCf(gamma, self.A_bar, tol) * self.chi_0
         )  # = S_j/S
         """
-        self.S_j_bar = 1 / (self.getCf(gamma, self.A_bar, tol) * self.chi_0)
+        self.C_f = self.getCf(gamma, self.A_bar, tol)
+        self.S_j_bar = 1 / (self.C_f * self.chi_0)
         if self.S_j_bar > self.chi_k:
             raise ValueError(
                 "Achieving recoiless condition necessitates"

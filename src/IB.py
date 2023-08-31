@@ -1942,10 +1942,11 @@ class IB(Frame):
                         Ps, Pb = gun.toPsPb(l, p)
                         P0 = 0
                         vx = 0
+                        Fr = p * gun.S
+
                     elif gunType == RECOILESS:
                         Ps, P0, Pb, vx = gun.toPsP0PxVx(l, v, p, T, eta)
-
-                    Fr = Pb * (gun.S * gun.chi_k)
+                        Fr = p * gun.S - gun.C_f * gun.S_j * p
 
                     Pss.append(Ps / 1e6)
                     Pbs.append(Pb / 1e6)
@@ -1988,10 +1989,11 @@ class IB(Frame):
                         Ps, Pb = gun.toPsPb(l, p)
                         P0 = 0
                         vx = 0
+                        Fr = p * gun.S
+
                     elif gunType == RECOILESS:
                         Ps, P0, Pb, vx = gun.toPsP0PxVx(l, v, p, T, eta)
-
-                    Fr = Pb * (gun.S * gun.chi_k)
+                        Fr = p * gun.S - gun.C_f * gun.S_j * p
 
                     Pss.append(Ps / 1e6)
                     Pbs.append(Pb / 1e6)
@@ -2033,7 +2035,7 @@ class IB(Frame):
                     self.axP.plot(
                         xs,
                         Pbs,
-                        c="limegreen",
+                        c="xkcd:goldenrod",
                         label=self.getString("figBreech")
                         if gunType == CONVENTIONAL
                         else self.getString("figNozzleP")
@@ -2048,7 +2050,7 @@ class IB(Frame):
                         self.axP.plot(
                             xs,
                             P0s,
-                            "lawngreen",
+                            "seagreen",
                             label=self.getString("figStagnation"),
                             linestyle="dashed",
                             alpha=0.75,
@@ -2068,7 +2070,7 @@ class IB(Frame):
                         self.ax.plot(
                             xs,
                             etas,
-                            "tab:orange",
+                            "crimson",
                             label=self.getString("figOutflow"),
                             alpha=0.75,
                             linestyle="dashed",
@@ -2088,7 +2090,7 @@ class IB(Frame):
                     self.axP.plot(
                         xs,
                         Pss,
-                        "gold",
+                        "yellowgreen",
                         label=self.getString("figShotBase"),
                         linestyle="dashed",
                         alpha=0.75,
@@ -2119,7 +2121,7 @@ class IB(Frame):
                     self.axF.plot(
                         xs,
                         Frs,
-                        c="limegreen",
+                        c="xkcd:goldenrod",
                         label=self.getString("figRecoil"),
                         linestyle="dotted",
                     )
@@ -2139,7 +2141,7 @@ class IB(Frame):
                         (0, xPeak),
                     ),
                 ):
-                    labelLines(lines, align=True, xvals=xvals, outline_width=2)
+                    labelLines(lines, align=True, xvals=xvals, outline_width=4)
                     linesLabeled.append(lines)
 
                 xmax = xs[-1]
@@ -2164,7 +2166,7 @@ class IB(Frame):
                         (l,) = self.axF.plot(
                             xo,
                             Fo,
-                            c="limegreen",
+                            c="xkcd:goldenrod",
                             label=self.getString("figRecoil"),
                             linestyle="dotted",
                         )
@@ -2172,7 +2174,7 @@ class IB(Frame):
                             l,
                             x=0.5 * (xs[-1] + xmax),
                             align=True,
-                            outline_width=2,
+                            outline_width=4,
                         )
 
                     self.ax.axvline(x=xs[-1], color="grey", ls=":")
@@ -2180,9 +2182,9 @@ class IB(Frame):
                 _, ti, li, _, vi, pi, Ti, etai = self.readTable(POINT_PEAK_SHOT)
 
                 if gunType == CONVENTIONAL:
-                    pi, _ = self.gun.toPsPb(li, pi)
+                    pi, _ = gun.toPsPb(li, pi)
                 elif gunType == RECOILESS:
-                    pi, _, _, _ = self.gun.toPsP0PxVx(li, vi, pi, Ti, etai)
+                    pi, _, _, _ = gun.toPsP0PxVx(li, vi, pi, Ti, etai)
 
                 if self.plotBaseP.get():
                     self.axP.scatter(
@@ -2190,7 +2192,7 @@ class IB(Frame):
                         pi / 1e6,
                         marker="+",
                         s=FONTSIZE**2,
-                        c="gold",
+                        c="yellowgreen",
                     )
 
                 _, ti, li, _, vi, pi, Ti, etai = self.readTable(
@@ -2198,9 +2200,9 @@ class IB(Frame):
                 )
 
                 if gunType == CONVENTIONAL:
-                    _, pi = self.gun.toPsPb(li, pi)
+                    _, pi = gun.toPsPb(li, pi)
                 elif gunType == RECOILESS:
-                    _, _, pi, _ = self.gun.toPsP0PxVx(li, vi, pi, Ti, etai)
+                    _, _, pi, _ = gun.toPsP0PxVx(li, vi, pi, Ti, etai)
 
                 if self.plotBreechNozzleP.get():
                     self.axP.scatter(
@@ -2208,7 +2210,7 @@ class IB(Frame):
                         pi / 1e6,
                         marker="+",
                         s=FONTSIZE**2,
-                        c="limegreen",
+                        c="xkcd:goldenrod",
                     )
 
                 self.ax.set_xlim(left=0, right=xmax)
@@ -2216,7 +2218,7 @@ class IB(Frame):
                 pmax = max(Pas + Pbs + Pss + P0s)
                 self.axP.set(ylim=(0, pmax * 1.05))
                 self.axv.set(ylim=(0, max(vs) * 1.05))
-                self.axF.set(ylim=(0, pmax * gun.chi_k * gun.S * 1.05))
+                self.axF.set(ylim=(0, pmax * gun.S * 1.05))
 
                 tkw = dict(size=4, width=1.5)
                 self.ax.yaxis.tick_right()
@@ -2224,7 +2226,7 @@ class IB(Frame):
                 self.ax.tick_params(axis="y", colors="tab:red", **tkw)
                 self.axv.tick_params(axis="y", colors="tab:blue", **tkw)
                 self.axP.tick_params(axis="y", colors="tab:green", **tkw)
-                self.axF.tick_params(axis="y", colors="limegreen", **tkw)
+                self.axF.tick_params(axis="y", colors="xkcd:goldenrod", **tkw)
                 self.ax.tick_params(axis="x", **tkw)
 
                 if dom == DOMAIN_TIME:
@@ -2257,7 +2259,9 @@ class IB(Frame):
 
         self.tv["columns"] = columnList
         self.tv["show"] = "headings"
-        self.tv.tag_configure(POINT_PEAK, foreground="orange")
+        self.tv.tag_configure(POINT_PEAK, foreground="#2ca02c")
+        self.tv.tag_configure(POINT_PEAK_BREECH, foreground="orange")
+        self.tv.tag_configure(POINT_PEAK_SHOT, foreground="yellow green")
         self.tv.tag_configure(POINT_BURNOUT, foreground="red")
         self.tv.tag_configure(POINT_FRACTURE, foreground="brown")
 
