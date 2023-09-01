@@ -1000,7 +1000,7 @@ class Gun:
 
         return p / factor_s, p / factor_b
 
-    def hugoniot(self, T_e, n=100, t_offset=0, theta_max=0.5):
+    def hugoniot(self, T_e, n=100, t_offset=0, t_to=None):
         """
         Implement the Hugoniot solution after shot exit.
         Inputs:
@@ -1052,12 +1052,16 @@ class Gun:
                 * (1 + (gamma + 1) * Mc / (12 * gamma * Mp))
                 * (1.0 - (1 + t / theta) ** ((1 + gamma) / (1 - gamma)))
             )  # (cumulative) momentum from moment of ejection,
+
             return Q, F, M
 
         data = []
 
         for i in range(n + 1):
-            t = theta * (i) / n * theta_max
+            if t_to is None:
+                t = theta * i / n
+            else:
+                t = i / n * t_to
             Q, F, M = f(t)
             data.append((t + t_offset, Q, F, M))
 
@@ -1068,10 +1072,6 @@ class Gun:
             * (1 + (gamma + 1) * Mc / (12 * gamma * Mp))
         )  # Total ejected momentum to infinite time
 
-        """
-        from tabulate import tabulate
-        print(tabulate(data, headers=("time", "Force", "Momentum")))
-        """
         return data
 
 
@@ -1102,7 +1102,7 @@ if __name__ == "__main__":
         startPressure=30e6,
         lengthGun=3.5,
         chambrage=1.5,
-        dragCoefficient=0.05,
+        dragCoefficient=0.3,
     )
     """
 

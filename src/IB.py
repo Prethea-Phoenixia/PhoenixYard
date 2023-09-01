@@ -648,13 +648,14 @@ class IB(Frame):
         self.ambRhoLb.config(text=self.getString("ambRhoLabel"))
         self.ambGamLb.config(text=self.getString("ambGamLabel"))
         self.ammoLb.config(text=self.getString("ammoLabel"))
+        self.outflowToLb.config(text=self.getString("outflowToLabel"))
 
         self.nozzExpLb.config(text=self.getString("nozzExpLabel"))
         self.nozzEffLb.config(text=self.getString("nozzEffLabel"))
 
-        self.psmaxLb.config(text=self.getString("psmaxLabel"))
-        self.pamaxLb.config(text=self.getString("pamaxLabel"))
-        self.pbmaxLb.config(text=self.getString("pbmaxLabel"))
+        # self.psmaxLb.config(text=self.getString("psmaxLabel"))
+        # self.pamaxLb.config(text=self.getString("pamaxLabel"))
+        # self.pbmaxLb.config(text=self.getString("pbmaxLabel"))
 
         self.useConstraintTip.set(self.getString("useConsText"))
         self.optimizeLFTip.set(self.getString("optLFText"))
@@ -689,6 +690,7 @@ class IB(Frame):
         self.propFrm.config(text=self.getString("propFrmLabel"))
         self.grainFrm.config(text=self.getString("grainFrmLabel"))
         self.envFrm.config(text=self.getString("envFrmLabel"))
+        self.outflowFrm.config(text=self.getString("outflowFrmLabel"))
 
         self.useConstraint.config(text=self.getString("consButton"))
         self.optimizeLF.config(text=self.getString("minTVButton"))
@@ -933,7 +935,7 @@ class IB(Frame):
             unitText="kg/m³",
             # justify="right",
         )
-
+        """
         self.pamaxLb, self.pamax, _, i = self.add12Disp(
             parent=specFrm, rowIndex=i, labelText=self.getString("pamaxLabel")
         )
@@ -943,11 +945,14 @@ class IB(Frame):
         self.psmaxLb, self.psmax, _, i = self.add12Disp(
             parent=specFrm, rowIndex=i, labelText=self.getString("psmaxLabel")
         )
+        """
 
         validationNN = parent.register(validateNN)
         validationPI = parent.register(validatePI)
 
-        outflowFrm = ttk.LabelFrame(rightFrm, text="Outflow")
+        outflowFrm = ttk.LabelFrame(
+            rightFrm, text=self.getString("outflowFrmLabel")
+        )
         outflowFrm.grid(row=1, column=0, sticky="nsew")
         outflowFrm.columnconfigure(0, weight=1)
         self.outflowFrm = outflowFrm
@@ -956,9 +961,10 @@ class IB(Frame):
         self.outflowToLb, self.outflowTo, _, _, i = self.add3Input(
             parent=outflowFrm,
             rowIndex=i,
-            labelText="To",
+            labelText=self.getString("outflowToLabel"),
             validation=validationNN,
             unitText="ms  ",
+            default="1.0",
         )
 
         envFrm = ttk.LabelFrame(rightFrm, text=self.getString("envFrmLabel"))
@@ -1201,7 +1207,11 @@ class IB(Frame):
                 }
             )
         else:
-            self.kwargs.update({"ambientP": 0, "ambientRho": 0})
+            self.kwargs.update(
+                {"ambientP": 0, "ambientRho": 0, "ambientGamma": 1}
+            )
+
+        self.kwargs.update({"outflowTo": float(self.outflowTo.get()) * 1e-3})
 
         self.process = None
 
@@ -1351,6 +1361,7 @@ class IB(Frame):
                     Te,
                     n=kwargs["step"],
                     t_offset=te,  # tol=kwargs["tol"],
+                    t_to=kwargs["outflowTo"],
                 )
             elif gunType == RECOILESS:
                 self.outflowData = None
@@ -1360,6 +1371,7 @@ class IB(Frame):
             self.te.set(round(eta_t * 100, 1))
             self.be.set(round(eta_b * 100, 1))
 
+            """
             _, tp, lp, _, vp, pp, Tp, etap = self.readTable(POINT_PEAK)
 
             self.pamax.set(toSI(pp, unit="Pa"))
@@ -1383,6 +1395,7 @@ class IB(Frame):
                 ps, _, _, _ = self.gun.toPsP0PxVx(lp, vp, pp, Tp, etap)
 
             self.psmax.set(toSI(ps, unit="Pa"))
+            """
 
             self.lx.set(toSI(kwargs["lengthGun"] / kwargs["caliber"]))
             self.tlx.set(
