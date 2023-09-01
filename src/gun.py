@@ -2,8 +2,8 @@ from math import pi, log, inf, exp
 from num import gss, RKF78, cubic, intg, bisect, secant
 from prop import GrainComp, Propellant
 
-DOMAIN_TIME = "Time"
-DOMAIN_LENG = "Length"
+DOMAIN_TIME = "DOMAIN_TIME"
+DOMAIN_LENG = "DOMAIN_LENG"
 
 POINT_START = "SHOT START"
 POINT_PEAK = "PEAK AVG P"
@@ -13,9 +13,9 @@ POINT_FRACTURE = "FRACTURE"
 POINT_BURNOUT = "BURNOUT"
 POINT_EXIT = "SHOT EXIT"
 
-SOL_LAGRANGE = "Lagrange"
-SOL_PIDDUCK = "Pidduk"
-SOL_MAMONTOV = "Mamontov"
+SOL_LAGRANGE = "SOL_LAGRANGE"
+SOL_PIDDUCK = "SOL_PIDDUCK"
+SOL_MAMONTOV = "SOL_MAMONTOV"
 
 
 def pidduck(wpm, k, tol):
@@ -1000,80 +1000,6 @@ class Gun:
 
         return p / factor_s, p / factor_b
 
-    def hugoniot(self, T_e, n=100, t_offset=0, t_to=None):
-        """
-        Implement the Hugoniot solution after shot exit.
-        Inputs:
-            Te  : Avg. Temperature at shot exit
-
-        Note significantly this doesn't take into account chambrage
-        effects at all
-        """
-        gamma = self.theta + 1  # gamma, adiabatic index
-        eta = self.alpha  # covolume
-        A = self.S
-
-        Mc = self.omega
-        Mp = self.m * self.phi_1
-
-        Vt = self.V_0 + self.l_g * self.S
-
-        RT0 = self.f / self.T_v * T_e
-
-        theta = (Vt / (6 * A * (gamma - 1))) * (
-            (0.5 * (gamma + 1)) ** ((gamma + 1) / (gamma - 1))
-            / (gamma * RT0 * (1 + (gamma - 1) * Mc / (6 * gamma * Mp)))
-        ) ** 0.5
-
-        def f(t):
-            Q = (
-                (12 * Mc * A / Vt)
-                * (1 + Mc / (6 * gamma * Mp))
-                * (1 + t / theta) ** ((1 + gamma) / (1 - gamma))
-                * (
-                    (gamma * RT0)
-                    * (1 + (gamma - 1) * Mc / (6 * gamma * Mp))
-                    * (2 / (gamma + 1)) ** ((gamma + 1) / (gamma - 1))
-                )
-                ** 0.5
-            )  # mass flow rate, kg/s
-
-            F = (
-                (12 * A * RT0 * Mc * gamma / Vt)
-                * (1 + Mc / (6 * Mp))
-                * (2 / (gamma + 1)) ** (gamma / (gamma - 1))
-                * (1 + t / theta) ** (2 * gamma / (1 - gamma))
-            )  # force exerted on the propellant, N
-
-            M = (
-                Mc
-                * RT0**0.5
-                * (2 / (gamma + 1)) ** 1.5
-                * (1 + (gamma + 1) * Mc / (12 * gamma * Mp))
-                * (1.0 - (1 + t / theta) ** ((1 + gamma) / (1 - gamma)))
-            )  # (cumulative) momentum from moment of ejection,
-
-            return Q, F, M
-
-        data = []
-
-        for i in range(n + 1):
-            if t_to is None:
-                t = theta * i / n
-            else:
-                t = i / n * t_to
-            Q, F, M = f(t)
-            data.append((t + t_offset, Q, F, M))
-
-        I = (
-            Mc
-            * (gamma * RT0) ** 0.5
-            * (2 / (gamma + 1)) ** 1.5
-            * (1 + (gamma + 1) * Mc / (12 * gamma * Mp))
-        )  # Total ejected momentum to infinite time
-
-        return data
-
 
 if __name__ == "__main__":
     """standard 7 hole cylinder has d_0=e_1, hole dia = 0.5 * arc width
@@ -1134,24 +1060,6 @@ if __name__ == "__main__":
     Le, Ve, Pe, Te = exitLine[2], exitLine[4], exitLine[5], exitLine[6]
     Ps, Pb = test.toPsPb(Le, Pe)
 
-    test.hugoniot(Te)
-    """
-    data = test.corner(Ve, Pb, tol=1e-6)
-
-    from tabulate import tabulate
-
-    print(
-        tabulate(
-            data,
-            headers=(
-                "time",
-                "breech",
-                "muzzle",
-                "outflow",
-            ),
-        )
-    )
-    """
     """
     # density:  lbs/in^3 -> kg/m^3, multiply by 27680
     # covolume: in^3/lbs -> m^3/kg, divide by 27680

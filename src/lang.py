@@ -27,7 +27,7 @@ ENGLISH = {
     "errFrmLabel": "Exceptions",
     "parFrmLabel": "Parameters",
     "specFrmLabel": "Design",
-    "outflowFrmLabel": "Outflow",
+    "solFrmLabel": "Calculation",
     "opFrmLabel": "Operations",
     "consFrmLabel": "Constraints",
     "consButton": "Constrain Design",
@@ -50,7 +50,7 @@ ENGLISH = {
     "ltdLabel": "Len. / Dia.",
     "athLabel": "Arc Width",
     "pdtalLabel": "P.D. / A.W.",
-    "envFrmLabel": "Atmos. Cond.",
+    "envFrmLabel": "Environment",
     "ambPresLabel": "Pres.",
     "ambRhoLabel": "Dens.",
     "ambGamLabel": "Adb. I. ",
@@ -479,7 +479,7 @@ ENGLISH = {
     "figPsi": "Volume Burnup",
     "figRecoil": "Recoil\nMN",
     "solLabel": "Solution",
-    "atmosLabel": "Account for Drag",
+    "atmosLabel": "Include Aerodynamic Drag",
     "excTitle": "Exception",
     "noDataMsg": "Invalid Design or Data",
     "cancelMsg": "File Operation Was Canceled",
@@ -490,7 +490,6 @@ ENGLISH = {
     "pamaxLabel": "Maximum Average Pressure",
     "pbmaxLabel": "Maximum Breech Pressure",
     "psmaxLabel": "Maximum Shot Pressure",
-    "outflowToLabel": "To",
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -522,7 +521,7 @@ CHINESE = {
     "parFrmLabel": "内弹道参量",
     "specFrmLabel": "系统性能指标",
     "opFrmLabel": "程序运算控制",
-    "outflowFrmLabel": "气体流出阶段",
+    "solFrmLabel": "计算设置",
     "consFrmLabel": "反算设置",
     "consButton": "反算弧厚身管长",
     "minTVButton": "求最小膛容解",
@@ -839,6 +838,5 @@ CHINESE = {
     "pamaxLabel": "最大平均压强",
     "pbmaxLabel": "最大膛底压强",
     "psmaxLabel": "最大弹底压强",
-    "outflowToLabel": "计算至",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}

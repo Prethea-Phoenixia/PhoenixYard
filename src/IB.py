@@ -64,8 +64,19 @@ import multiprocessing
 from matplotlib import font_manager
 
 
-RECOILESS = "Recoiless Gun"
-CONVENTIONAL = "Conventional Gun"
+RECOILESS = "RECOILESS"
+CONVENTIONAL = "CONVENTIONAL"
+
+TYPES = {CONVENTIONAL: CONVENTIONAL, RECOILESS: RECOILESS}
+SOLUTIONS = {
+    SOL_LAGRANGE: SOL_LAGRANGE,
+    SOL_PIDDUCK: SOL_PIDDUCK,
+    SOL_MAMONTOV: SOL_MAMONTOV,
+}
+DOMAINS = {
+    DOMAIN_TIME: DOMAIN_TIME,
+    DOMAIN_LENG: DOMAIN_LENG,
+}
 
 
 FONTNAME = "Sarasa Fixed SC"
@@ -115,9 +126,6 @@ class IB(Frame):
         self.queue = Queue()
         self.process = None
 
-        # self.tableData = None
-        self.outflowData = None
-
         self.pos = -1
         self.dpi = dpi
         self.parent = parent
@@ -157,8 +165,6 @@ class IB(Frame):
 
         self.DEBUG = IntVar(value=0)
 
-        self.soln = IntVar(value=0)
-
         self.useCv = IntVar(value=0)
 
         fileMenu.add_command(
@@ -196,35 +202,6 @@ class IB(Frame):
             underline=0,
         )
 
-        solMenu.add_radiobutton(
-            label=self.getString("SOL_LAGRANGE"),
-            variable=self.soln,
-            value=0,
-            underline=0,
-        )
-        solMenu.add_radiobutton(
-            label=self.getString("SOL_PIDDUCK"),
-            variable=self.soln,
-            value=1,
-            underline=0,
-        )
-        solMenu.add_radiobutton(
-            label=self.getString("SOL_MAMONTOV"),
-            variable=self.soln,
-            value=2,
-            underline=0,
-        )
-        solMenu.add_separator()
-        """
-        solMenu.add_checkbutton(
-            label=self.getString("atmosLabel"),
-            variable=self.inAtmos,
-            onvalue=1,
-            offvalue=0,
-            underline=0,
-        )
-        solMenu.add_separator()
-        """
         solMenu.add_checkbutton(
             label=self.getString("useLFLabel"), variable=self.useCv, onvalue=0
         )
@@ -250,6 +227,9 @@ class IB(Frame):
         )  # dict of composition.name (string) -> composition (object)
         self.geometries = {self.getString(k): v for k, v in GEOMETRIES.items()}
         # dict of localized name (string) -> geometry (object)
+        self.domains = {self.getString(k): v for k, v in DOMAINS.items()}
+        self.types = {self.getString(k): v for k, v in TYPES.items()}
+        self.solutions = {self.getString(k): k for k, v in SOLUTIONS.items()}
 
         self.prop = None
         self.gun = None
@@ -477,7 +457,7 @@ class IB(Frame):
 
             self.typeOptn.set(
                 self.typeOptn["values"][
-                    (CONVENTIONAL, RECOILESS).index(fileKwargs["TYPE"])
+                    list(TYPES.keys()).index(fileKwargs["TYPE"])
                 ]
             )
             self.calmm.set(fileKwargs["CALIBER"])
@@ -615,16 +595,8 @@ class IB(Frame):
         self.themeMenu.entryconfig(1, label=self.getString("lightLabel"))
         self.debugMenu.entryconfig(0, label=self.getString("enableLabel"))
 
-        self.solMenu.entryconfig(0, label=self.getString("SOL_LAGRANGE"))
-        self.solMenu.entryconfig(1, label=self.getString("SOL_PIDDUCK"))
-        self.solMenu.entryconfig(2, label=self.getString("SOL_MAMONTOV"))
-        """
-        # separator @ 3
-        self.solMenu.entryconfig(4, label=self.getString("atmosLabel"))
-        """
-        # seaparator @ 3
-        self.solMenu.entryconfig(4, label=self.getString("useCVLabel"))
-        self.solMenu.entryconfig(5, label=self.getString("useLFLabel"))
+        self.solMenu.entryconfig(0, label=self.getString("useCVLabel"))
+        self.solMenu.entryconfig(1, label=self.getString("useLFLabel"))
 
         self.calLb.config(text=self.getString("calLabel"))
         self.tblLb.config(text=self.getString("tblLabel"))
@@ -648,14 +620,9 @@ class IB(Frame):
         self.ambRhoLb.config(text=self.getString("ambRhoLabel"))
         self.ambGamLb.config(text=self.getString("ambGamLabel"))
         self.ammoLb.config(text=self.getString("ammoLabel"))
-        self.outflowToLb.config(text=self.getString("outflowToLabel"))
 
         self.nozzExpLb.config(text=self.getString("nozzExpLabel"))
         self.nozzEffLb.config(text=self.getString("nozzEffLabel"))
-
-        # self.psmaxLb.config(text=self.getString("psmaxLabel"))
-        # self.pamaxLb.config(text=self.getString("pamaxLabel"))
-        # self.pbmaxLb.config(text=self.getString("pbmaxLabel"))
 
         self.useConstraintTip.set(self.getString("useConsText"))
         self.optimizeLFTip.set(self.getString("optLFText"))
@@ -690,7 +657,7 @@ class IB(Frame):
         self.propFrm.config(text=self.getString("propFrmLabel"))
         self.grainFrm.config(text=self.getString("grainFrmLabel"))
         self.envFrm.config(text=self.getString("envFrmLabel"))
-        self.outflowFrm.config(text=self.getString("outflowFrmLabel"))
+        self.solFrm.config(text=self.getString("solFrmLabel"))
 
         self.useConstraint.config(text=self.getString("consButton"))
         self.optimizeLF.config(text=self.getString("minTVButton"))
@@ -708,7 +675,6 @@ class IB(Frame):
         self.plotNozzleVCheck.config(text=self.getString("plotNozzleV"))
         self.plotBurnupCheck.config(text=self.getString("plotBurnup"))
         self.plotEtaCheck.config(text=self.getString("plotEta"))
-        self.plotOutflowCheck.config(text=self.getString("plotOutflow"))
 
         self.plotRecoilCheck.config(text=self.getString("plotRecoil"))
 
@@ -718,21 +684,13 @@ class IB(Frame):
         self.calButton.config(text=self.getString("calcLabel"))
 
         gunTypeIndex = self.typeOptn["values"].index(self.gunType.get())
-        self.typeOptn.config(
-            values=(
-                self.getString("CONVENTIONAL"),
-                self.getString("RECOILESS"),
-            )
-        )
+        self.types = {self.getString(k): v for k, v in TYPES.items()}
+        self.typeOptn.config(values=tuple(self.types.keys()))
         self.typeOptn.current(gunTypeIndex)
 
         domainIndex = self.dropOptn["values"].index(self.dropOptn.get())
-        self.dropOptn.config(
-            values=(
-                self.getString("DOMAIN_TIME"),
-                self.getString("DOMAIN_LENG"),
-            )
-        )
+        self.domains = {self.getString(k): v for k, v in DOMAINS.items()}
+        self.dropOptn.config(values=tuple(self.domains.keys()))
         self.dropOptn.current(domainIndex)
 
         geomIndex = self.dropGeom["values"].index(self.dropGeom.get())
@@ -740,6 +698,11 @@ class IB(Frame):
         # mapping of the localized string to the object.
         self.dropGeom.config(values=tuple(self.geometries.keys()))
         self.dropGeom.current(geomIndex)
+
+        solIndex = self.dropSoln["values"].index(self.dropSoln.get())
+        self.solutions = {self.getString(k): v for k, v in SOLUTIONS.items()}
+        self.dropSoln.config(values=tuple(self.solutions.keys()))
+        self.dropSoln.current(solIndex)
 
         self.updateGeom()
         self.updateSpec()
@@ -838,21 +801,13 @@ class IB(Frame):
         )
         self.plotEtaCheck.grid(row=j, column=7, sticky="nsew")
 
-        self.plotOutflow = IntVar(value=0)
-        self.plotOutflowCheck = ttk.Checkbutton(
-            pltOptnFrm,
-            text=self.getString("plotOutflow"),
-            variable=self.plotOutflow,
-        )
-        self.plotOutflowCheck.grid(row=j, column=8, sticky="nsew")
-
-        self.plotRecoil = IntVar(value=0)
+        self.plotRecoil = IntVar(value=1)
         self.plotRecoilCheck = ttk.Checkbutton(
             pltOptnFrm,
             text=self.getString("plotRecoil"),
             variable=self.plotRecoil,
         )
-        self.plotRecoilCheck.grid(row=j, column=9, sticky="nsew")
+        self.plotRecoilCheck.grid(row=j, column=8, sticky="nsew")
 
         self.plotAvgP.trace_add("write", self.updateFigPlot)
         self.plotBaseP.trace_add("write", self.updateFigPlot)
@@ -862,7 +817,6 @@ class IB(Frame):
         self.plotNozzleV.trace_add("write", self.updateFigPlot)
         self.plotBurnup.trace_add("write", self.updateFigPlot)
         self.plotVel.trace_add("write", self.updateFigPlot)
-        self.plotOutflow.trace_add("write", self.updateFigPlot)
         self.plotRecoil.trace_add("write", self.updateFigPlot)
 
     def addLeftFrm(self, parent):
@@ -933,39 +887,28 @@ class IB(Frame):
             rowIndex=i,
             labelText=self.getString("ldLabel"),
             unitText="kg/m³",
-            # justify="right",
         )
-        """
-        self.pamaxLb, self.pamax, _, i = self.add12Disp(
-            parent=specFrm, rowIndex=i, labelText=self.getString("pamaxLabel")
-        )
-        self.pbmaxLb, self.pbmax, _, i = self.add12Disp(
-            parent=specFrm, rowIndex=i, labelText=self.getString("pbmaxLabel")
-        )
-        self.psmaxLb, self.psmax, _, i = self.add12Disp(
-            parent=specFrm, rowIndex=i, labelText=self.getString("psmaxLabel")
-        )
-        """
 
         validationNN = parent.register(validateNN)
         validationPI = parent.register(validatePI)
 
-        outflowFrm = ttk.LabelFrame(
-            rightFrm, text=self.getString("outflowFrmLabel")
-        )
-        outflowFrm.grid(row=1, column=0, sticky="nsew")
-        outflowFrm.columnconfigure(0, weight=1)
-        self.outflowFrm = outflowFrm
+        solFrm = ttk.LabelFrame(rightFrm, text=self.getString("solFrmLabel"))
+        solFrm.grid(row=1, column=0, sticky="nsew")
+        solFrm.columnconfigure(0, weight=1)
+        self.solFrm = solFrm
 
-        i = 0
-        self.outflowToLb, self.outflowTo, _, _, i = self.add3Input(
-            parent=outflowFrm,
-            rowIndex=i,
-            labelText=self.getString("outflowToLabel"),
-            validation=validationNN,
-            unitText="ms  ",
-            default="1.0",
+        self.dropSoln = ttk.Combobox(
+            solFrm,
+            values=tuple(self.solutions.keys()),
+            state="readonly",
+            justify="center",
         )
+        self.dropSoln.option_add("*TCombobox*Listbox.Justify", "center")
+        self.dropSoln.current(0)
+        self.dropSoln.grid(
+            row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
+        )
+        # self.dropOptn.configure(width=0)
 
         envFrm = ttk.LabelFrame(rightFrm, text=self.getString("envFrmLabel"))
         envFrm.grid(row=2, column=0, sticky="nsew")
@@ -1108,10 +1051,7 @@ class IB(Frame):
 
         self.dropOptn = ttk.Combobox(
             sampleFrm,
-            values=(
-                self.getString("DOMAIN_TIME"),
-                self.getString("DOMAIN_LENG"),
-            ),
+            values=tuple(self.domains.keys()),
             state="readonly",
             justify="center",
         )
@@ -1176,26 +1116,15 @@ class IB(Frame):
         debug = self.DEBUG.get() == 1
         atmosphere = self.inAtmos.get() == 1
 
-        invGunTypeLookup = {
-            self.getString("CONVENTIONAL"): CONVENTIONAL,
-            self.getString("RECOILESS"): RECOILESS,
-        }
-        gunType = invGunTypeLookup[self.typeOptn.get()]
-
-        invDomainLookup = {
-            self.getString("DOMAIN_TIME"): DOMAIN_TIME,
-            self.getString("DOMAIN_LENG"): DOMAIN_LENG,
-        }
-
-        sols = (SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV)
+        gunType = self.types[self.typeOptn.get()]
 
         self.kwargs = {
             "opt": optimize,
             "con": constrain,
             "deb": debug,
             "typ": gunType,
-            "dom": invDomainLookup[self.dropOptn.get()],
-            "sol": sols[self.soln.get()],
+            "dom": self.domains[self.dropOptn.get()],
+            "sol": self.solutions[self.dropSoln.get()],
         }
 
         if atmosphere:
@@ -1210,8 +1139,6 @@ class IB(Frame):
             self.kwargs.update(
                 {"ambientP": 0, "ambientRho": 0, "ambientGamma": 1}
             )
-
-        self.kwargs.update({"outflowTo": float(self.outflowTo.get()) * 1e-3})
 
         self.process = None
 
@@ -1354,17 +1281,6 @@ class IB(Frame):
             )
 
             _, te, lg, _, vg, pe, Te, _ = self.readTable(POINT_EXIT)
-
-            if gunType == CONVENTIONAL:
-                _, pb = self.gun.toPsPb(lg, pe)
-                self.outflowData = self.gun.hugoniot(
-                    Te,
-                    n=kwargs["step"],
-                    t_offset=te,  # tol=kwargs["tol"],
-                    t_to=kwargs["outflowTo"],
-                )
-            elif gunType == RECOILESS:
-                self.outflowData = None
 
             eta_t, eta_b = self.gun.getEff(vg)
 
@@ -1978,7 +1894,7 @@ class IB(Frame):
 
                     elif gunType == RECOILESS:
                         Ps, P0, Pb, vx = gun.toPsP0PxVx(l, v, p, T, eta)
-                        Fr = p * gun.S - gun.C_f * gun.S_j * p
+                        Fr = p * gun.S * (1 - gun.C_f * gun.S_j_bar)
 
                     Pss.append(Ps / 1e6)
                     Pbs.append(Pb / 1e6)
@@ -2025,7 +1941,7 @@ class IB(Frame):
 
                     elif gunType == RECOILESS:
                         Ps, P0, Pb, vx = gun.toPsP0PxVx(l, v, p, T, eta)
-                        Fr = p * gun.S - gun.C_f * gun.S_j * p
+                        Fr = p * gun.S * (1 - gun.C_f * gun.S_j_bar)
 
                     Pss.append(Ps / 1e6)
                     Pbs.append(Pb / 1e6)
@@ -2176,44 +2092,6 @@ class IB(Frame):
                     labelLines(lines, align=True, xvals=xvals, outline_width=4)
                     linesLabeled.append(lines)
 
-                xmax = xs[-1]
-
-                Fo = None
-
-                if (
-                    self.outflowData is not None
-                    and dom == DOMAIN_TIME
-                    and self.plotOutflow.get()
-                ):
-                    xo = []
-                    Fo = []
-
-                    Cf = Recoiless.getCf(gun.theta + 1, 1, tol)
-                    # outflow force is multiplied by thrust factor
-
-                    for t, Q, F, M in self.outflowData:
-                        xo.append(t * 1e3)
-                        Fo.append(F * Cf / 1e6)
-
-                    xmax = xo[-1]
-
-                    if self.plotRecoil.get():
-                        (l,) = self.axF.plot(
-                            xo,
-                            Fo,
-                            c="tab:green",
-                            label=self.getString("figRecoil"),
-                            linestyle="dotted",
-                        )
-                        labelLine(
-                            l,
-                            x=0.5 * (xs[-1] + xmax),
-                            align=True,
-                            outline_width=4,
-                        )
-
-                    self.ax.axvline(x=xs[-1], color="grey", ls=":")
-
                 _, ti, li, _, vi, pi, Ti, etai = self.readTable(POINT_PEAK_SHOT)
 
                 if gunType == CONVENTIONAL:
@@ -2248,12 +2126,16 @@ class IB(Frame):
                         c="xkcd:goldenrod",
                     )
 
-                self.ax.set_xlim(left=0, right=xmax)
+                self.ax.set_xlim(left=0, right=xs[-1])
                 self.ax.set_ylim(bottom=0, top=1.05)
                 pmax = max(Pas + Pbs + Pss + P0s)
                 self.axP.set(ylim=(0, pmax * 1.05))
                 self.axv.set(ylim=(0, max(vs) * 1.05))
-                self.axF.set(ylim=(0, pmax * gun.S * 1.05))
+
+                if any(v < 0 for v in Frs):
+                    self.axF.set(ylim=(min(Frs) * 1.05, 0))
+                else:
+                    self.axF.set(ylim=(0, pmax * gun.S * 1.05))
 
                 tkw = dict(size=4, width=1.5)
                 self.ax.yaxis.tick_right()

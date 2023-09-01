@@ -1,0 +1,23 @@
+             1 kg 50x432.9mm L70 CONVENTIONAL
+LAST MODIFIED                2023-09-02 01:07
+COMMENT BEG
+COMMENT END
+DESIGN BEG
+SIGNIFICANT FIGURE                     4     
+TYPE                        CONVENTIONAL     
+CALIBER                             50.0 mm  
+TUBE LENGTH                       3500.0 mm  
+SHOT MASS                            1.0 kg  
+CHAMBER VOLUME                     1.275 L   
+CHAMBRAGE                            1.5     
+ENGRAVING PRESSURE                  10.0 MPa 
+NOZZLE EFFICIENCY                   92.0 %   
+NOZZLE EXPANSION R.                  4.0     
+CHARGE MASS                          1.0 kg  
+PROPELLANT                            M1     
+GEOMETRY                          SPHERE     
+2xWEB                                1.0 mm  
+1/ALPHA                              1.0     
+1/BETA                               2.5     
+DRAG COEFFICIENT                     5.0 %   
+DESIGN END
