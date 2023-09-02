@@ -2655,6 +2655,7 @@ class IB(Frame):
                 textvariable=self.textVar,
                 values=tuple(self.locStrObjDict.keys()),
                 justify="center",
+                state="readonly",
             )
             self.widget.option_add("*TCombobox*Listbox.Justify", "center")
             self.widget.current(0)
