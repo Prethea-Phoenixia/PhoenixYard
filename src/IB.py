@@ -138,21 +138,21 @@ class IB(Frame):
 
         fileMenu = Menu(menubar)
         menubar.add_cascade(
-            label=self.getString("fileLabel"), menu=fileMenu, underline=0
+            label=self.getLocStr("fileLabel"), menu=fileMenu, underline=0
         )
         themeMenu = Menu(menubar)
         menubar.add_cascade(
-            label=self.getString("themeLabel"), menu=themeMenu, underline=0
+            label=self.getLocStr("themeLabel"), menu=themeMenu, underline=0
         )
         debugMenu = Menu(menubar)
         menubar.add_cascade(
-            label=self.getString("debugLabel"), menu=debugMenu, underline=0
+            label=self.getLocStr("debugLabel"), menu=debugMenu, underline=0
         )
         langMenu = Menu(menubar)
         menubar.add_cascade(label="Lang 语言", menu=langMenu, underline=0)
         solMenu = Menu(menubar)
         menubar.add_cascade(
-            label=self.getString("solLabel"), menu=solMenu, underline=0
+            label=self.getLocStr("solLabel"), menu=solMenu, underline=0
         )
 
         self.fileMenu = fileMenu
@@ -168,26 +168,26 @@ class IB(Frame):
         self.useCv = IntVar(value=0)
 
         fileMenu.add_command(
-            label=self.getString("saveLabel"), command=self.save, underline=0
+            label=self.getLocStr("saveLabel"), command=self.save, underline=0
         )
         fileMenu.add_command(
-            label=self.getString("loadLabel"), command=self.load, underline=0
+            label=self.getLocStr("loadLabel"), command=self.load, underline=0
         )
         fileMenu.add_command(
-            label=self.getString("exportLabel"),
+            label=self.getLocStr("exportLabel"),
             command=self.export,
             underline=0,
         )
 
         themeMenu.add_radiobutton(
-            label=self.getString("darkLabel"),
+            label=self.getLocStr("darkLabel"),
             variable=self.themeRadio,
             value=0,
             command=self.useTheme,
             underline=0,
         )
         themeMenu.add_radiobutton(
-            label=self.getString("lightLabel"),
+            label=self.getLocStr("lightLabel"),
             variable=self.themeRadio,
             value=1,
             command=self.useTheme,
@@ -195,7 +195,7 @@ class IB(Frame):
         )
 
         debugMenu.add_checkbutton(
-            label=self.getString("enableLabel"),
+            label=self.getLocStr("enableLabel"),
             variable=self.DEBUG,
             onvalue=1,
             offvalue=0,
@@ -203,10 +203,10 @@ class IB(Frame):
         )
 
         solMenu.add_checkbutton(
-            label=self.getString("useLFLabel"), variable=self.useCv, onvalue=0
+            label=self.getLocStr("useLFLabel"), variable=self.useCv, onvalue=0
         )
         solMenu.add_checkbutton(
-            label=self.getString("useCVLabel"), variable=self.useCv, onvalue=1
+            label=self.getLocStr("useCVLabel"), variable=self.useCv, onvalue=1
         )
 
         self.useCv.trace_add("write", self.cvlfCallback)
@@ -222,20 +222,13 @@ class IB(Frame):
 
         parent.config(menu=menubar)
 
-        self.compositions = GrainComp.readFile(
+        self.COMPOSITIONS = GrainComp.readFile(
             resolvepath("data/propellants.csv")
         )  # dict of composition.name (string) -> composition (object)
-        self.geometries = {self.getString(k): v for k, v in GEOMETRIES.items()}
-        # dict of localized name (string) -> geometry (object)
-        self.domains = {self.getString(k): v for k, v in DOMAINS.items()}
-        self.types = {self.getString(k): v for k, v in TYPES.items()}
-        self.solutions = {self.getString(k): k for k, v in SOLUTIONS.items()}
 
         self.prop = None
         self.gun = None
         self.errorLst = []
-
-        self.propOptions = tuple(self.compositions.keys())
 
         parent.columnconfigure(0, weight=1)
         parent.rowconfigure(1, weight=1)
@@ -296,19 +289,19 @@ class IB(Frame):
         gun = self.gun
         if gun is None:
             messagebox.showinfo(
-                self.getString("excTitle"), self.getString("noDataMsg")
+                self.getLocStr("excTitle"), self.getLocStr("noDataMsg")
             )
             return
 
         fileName = filedialog.asksaveasfilename(
-            title=self.getString("saveLabel"),
+            title=self.getLocStr("saveLabel"),
             filetypes=(("Gun Design File", "*.gun"),),
             defaultextension=".gun",
             initialfile=self.getDescriptive(),
         )
         if fileName == "":
             messagebox.showinfo(
-                self.getString("excTitle"), self.getString("cancelMsg")
+                self.getLocStr("excTitle"), self.getLocStr("cancelMsg")
             )
             return
 
@@ -416,16 +409,16 @@ class IB(Frame):
                 file.write("DESIGN END\n")
 
             messagebox.showinfo(
-                self.getString("sucTitle"),
-                self.getString("savedLocMsg").format(fileName),
+                self.getLocStr("sucTitle"),
+                self.getLocStr("savedLocMsg").format(fileName),
             )
 
         except Exception as e:
-            messagebox.showinfo(self.getString("excTitle"), str(e))
+            messagebox.showinfo(self.getLocStr("excTitle"), str(e))
 
     def load(self):
         fileName = filedialog.askopenfilename(
-            title=self.getString("loadLabel"),
+            title=self.getLocStr("loadLabel"),
             filetypes=(("Gun Design File", "*.gun"),),
             defaultextension=".gun",
             initialfile=self.getDescriptive(),
@@ -455,11 +448,7 @@ class IB(Frame):
                 if line[:10] == "DESIGN BEG":
                     isDesign = True
 
-            self.typeOptn.set(
-                self.typeOptn["values"][
-                    list(TYPES.keys()).index(fileKwargs["TYPE"])
-                ]
-            )
+            self.typeOptn.setByStr(fileKwargs["TYPE"])
             self.calmm.set(fileKwargs["CALIBER"])
             self.tblmm.set(fileKwargs["TUBE LENGTH"])
 
@@ -472,13 +461,8 @@ class IB(Frame):
             self.nozzEff.set(fileKwargs["NOZZLE EFFICIENCY"])
             self.nozzExp.set(fileKwargs["NOZZLE EXPANSION R."])
 
-            self.dropGeom.set(
-                self.dropGeom["values"][
-                    list(GEOMETRIES.keys()).index(fileKwargs["GEOMETRY"])
-                ]
-            )  # since self.geomtries maps the localized name to object, while
-            # we are saving the non-localized .name.
-            self.dropProp.set(fileKwargs["PROPELLANT"])
+            self.dropGeom.setByStr(fileKwargs["GEOMETRY"])
+            self.dropProp.setByStr(fileKwargs["PROPELLANT"])
             self.arcmm.set(fileKwargs["2xWEB"])
             self.grdR.set(fileKwargs["1/ALPHA"])
             self.grlR.set(fileKwargs["1/BETA"])
@@ -487,18 +471,18 @@ class IB(Frame):
             self.accExp.set(fileKwargs["SIGNIFICANT FIGURE"])
 
         except Exception as e:
-            messagebox.showinfo(self.getString("excTitle"), str(e))
+            messagebox.showinfo(self.getLocStr("excTitle"), str(e))
 
     def export(self):
         gun = self.gun
         if gun is None:
             messagebox.showinfo(
-                self.getString("excTitle"), self.getString("noDataMsg")
+                self.getLocStr("excTitle"), self.getLocStr("noDataMsg")
             )
             return
 
         fileName = filedialog.asksaveasfilename(
-            title=self.getString("exportLabel"),
+            title=self.getLocStr("exportLabel"),
             filetypes=(("Comma Separated File", "*.csv"),),
             defaultextension=".csv",
             initialfile=self.getDescriptive(),
@@ -506,7 +490,7 @@ class IB(Frame):
 
         if fileName == "":
             messagebox.showinfo(
-                self.getString("excTitle"), self.getString("cancelMsg")
+                self.getLocStr("excTitle"), self.getLocStr("cancelMsg")
             )
             return
         try:
@@ -559,12 +543,12 @@ class IB(Frame):
                         )
 
             messagebox.showinfo(
-                self.getString("sucTitle"),
-                self.getString("savedLocMsg").format(fileName),
+                self.getLocStr("sucTitle"),
+                self.getLocStr("savedLocMsg").format(fileName),
             )
 
         except Exception as e:
-            messagebox.showinfo(self.getString("excTitle"), str(e))
+            messagebox.showinfo(self.getLocStr("excTitle"), str(e))
 
     def ambCallback(self, *args):
         self.ambPw.config(state="normal" if self.inAtmos.get() else "disabled")
@@ -582,128 +566,111 @@ class IB(Frame):
         self.cvLw.config(state="normal" if useCv else "disabled")
 
     def changeLang(self):
-        self.menubar.entryconfig(0, label=self.getString("fileLabel"))
-        self.menubar.entryconfig(1, label=self.getString("themeLabel"))
-        self.menubar.entryconfig(2, label=self.getString("debugLabel"))
-        self.menubar.entryconfig(4, label=self.getString("solLabel"))
+        self.menubar.entryconfig(0, label=self.getLocStr("fileLabel"))
+        self.menubar.entryconfig(1, label=self.getLocStr("themeLabel"))
+        self.menubar.entryconfig(2, label=self.getLocStr("debugLabel"))
+        self.menubar.entryconfig(4, label=self.getLocStr("solLabel"))
 
-        self.fileMenu.entryconfig(0, label=self.getString("saveLabel"))
-        self.fileMenu.entryconfig(1, label=self.getString("loadLabel"))
-        self.fileMenu.entryconfig(2, label=self.getString("exportLabel"))
+        self.fileMenu.entryconfig(0, label=self.getLocStr("saveLabel"))
+        self.fileMenu.entryconfig(1, label=self.getLocStr("loadLabel"))
+        self.fileMenu.entryconfig(2, label=self.getLocStr("exportLabel"))
 
-        self.themeMenu.entryconfig(0, label=self.getString("darkLabel"))
-        self.themeMenu.entryconfig(1, label=self.getString("lightLabel"))
-        self.debugMenu.entryconfig(0, label=self.getString("enableLabel"))
+        self.themeMenu.entryconfig(0, label=self.getLocStr("darkLabel"))
+        self.themeMenu.entryconfig(1, label=self.getLocStr("lightLabel"))
+        self.debugMenu.entryconfig(0, label=self.getLocStr("enableLabel"))
 
-        self.solMenu.entryconfig(0, label=self.getString("useCVLabel"))
-        self.solMenu.entryconfig(1, label=self.getString("useLFLabel"))
+        self.solMenu.entryconfig(0, label=self.getLocStr("useCVLabel"))
+        self.solMenu.entryconfig(1, label=self.getLocStr("useLFLabel"))
 
-        self.calLb.config(text=self.getString("calLabel"))
-        self.tblLb.config(text=self.getString("tblLabel"))
-        self.shtLb.config(text=self.getString("shtLabel"))
-        self.chgLb.config(text=self.getString("chgLabel"))
-        self.ldfLb.config(text=self.getString("ldfLabel"))
-        self.clrLb.config(text=self.getString("clrLabel"))
-        self.dgcLb.config(text=self.getString("dgcLabel"))
-        self.stpLb.config(text=self.getString("stpLabel"))
-        self.vTgtLb.config(text=self.getString("vTgtLabel"))
-        self.pTgtLb.config(text=self.getString("pTgtLabel"))
-        self.minWebLb.config(text=self.getString("minWebLabel"))
-        self.lgmaxLb.config(text=self.getString("maxLgLabel"))
-        self.ldLb.config(text=self.getString("ldLabel"))
-        self.lxLb.config(text=self.getString("lxLabel"))
-        self.vaLb.config(text=self.getString("vaLabel"))
-        self.teLb.config(text=self.getString("teffLabel"))
-        self.beLb.config(text=self.getString("beffLabel"))
-        self.cvLLb.config(text=self.getString("cvLabel"))
-        self.ambPLb.config(text=self.getString("ambPresLabel"))
-        self.ambRhoLb.config(text=self.getString("ambRhoLabel"))
-        self.ambGamLb.config(text=self.getString("ambGamLabel"))
-        self.ammoLb.config(text=self.getString("ammoLabel"))
+        self.calLb.config(text=self.getLocStr("calLabel"))
+        self.tblLb.config(text=self.getLocStr("tblLabel"))
+        self.shtLb.config(text=self.getLocStr("shtLabel"))
+        self.chgLb.config(text=self.getLocStr("chgLabel"))
+        self.ldfLb.config(text=self.getLocStr("ldfLabel"))
+        self.clrLb.config(text=self.getLocStr("clrLabel"))
+        self.dgcLb.config(text=self.getLocStr("dgcLabel"))
+        self.stpLb.config(text=self.getLocStr("stpLabel"))
+        self.vTgtLb.config(text=self.getLocStr("vTgtLabel"))
+        self.pTgtLb.config(text=self.getLocStr("pTgtLabel"))
+        self.minWebLb.config(text=self.getLocStr("minWebLabel"))
+        self.lgmaxLb.config(text=self.getLocStr("maxLgLabel"))
+        self.ldLb.config(text=self.getLocStr("ldLabel"))
+        self.lxLb.config(text=self.getLocStr("lxLabel"))
+        self.vaLb.config(text=self.getLocStr("vaLabel"))
+        self.teLb.config(text=self.getLocStr("teffLabel"))
+        self.beLb.config(text=self.getLocStr("beffLabel"))
+        self.cvLLb.config(text=self.getLocStr("cvLabel"))
+        self.ambPLb.config(text=self.getLocStr("ambPresLabel"))
+        self.ambRhoLb.config(text=self.getLocStr("ambRhoLabel"))
+        self.ambGamLb.config(text=self.getLocStr("ambGamLabel"))
+        self.ammoLb.config(text=self.getLocStr("ammoLabel"))
 
-        self.nozzExpLb.config(text=self.getString("nozzExpLabel"))
-        self.nozzEffLb.config(text=self.getString("nozzEffLabel"))
+        self.nozzExpLb.config(text=self.getLocStr("nozzExpLabel"))
+        self.nozzEffLb.config(text=self.getLocStr("nozzEffLabel"))
 
-        self.useConstraintTip.set(self.getString("useConsText"))
-        self.optimizeLFTip.set(self.getString("optLFText"))
-        self.chgTip.set(self.getString("chgText"))
-        self.vinfTip.set(self.getString("vinfText"))
-        self.lxTip.set(self.getString("calLxText"))
-        self.geomPlotTip.set(self.getString("geomPlotText"))
-        self.teffTip.set(self.getString("teffText"))
-        self.beffTip.set(self.getString("beffText"))
-        self.specsTip.set(self.getString("specsText"))
-        self.ldfTip.set(self.getString("ldfText"))
-        self.clrTip.set(self.getString("clrText"))
-        self.dgcTip.set(self.getString("dgcText"))
-        self.stpTip.set(self.getString("stpText"))
-        self.nozzExpTip.set(self.getString("nozzExpText"))
-        self.nozzEffTip.set(self.getString("nozzEffText"))
-        self.tolTip.set(self.getString("tolText"))
-        self.sampleTip.set(self.getString("sampText"))
-        self.calcButtonTip.set(self.getString("calcButtonText"))
-        self.pTgtTip.set(self.getString("pTgtText"))
-        self.plotTip.set(self.getString("plotText"))
+        self.useConstraintTip.set(self.getLocStr("useConsText"))
+        self.optimizeLFTip.set(self.getLocStr("optLFText"))
+        self.chgTip.set(self.getLocStr("chgText"))
+        self.vinfTip.set(self.getLocStr("vinfText"))
+        self.lxTip.set(self.getLocStr("calLxText"))
+        self.geomPlotTip.set(self.getLocStr("geomPlotText"))
+        self.teffTip.set(self.getLocStr("teffText"))
+        self.beffTip.set(self.getLocStr("beffText"))
+        self.specsTip.set(self.getLocStr("specsText"))
+        self.ldfTip.set(self.getLocStr("ldfText"))
+        self.clrTip.set(self.getLocStr("clrText"))
+        self.dgcTip.set(self.getLocStr("dgcText"))
+        self.stpTip.set(self.getLocStr("stpText"))
+        self.nozzExpTip.set(self.getLocStr("nozzExpText"))
+        self.nozzEffTip.set(self.getLocStr("nozzEffText"))
+        self.tolTip.set(self.getLocStr("tolText"))
+        self.sampleTip.set(self.getLocStr("sampText"))
+        self.calcButtonTip.set(self.getLocStr("calcButtonText"))
+        self.pTgtTip.set(self.getLocStr("pTgtText"))
+        self.plotTip.set(self.getLocStr("plotText"))
 
-        self.tblFrm.config(text=self.getString("tblFrmLabel"))
-        self.plotFrm.config(text=self.getString("plotFrmLabel"))
-        self.errorFrm.config(text=self.getString("errFrmLabel"))
-        self.parFrm.config(text=self.getString("parFrmLabel"))
-        self.specFrm.config(text=self.getString("specFrmLabel"))
-        self.opFrm.config(text=self.getString("opFrmLabel"))
-        self.consFrm.config(text=self.getString("consFrmLabel"))
-        self.pltOptnFrm.config(text=self.getString("pltOptnFrm"))
-        self.sampleFrm.config(text=self.getString("sampleFrmLabel"))
-        self.propFrm.config(text=self.getString("propFrmLabel"))
-        self.grainFrm.config(text=self.getString("grainFrmLabel"))
-        self.envFrm.config(text=self.getString("envFrmLabel"))
-        self.solFrm.config(text=self.getString("solFrmLabel"))
+        self.tblFrm.config(text=self.getLocStr("tblFrmLabel"))
+        self.plotFrm.config(text=self.getLocStr("plotFrmLabel"))
+        self.errorFrm.config(text=self.getLocStr("errFrmLabel"))
+        self.parFrm.config(text=self.getLocStr("parFrmLabel"))
+        self.specFrm.config(text=self.getLocStr("specFrmLabel"))
+        self.opFrm.config(text=self.getLocStr("opFrmLabel"))
+        self.consFrm.config(text=self.getLocStr("consFrmLabel"))
+        self.pltOptnFrm.config(text=self.getLocStr("pltOptnFrm"))
+        self.sampleFrm.config(text=self.getLocStr("sampleFrmLabel"))
+        self.propFrm.config(text=self.getLocStr("propFrmLabel"))
+        self.grainFrm.config(text=self.getLocStr("grainFrmLabel"))
+        self.envFrm.config(text=self.getLocStr("envFrmLabel"))
+        self.solFrm.config(text=self.getLocStr("solFrmLabel"))
 
-        self.useConstraint.config(text=self.getString("consButton"))
-        self.optimizeLF.config(text=self.getString("minTVButton"))
+        self.useConstraint.config(text=self.getLocStr("consButton"))
+        self.optimizeLF.config(text=self.getLocStr("minTVButton"))
 
-        for i, columnName in enumerate(self.getString("columnList")):
+        for i, columnName in enumerate(self.getLocStr("columnList")):
             self.tv.heading(i, text=columnName)
 
-        self.plotAvgPCheck.config(text=self.getString("plotAvgP"))
-        self.plotBasePCheck.config(text=self.getString("plotBaseP"))
+        self.plotAvgPCheck.config(text=self.getLocStr("plotAvgP"))
+        self.plotBasePCheck.config(text=self.getLocStr("plotBaseP"))
         self.plotBreechNozzlePCheck.config(
-            text=self.getString("plotBreechNozzleP")
+            text=self.getLocStr("plotBreechNozzleP")
         )
-        self.plotStagPCheck.config(text=self.getString("plotStagP"))
-        self.plotVelCheck.config(text=self.getString("plotVel"))
-        self.plotNozzleVCheck.config(text=self.getString("plotNozzleV"))
-        self.plotBurnupCheck.config(text=self.getString("plotBurnup"))
-        self.plotEtaCheck.config(text=self.getString("plotEta"))
+        self.plotStagPCheck.config(text=self.getLocStr("plotStagP"))
+        self.plotVelCheck.config(text=self.getLocStr("plotVel"))
+        self.plotNozzleVCheck.config(text=self.getLocStr("plotNozzleV"))
+        self.plotBurnupCheck.config(text=self.getLocStr("plotBurnup"))
+        self.plotEtaCheck.config(text=self.getLocStr("plotEta"))
 
-        self.plotRecoilCheck.config(text=self.getString("plotRecoil"))
+        self.plotRecoilCheck.config(text=self.getLocStr("plotRecoil"))
 
-        self.inAtmosCheck.config(text=self.getString("atmosLabel"))
+        self.inAtmosCheck.config(text=self.getLocStr("atmosLabel"))
 
-        self.stepLb.config(text=self.getString("stepLabel"))
-        self.calButton.config(text=self.getString("calcLabel"))
+        self.stepLb.config(text=self.getLocStr("stepLabel"))
+        self.calButton.config(text=self.getLocStr("calcLabel"))
 
-        gunTypeIndex = self.typeOptn["values"].index(self.gunType.get())
-        self.types = {self.getString(k): v for k, v in TYPES.items()}
-        self.typeOptn.config(values=tuple(self.types.keys()))
-        self.typeOptn.current(gunTypeIndex)
-
-        domainIndex = self.dropOptn["values"].index(self.dropOptn.get())
-        self.domains = {self.getString(k): v for k, v in DOMAINS.items()}
-        self.dropOptn.config(values=tuple(self.domains.keys()))
-        self.dropOptn.current(domainIndex)
-
-        geomIndex = self.dropGeom["values"].index(self.dropGeom.get())
-        self.geometries = {self.getString(k): v for k, v in GEOMETRIES.items()}
-        # mapping of the localized string to the object.
-        self.dropGeom.config(values=tuple(self.geometries.keys()))
-        self.dropGeom.current(geomIndex)
-
-        solIndex = self.dropSoln["values"].index(self.dropSoln.get())
-        self.solutions = {self.getString(k): v for k, v in SOLUTIONS.items()}
-        self.dropSoln.config(values=tuple(self.solutions.keys()))
-        self.dropSoln.current(solIndex)
-
+        self.typeOptn.reLocalize()
+        self.dropDomain.reLocalize()
+        self.dropGeom.reLocalize()
+        self.dropSoln.reLocalize()
         self.updateGeom()
         self.updateSpec()
         self.updateFigPlot()
@@ -712,11 +679,14 @@ class IB(Frame):
         i = [line[0] for line in self.tableData].index(tag)
         return self.tableData[i]
 
-    def getString(self, name):
+    def getLocStr(self, name):
         try:
             return STRING[self.LANG.get()][name]
         except KeyError:
-            return STRING["English"][name]
+            try:
+                return STRING["English"][name]
+            except KeyError:
+                return name
 
     def addTopFrm(self, parent):
         topFrm = ttk.Frame(parent)
@@ -725,7 +695,7 @@ class IB(Frame):
         topFrm.columnconfigure(0, weight=1)
         topFrm.rowconfigure(0, weight=1)
 
-        pltOptnFrm = ttk.LabelFrame(topFrm, text=self.getString("pltOptnFrm"))
+        pltOptnFrm = ttk.LabelFrame(topFrm, text=self.getLocStr("pltOptnFrm"))
         pltOptnFrm.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
         self.pltOptnFrm = pltOptnFrm
 
@@ -745,14 +715,14 @@ class IB(Frame):
 
         self.plotAvgP = IntVar(value=1)
         self.plotAvgPCheck = ttk.Checkbutton(
-            pltOptnFrm, text=self.getString("plotAvgP"), variable=self.plotAvgP
+            pltOptnFrm, text=self.getLocStr("plotAvgP"), variable=self.plotAvgP
         )
         self.plotAvgPCheck.grid(row=j, column=0, sticky="nsew")
 
         self.plotBaseP = IntVar(value=1)
         self.plotBasePCheck = ttk.Checkbutton(
             pltOptnFrm,
-            text=self.getString("plotBaseP"),
+            text=self.getLocStr("plotBaseP"),
             variable=self.plotBaseP,
         )
         self.plotBasePCheck.grid(row=j, column=1, sticky="nsew")
@@ -760,7 +730,7 @@ class IB(Frame):
         self.plotBreechNozzleP = IntVar(value=1)
         self.plotBreechNozzlePCheck = ttk.Checkbutton(
             pltOptnFrm,
-            text=self.getString("plotBreechNozzleP"),
+            text=self.getLocStr("plotBreechNozzleP"),
             variable=self.plotBreechNozzleP,
         )
         self.plotBreechNozzlePCheck.grid(row=j, column=2, sticky="nsew")
@@ -768,21 +738,21 @@ class IB(Frame):
         self.plotStagP = IntVar(value=1)
         self.plotStagPCheck = ttk.Checkbutton(
             pltOptnFrm,
-            text=self.getString("plotStagP"),
+            text=self.getLocStr("plotStagP"),
             variable=self.plotStagP,
         )
         self.plotStagPCheck.grid(row=j, column=3, sticky="nsew")
 
         self.plotVel = IntVar(value=1)
         self.plotVelCheck = ttk.Checkbutton(
-            pltOptnFrm, text=self.getString("plotVel"), variable=self.plotVel
+            pltOptnFrm, text=self.getLocStr("plotVel"), variable=self.plotVel
         )
         self.plotVelCheck.grid(row=j, column=4, sticky="nsew")
 
         self.plotNozzleV = IntVar(value=1)
         self.plotNozzleVCheck = ttk.Checkbutton(
             pltOptnFrm,
-            text=self.getString("plotNozzleV"),
+            text=self.getLocStr("plotNozzleV"),
             variable=self.plotNozzleV,
         )
         self.plotNozzleVCheck.grid(row=j, column=5, sticky="nsew")
@@ -790,21 +760,21 @@ class IB(Frame):
         self.plotBurnup = IntVar(value=1)
         self.plotBurnupCheck = ttk.Checkbutton(
             pltOptnFrm,
-            text=self.getString("plotBurnup"),
+            text=self.getLocStr("plotBurnup"),
             variable=self.plotBurnup,
         )
         self.plotBurnupCheck.grid(row=j, column=6, sticky="nsew")
 
         self.plotEta = IntVar(value=1)
         self.plotEtaCheck = ttk.Checkbutton(
-            pltOptnFrm, text=self.getString("plotEta"), variable=self.plotEta
+            pltOptnFrm, text=self.getLocStr("plotEta"), variable=self.plotEta
         )
         self.plotEtaCheck.grid(row=j, column=7, sticky="nsew")
 
         self.plotRecoil = IntVar(value=1)
         self.plotRecoilCheck = ttk.Checkbutton(
             pltOptnFrm,
-            text=self.getString("plotRecoil"),
+            text=self.getLocStr("plotRecoil"),
             variable=self.plotRecoil,
         )
         self.plotRecoilCheck.grid(row=j, column=8, sticky="nsew")
@@ -831,18 +801,18 @@ class IB(Frame):
         rightFrm.columnconfigure(0, weight=1)
         rightFrm.rowconfigure(0, weight=1)
 
-        specFrm = ttk.LabelFrame(rightFrm, text=self.getString("specFrmLabel"))
+        specFrm = ttk.LabelFrame(rightFrm, text=self.getLocStr("specFrmLabel"))
         specFrm.grid(row=0, column=0, sticky="nsew")
         specFrm.columnconfigure(0, weight=1)
         self.specFrm = specFrm
 
         i = 0
 
-        self.lxTip = StringVar(value=self.getString("calLxText"))
+        self.lxTip = StringVar(value=self.getLocStr("calLxText"))
         self.lxLb, self.lx, self.tlx, _, _, i = self.add122Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText=self.getString("lxLabel"),
+            labelText=self.getLocStr("lxLabel"),
             unitText_up="Cal",
             unitText_dn="Cal",
             infotext=self.lxTip,
@@ -851,33 +821,33 @@ class IB(Frame):
         self.ammoLb, self.ammo, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText=self.getString("ammoLabel"),
+            labelText=self.getLocStr("ammoLabel"),
             unitText="",
             default="0.00 x 0.000 mm",
         )
 
-        self.vinfTip = StringVar(value=self.getString("vinfText"))
+        self.vinfTip = StringVar(value=self.getLocStr("vinfText"))
         self.vaLb, self.va, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText=self.getString("vaLabel"),
+            labelText=self.getLocStr("vaLabel"),
             infotext=self.vinfTip,
         )
 
-        self.teffTip = StringVar(value=self.getString("teffText"))
+        self.teffTip = StringVar(value=self.getLocStr("teffText"))
         self.teLb, self.te, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText=self.getString("teffLabel"),
+            labelText=self.getLocStr("teffLabel"),
             unitText="%",
             infotext=self.teffTip,
         )
 
-        self.beffTip = StringVar(value=self.getString("beffText"))
+        self.beffTip = StringVar(value=self.getLocStr("beffText"))
         self.beLb, self.be, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText=self.getString("beffLabel"),
+            labelText=self.getLocStr("beffLabel"),
             unitText="%",
             infotext=self.beffTip,
         )
@@ -885,32 +855,24 @@ class IB(Frame):
         self.ldLb, self.ld, _, i = self.add12Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText=self.getString("ldLabel"),
+            labelText=self.getLocStr("ldLabel"),
             unitText="kg/m³",
         )
 
         validationNN = parent.register(validateNN)
         validationPI = parent.register(validatePI)
 
-        solFrm = ttk.LabelFrame(rightFrm, text=self.getString("solFrmLabel"))
+        solFrm = ttk.LabelFrame(rightFrm, text=self.getLocStr("solFrmLabel"))
         solFrm.grid(row=1, column=0, sticky="nsew")
         solFrm.columnconfigure(0, weight=1)
         self.solFrm = solFrm
 
-        self.dropSoln = ttk.Combobox(
-            solFrm,
-            values=tuple(self.solutions.keys()),
-            state="readonly",
-            justify="center",
-        )
-        self.dropSoln.option_add("*TCombobox*Listbox.Justify", "center")
-        self.dropSoln.current(0)
+        self.dropSoln = self.IBDropdown(self, solFrm, SOLUTIONS)
         self.dropSoln.grid(
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
-        # self.dropOptn.configure(width=0)
 
-        envFrm = ttk.LabelFrame(rightFrm, text=self.getString("envFrmLabel"))
+        envFrm = ttk.LabelFrame(rightFrm, text=self.getLocStr("envFrmLabel"))
         envFrm.grid(row=2, column=0, sticky="nsew")
         envFrm.columnconfigure(0, weight=1)
         self.envFrm = envFrm
@@ -919,7 +881,7 @@ class IB(Frame):
         self.inAtmos = IntVar(value=1)
         self.inAtmos.trace_add("write", self.ambCallback)
         self.inAtmosCheck = ttk.Checkbutton(
-            envFrm, text=self.getString("atmosLabel"), variable=self.inAtmos
+            envFrm, text=self.getLocStr("atmosLabel"), variable=self.inAtmos
         )
         self.inAtmosCheck.grid(row=i, column=0, columnspan=3, sticky="nsew")
         i += 1
@@ -928,7 +890,7 @@ class IB(Frame):
             parent=envFrm,
             rowIndex=i,
             colIndex=0,
-            labelText=self.getString("ambPresLabel"),
+            labelText=self.getLocStr("ambPresLabel"),
             unitText="kPa",
             default="101.325",
             validation=validationNN,
@@ -938,7 +900,7 @@ class IB(Frame):
             parent=envFrm,
             rowIndex=i,
             colIndex=0,
-            labelText=self.getString("ambRhoLabel"),
+            labelText=self.getLocStr("ambRhoLabel"),
             unitText="kg/m³",
             default="1.204",
             validation=validationNN,
@@ -948,12 +910,12 @@ class IB(Frame):
             parent=envFrm,
             rowIndex=i,
             colIndex=0,
-            labelText=self.getString("ambGamLabel"),
+            labelText=self.getLocStr("ambGamLabel"),
             default="1.400",
             validation=validationNN,
         )
 
-        opFrm = ttk.LabelFrame(rightFrm, text=self.getString("opFrmLabel"))
+        opFrm = ttk.LabelFrame(rightFrm, text=self.getLocStr("opFrmLabel"))
         opFrm.grid(row=3, column=0, sticky="nsew")
         opFrm.columnconfigure(1, weight=1)
         self.opFrm = opFrm
@@ -962,7 +924,7 @@ class IB(Frame):
 
         consFrm = ttk.LabelFrame(
             opFrm,
-            text=self.getString("consFrmLabel"),
+            text=self.getLocStr("consFrmLabel"),
             style="SubLabelFrame.TLabelframe",
         )
         consFrm.grid(
@@ -975,18 +937,18 @@ class IB(Frame):
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
-            labelText=self.getString("vTgtLabel"),
+            labelText=self.getLocStr("vTgtLabel"),
             unitText="m/s",
             default="1500.0",
             validation=validationNN,
         )
 
-        self.pTgtTip = StringVar(value=self.getString("pTgtText"))
+        self.pTgtTip = StringVar(value=self.getLocStr("pTgtText"))
         self.pTgtLb, self.pTgt, _, _, j = self.add3Input(
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
-            labelText=self.getString("pTgtLabel"),
+            labelText=self.getLocStr("pTgtLabel"),
             unitText="MPa",
             default="350.0",
             validation=validationNN,
@@ -997,7 +959,7 @@ class IB(Frame):
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
-            labelText=self.getString("minWebLabel"),
+            labelText=self.getLocStr("minWebLabel"),
             unitText="μm",
             default="1.0",
             validation=validationNN,
@@ -1007,7 +969,7 @@ class IB(Frame):
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
-            labelText=self.getString("maxLgLabel"),
+            labelText=self.getLocStr("maxLgLabel"),
             unitText="m",
             default="1000.0",
             validation=validationNN,
@@ -1018,28 +980,28 @@ class IB(Frame):
         self.solve_W_Lg = IntVar()
         self.solve_W_Lg.set(0)
         self.useConstraint = ttk.Checkbutton(
-            consFrm, text=self.getString("consButton"), variable=self.solve_W_Lg
+            consFrm, text=self.getLocStr("consButton"), variable=self.solve_W_Lg
         )
         self.useConstraint.grid(row=j, column=0, columnspan=3, sticky="nsew")
         self.solve_W_Lg.trace_add("write", self.ctrlCallback)
 
-        self.useConstraintTip = StringVar(value=self.getString("useConsText"))
+        self.useConstraintTip = StringVar(value=self.getLocStr("useConsText"))
         CreateToolTip(self.useConstraint, self.useConstraintTip)
 
         j += 1
         self.opt_lf = IntVar()
 
         self.optimizeLF = ttk.Checkbutton(
-            consFrm, text=self.getString("minTVButton"), variable=self.opt_lf
+            consFrm, text=self.getLocStr("minTVButton"), variable=self.opt_lf
         )
         self.optimizeLF.grid(row=j, column=0, columnspan=3, sticky="nsew")
-        self.optimizeLFTip = StringVar(value=self.getString("optLFText"))
+        self.optimizeLFTip = StringVar(value=self.getLocStr("optLFText"))
         CreateToolTip(self.optimizeLF, self.optimizeLFTip)
         i += 1
 
         sampleFrm = ttk.LabelFrame(
             opFrm,
-            text=self.getString("sampleFrmLabel"),
+            text=self.getLocStr("sampleFrmLabel"),
             style="SubLabelFrame.TLabelframe",
         )
         sampleFrm.grid(
@@ -1049,28 +1011,19 @@ class IB(Frame):
         sampleFrm.columnconfigure(1, weight=1)
         self.sampleFrm = sampleFrm
 
-        self.dropOptn = ttk.Combobox(
-            sampleFrm,
-            values=tuple(self.domains.keys()),
-            state="readonly",
-            justify="center",
-        )
+        self.dropDomain = self.IBDropdown(self, sampleFrm, DOMAINS)
 
         j = 0
-        self.dropOptn.option_add("*TCombobox*Listbox.Justify", "center")
-        self.dropOptn.current(0)
-        self.dropOptn.grid(
+        self.dropDomain.grid(
             row=j, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
-        # self.dropOptn.configure(width=0)
 
         j += 1
-
         self.stepLb, self.step, _, j = self.add2Input(
             parent=sampleFrm,
             rowIndex=j,
             colIndex=0,
-            labelText=self.getString("stepLabel"),
+            labelText=self.getLocStr("stepLabel"),
             default="100",
             validation=validationNN,
             formatter=formatIntInput,
@@ -1078,12 +1031,12 @@ class IB(Frame):
             anchor="center",
         )
 
-        self.sampleTip = StringVar(value=self.getString("sampText"))
+        self.sampleTip = StringVar(value=self.getLocStr("sampText"))
         CreateToolTip(sampleFrm, self.sampleTip)
 
         i += 1
 
-        self.tolTip = StringVar(value=self.getString("tolText"))
+        self.tolTip = StringVar(value=self.getLocStr("tolText"))
         self.accExpLb, self.accExp, _, i = self.add2Input(
             parent=opFrm,
             rowIndex=i,
@@ -1098,7 +1051,7 @@ class IB(Frame):
 
         self.calButton = ttk.Button(
             opFrm,
-            text=self.getString("calcLabel"),
+            text=self.getLocStr("calcLabel"),
             # command=self.calculate,  # underline=0
             command=self.onCalculate,
         )
@@ -1107,7 +1060,7 @@ class IB(Frame):
         )
 
         opFrm.rowconfigure(i, weight=1)
-        self.calcButtonTip = StringVar(value=self.getString("calcButtonText"))
+        self.calcButtonTip = StringVar(value=self.getLocStr("calcButtonText"))
         CreateToolTip(self.calButton, self.calcButtonTip)
 
     def onCalculate(self):
@@ -1116,15 +1069,15 @@ class IB(Frame):
         debug = self.DEBUG.get() == 1
         atmosphere = self.inAtmos.get() == 1
 
-        gunType = self.types[self.typeOptn.get()]
+        gunType = self.typeOptn.getObj()
 
         self.kwargs = {
             "opt": optimize,
             "con": constrain,
             "deb": debug,
             "typ": gunType,
-            "dom": self.domains[self.dropOptn.get()],
-            "sol": self.solutions[self.dropSoln.get()],
+            "dom": self.dropDomain.getObj(),
+            "sol": self.dropSoln.getObj(),
         }
 
         if atmosphere:
@@ -1287,32 +1240,6 @@ class IB(Frame):
             self.te.set(round(eta_t * 100, 1))
             self.be.set(round(eta_b * 100, 1))
 
-            """
-            _, tp, lp, _, vp, pp, Tp, etap = self.readTable(POINT_PEAK)
-
-            self.pamax.set(toSI(pp, unit="Pa"))
-
-            _, tp, lp, _, vp, pp, Tp, etap = self.readTable(POINT_PEAK_BREECH)
-
-            if gunType == CONVENTIONAL:
-                _, pb = self.gun.toPsPb(lp, pp)
-
-            elif gunType == RECOILESS:
-                _, _, pb, _ = self.gun.toPsP0PxVx(lp, vp, pp, Tp, etap)
-
-            self.pbmax.set(toSI(pb, unit="Pa"))
-
-            _, tp, lp, _, vp, pp, Tp, etap = self.readTable(POINT_PEAK_SHOT)
-
-            if gunType == CONVENTIONAL:
-                ps, _ = self.gun.toPsPb(lp, pp)
-
-            elif gunType == RECOILESS:
-                ps, _, _, _ = self.gun.toPsP0PxVx(lp, vp, pp, Tp, etap)
-
-            self.psmax.set(toSI(ps, unit="Pa"))
-            """
-
             self.lx.set(toSI(kwargs["lengthGun"] / kwargs["caliber"]))
             self.tlx.set(
                 toSI(
@@ -1364,7 +1291,7 @@ class IB(Frame):
         self.process = None
 
     def addErrFrm(self, parent):
-        errorFrm = ttk.LabelFrame(parent, text=self.getString("errFrmLabel"))
+        errorFrm = ttk.LabelFrame(parent, text=self.getLocStr("errFrmLabel"))
         errorFrm.grid(row=3, column=0, sticky="nsew")
         errorFrm.columnconfigure(0, weight=1)
         errorFrm.rowconfigure(0, weight=1)
@@ -1384,7 +1311,7 @@ class IB(Frame):
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
     def addParFrm(self, parent):
-        parFrm = ttk.LabelFrame(parent, text=self.getString("parFrmLabel"))
+        parFrm = ttk.LabelFrame(parent, text=self.getLocStr("parFrmLabel"))
         parFrm.grid(row=0, column=2, rowspan=4, sticky="nsew")
         parFrm.columnconfigure(0, weight=1)
         self.parFrm = parFrm
@@ -1392,19 +1319,8 @@ class IB(Frame):
         validationNN = parent.register(validateNN)
 
         i = 0
-        self.gunType = StringVar()
-        self.typeOptn = ttk.Combobox(
-            parFrm,
-            textvariable=self.gunType,
-            values=(
-                self.getString("CONVENTIONAL"),
-                self.getString("RECOILESS"),
-            ),
-            state="readonly",
-            justify="center",
-        )
-        self.typeOptn.option_add("*TCombobox*Listbox.Justify", "center")
-        self.typeOptn.current(0)
+        self.typeOptn = self.IBDropdown(self, parFrm, TYPES)
+
         self.typeOptn.grid(
             row=i, column=0, sticky="nsew", padx=2, pady=2, columnspan=3
         )
@@ -1413,7 +1329,7 @@ class IB(Frame):
         self.calLb, self.calmm, _, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getString("calLabel"),
+            labelText=self.getLocStr("calLabel"),
             unitText="mm",
             default="50.0",
             validation=validationNN,
@@ -1421,7 +1337,7 @@ class IB(Frame):
         self.tblLb, self.tblmm, _, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getString("tblLabel"),
+            labelText=self.getLocStr("tblLabel"),
             unitText="mm",
             default="3500.0",
             validation=validationNN,
@@ -1429,17 +1345,17 @@ class IB(Frame):
         self.shtLb, self.shtkg, _, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getString("shtLabel"),
+            labelText=self.getLocStr("shtLabel"),
             unitText="kg",
             default="1.0",
             validation=validationNN,
         )
 
-        self.chgTip = StringVar(value=self.getString("chgText"))
+        self.chgTip = StringVar(value=self.getLocStr("chgText"))
         self.chgLb, self.chgkg, _, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getString("chgLabel"),
+            labelText=self.getLocStr("chgLabel"),
             unitText="kg",
             default="1.0",
             validation=validationNN,
@@ -1451,7 +1367,7 @@ class IB(Frame):
 
         propFrm = ttk.LabelFrame(
             parFrm,
-            text=self.getString("propFrmLabel"),
+            text=self.getLocStr("propFrmLabel"),
             style="SubLabelFrame.TLabelframe",
         )
         propFrm.grid(
@@ -1460,20 +1376,10 @@ class IB(Frame):
 
         propFrm.rowconfigure(1, weight=1)
         propFrm.columnconfigure(0, weight=1)
-        # propFrm.columnconfigure(1, weight=1)
+
         self.propFrm = propFrm
 
-        self.currProp = StringVar()
-        self.dropProp = ttk.Combobox(
-            propFrm,
-            textvariable=self.currProp,
-            values=self.propOptions,
-            state="readonly",
-            justify="center",
-        )
-        self.dropProp.option_add("*TCombobox*Listbox.Justify", "center")
-        self.dropProp.current(0)
-
+        self.dropProp = self.IBDropdown(self, propFrm, self.COMPOSITIONS)
         self.dropProp.grid(
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
@@ -1506,7 +1412,7 @@ class IB(Frame):
         specScroll.config(command=self.specs.yview)
         specHScroll.config(command=self.specs.xview)
 
-        self.specsTip = StringVar(value=self.getString("specsText"))
+        self.specsTip = StringVar(value=self.getLocStr("specsText"))
         CreateToolTip(propFrm, self.specsTip)
 
         i += 1
@@ -1516,7 +1422,7 @@ class IB(Frame):
 
         grainFrm = ttk.LabelFrame(
             parFrm,
-            text=self.getString("grainFrmLabel"),
+            text=self.getLocStr("grainFrmLabel"),
             style="SubLabelFrame.TLabelframe",
         )
         grainFrm.grid(
@@ -1541,7 +1447,7 @@ class IB(Frame):
             pady=2,
         )
 
-        self.geomPlotTip = StringVar(value=self.getString("geomPlotText"))
+        self.geomPlotTip = StringVar(value=self.getLocStr("geomPlotText"))
         CreateToolTip(geomPlotFrm, self.geomPlotTip)
 
         self.geomParentFrm = grainFrm
@@ -1549,19 +1455,7 @@ class IB(Frame):
 
         j = 1
 
-        # Create Dropdown menu
-        self.currGeom = StringVar()
-
-        self.dropGeom = ttk.Combobox(
-            grainFrm,
-            textvariable=self.currGeom,
-            values=tuple(self.geometries.keys()),
-            state="readonly",
-            justify="center",
-        )
-
-        self.dropGeom.option_add("*TCombobox*Listbox.Justify", "center")
-        self.dropGeom.current(0)
+        self.dropGeom = self.IBDropdown(self, grainFrm, GEOMETRIES)
 
         self.dropGeom.grid(
             row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
@@ -1608,11 +1502,11 @@ class IB(Frame):
         )
 
         i += 1
-        self.ldfTip = StringVar(value=self.getString("ldfText"))
+        self.ldfTip = StringVar(value=self.getLocStr("ldfText"))
         self.ldfLb, self.ldf, self.ldfw, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getString("ldfLabel"),
+            labelText=self.getLocStr("ldfLabel"),
             unitText="%",
             default="50.0",
             validation=validationNN,
@@ -1622,7 +1516,7 @@ class IB(Frame):
         self.cvLLb, self.cvL, self.cvLw, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getString("cvLabel"),
+            labelText=self.getLocStr("cvLabel"),
             unitText="L",
             default="20",
             validation=validationNN,
@@ -1633,40 +1527,40 @@ class IB(Frame):
         self.chgkg.trace_add("write", self.cvlfConsisCallback)
         self.accExp.trace_add("write", self.cvlfConsisCallback)
 
-        self.clrTip = StringVar(value=self.getString("clrText"))
+        self.clrTip = StringVar(value=self.getLocStr("clrText"))
         self.clrLb, self.clr, _, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getString("clrLabel"),
+            labelText=self.getLocStr("clrLabel"),
             unitText="x",
             default="1.5",
             validation=validationNN,
             infotext=self.clrTip,
         )
 
-        self.dgcTip = StringVar(value=self.getString("dgcText"))
+        self.dgcTip = StringVar(value=self.getLocStr("dgcText"))
         self.dgcLb, self.dgc, _, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getString("dgcLabel"),
+            labelText=self.getLocStr("dgcLabel"),
             unitText="%",
             default="5.0",
             validation=validationNN,
             infotext=self.dgcTip,
         )
 
-        self.stpTip = StringVar(value=self.getString("stpText"))
+        self.stpTip = StringVar(value=self.getLocStr("stpText"))
         self.stpLb, self.stpMPa, _, _, i = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getString("stpLabel"),
+            labelText=self.getLocStr("stpLabel"),
             unitText="MPa",
             default="10",
             validation=validationNN,
             infotext=self.stpTip,
         )
 
-        self.nozzExpTip = StringVar(value=self.getString("nozzExpText"))
+        self.nozzExpTip = StringVar(value=self.getLocStr("nozzExpText"))
         (
             self.nozzExpLb,
             self.nozzExp,
@@ -1676,14 +1570,14 @@ class IB(Frame):
         ) = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getString("nozzExpLabel"),
+            labelText=self.getLocStr("nozzExpLabel"),
             unitText="x",
             default="4",
             validation=validationNN,
             infotext=self.nozzExpTip,
         )
 
-        self.nozzEffTip = StringVar(value=self.getString("nozzEffText"))
+        self.nozzEffTip = StringVar(value=self.getLocStr("nozzEffText"))
         (
             self.nozzEffLb,
             self.nozzEff,
@@ -1693,21 +1587,21 @@ class IB(Frame):
         ) = self.add3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getString("nozzEffLabel"),
+            labelText=self.getLocStr("nozzEffLabel"),
             unitText="%",
             default="92.0",
             validation=validationNN,
             infotext=self.nozzEffTip,
         )
 
-        self.currProp.trace_add("write", self.updateSpec)
-        self.currGeom.trace_add("write", self.updateGeom)
+        self.dropProp.trace_add("write", self.updateSpec)
+        self.dropGeom.trace_add("write", self.updateGeom)
 
         self.grdR.trace_add("write", self.callback)
         self.grlR.trace_add("write", self.callback)
         self.arcmm.trace_add("write", self.callback)
 
-        self.gunType.trace_add("write", self.typeCallback)
+        self.typeOptn.trace_add("write", self.typeCallback)
 
     def addGeomPlot(self):
         geomPlotFrm = self.geomPlotFrm
@@ -1755,14 +1649,14 @@ class IB(Frame):
 
     def addPlotFrm(self, parent):
         plotFrm = ttk.LabelFrame(
-            parent, text=self.getString("plotFrmLabel"), width=640, height=480
+            parent, text=self.getLocStr("plotFrmLabel"), width=640, height=480
         )
         plotFrm.grid(row=1, column=0, sticky="nsew")
         plotFrm.columnconfigure(0, weight=1)
         plotFrm.rowconfigure(0, weight=1)
 
         self.plotFrm = plotFrm
-        self.plotTip = StringVar(value=self.getString("plotText"))
+        self.plotTip = StringVar(value=self.getLocStr("plotText"))
         CreateToolTip(self.plotFrm, self.plotTip)
 
     def addFigPlot(self):
@@ -1966,7 +1860,7 @@ class IB(Frame):
                         xs,
                         vs,
                         "tab:blue",
-                        label=self.getString("figShotVel"),
+                        label=self.getLocStr("figShotVel"),
                         marker=".",
                         alpha=1,
                     )
@@ -1984,9 +1878,9 @@ class IB(Frame):
                         xs,
                         Pbs,
                         c="xkcd:goldenrod",
-                        label=self.getString("figBreech")
+                        label=self.getLocStr("figBreech")
                         if gunType == CONVENTIONAL
-                        else self.getString("figNozzleP")
+                        else self.getLocStr("figNozzleP")
                         if gunType == RECOILESS
                         else "",
                         linestyle="dashed",
@@ -1999,7 +1893,7 @@ class IB(Frame):
                             xs,
                             P0s,
                             "seagreen",
-                            label=self.getString("figStagnation"),
+                            label=self.getLocStr("figStagnation"),
                             linestyle="dashed",
                             alpha=0.75,
                         )
@@ -2009,7 +1903,7 @@ class IB(Frame):
                             xs,
                             vxs,
                             "royalblue",
-                            label=self.getString("figNozzleV"),
+                            label=self.getLocStr("figNozzleV"),
                             alpha=0.75,
                             linestyle="dashed",
                         )
@@ -2019,7 +1913,7 @@ class IB(Frame):
                             xs,
                             etas,
                             "crimson",
-                            label=self.getString("figOutflow"),
+                            label=self.getLocStr("figOutflow"),
                             alpha=0.75,
                             linestyle="dashed",
                         )
@@ -2029,7 +1923,7 @@ class IB(Frame):
                         xs,
                         Pas,
                         "tab:green",
-                        label=self.getString("figAvgP"),
+                        label=self.getLocStr("figAvgP"),
                         marker=".",
                         alpha=1,
                     )
@@ -2039,7 +1933,7 @@ class IB(Frame):
                         xs,
                         Pss,
                         "yellowgreen",
-                        label=self.getString("figShotBase"),
+                        label=self.getLocStr("figShotBase"),
                         linestyle="dashed",
                         alpha=0.75,
                     )
@@ -2052,7 +1946,7 @@ class IB(Frame):
                     c="tab:green",
                     alpha=1,
                     marker=5,  # caret right:5
-                    label=self.getString("figTgtP"),
+                    label=self.getLocStr("figTgtP"),
                 )
 
                 if self.plotBurnup.get():
@@ -2060,7 +1954,7 @@ class IB(Frame):
                         xs,
                         psis,
                         c="tab:red",
-                        label=self.getString("figPsi"),
+                        label=self.getLocStr("figPsi"),
                         marker=".",
                         alpha=1,
                     )
@@ -2070,7 +1964,7 @@ class IB(Frame):
                         xs,
                         Frs,
                         c="tab:green",
-                        label=self.getString("figRecoil"),
+                        label=self.getLocStr("figRecoil"),
                         linestyle="dotted",
                     )
 
@@ -2147,9 +2041,9 @@ class IB(Frame):
                 self.ax.tick_params(axis="x", **tkw)
 
                 if dom == DOMAIN_TIME:
-                    self.ax.set_xlabel(self.getString("figTimeDomain"))
+                    self.ax.set_xlabel(self.getLocStr("figTimeDomain"))
                 elif dom == DOMAIN_LENG:
-                    self.ax.set_xlabel(self.getString("figLengDomain"))
+                    self.ax.set_xlabel(self.getLocStr("figLengDomain"))
 
             else:
                 self.axP.spines.right.set_position(("axes", 0.5))
@@ -2161,8 +2055,8 @@ class IB(Frame):
             self.pltCanvas.draw_idle()
 
     def addTblFrm(self, parent):
-        columnList = self.getString("columnList")
-        tblFrm = ttk.LabelFrame(parent, text=self.getString("tblFrmLabel"))
+        columnList = self.getLocStr("columnList")
+        tblFrm = ttk.LabelFrame(parent, text=self.getLocStr("tblFrmLabel"))
         tblFrm.grid(row=2, column=0, sticky="nsew")
 
         tblFrm.columnconfigure(0, weight=1)
@@ -2223,43 +2117,43 @@ class IB(Frame):
 
     def updateSpec(self, *args):
         self.specs.config(state="normal")
-        compo = self.compositions[self.dropProp.get()]
+        compo = self.dropProp.getObj()
         self.specs.delete("1.0", "end")
         t_Font = tkFont.Font(font=self.specs.cget("font"))
         width = self.specs.winfo_width() // t_Font.measure("m")
         self.specs.insert(
             "end",
             "{:}: {:>4.0f} K {:}\n".format(
-                self.getString("TvDesc"),
+                self.getLocStr("TvDesc"),
                 compo.T_v,
-                self.getString("isochorDesc"),
+                self.getLocStr("isochorDesc"),
             ),
         ),
 
         self.specs.insert(
             "end",
             "{:}: {:>4.0f} kg/m^3\n".format(
-                self.getString("densityDesc"), compo.rho_p
+                self.getLocStr("densityDesc"), compo.rho_p
             ),
         )
         isp = compo.getIsp()
         self.specs.insert(
             "end",
             "{:}: {:>4.0f} m/s {:>3.0f} s\n".format(
-                self.getString("vacISPDesc"), isp, isp / 9.805
+                self.getLocStr("vacISPDesc"), isp, isp / 9.805
             ),
         )
         isp = compo.getIsp(50)
         self.specs.insert(
             "end",
             "{:}: {:>4.0f} m/s {:>3.0f} s\n{:}\n".format(
-                self.getString("atmISPDesc"),
+                self.getLocStr("atmISPDesc"),
                 isp,
                 isp / 9.805,
-                self.getString("pRatioDesc"),
+                self.getLocStr("pRatioDesc"),
             ),
         )
-        self.specs.insert("end", "{:}:\n".format(self.getString("brDesc")))
+        self.specs.insert("end", "{:}:\n".format(self.getLocStr("brDesc")))
         for p in (100e6, 200e6, 300e6):
             self.specs.insert(
                 "end",
@@ -2282,7 +2176,7 @@ class IB(Frame):
         return True
 
     def updateGeom(self, *args):
-        geom = self.geometries[self.dropGeom.get()]
+        geom = self.dropGeom.getObj()
         if geom == SimpleGeometry.SPHERE:
             self.grdRw.config(state="disabled")
             self.grlRw.config(state="disabled")
@@ -2296,41 +2190,41 @@ class IB(Frame):
             self.grlRw.config(state="normal")
 
         if geom == SimpleGeometry.SPHERE:
-            self.lengthPrimaryAs.set(self.getString("diamLabel"))
+            self.lengthPrimaryAs.set(self.getLocStr("diamLabel"))
 
             self.lengthRatioAs.set("")
             self.ratioAs.set("")
 
-            self.lengthPrimaryTip.set(self.getString("diaText"))
+            self.lengthPrimaryTip.set(self.getLocStr("diaText"))
             self.lengthRatioTip.set("")
             self.lengthSecondaryTip.set("")
 
         elif geom == SimpleGeometry.ROD:
-            self.lengthPrimaryAs.set(self.getString("widtLabel"))
-            self.lengthRatioAs.set(self.getString("ltwLabel"))
-            self.ratioAs.set(self.getString("htwLabel"))
+            self.lengthPrimaryAs.set(self.getLocStr("widtLabel"))
+            self.lengthRatioAs.set(self.getLocStr("ltwLabel"))
+            self.ratioAs.set(self.getLocStr("htwLabel"))
 
-            self.lengthPrimaryTip.set(self.getString("widthText"))
-            self.lengthRatioTip.set(self.getString("rodRText"))
-            self.lengthSecondaryTip.set(self.getString("heightRText"))
+            self.lengthPrimaryTip.set(self.getLocStr("widthText"))
+            self.lengthRatioTip.set(self.getLocStr("rodRText"))
+            self.lengthSecondaryTip.set(self.getLocStr("heightRText"))
 
         elif geom == SimpleGeometry.CYLINDER:
-            self.lengthPrimaryAs.set(self.getString("diamLabel"))
-            self.lengthRatioAs.set(self.getString("ltdLabel"))
+            self.lengthPrimaryAs.set(self.getLocStr("diamLabel"))
+            self.lengthRatioAs.set(self.getLocStr("ltdLabel"))
             self.ratioAs.set("")
 
-            self.lengthPrimaryTip.set(self.getString("diaText"))
-            self.lengthRatioTip.set(self.getString("cylLRText"))
+            self.lengthPrimaryTip.set(self.getLocStr("diaText"))
+            self.lengthRatioTip.set(self.getLocStr("cylLRText"))
             self.lengthSecondaryTip.set("")
 
         else:
-            self.lengthPrimaryAs.set(self.getString("athLabel"))
-            self.lengthRatioAs.set(self.getString("ltdLabel"))
-            self.ratioAs.set(self.getString("pdtalLabel"))
+            self.lengthPrimaryAs.set(self.getLocStr("athLabel"))
+            self.lengthRatioAs.set(self.getLocStr("ltdLabel"))
+            self.ratioAs.set(self.getLocStr("pdtalLabel"))
 
-            self.lengthPrimaryTip.set(self.getString("arcText"))
-            self.lengthRatioTip.set(self.getString("perfLRText"))
-            self.lengthSecondaryTip.set(self.getString("pDiaRText"))
+            self.lengthPrimaryTip.set(self.getLocStr("arcText"))
+            self.lengthRatioTip.set(self.getLocStr("perfLRText"))
+            self.lengthSecondaryTip.set(self.getLocStr("pDiaRText"))
 
         self.callback()
 
@@ -2388,8 +2282,9 @@ class IB(Frame):
         found at this time!
         """
 
-        geom = self.geometries[self.dropGeom.get()]
-        compo = self.compositions[self.dropProp.get()]
+        # geom = self.geometries[self.dropGeom.get()]
+        geom = self.dropGeom.getObj()
+        compo = self.dropProp.getObj()
 
         try:
             self.prop = Propellant(
@@ -2417,11 +2312,7 @@ class IB(Frame):
         self.updateError()
 
     def typeCallback(self, *args):
-        invGunTypeLookup = {
-            self.getString("CONVENTIONAL"): CONVENTIONAL,
-            self.getString("RECOILESS"): RECOILESS,
-        }
-        gunType = invGunTypeLookup[self.typeOptn.get()]
+        gunType = self.typeOptn.getObj()
 
         if gunType == CONVENTIONAL:
             self.nozzExpw.config(state="disabled")
@@ -2750,6 +2641,51 @@ class IB(Frame):
             pass
 
         self.update_idletasks()
+
+    class IBDropdown:
+        def __init__(self, IB, parentFrm, strObjDict):
+            self.textVar = StringVar()
+            self.strObjDict = strObjDict
+            self.IB = IB
+            self.locStrObjDict = {
+                self.IB.getLocStr(k): v for k, v in strObjDict.items()
+            }
+            self.widget = ttk.Combobox(
+                parentFrm,
+                textvariable=self.textVar,
+                values=tuple(self.locStrObjDict.keys()),
+                justify="center",
+            )
+            self.widget.option_add("*TCombobox*Listbox.Justify", "center")
+            self.widget.current(0)
+
+        def reLocalize(self):
+            index = self.widget["values"].index(self.textVar.get())
+            self.locStrObjDict = {
+                self.IB.getLocStr(k): v for k, v in self.strObjDict.items()
+            }
+            self.widget.config(values=tuple(self.locStrObjDict.keys()))
+            self.widget.current(index)
+
+        def getObj(self):
+            return self.locStrObjDict[self.textVar.get()]
+
+        def setByStr(self, string):
+            """
+            Given an unlocalized string, set the drop down menu
+            to the correct position.
+            """
+            self.widget.set(
+                self.widget["values"][
+                    list(self.strObjDict.keys()).index(string)
+                ]
+            )
+
+        def grid(self, **kwargs):
+            self.widget.grid(**kwargs)
+
+        def trace_add(self, *args):
+            self.textVar.trace_add(*args)
 
 
 def calculate(
