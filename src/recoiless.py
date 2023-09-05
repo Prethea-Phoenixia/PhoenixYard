@@ -783,7 +783,7 @@ class Recoiless:
                 f,
                 0,
                 t_bar_e if t_bar_b is None else t_bar_b,
-                tol=t_bar_tol,
+                x_tol=t_bar_tol,
                 findMin=False,
             )
 

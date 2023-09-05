@@ -14,7 +14,9 @@ invphi = (math.sqrt(5) - 1) / 2  # 1 / phi
 invphi2 = (3 - math.sqrt(5)) / 2  # 1 / phi^2
 
 
-def gss(f, a, b, tol=1e-9, findMin=True):
+def gss(
+    f, a, b, x_tol=1e-16, y_abs_tol=0, y_rel_tol=1e-16, findMin=True, it=1000
+):
     """Golden-section search. improved from the example
     given on wikipedia. Reuse half the evaluatins.
 
@@ -26,99 +28,61 @@ def gss(f, a, b, tol=1e-9, findMin=True):
     """
 
     (a, b) = (min(a, b), max(a, b))
+
     h = b - a
-    if h <= tol:
+    if h <= x_tol:
         return (a, b)
 
-    # Required steps to achieve tolerance
-    n = int(math.ceil(math.log(tol / h) / math.log(invphi)))
-
-    c = a + invphi2 * h
-    d = a + invphi * h
-    yc = f(c)
-    yd = f(d)
-
-    for k in range(n - 1):
-        if (yc < yd and findMin) or (yc > yd and not findMin):
-            # a---c---d
-            b = d
-            d = c
-            yd = yc
-            h = invphi * h
-            c = a + invphi2 * h
-            yc = f(c)
-        else:
-            # c--d---b
-            a = c
-            c = d
-            yc = yd
-            h = invphi * h
-            d = a + invphi * h
-            yd = f(d)
-
-    if (yc < yd and findMin) or (yc > yd and not findMin):
-        return (a, d)
-    else:
-        return (c, b)
-
-
-def GSS(f, a, b, yRelTol, xTol=0, findMin=True):
-    """
-    conduct Gold Section Search using both the relative deviance of
-    the functional value, and the absolute deviance of x as dual-control.
-    """
-
-    i = 0
-
-    (a, b) = (min(a, b), max(a, b))
     ya = f(a)
     yb = f(b)
-    h = b - a
+
+    # Required steps to achieve tolerance
+    if x_tol != 0:
+        n = int(math.ceil(math.log(x_tol / h) / math.log(invphi)))
+    else:
+        n = math.inf
+    n = min(n, it)
+
     c = a + invphi2 * h
     d = a + invphi * h
     yc = f(c)
     yd = f(d)
 
-    if xTol != 0:
-        n = int(math.ceil(math.log(xTol / h) / math.log(invphi)))
-    else:
-        n = math.inf
-
-    while i < n:
+    k = 0
+    while k < n:
         if (yc < yd and findMin) or (yc > yd and not findMin):
             # a---c---d
             b = d
             d = c
-            yb = yd
             yd = yc
-
             h = invphi * h
             c = a + invphi2 * h
             yc = f(c)
 
-            if c == a:
-                break
-
-            if abs(ya - yd) / min(ya, yd) < yRelTol:
+            if (
+                (abs(a - d) <= x_tol)
+                or (abs(ya - yd) < y_rel_tol * abs(min(ya, yd)))
+                or (abs(ya - yd) <= y_abs_tol)
+            ):
                 break
 
         else:
             # c--d---b
             a = c
             c = d
-            ya = yc
             yc = yd
             h = invphi * h
             d = a + invphi * h
             yd = f(d)
 
-            if d == a:
+            if (
+                (abs(c - b) <= x_tol)
+                or (abs(yc - yb) < y_rel_tol * abs(min(yc, yb)))
+                or (abs(yc - yd) <= y_abs_tol)
+            ):
                 break
 
-            if abs(yc - yb) / min(yc, yb) < yRelTol:
-                break
-
-        i += 1
+        k += 1
 
     if (yc < yd and findMin) or (yc > yd and not findMin):
         return (a, d)
@@ -233,7 +197,7 @@ def RKF78(
     x_0,
     x_1,
     relTol,
-    absTol=0,
+    absTol=1e-16,
     minTol=1e-16,
     adaptTo=True,
     abortFunc=None,
@@ -669,11 +633,22 @@ def quadratic(a, b, c):
         return x_1, x_2
 
 
-def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
-    """secant method that solves f(x) = 0 subjected to x in [x_min,x_max]"""
+def secant(
+    f,
+    y,
+    x_0,
+    x_1,
+    x_min=None,
+    x_max=None,
+    x_tol=1e-16,
+    y_rel_tol=0,
+    y_abs_tol=1e-16,
+    it=1000,
+):
+    """secant method that solves f(x) = y subjected to x in [x_min,x_max]"""
 
-    fx_0 = f(x_0)
-    fx_1 = f(x_1)
+    fx_0 = f(x_0) - y
+    fx_1 = f(x_1) - y
 
     if x_0 == x_1 or fx_0 == fx_1:
         errStr = "Impossible to calculate initial slope for secant search."
@@ -687,14 +662,18 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
         if x_max is not None and x_2 > x_max:
             x_2 = 0.9 * x_max + 0.1 * x_1
 
-        fx_2 = f(x_2)
+        fx_2 = f(x_2) - y
 
-        if any((x_2 == x_1, x_2 == x_0)):
+        if fx_2 == fx_1:
             raise ValueError(
                 "Secant search stalled at f({})={}".format(x_2, fx_2)
             )
 
-        if abs(fx_2) < tol:
+        if (
+            abs(x_2 - x_1) < x_tol
+            or abs(fx_2) < y_abs_tol
+            or abs(fx_2) < abs(y) * y_rel_tol
+        ):
             return x_2, fx_2
         else:
             x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, fx_2

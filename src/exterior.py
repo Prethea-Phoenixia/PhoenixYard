@@ -2,7 +2,7 @@ from atmos import atmosphere, R_e
 from drag import KdCurve
 from math import pi, sin, cos, atan2, acos
 
-from num import RKF78, secant
+from num import RKF78, secant, GSS, gss
 
 
 class Bullet:
@@ -38,7 +38,7 @@ class Bullet:
 
         return dx, dy, dvx, dvy
 
-    def _record_to_data(self, record):
+    def record_to_data(self, record, prettyprint=True):
         # convert the record into more sensible values:
 
         data = []
@@ -69,22 +69,43 @@ class Bullet:
             phi = 90 - acos((x * vx + y * vy) / (r * v)) * 180 / pi
             data.append((t, h, gr, v, phi))
 
-        from tabulate import tabulate
+        if prettyprint:
+            from tabulate import tabulate
 
-        print(
-            tabulate(
-                data,
-                headers=(
-                    "ToF",
-                    "H",
-                    "G.R.",
-                    "V.",
-                    "Angle",
-                ),
+            print(
+                tabulate(
+                    data,
+                    headers=(
+                        "ToF",
+                        "H",
+                        "G.R.",
+                        "V.",
+                        "Angle",
+                    ),
+                )
             )
-        )
 
         return data
+
+    def inverse(
+        self, tol, vel, tgtR, gunH=0, tgtH=0, env=atmosphere, t_max=1000
+    ):
+        """
+        Inverse calculation: given shot splash range, calculate in inverse the
+        angle necessary to achieve said range.
+        """
+
+        def f_r(elev):
+            record = self.forward(tol, vel, elev, gunH, tgtH, env, t_max)
+            t, (x, y, vx, vy) = record[-1]
+
+            theta = -(atan2(y, x) - 0.5 * pi)
+            gr = theta * R_e
+
+            return gr
+
+        # print(GSS(f_r, 0, 90, yRelTol=tol, findMin=False))
+        print(gss(f_r, 0, 90, tol * 90, findMin=False))
 
     def forward(
         self, tol, vel, elev, gunH=0, tgtH=0, env=atmosphere, t_max=1000
@@ -112,14 +133,13 @@ class Bullet:
          C = M / (i D^2)
         """
         x_0, y_0 = 0, R_e + gunH
+        phi = elev * pi / 180
 
         def abortTgt(x, ys, o_x, o_ys):
             x, y, vx, vy = ys
             h = (x**2 + y**2) ** 0.5 - (R_e + tgtH)
             # v = (vx**2 + vy**2) ** 0.5
             return h < 0
-
-        phi = elev * pi / 180
 
         vx_0 = vel * cos(phi)
         vy_0 = vel * sin(phi)
@@ -153,7 +173,7 @@ class Bullet:
             return (x**2 + y**2) ** 0.5 - (R_e + tgtH)
 
         t_t, _ = secant(
-            f_tgt, t_0, t_1, tol=t_0 * tol
+            f_tgt, 0, t_0, t_1, x_tol=t_0 * tol
         )  # time to target is determined via secant search
 
         _, (x_1, y_1, vx_1, vy_1), _ = RKF78(
@@ -174,8 +194,10 @@ if __name__ == "__main__":
         "test", mass=9.0990629, diam=88e-3, Kd_curve=KdCurve["G8"], form=0.925
     )
 
-    test._record_to_data(test.forward(tol=1e-9, vel=819.912, elev=25))
+    test.record_to_data(test.forward(tol=1e-9, vel=819.912, elev=25))
 
+    # test.inverse(tol=1e-9, vel=819.92, tgtR=8000)
+    """
     test = Bullet(
         "M2 ball",
         mass=0.045942,
@@ -184,4 +206,5 @@ if __name__ == "__main__":
         Kd_curve=KdCurve["G5"],
     )
 
-    test._record_to_data(test.forward(tol=1e-9, vel=856, elev=0.725))
+    test.record_to_data(test.forward(tol=1e-9, vel=856, elev=0.725))
+    """

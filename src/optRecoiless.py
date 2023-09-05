@@ -1,4 +1,4 @@
-from num import GSS, RKF78, cubic, secant
+from num import gss, RKF78, cubic, secant
 from prop import Propellant
 from random import uniform
 from math import pi
@@ -326,13 +326,12 @@ class ConstrainedRecoiless:
             The tolerance on Z must be guarded such that floating point
             error does not become rampant
             """
-            Z_1, Z_2 = GSS(
+            Z_1, Z_2 = gss(
                 _fp_Z,
                 Z_i,
                 Z_j,
-                yRelTol=0.1 * tol,
+                y_rel_tol=tol,
                 findMin=False,
-                xTol=0,
             )
 
             Z_p = 0.5 * (Z_1 + Z_2)
@@ -357,9 +356,10 @@ class ConstrainedRecoiless:
 
         e_1, _ = secant(
             lambda x: _fp_e_1(x, tol)[0],
+            0,
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
-            tol=p_bar_d * tol,
+            y_abs_tol=p_bar_d * tol,
             x_min=0.5 * probeWeb,  # <=0
         )  # this is the e_1 that satisifies the pressure specification.
 
@@ -506,7 +506,7 @@ class ConstrainedRecoiless:
             e_1, l_g = solve(
                 loadFraction=lf,
                 chargeMassRatio=chargeMassRatio,
-                tol=0.1 * tol,  # this is to ensure unimodality up to ~tol
+                tol=tol,  # this is to ensure unimodality up to ~tol
                 minWeb=mW,
                 containBurnout=False,
                 maxLength=maxLength,
@@ -593,16 +593,14 @@ class ConstrainedRecoiless:
         """
         Step 2, gss to min.
         """
-
-        lf_low, lf_high = GSS(
-            lambda x: f(x, actMinWeb)[1],
+        lf_low, lf_high = gss(
+            lambda lf: f(lf, actMinWeb)[1],
             low,
             high,
-            yRelTol=tol,
-            xTol=0,
+            y_rel_tol=tol,  # variable: load fraction
+            x_tol=tol,
             findMin=True,
         )
-
         lf = 0.5 * (lf_high + lf_low)
 
         e_1, l_t, l_g = f(lf, actMinWeb)
@@ -624,14 +622,17 @@ if __name__ == "__main__":
         startPressure=10e6,
         dragCoefficient=5e-2,
         designPressure=350e6,
-        designVelocity=1800,
+        designVelocity=800,
         nozzleExpansion=2,
         nozzleEfficiency=0.92,
         chambrage=1,
     )
 
-    print(test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-3))
-    """
+    print(test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-4))
+
     for i in range(10):
-        print(test.findMinV(chargeMassRatio=1, tol=1e-3, minWeb=1e-6))
-    """
+        print(
+            test.findMinV(
+                chargeMassRatio=1, tol=1e-3, minWeb=1e-6, maxLength=100
+            )
+        )

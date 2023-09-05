@@ -1,5 +1,5 @@
 from math import pi, log, inf, exp
-from num import gss, RKF78, cubic, intg, bisect, secant
+from num import gss, RKF78, cubic, intg, bisect
 from prop import GrainComp, Propellant
 
 DOMAIN_TIME = "DOMAIN_TIME"
@@ -387,7 +387,7 @@ class Gun:
 
         Labda = self.l_g / self.l_0
         cc = (
-            1 - (1 - 1 / self.chi_k) * 2.303 * log(Labda + 1) / Labda
+            1 - (1 - 1 / self.chi_k) * log(Labda + 1) / Labda
         )  # chambrage correction factor
 
         self.phi = self.phi_1 + labda_2 * self.omega / self.m * cc  # per ref.
@@ -751,7 +751,7 @@ class Gun:
                 f,
                 0,
                 t_bar_e if t_bar_b is None else t_bar_b,
-                tol=t_bar_tol,
+                x_tol=t_bar_tol,
                 findMin=False,
             )
 
@@ -1017,7 +1017,7 @@ if __name__ == "__main__":
 
     lf = 0.5
     print("DELTA/rho:", lf)
-    cm = 1.0
+    cm = 1
     test = Gun(
         caliber=0.05,
         shotMass=1.0,

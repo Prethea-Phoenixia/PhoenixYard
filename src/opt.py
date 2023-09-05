@@ -1,4 +1,4 @@
-from num import GSS, RKF78, cubic, secant
+from num import gss, RKF78, cubic, secant
 from prop import Propellant
 from random import uniform
 from math import pi, log
@@ -252,7 +252,7 @@ class Constrained:
 
             record = []
 
-            (Z_j, (t_bar_j, l_bar_j, v_bar_j), (_, _, _)) = RKF78(
+            Z_j, (t_bar_j, l_bar_j, v_bar_j), (_, _, _) = RKF78(
                 dFunc=_ode_Z,
                 iniVal=(0, 0, 0),
                 x_0=Z_0,
@@ -285,17 +285,9 @@ class Constrained:
             The tolerance on Z must be guarded such that floating point
             error does not become rampant
             """
-            Z_1, Z_2 = GSS(
-                _fp_Z,
-                Z_i,
-                Z_j,
-                yRelTol=tol,
-                findMin=False,
-                xTol=0,
-            )
 
+            Z_1, Z_2 = gss(_fp_Z, Z_i, Z_j, y_rel_tol=tol, findMin=False)
             Z_p = 0.5 * (Z_1 + Z_2)
-
             return _fp_Z(Z_p) - p_bar_d, Z_j, v_bar_i, l_bar_i
 
         """
@@ -316,10 +308,11 @@ class Constrained:
             dp_bar_probe = _fp_e_1(probeWeb, tol)[0]
 
         e_1, _ = secant(
-            lambda x: _fp_e_1(x, tol)[0],
+            lambda e: _fp_e_1(e, tol)[0],
+            0,
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
-            tol=p_bar_d * tol,
+            y_abs_tol=p_bar_d * tol,
             x_min=0.5 * probeWeb,  # <=0
         )  # this is the e_1 that satisifies the pressure specification.
 
@@ -406,7 +399,7 @@ class Constrained:
 
         # calculate the averaged chambrage correction factor
         # implied by this solution
-        cc_n = 1 - (1 - 1 / chi_k) * 2.303 * log(l_bar_g + 1) / l_bar_g
+        cc_n = 1 - (1 - 1 / chi_k) * log(l_bar_g + 1) / l_bar_g
 
         if abs(cc_n / cc - 1) > tol:
             # successive better approximations will eventually
@@ -517,7 +510,8 @@ class Constrained:
                 web_i, lt_i, lg_i = f(new_low)
                 records.append((new_low, lt_i))
                 probe = new_low
-            except ValueError:
+            except ValueError as e:
+                print(new_low, e)
                 delta_low *= 0.5
             finally:
                 new_low = probe + delta_low
@@ -531,12 +525,14 @@ class Constrained:
         delta_high = high - probe
 
         new_high = probe + delta_high
+
         while abs(2 * delta_high) > tol and new_high < 1:
             try:
                 _, lt_i, lg_i = f(new_high, actMinWeb)
                 records.append((new_high, lt_i))
                 probe = new_high
-            except ValueError:
+            except ValueError as e:
+                print(new_high, e)
                 delta_high *= 0.5
             finally:
                 new_high = probe + delta_high
@@ -565,13 +561,12 @@ class Constrained:
         """
         Step 2, gss to min.
         """
-
-        lf_low, lf_high = GSS(
-            lambda x: f(x, actMinWeb)[1],
+        lf_low, lf_high = gss(
+            lambda lf: f(lf, actMinWeb)[1],
             low,
             high,
-            yRelTol=tol,
-            xTol=0,
+            y_rel_tol=tol,  # variable: load fraction
+            x_tol=tol,
             findMin=True,
         )
 
@@ -600,9 +595,11 @@ if __name__ == "__main__":
         chambrage=1.5,
     )
 
+    print(test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-4))
+
     for i in range(10):
         print(
             test.findMinV(
-                chargeMassRatio=1, tol=1e-3, minWeb=1e-6, maxLength=10
+                chargeMassRatio=1, tol=1e-3, minWeb=1e-6, maxLength=100
             )
         )
