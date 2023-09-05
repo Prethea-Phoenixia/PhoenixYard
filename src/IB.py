@@ -704,15 +704,6 @@ class IB(Frame):
 
         j = 0
 
-        self.pbar = ttk.Progressbar(
-            pltOptnFrm, mode="indeterminate", maximum=100
-        )
-        self.pbar.grid(
-            row=j, column=0, columnspan=10, sticky="nsew", padx=2, pady=2
-        )
-
-        j += 1
-
         self.plotAvgP = IntVar(value=1)
         self.plotAvgPCheck = ttk.Checkbutton(
             pltOptnFrm, text=self.getLocStr("plotAvgP"), variable=self.plotAvgP
@@ -1048,6 +1039,12 @@ class IB(Frame):
             color="red",
             infotext=self.tolTip,
         )
+
+        self.pbar = ttk.Progressbar(opFrm, mode="indeterminate", maximum=100)
+        self.pbar.grid(
+            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+        )
+        i += 1
 
         self.calButton = ttk.Button(
             opFrm,
@@ -1960,13 +1957,22 @@ class IB(Frame):
                     )
 
                 if self.plotRecoil.get():
-                    self.axF.plot(
-                        xs,
-                        Frs,
-                        c="tab:green",
-                        label=self.getLocStr("figRecoil"),
-                        linestyle="dotted",
-                    )
+                    if gunType == CONVENTIONAL:
+                        self.axF.plot(
+                            xs,
+                            Frs,
+                            c="tab:green",
+                            label=self.getLocStr("figRecoil"),
+                            linestyle="dotted",
+                        )
+                    elif gunType == RECOILESS:
+                        self.axF.plot(
+                            xs,
+                            tuple(-v for v in Frs),
+                            c="tab:green",
+                            label="-" + self.getLocStr("figRecoil"),
+                            linestyle="dotted",
+                        )
 
                 linesLabeled = []
                 for lines, xvals in zip(
@@ -2025,11 +2031,7 @@ class IB(Frame):
                 pmax = max(Pas + Pbs + Pss + P0s)
                 self.axP.set(ylim=(0, pmax * 1.05))
                 self.axv.set(ylim=(0, max(vs) * 1.05))
-
-                if any(v < 0 for v in Frs):
-                    self.axF.set(ylim=(min(Frs) * 1.05, 0))
-                else:
-                    self.axF.set(ylim=(0, pmax * gun.S * 1.05))
+                self.axF.set(ylim=(0, pmax * gun.S * 1.05))
 
                 tkw = dict(size=4, width=1.5)
                 self.ax.yaxis.tick_right()

@@ -233,7 +233,7 @@ def RKF78(
     x_0,
     x_1,
     relTol,
-    absTol,
+    absTol=0,
     minTol=1e-16,
     adaptTo=True,
     abortFunc=None,
@@ -479,6 +479,7 @@ def RKF78(
                 raise TypeError
 
         except (
+            ValueError,
             TypeError,
             ZeroDivisionError,
             OverflowError,
@@ -524,25 +525,18 @@ def RKF78(
 
         # Rs = [R for (R, adapt) in zip(Rs, adaptTo) if adapt]
 
-        if absTol is None:
-            R = max(
-                abs(r) / (minTol + relTol * min(abs(y1), abs(y2)))
-                for r, y1, y2, adapt in zip(Rs, y_this, y_next, adaptTo)
-                if adapt
-            )
-        else:
-            R = max(
-                abs(r)
-                / (
-                    minTol
-                    + max(
-                        (relTol * min(abs(y1), abs(y2))),
-                        absTol,
-                    )
+        R = max(
+            abs(r)
+            / (
+                minTol
+                + max(
+                    (relTol * min(abs(y1), abs(y2))),
+                    absTol,
                 )
-                for r, y1, y2, adapt in zip(Rs, y_this, y_next, adaptTo)
-                if adapt
             )
+            for r, y1, y2, adapt in zip(Rs, y_this, y_next, adaptTo)
+            if adapt
+        )
 
         delta = 1
 
@@ -681,6 +675,11 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
     fx_0 = f(x_0)
     fx_1 = f(x_1)
 
+    if x_0 == x_1 or fx_0 == fx_1:
+        errStr = "Impossible to calculate initial slope for secant search."
+        errStr += "\nf({:})={:}\nf({:})={:}".format(x_0, fx_0, x_1, fx_1)
+        raise ValueError(errStr)
+
     for i in range(it):
         x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
         if x_min is not None and x_2 < x_min:
@@ -692,7 +691,7 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
 
         if any((x_2 == x_1, x_2 == x_0)):
             raise ValueError(
-                "Secant search stalled at ({},{})".format(x_2, fx_2)
+                "Secant search stalled at f({})={}".format(x_2, fx_2)
             )
 
         if abs(fx_2) < tol:
@@ -701,7 +700,7 @@ def secant(f, x_0, x_1, x_min=None, x_max=None, tol=1e-6, it=1000):
             x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, fx_2
 
     raise ValueError(
-        "Maximum iteration exceeded at ({},{})->({},{})".format(
+        "Maximum iteration exceeded at (f({})={})->(f({})={})".format(
             x_1, fx_1, x_2, fx_2
         )
     )
@@ -790,18 +789,6 @@ def solveMat(A, B):
         A[i], I[i] = rowJ
         A[j], I[j] = rowI
 
-    """
-    print(
-        *[
-            " ".join("{:^8.4g}".format(v) for v in a)
-            + "|"
-            + " ".join("{:^8.4g}".format(v) for v in i)
-            for a, i in zip(A, I)
-        ],
-        sep="\n"
-    )
-    print("")
-    """
     h = 0  # pivot row
     k = 0  # pivot column
 
