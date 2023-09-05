@@ -790,8 +790,8 @@ class Gun:
                 (Z_0, 0, 0),
                 0,
                 t,
-                relTol=tol,
-                absTol=tol,
+                relTol=0.1 * tol,
+                absTol=0.1 * tol,
                 minTol=minTol,
             )[1]
 

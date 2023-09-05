@@ -5,6 +5,17 @@ from math import pi, log
 from gun import pidduck
 from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
 
+KAPPA = 0.33
+"""
+Machine-accuracy factor, determines that, if a numerical method
+is used within another, then how much more accurate should the
+inner method be called as compared to the outter. A small value
+is necessary to prevent sporadic appearance of outlier, at the
+cost of increased computation times.
+
+#TODO: figure out the error cascade, simply using this isn't working.
+"""
+
 
 class Constrained:
     def __init__(
@@ -187,7 +198,7 @@ class Constrained:
         p_bar_d = p_d / (f * Delta)  # convert to unitless
         l_bar_d = maxLength / l_0
 
-        def _fp_e_1(e_1, tol):
+        def _fp_e_1(e_1, tol=KAPPA * tol):
             """
             calculate either the peak pressure, given the arc thickness,
             or until the system develops 2x design pressure.
@@ -274,8 +285,8 @@ class Constrained:
                     iniVal=(t_bar_i, l_bar_i, v_bar_i),
                     x_0=Z_i,
                     x_1=Z,
-                    relTol=tol,
-                    absTol=tol,
+                    relTol=KAPPA * tol,
+                    absTol=KAPPA * tol,
                 )
 
                 return _fp_bar(Z, l_bar, v_bar)
@@ -294,7 +305,7 @@ class Constrained:
         The two initial guesses are good enough for the majority of cases,
         guess one: 0.1mm, guess two: 1mm
         """
-        dp_bar_probe = _fp_e_1(minWeb, tol)[0]
+        dp_bar_probe = _fp_e_1(minWeb)[0]
         probeWeb = minWeb
 
         if dp_bar_probe < 0:
@@ -305,10 +316,10 @@ class Constrained:
 
         while dp_bar_probe > 0:
             probeWeb *= 2
-            dp_bar_probe = _fp_e_1(probeWeb, tol)[0]
+            dp_bar_probe = _fp_e_1(probeWeb)[0]
 
         e_1, _ = secant(
-            lambda e: _fp_e_1(e, tol)[0],
+            lambda web: _fp_e_1(web)[0],
             0,
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
@@ -316,9 +327,9 @@ class Constrained:
             x_min=0.5 * probeWeb,  # <=0
         )  # this is the e_1 that satisifies the pressure specification.
 
-        p_bar_dev, Z_i, v_bar_i, l_bar_i = _fp_e_1(e_1, tol)
+        p_bar_dev, Z_i, v_bar_i, l_bar_i = _fp_e_1(e_1)
 
-        if abs(p_bar_dev / p_bar_d) > tol:
+        if abs(p_bar_dev) > tol * p_bar_d:
             raise ValueError("Design pressure is not met")
 
         if v_j * v_bar_i > v_d and containBurnout:
@@ -470,7 +481,7 @@ class Constrained:
             e_1, l_g = solve(
                 loadFraction=lf,
                 chargeMassRatio=chargeMassRatio,
-                tol=tol,
+                tol=KAPPA * tol,
                 minWeb=mW,
                 containBurnout=False,
                 maxLength=maxLength,
@@ -511,7 +522,7 @@ class Constrained:
                 records.append((new_low, lt_i))
                 probe = new_low
             except ValueError as e:
-                print(new_low, e)
+                # print(new_low, e)
                 delta_low *= 0.5
             finally:
                 new_low = probe + delta_low
@@ -532,7 +543,7 @@ class Constrained:
                 records.append((new_high, lt_i))
                 probe = new_high
             except ValueError as e:
-                print(new_high, e)
+                # print(new_high, e)
                 delta_high *= 0.5
             finally:
                 new_high = probe + delta_high
@@ -566,7 +577,7 @@ class Constrained:
             low,
             high,
             y_rel_tol=tol,  # variable: load fraction
-            x_tol=tol,
+            # x_tol=tol,
             findMin=True,
         )
 

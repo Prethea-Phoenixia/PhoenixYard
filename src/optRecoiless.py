@@ -4,6 +4,8 @@ from random import uniform
 from math import pi
 from recoiless import Recoiless
 
+from opt import KAPPA
+
 
 class ConstrainedRecoiless:
     def __init__(
@@ -209,7 +211,7 @@ class ConstrainedRecoiless:
         p_bar_d = p_d / (f * Delta)  # convert to unitless
         l_bar_d = maxLength / l_0
 
-        def _fp_e_1(e_1, tol):
+        def _fp_e_1(e_1, tol=KAPPA * tol):
             """
             calculate either the peak pressure, given the arc thickness,
             or until the system develops 2x design pressure.
@@ -290,8 +292,8 @@ class ConstrainedRecoiless:
                 iniVal=(0, 0, 0, 0, 1),
                 x_0=Z_0,
                 x_1=Z_b,
-                relTol=0.1 * tol,
-                absTol=0.1 * tol,
+                relTol=tol,
+                absTol=tol,
                 abortFunc=abort,
                 record=record,
             )
@@ -315,8 +317,8 @@ class ConstrainedRecoiless:
                     iniVal=(t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i),
                     x_0=Z_i,
                     x_1=Z,
-                    relTol=0.01 * tol,
-                    absTol=0.01 * tol,
+                    relTol=KAPPA * tol,
+                    absTol=KAPPA * tol,
                 )
 
                 return _fp_bar(Z, l_bar, eta, tau)
@@ -342,7 +344,7 @@ class ConstrainedRecoiless:
         The two initial guesses are good enough for the majority of cases,
         guess one: 0.1mm, guess two: 1mm
         """
-        dp_bar_probe = _fp_e_1(minWeb, tol)[0]
+        dp_bar_probe = _fp_e_1(minWeb)[0]
         probeWeb = minWeb
 
         if dp_bar_probe < 0:
@@ -352,10 +354,10 @@ class ConstrainedRecoiless:
 
         while dp_bar_probe > 0:
             probeWeb *= 2
-            dp_bar_probe = _fp_e_1(probeWeb, tol)[0]
+            dp_bar_probe = _fp_e_1(probeWeb)[0]
 
         e_1, _ = secant(
-            lambda x: _fp_e_1(x, tol)[0],
+            lambda web: _fp_e_1(web)[0],
             0,
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
@@ -363,9 +365,9 @@ class ConstrainedRecoiless:
             x_min=0.5 * probeWeb,  # <=0
         )  # this is the e_1 that satisifies the pressure specification.
 
-        p_bar_dev, Z_i, v_bar_i = _fp_e_1(e_1, tol)
+        p_bar_dev, Z_i, v_bar_i = _fp_e_1(e_1)
 
-        if abs(p_bar_dev / p_bar_d) > tol:
+        if abs(p_bar_dev) > tol * p_bar_d:
             raise ValueError("Design pressure is not met")
 
         """
@@ -506,7 +508,7 @@ class ConstrainedRecoiless:
             e_1, l_g = solve(
                 loadFraction=lf,
                 chargeMassRatio=chargeMassRatio,
-                tol=tol,  # this is to ensure unimodality up to ~tol
+                tol=KAPPA * tol,  # this is to ensure unimodality up to ~tol
                 minWeb=mW,
                 containBurnout=False,
                 maxLength=maxLength,

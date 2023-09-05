@@ -745,8 +745,8 @@ class Recoiless:
                 (Z_0, 0, 0, 0, 1),
                 0,
                 t,
-                relTol=tol,
-                absTol=tol,
+                relTol=0.1 * tol,
+                absTol=0.1 * tol,
                 minTol=minTol,
             )[1]
             p_bar = self._fp_bar(Z, l_bar, eta, tau)
