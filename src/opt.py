@@ -5,7 +5,7 @@ from math import pi, log
 from gun import pidduck
 from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
 
-KAPPA = 0.33
+KAPPA = 1
 """
 Machine-accuracy factor, determines that, if a numerical method
 is used within another, then how much more accurate should the
@@ -79,13 +79,15 @@ class Constrained:
         containBurnout=True,
         maxLength=1e3,
         labda_2=None,
-        cc=1,
+        cc=None,
         sol=SOL_PIDDUCK,
         ambientRho=1.204,
         ambientP=101.325e3,
         ambientGamma=1.4,
         **_,
     ):
+        if cc is None:
+            print("solving lf = {:}".format(loadFraction))
         if any(
             (
                 minWeb <= 0,
@@ -123,6 +125,15 @@ class Constrained:
         Z_b = self.Z_b
         chi_k = self.chi_k
         f_psi_Z = self.f_psi_Z
+
+        if cc is None:
+            """
+            Lim labda_g -> 0 ln(labda_g + 1)/ labda_g = 1
+            Therefore, the covolume correction cannot be larger
+            than 1- 1/(1- chi_k)
+
+            """
+            cc = 1 - 1 / (1 - chi_k)
 
         if loadFraction > maxLF:
             raise ValueError(
@@ -233,6 +244,8 @@ class Constrained:
                         * v_r
                         * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5
                     ) * p_1_bar
+
+                    p_2_bar = max(p_2_bar, 0)
                 else:
                     p_2_bar = 0
 
@@ -263,7 +276,7 @@ class Constrained:
 
             record = []
 
-            Z_j, (t_bar_j, l_bar_j, v_bar_j), (_, _, _) = RKF78(
+            Z_j, (t_bar_j, l_bar_j, v_bar_j), e = RKF78(
                 dFunc=_ode_Z,
                 iniVal=(0, 0, 0),
                 x_0=Z_0,
@@ -299,7 +312,7 @@ class Constrained:
 
             Z_1, Z_2 = gss(_fp_Z, Z_i, Z_j, y_rel_tol=tol, findMin=False)
             Z_p = 0.5 * (Z_1 + Z_2)
-            return _fp_Z(Z_p) - p_bar_d, Z_j, v_bar_i, l_bar_i
+            return _fp_Z(Z_p) - p_bar_d, Z_j, v_bar_i, l_bar_i, t_bar_i
 
         """
         The two initial guesses are good enough for the majority of cases,
@@ -327,7 +340,7 @@ class Constrained:
             x_min=0.5 * probeWeb,  # <=0
         )  # this is the e_1 that satisifies the pressure specification.
 
-        p_bar_dev, Z_i, v_bar_i, l_bar_i = _fp_e_1(e_1)
+        p_bar_dev, Z_i, v_bar_i, l_bar_i, t_bar_i = _fp_e_1(e_1)
 
         if abs(p_bar_dev) > tol * p_bar_d:
             raise ValueError("Design pressure is not met")
@@ -364,6 +377,7 @@ class Constrained:
                     * v_r
                     * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5
                 ) * p_1_bar
+                p_2_bar = max(p_2_bar, 0)
             else:
                 p_2_bar = 0
 
@@ -378,25 +392,30 @@ class Constrained:
 
             return [dt_bar, dZ, dl_bar]
 
-        """
-        Integrating from 0 enforce consistency and improves numerical
-        stability of the result when called with inputs that are in close
-        proximity.
-        """
-
         def abort(x, ys, o_x, o_ys):
             t_bar, Z, l_bar = ys
             return l_bar > l_bar_d
 
-        (v_bar_g, (t_bar_g, Z_g, l_bar_g), (_, _, _)) = RKF78(
-            dFunc=_ode_v,
-            iniVal=(0, Z_0, 0),
-            x_0=0,
-            x_1=v_bar_d,
-            relTol=tol,
-            absTol=tol,
-            abortFunc=abort,
-        )
+        try:
+            tr = []
+            (v_bar_g, (t_bar_g, Z_g, l_bar_g), (_, _, _)) = RKF78(
+                dFunc=_ode_v,
+                # iniVal=(t_bar_i, Z_i, l_bar_i),
+                iniVal=(0, Z_0, 0),
+                # x_0=v_bar_i,
+                x_0=0,
+                x_1=v_bar_d,
+                relTol=tol,
+                absTol=tol,
+                abortFunc=abort,
+                record=tr,
+            )
+        except ValueError:
+            raise ValueError(
+                "Velocity plateaued below specification at {:} m/s.".format(
+                    tr[-1][0] * v_j
+                )
+            )
         if l_bar_g > l_bar_d:
             raise ValueError(
                 "Solution requires excessive tube length "
@@ -405,14 +424,16 @@ class Constrained:
 
         v = v_bar_g * v_j
 
-        if abs((v - v_d) / v_d) > tol:
+        if abs(v - v_d) > tol * v_d:
             raise ValueError("Velocity specification is not met")
 
         # calculate the averaged chambrage correction factor
         # implied by this solution
         cc_n = 1 - (1 - 1 / chi_k) * log(l_bar_g + 1) / l_bar_g
 
-        if abs(cc_n / cc - 1) > tol:
+        # print(cc, "->", cc_n)
+
+        if abs(cc_n - cc) > tol:
             # successive better approximations will eventually
             # result in value within tolerance.
             return self.solve(
@@ -424,7 +445,8 @@ class Constrained:
                 maxLength=maxLength,
                 labda_2=labda_2,
                 sol=sol,
-                cc=cc_n,
+                cc=0.4 * cc_n
+                + 0.6 * cc,  # This is necessary to damp the oscillation
                 ambientRho=ambientRho,
                 ambientP=ambientP,
             )
@@ -474,7 +496,7 @@ class Constrained:
         else:
             raise ValueError("Unknown Solution")
 
-        def f(lf, mW=minWeb):
+        def f(lf):
             V_0 = omega / (rho_p * maxLF * lf)
             l_0 = V_0 / S
 
@@ -482,7 +504,7 @@ class Constrained:
                 loadFraction=lf,
                 chargeMassRatio=chargeMassRatio,
                 tol=KAPPA * tol,
-                minWeb=mW,
+                minWeb=minWeb,
                 containBurnout=False,
                 maxLength=maxLength,
                 labda_2=labda_2,
@@ -500,7 +522,8 @@ class Constrained:
                 _, lt_i, lg_i = f(startProbe)
                 records.append((startProbe, lt_i))
                 break
-            except ValueError:
+            except ValueError as e:
+                print(e)
                 pass
 
         if i == N - 1:
@@ -513,21 +536,18 @@ class Constrained:
         probe = startProbe
         delta_low = low - probe
 
-        web_i = minWeb
         new_low = probe + delta_low
 
         while abs(2 * delta_low) > tol:
             try:
-                web_i, lt_i, lg_i = f(new_low)
+                _, lt_i, lg_i = f(new_low)
                 records.append((new_low, lt_i))
                 probe = new_low
             except ValueError as e:
-                # print(new_low, e)
+                print(new_low, e)
                 delta_low *= 0.5
             finally:
                 new_low = probe + delta_low
-
-        actMinWeb = web_i * (1 - tol)
 
         low = probe
 
@@ -539,11 +559,11 @@ class Constrained:
 
         while abs(2 * delta_high) > tol and new_high < 1:
             try:
-                _, lt_i, lg_i = f(new_high, actMinWeb)
+                _, lt_i, lg_i = f(new_high)
                 records.append((new_high, lt_i))
                 probe = new_high
             except ValueError as e:
-                # print(new_high, e)
+                print(new_high, e)
                 delta_high *= 0.5
             finally:
                 new_high = probe + delta_high
@@ -562,10 +582,6 @@ class Constrained:
 
         delta = high - low
 
-        # Edge values are some times only semi-stable, i.e. when calling
-        # f() with the same value will spuriously raise value errors. Therefore
-        # we conservatively shrink the range by tolerance to avoid this issue.
-
         low += delta * tol
         high -= delta * tol
 
@@ -573,17 +589,17 @@ class Constrained:
         Step 2, gss to min.
         """
         lf_low, lf_high = gss(
-            lambda lf: f(lf, actMinWeb)[1],
+            lambda lf: f(lf)[1],
             low,
             high,
-            y_rel_tol=tol,  # variable: load fraction
-            # x_tol=tol,
+            y_rel_tol=tol,
+            x_tol=tol,  # variable: load fraction
             findMin=True,
         )
 
         lf = 0.5 * (lf_high + lf_low)
 
-        e_1, l_t, l_g = f(lf, actMinWeb)
+        e_1, l_t, l_g = f(lf)
 
         return lf, e_1, l_g
 
@@ -608,7 +624,7 @@ if __name__ == "__main__":
 
     print(test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-4))
 
-    for i in range(10):
+    for i in range(5):
         print(
             test.findMinV(
                 chargeMassRatio=1, tol=1e-3, minWeb=1e-6, maxLength=100

@@ -1,5 +1,7 @@
 import math
 
+from numba import njit
+
 
 def sign(x):
     if x > 0:
@@ -540,10 +542,13 @@ def RKF78(
         """
 
     if abs((x - x_1) / (x_1 - x_0)) > relTol:
-        """
         # debug code
+        """
+        print("x0", x_0)
+        print("x1", x_1)
         print(x, *y_this)
         print(dFunc(x, *y_this))
+
         if record is not None:
             print(*record, sep="\n")
         """
@@ -670,9 +675,9 @@ def secant(
             )
 
         if (
-            abs(x_2 - x_1) < x_tol
-            or abs(fx_2) < y_abs_tol
-            or abs(fx_2) < abs(y) * y_rel_tol
+            (abs(x_2 - x_1) < x_tol)
+            or (abs(fx_2) < y_abs_tol)
+            or (abs(fx_2) < abs(y) * y_rel_tol)
         ):
             return x_2, fx_2
         else:

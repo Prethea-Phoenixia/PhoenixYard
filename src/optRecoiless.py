@@ -99,6 +99,8 @@ class ConstrainedRecoiless:
         """
         minWeb  : represents minimum possible grain size
         """
+
+        print("solving lf = {:}".format(loadFraction))
         m = self.m
         rho_p = self.rho_p
         theta = self.theta
@@ -338,7 +340,15 @@ class ConstrainedRecoiless:
 
             Z_p = 0.5 * (Z_1 + Z_2)
 
-            return _fp_Z(Z_p) - p_bar_d, Z_j, v_bar_i
+            return (
+                _fp_Z(Z_p) - p_bar_d,
+                Z_i,
+                t_bar_i,
+                l_bar_i,
+                v_bar_i,
+                eta_i,
+                tau_i,
+            )
 
         """
         The two initial guesses are good enough for the majority of cases,
@@ -365,7 +375,7 @@ class ConstrainedRecoiless:
             x_min=0.5 * probeWeb,  # <=0
         )  # this is the e_1 that satisifies the pressure specification.
 
-        p_bar_dev, Z_i, v_bar_i = _fp_e_1(e_1)
+        p_bar_dev, Z_i, t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i = _fp_e_1(e_1)
 
         if abs(p_bar_dev) > tol * p_bar_d:
             raise ValueError("Design pressure is not met")
@@ -426,12 +436,6 @@ class ConstrainedRecoiless:
 
             return (dt_bar, dZ, dl_bar, deta, dtau)
 
-        """
-        Integrating from 0 enforce consistency and improves numerical
-        stability of the result when called with inputs that are in close
-        proximity.
-        """
-
         def abort(x, ys, o_x, o_ys):
             v_bar = x
             t_bar, Z, l_bar, eta, tau = ys
@@ -445,7 +449,9 @@ class ConstrainedRecoiless:
                 (_, _, _, _, _),
             ) = RKF78(
                 dFunc=_ode_v,
+                # iniVal=(t_bar_i, Z_i, l_bar_i, eta_i, tau_i),
                 iniVal=(0, Z_0, 0, 0, 1),
+                # x_0=v_bar_i,
                 x_0=0,
                 x_1=v_bar_d,
                 relTol=tol,
@@ -501,7 +507,7 @@ class ConstrainedRecoiless:
         S = self.S
         solve = self.solve
 
-        def f(lf, mW=minWeb):
+        def f(lf):
             V_0 = omega / (rho_p * maxLF * lf)
             l_0 = V_0 / S
 
@@ -509,7 +515,7 @@ class ConstrainedRecoiless:
                 loadFraction=lf,
                 chargeMassRatio=chargeMassRatio,
                 tol=KAPPA * tol,  # this is to ensure unimodality up to ~tol
-                minWeb=mW,
+                minWeb=minWeb,
                 containBurnout=False,
                 maxLength=maxLength,
                 ambientP=ambientP,
@@ -539,20 +545,17 @@ class ConstrainedRecoiless:
         probe = startProbe
         delta_low = low - probe
 
-        web_i = minWeb
         new_low = probe + delta_low
 
         while abs(2 * delta_low) > tol:
             try:
-                web_i, lt_i, lg_i = f(new_low)
+                _, lt_i, lg_i = f(new_low)
                 records.append((new_low, lt_i))
                 probe = new_low
             except ValueError as e:
                 delta_low *= 0.5
             finally:
                 new_low = probe + delta_low
-
-        actMinWeb = web_i * (1 - tol)
 
         low = probe
 
@@ -563,7 +566,7 @@ class ConstrainedRecoiless:
         new_high = probe + delta_high
         while abs(2 * delta_high) > tol and new_high < 1:
             try:
-                _, lt_i, lg_i = f(new_high, actMinWeb)
+                _, lt_i, lg_i = f(new_high)
                 records.append((new_high, lt_i))
                 probe = new_high
             except ValueError as e:
@@ -596,7 +599,7 @@ class ConstrainedRecoiless:
         Step 2, gss to min.
         """
         lf_low, lf_high = gss(
-            lambda lf: f(lf, actMinWeb)[1],
+            lambda lf: f(lf)[1],
             low,
             high,
             y_rel_tol=tol,  # variable: load fraction
@@ -605,7 +608,7 @@ class ConstrainedRecoiless:
         )
         lf = 0.5 * (lf_high + lf_low)
 
-        e_1, l_t, l_g = f(lf, actMinWeb)
+        e_1, l_t, l_g = f(lf)
 
         return lf, e_1, l_g
 
