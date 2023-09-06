@@ -5,15 +5,13 @@ from math import pi, log
 from gun import pidduck
 from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
 
-KAPPA = 1
+KAPPA = 0.5
 """
 Machine-accuracy factor, determines that, if a numerical method
 is used within another, then how much more accurate should the
 inner method be called as compared to the outter. A small value
-is necessary to prevent sporadic appearance of outlier, at the
-cost of increased computation times.
-
-#TODO: figure out the error cascade, simply using this isn't working.
+is necessary to prevent numerical instability form causing sporadic
+appearance of outlier, at the cost of increased computation times.
 """
 
 
@@ -79,15 +77,13 @@ class Constrained:
         containBurnout=True,
         maxLength=1e3,
         labda_2=None,
-        cc=None,
-        sol=SOL_PIDDUCK,
+        cc=1,
+        sol=SOL_LAGRANGE,
         ambientRho=1.204,
         ambientP=101.325e3,
         ambientGamma=1.4,
         **_,
     ):
-        if cc is None:
-            print("solving lf = {:}".format(loadFraction))
         if any(
             (
                 minWeb <= 0,
@@ -98,6 +94,7 @@ class Constrained:
                 maxLength <= 0,
                 ambientRho < 0,
                 ambientP < 0,
+                ambientGamma < 1,
             )
         ):
             raise ValueError(
@@ -125,15 +122,6 @@ class Constrained:
         Z_b = self.Z_b
         chi_k = self.chi_k
         f_psi_Z = self.f_psi_Z
-
-        if cc is None:
-            """
-            Lim labda_g -> 0 ln(labda_g + 1)/ labda_g = 1
-            Therefore, the covolume correction cannot be larger
-            than 1- 1/(1- chi_k)
-
-            """
-            cc = 1 - 1 / (1 - chi_k)
 
         if loadFraction > maxLF:
             raise ValueError(
@@ -195,11 +183,6 @@ class Constrained:
             psi = f_psi_Z(Z)
 
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
-            """
-            p_bar = (
-                f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
-            ) / (S * l_0 * (l_bar + l_psi_bar) * f * Delta)
-            """
             p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
             return p_bar
 
@@ -245,7 +228,6 @@ class Constrained:
                         * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5
                     ) * p_1_bar
 
-                    p_2_bar = max(p_2_bar, 0)
                 else:
                     p_2_bar = 0
 
@@ -272,7 +254,7 @@ class Constrained:
 
                 op_bar = _fp_bar(oZ, ol_bar, ov_bar)
 
-                return p_bar < op_bar or p_bar > 2 * p_bar_d
+                return (p_bar < op_bar) or (p_bar > 2 * p_bar_d)
 
             record = []
 
@@ -293,7 +275,7 @@ class Constrained:
                 Z_i, (t_bar_i, l_bar_i, v_bar_i) = Z_0, (0, 0, 0)
 
             def _fp_Z(Z):
-                _, (t_bar, l_bar, v_bar), (_, _, _) = RKF78(
+                _, (t_bar, l_bar, v_bar), _ = RKF78(
                     dFunc=_ode_Z,
                     iniVal=(t_bar_i, l_bar_i, v_bar_i),
                     x_0=Z_i,
@@ -377,7 +359,7 @@ class Constrained:
                     * v_r
                     * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5
                 ) * p_1_bar
-                p_2_bar = max(p_2_bar, 0)
+
             else:
                 p_2_bar = 0
 
@@ -410,6 +392,7 @@ class Constrained:
                 abortFunc=abort,
                 record=tr,
             )
+
         except ValueError:
             raise ValueError(
                 "Velocity plateaued below specification at {:} m/s.".format(
@@ -431,8 +414,6 @@ class Constrained:
         # implied by this solution
         cc_n = 1 - (1 - 1 / chi_k) * log(l_bar_g + 1) / l_bar_g
 
-        # print(cc, "->", cc_n)
-
         if abs(cc_n - cc) > tol:
             # successive better approximations will eventually
             # result in value within tolerance.
@@ -445,10 +426,12 @@ class Constrained:
                 maxLength=maxLength,
                 labda_2=labda_2,
                 sol=sol,
-                cc=0.4 * cc_n
-                + 0.6 * cc,  # This is necessary to damp the oscillation
+                cc=cc_n,
+                # cc=0.4 * cc_n
+                # + 0.6 * cc,
                 ambientRho=ambientRho,
                 ambientP=ambientP,
+                ambientGamma=ambientGamma,
             )
             # TODO: Maximum recursion depth exceeded in comparison is
             # occasionally thrown here. Investigate why.
@@ -464,6 +447,7 @@ class Constrained:
         sol=SOL_PIDDUCK,
         ambientRho=1.204,
         ambientP=101.325e3,
+        ambientGamma=1.4,
         **_,
     ):
         """
@@ -480,7 +464,6 @@ class Constrained:
         m = self.m
         omega = m * chargeMassRatio
         rho_p = self.rho_p
-        maxLF = self.maxLF
         S = self.S
         solve = self.solve
         phi_1 = self.phi_1
@@ -497,7 +480,7 @@ class Constrained:
             raise ValueError("Unknown Solution")
 
         def f(lf):
-            V_0 = omega / (rho_p * maxLF * lf)
+            V_0 = omega / (rho_p * lf)
             l_0 = V_0 / S
 
             e_1, l_g = solve(
@@ -511,7 +494,9 @@ class Constrained:
                 sol=sol,
                 ambientRho=ambientRho,
                 ambientP=ambientP,
+                ambientGamma=ambientGamma,
             )
+
             return e_1, (l_g + l_0), l_g
 
         records = []
@@ -523,7 +508,6 @@ class Constrained:
                 records.append((startProbe, lt_i))
                 break
             except ValueError as e:
-                print(e)
                 pass
 
         if i == N - 1:
@@ -544,7 +528,6 @@ class Constrained:
                 records.append((new_low, lt_i))
                 probe = new_low
             except ValueError as e:
-                print(new_low, e)
                 delta_low *= 0.5
             finally:
                 new_low = probe + delta_low
@@ -563,7 +546,6 @@ class Constrained:
                 records.append((new_high, lt_i))
                 probe = new_high
             except ValueError as e:
-                print(new_high, e)
                 delta_high *= 0.5
             finally:
                 new_high = probe + delta_high
@@ -587,12 +569,16 @@ class Constrained:
 
         """
         Step 2, gss to min.
+
+        It was found that at this step, setting the accuracy metric
+        on the x-value (or the load fraction) gives more consistent
+        result than requriing a relative tolerance on the function
+        values.
         """
         lf_low, lf_high = gss(
             lambda lf: f(lf)[1],
             low,
             high,
-            y_rel_tol=tol,
             x_tol=tol,  # variable: load fraction
             findMin=True,
         )
@@ -609,24 +595,25 @@ if __name__ == "__main__":
 
     compositions = GrainComp.readFile("data/propellants.csv")
     S22 = compositions["ATK PRD(S)22"]
+    M1 = compositions["M1"]
     S22S = Propellant(S22, SimpleGeometry.SPHERE, 1, 2.5)
-
+    M1S = Propellant(M1, SimpleGeometry.SPHERE, 1, 2.5)
     test = Constrained(
         caliber=50e-3,
         shotMass=1,
-        propellant=S22S,
+        propellant=M1S,
         startPressure=10e6,
         dragCoefficient=5e-2,
         designPressure=350e6,
-        designVelocity=1500,
+        designVelocity=1200,
         chambrage=1.5,
     )
 
     print(test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-4))
 
-    for i in range(5):
+    for i in range(10):
         print(
             test.findMinV(
-                chargeMassRatio=1, tol=1e-3, minWeb=1e-6, maxLength=100
+                chargeMassRatio=1, tol=1e-4, minWeb=1e-6, maxLength=1000
             )
         )

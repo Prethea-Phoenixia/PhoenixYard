@@ -91,6 +91,9 @@ class ConstrainedRecoiless:
                 loadFraction <= 0,
                 loadFraction > 1,
                 maxLength <= 0,
+                ambientRho < 0,
+                ambientP < 0,
+                ambientGamma < 1,
             )
         ):
             raise ValueError(
@@ -100,7 +103,6 @@ class ConstrainedRecoiless:
         minWeb  : represents minimum possible grain size
         """
 
-        print("solving lf = {:}".format(loadFraction))
         m = self.m
         rho_p = self.rho_p
         theta = self.theta
@@ -132,7 +134,7 @@ class ConstrainedRecoiless:
             )
 
         omega = m * chargeMassRatio
-        V_0 = omega / (rho_p * maxLF * loadFraction)
+        V_0 = omega / (rho_p * loadFraction)
         Delta = omega / V_0
         # p_bar_0 = p_0 / (Delta * f)
         l_0 = V_0 / S
@@ -279,9 +281,7 @@ class ConstrainedRecoiless:
 
                 op_bar = _fp_bar(oZ, ol_bar, oeta, otau)
 
-                return (
-                    p_bar < op_bar or p_bar > 2 * p_bar_d
-                )  # or l_bar > l_bar_d
+                return (p_bar < op_bar) or (p_bar > 2 * p_bar_d)
 
             record = []
 
@@ -473,8 +473,6 @@ class ConstrainedRecoiless:
                     maxLength
                 )
             )
-        # print("p_tol=", self.f * Delta * tol, " Pa")
-        # print("p_dev=", self.f * Delta * p_bar_dev, " Pa")
         if abs(v_bar_g - v_bar_d) / (v_bar_d) > tol:
             raise ValueError("Velocity specification is not met")
 
@@ -488,6 +486,7 @@ class ConstrainedRecoiless:
         maxLength,
         ambientRho=1.204,
         ambientP=101.325e3,
+        ambientGamma=1.4,
         **_,
     ):
         """
@@ -503,12 +502,11 @@ class ConstrainedRecoiless:
         """
         omega = self.m * chargeMassRatio
         rho_p = self.rho_p
-        maxLF = self.maxLF
         S = self.S
         solve = self.solve
 
         def f(lf):
-            V_0 = omega / (rho_p * maxLF * lf)
+            V_0 = omega / (rho_p * lf)
             l_0 = V_0 / S
 
             e_1, l_g = solve(
@@ -520,8 +518,8 @@ class ConstrainedRecoiless:
                 maxLength=maxLength,
                 ambientP=ambientP,
                 ambientRho=ambientRho,
+                ambientGamma=ambientGamma,
             )
-            # print(l_g + l_0)
             return e_1, (l_g + l_0), l_g
 
         records = []
@@ -602,7 +600,6 @@ class ConstrainedRecoiless:
             lambda lf: f(lf)[1],
             low,
             high,
-            y_rel_tol=tol,  # variable: load fraction
             x_tol=tol,
             findMin=True,
         )

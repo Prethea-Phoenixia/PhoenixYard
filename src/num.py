@@ -1,7 +1,5 @@
 import math
 
-from numba import njit
-
 
 def sign(x):
     if x > 0:
@@ -17,7 +15,7 @@ invphi2 = (3 - math.sqrt(5)) / 2  # 1 / phi^2
 
 
 def gss(
-    f, a, b, x_tol=1e-16, y_abs_tol=0, y_rel_tol=1e-16, findMin=True, it=1000
+    f, a, b, x_tol=1e-16, y_abs_tol=1e-16, y_rel_tol=1e-16, findMin=True, it=1e4
 ):
     """Golden-section search. improved from the example
     given on wikipedia. Reuse half the evaluatins.
@@ -56,6 +54,7 @@ def gss(
             # a---c---d
             b = d
             d = c
+            yb = yd
             yd = yc
             h = invphi * h
             c = a + invphi2 * h
@@ -72,6 +71,7 @@ def gss(
             # c--d---b
             a = c
             c = d
+            ya = yc
             yc = yd
             h = invphi * h
             d = a + invphi * h
@@ -541,7 +541,7 @@ def RKF78(
         the assumption made to allow us to extrapolate a global error given local.
         """
 
-    if abs((x - x_1) / (x_1 - x_0)) > relTol:
+    if abs(x - x_1) > abs(x_1 - x_0) * relTol:
         # debug code
         """
         print("x0", x_0)
