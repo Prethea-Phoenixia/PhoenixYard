@@ -690,19 +690,18 @@ def secant(
     )
 
 
-def bisect(f, x_0, x_1, tol=1e-4):
+def bisect(f, x_0, x_1, x_tol=1e-4):
     """bisection method to numerically solve for zero
     two initial guesses must be of opposite sign.
     The root found is guaranteed to be within the range specified.
-
     """
     a, b = min(x_0, x_1), max(x_0, x_1)
     fa = f(a)
     fb = f(b)
 
-    n = math.ceil(math.log((b - a) / tol, 2))
+    n = math.ceil(math.log((b - a) / x_tol, 2))
 
-    if sign(fa) * sign(fb) > 0:
+    if sign(fa) * sign(fb) >= 0:
         raise ValueError("Initial Guesses Must Be Of Opposite Sign")
 
     for i in range(n):

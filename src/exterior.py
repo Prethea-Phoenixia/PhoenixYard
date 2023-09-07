@@ -2,7 +2,22 @@ from atmos import atmosphere, R_e
 from drag import KdCurve
 from math import pi, sin, cos, atan2, acos
 
-from num import RKF78, secant, GSS, gss
+from num import RKF78, gss, bisect
+
+
+def dec_to_dms(deg):
+    if deg >= 0:
+        sign = 1
+    else:
+        sign = -1
+
+    deg = abs(deg)
+
+    h = int(deg)
+    m = int((deg - h) * 60)
+    s = int((deg - h - m / 60) * 3600)
+
+    return h * sign, m, s
 
 
 class Bullet:
@@ -39,7 +54,7 @@ class Bullet:
         return dx, dy, dvx, dvy
 
     def record_to_data(self, record, prettyprint=True):
-        # convert the record into more sensible values:
+        """convert a forward trajectory record into more sensible values:"""
 
         data = []
         for line in record:
@@ -75,17 +90,63 @@ class Bullet:
             print(
                 tabulate(
                     data,
-                    headers=(
-                        "ToF",
-                        "H",
-                        "G.R.",
-                        "V.",
-                        "Angle",
-                    ),
+                    headers=("ToF", "H", "G.R.", "V.", "Angle"),
                 )
             )
 
         return data
+
+    def rangeTable(
+        self,
+        tol,
+        vel,
+        minR,
+        maxR,
+        deltaR,
+        gunH=0,
+        tgtH=0,
+        env=atmosphere,
+        t_max=1000,
+        prettyprint=True,
+    ):
+        R = minR
+        Rs = []
+        while R <= maxR:
+            Rs.append(R)
+            R += deltaR
+
+        print(Rs)
+
+        lTrajs, hTrajs = self.inverse(tol, vel, Rs, gunH, tgtH, env, t_max)
+
+        lTable, hTable = [], []
+        for R, lTraj, hTraj in zip(Rs, lTrajs, hTrajs):
+            if (lTraj is not None) and (hTraj is not None):
+                elev, t, (x, y, vx, vy) = lTraj
+                lTable.append(
+                    (
+                        R,
+                        "{:}°{:}'{:}\"".format(*dec_to_dms(elev)),
+                        t,
+                    )
+                )
+                elev, t, (x, y, vx, vy) = hTraj
+                hTable.append(
+                    (
+                        R,
+                        "{:}°{:}'{:}\"".format(*dec_to_dms(elev)),
+                        t,
+                    )
+                )
+
+        if prettyprint:
+            from tabulate import tabulate
+
+            print("Low")
+            print(tabulate(lTable))
+
+            print("High")
+            print(tabulate(hTable))
 
     def inverse(
         self, tol, vel, tgtR, gunH=0, tgtH=0, env=atmosphere, t_max=1000
@@ -95,17 +156,61 @@ class Bullet:
         angle necessary to achieve said range.
         """
 
-        def f_r(elev):
-            record = self.forward(tol, vel, elev, gunH, tgtH, env, t_max)
-            t, (x, y, vx, vy) = record[-1]
+        def f_r(elev, r=0):
+            try:
+                record = self.forward(tol, vel, elev, gunH, tgtH, env, t_max)
+                t, (x, y, vx, vy) = record[-1]
+            except ValueError:
+                return -r, None
 
             theta = -(atan2(y, x) - 0.5 * pi)
             gr = theta * R_e
+            # print(elev, r, gr - r)
+            return gr - r, record[-1]
 
-            return gr
+        """we assume 0 deg 0 min 1 sec is the maximum practical precision in
+        terms of elevation angle that we care about.
+        """
+        elev_max = 0.5 * sum(
+            gss(lambda ang: f_r(ang)[0], 0, 90, x_tol=3600**-1, findMin=False)
+        )
+        print(elev_max)
 
-        # print(GSS(f_r, 0, 90, yRelTol=tol, findMin=False))
-        print(gss(f_r, 0, 90, tol * 90, findMin=False))
+        r_max = f_r(elev_max)[0]
+        r_min = f_r(0)[0]
+
+        if isinstance(tgtR, int) or isinstance(tgtR, float):
+            tgtR = [tgtR]
+
+        lTrajs = []
+        hTrajs = []
+        for R in tgtR:
+            if r_min < R < r_max:
+                l_elev = 0.5 * sum(
+                    bisect(
+                        lambda ang: f_r(ang, R)[0],
+                        0,
+                        elev_max,
+                        x_tol=3600**-1,
+                    )
+                )
+                h_elev = 0.5 * sum(
+                    bisect(
+                        lambda ang: f_r(ang, R)[0],
+                        elev_max,
+                        90,
+                        x_tol=3600**-1,
+                    )
+                )
+
+                lTrajs.append((l_elev, *f_r(l_elev)[1]))
+                hTrajs.append((h_elev, *f_r(h_elev)[1]))
+
+            else:
+                lTrajs.append(None)
+                hTrajs.append(None)
+
+        return lTrajs, hTrajs
 
     def forward(
         self, tol, vel, elev, gunH=0, tgtH=0, env=atmosphere, t_max=1000
@@ -113,15 +218,6 @@ class Bullet:
         """
         Forward calculation: given ballistic parameters, determine the
         trajector flown by the shot.
-        Approximate Error in relation to tol:
-
-         tol  |   ε
-        1e-6  |  6.5 m
-        1e-7  |  6.5 hm
-        1e-8  |  6.5 dm
-        1e-9  |  6.5 cm
-        1e-10 |  6.5 mm
-
         """
         self.f_env = env
 
@@ -132,57 +228,62 @@ class Bullet:
 
          C = M / (i D^2)
         """
+        t_0 = 0
+        if gunH == tgtH:
+            gunH += tol
+
         x_0, y_0 = 0, R_e + gunH
         phi = elev * pi / 180
 
         def abortTgt(x, ys, o_x, o_ys):
             x, y, vx, vy = ys
             h = (x**2 + y**2) ** 0.5 - (R_e + tgtH)
-            # v = (vx**2 + vy**2) ** 0.5
+
             return h < 0
 
         vx_0 = vel * cos(phi)
         vy_0 = vel * sin(phi)
 
-        record = []
-        t_1, _, _ = RKF78(
+        record = [[0, [x_0, y_0, vx_0, vy_0]]]
+
+        t_2, _, _ = RKF78(
             self._ode_t,
             (x_0, y_0, vx_0, vy_0),
             0,
             t_max,
             relTol=tol,
-            minTol=1e-14,
             abortFunc=abortTgt,
+            adaptTo=(False, False, True, True),
             record=record,
         )  # Coarse integration to maximum time to find approximate ToF
-
-        t_0, (x_0, y_0, vx_0, vy_0) = record[-2]
-
-        if t_1 == t_max:
+        if t_2 == t_max:
             raise ValueError("Projectile Maximum Time-of-Flight t_max Exceeded")
+
+        if len(record) > 1:
+            t_1, (x_1, y_1, vx_1, vy_1) = record[-1]
+        else:
+            t_1, (x_1, y_1, vx_1, vy_1) = record[0]
 
         def f_tgt(t):
             _, (x, y, _, _), _ = RKF78(
                 self._ode_t,
-                (x_0, y_0, vx_0, vy_0),
-                t_0,
+                (x_1, y_1, vx_1, vy_1),
+                t_1,
                 t,
                 relTol=tol,
-                minTol=1e-14,
+                adaptTo=(False, False, True, True),
             )  # fine integration from last point before impact
             return (x**2 + y**2) ** 0.5 - (R_e + tgtH)
 
-        t_t, _ = secant(
-            f_tgt, 0, t_0, t_1, x_tol=t_0 * tol
-        )  # time to target is determined via secant search
+        t_t = 0.5 * sum(bisect(f_tgt, t_1, t_2, x_tol=max(t_2, 1) * tol))
 
-        _, (x_1, y_1, vx_1, vy_1), _ = RKF78(
+        _, _, _ = RKF78(
             self._ode_t,
-            (x_0, y_0, vx_0, vy_0),
-            t_0,
+            (x_1, y_1, vx_1, vy_1),
+            t_1,
             t_t,
             relTol=tol,
-            minTol=1e-14,
+            adaptTo=(False, False, True, True),
             record=record,
         )
 
@@ -194,9 +295,20 @@ if __name__ == "__main__":
         "test", mass=9.0990629, diam=88e-3, Kd_curve=KdCurve["G8"], form=0.925
     )
 
-    test.record_to_data(test.forward(tol=1e-9, vel=819.912, elev=25))
+    test.record_to_data(
+        test.forward(tol=1e-3, vel=819.912, elev=4.256, tgtH=100)
+    )
 
-    # test.inverse(tol=1e-9, vel=819.92, tgtR=8000)
+    print(
+        *test.inverse(tol=1e-3, vel=819.92, tgtR=[1000, 2000, 8000], tgtH=100),
+        sep="\n"
+    )
+
+    """
+    test.rangeTable(
+        tol=1e-3, vel=819.2, minR=0, maxR=5000, deltaR=1000
+    )
+    """
     """
     test = Bullet(
         "M2 ball",
@@ -206,5 +318,5 @@ if __name__ == "__main__":
         Kd_curve=KdCurve["G5"],
     )
 
-    test.record_to_data(test.forward(tol=1e-9, vel=856, elev=0.725))
+    test.record_to_data(test.forward(tol=1e-9, vel=856 * 0.99, elev=0.725 * 2))
     """
