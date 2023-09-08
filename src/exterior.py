@@ -6,18 +6,16 @@ from num import RKF78, gss, bisect
 
 
 def dec_to_dms(deg):
-    if deg >= 0:
-        sign = 1
-    else:
-        sign = -1
+    sign = deg >= 0
 
     deg = abs(deg)
-
     h = int(deg)
     m = int((deg - h) * 60)
     s = int((deg - h - m / 60) * 3600)
 
-    return h * sign, m, s
+    # return sign, h, m, s
+
+    return "{:}{:03}°{:02}'{:02}\"".format("+" if sign else "-", h, m, s)
 
 
 class Bullet:
@@ -115,46 +113,61 @@ class Bullet:
             Rs.append(R)
             R += deltaR
 
-        print(Rs)
-
         lTrajs, hTrajs = self.inverse(tol, vel, Rs, gunH, tgtH, env, t_max)
 
         lTable, hTable = [], []
-        for R, lTraj, hTraj in zip(Rs, lTrajs, hTrajs):
-            if (lTraj is not None) and (hTraj is not None):
+
+        for R, lTraj in zip(Rs, lTrajs):
+            if lTraj is not None:
                 elev, t, (x, y, vx, vy) = lTraj
-                lTable.append(
-                    (
-                        R,
-                        "{:}°{:}'{:}\"".format(*dec_to_dms(elev)),
-                        t,
-                    )
-                )
+                r = (x**2 + y**2) ** 0.5
+                v = (vx**2 + vy**2) ** 0.5
+                phi = 90 - acos((x * vx + y * vy) / (r * v)) * 180 / pi
+                lTable.append((R, dec_to_dms(elev), v, dec_to_dms(phi), t))
+
+        for R, hTraj in zip(Rs, hTrajs):
+            if hTraj is not None:
                 elev, t, (x, y, vx, vy) = hTraj
-                hTable.append(
-                    (
-                        R,
-                        "{:}°{:}'{:}\"".format(*dec_to_dms(elev)),
-                        t,
-                    )
-                )
+                r = (x**2 + y**2) ** 0.5
+                v = (vx**2 + vy**2) ** 0.5
+                phi = 90 - acos((x * vx + y * vy) / (r * v)) * 180 / pi
+                hTable.append((R, dec_to_dms(elev), v, dec_to_dms(phi), t))
 
         if prettyprint:
             from tabulate import tabulate
 
+            headers = (
+                "Ground\nRange m",
+                "Launch\nAngle",
+                "Velocity\nm/s",
+                "Impact\nAngle",
+                "Time of\nFlight s",
+            )
+
             print("Low")
-            print(tabulate(lTable))
+            print(tabulate(lTable, headers=headers))
 
             print("High")
-            print(tabulate(hTable))
+            print(tabulate(hTable, headers=headers))
 
     def inverse(
-        self, tol, vel, tgtR, gunH=0, tgtH=0, env=atmosphere, t_max=1000
+        self,
+        tol,
+        vel,
+        tgtR,
+        gunH=0,
+        tgtH=0,
+        env=atmosphere,
+        t_max=1000,
+        elev_min=-90,
+        elev_max=90,
     ):
         """
         Inverse calculation: given shot splash range, calculate in inverse the
         angle necessary to achieve said range.
         """
+        elev_min = max(elev_min, -90)
+        elev_max = min(elev_max, 90)
 
         def f_r(elev, r=0):
             try:
@@ -174,11 +187,10 @@ class Bullet:
         elev_max = 0.5 * sum(
             gss(lambda ang: f_r(ang)[0], 0, 90, x_tol=3600**-1, findMin=False)
         )
-        print(elev_max)
+        # print(elev_max)
 
         r_max = f_r(elev_max)[0]
-        r_min = f_r(0)[0]
-
+        r_min = f_r(elev_min)[0]
         if isinstance(tgtR, int) or isinstance(tgtR, float):
             tgtR = [tgtR]
 
@@ -186,25 +198,30 @@ class Bullet:
         hTrajs = []
         for R in tgtR:
             if r_min < R < r_max:
-                l_elev = 0.5 * sum(
-                    bisect(
-                        lambda ang: f_r(ang, R)[0],
-                        0,
-                        elev_max,
-                        x_tol=3600**-1,
-                    )
-                )
-                h_elev = 0.5 * sum(
-                    bisect(
-                        lambda ang: f_r(ang, R)[0],
-                        elev_max,
-                        90,
-                        x_tol=3600**-1,
-                    )
+                elev_i, elev_j = bisect(
+                    lambda ang: f_r(ang, R)[0],
+                    elev_min,
+                    elev_max,
+                    x_tol=3600**-1,
                 )
 
-                lTrajs.append((l_elev, *f_r(l_elev)[1]))
-                hTrajs.append((h_elev, *f_r(h_elev)[1]))
+                l_elev = 0.5 * (elev_i + elev_j)
+                rec = f_r(l_elev)[1]
+                if rec is not None:
+                    lTrajs.append((l_elev, *rec))
+                else:
+                    lTrajs.append(None)
+
+                elev_i, elev_j = bisect(
+                    lambda ang: f_r(ang, R)[0], elev_max, 90, x_tol=3600**-1
+                )
+                h_elev = 0.5 * (elev_i + elev_j)
+                print(R, h_elev)
+                rec = f_r(h_elev)[1]
+                if rec is not None:
+                    hTrajs.append((h_elev, *rec))
+                else:
+                    hTrajs.append(None)
 
             else:
                 lTrajs.append(None)
@@ -239,14 +256,16 @@ class Bullet:
             x, y, vx, vy = ys
             h = (x**2 + y**2) ** 0.5 - (R_e + tgtH)
 
-            return h < 0
+            # only abort the calculation on downward crossing of target plane
+            # height
+            return h < 0 and ((-x * vx + y * vy) < 0)
 
         vx_0 = vel * cos(phi)
         vy_0 = vel * sin(phi)
 
         record = [[0, [x_0, y_0, vx_0, vy_0]]]
 
-        t_2, _, _ = RKF78(
+        t_2, vec_2, _ = RKF78(
             self._ode_t,
             (x_0, y_0, vx_0, vy_0),
             0,
@@ -261,6 +280,7 @@ class Bullet:
 
         if len(record) > 1:
             t_1, (x_1, y_1, vx_1, vy_1) = record[-1]
+
         else:
             t_1, (x_1, y_1, vx_1, vy_1) = record[0]
 
@@ -275,7 +295,42 @@ class Bullet:
             )  # fine integration from last point before impact
             return (x**2 + y**2) ** 0.5 - (R_e + tgtH)
 
-        t_t = 0.5 * sum(bisect(f_tgt, t_1, t_2, x_tol=max(t_2, 1) * tol))
+        # print(t_1, x_1, y_1, vx_1, vy_1)
+        # print(t_2, *vec_2)
+
+        if (x_1**2 + y_1**2) ** 0.5 - (R_e + tgtH) < 0:
+            """
+            then we are probably cresting below the target plane.
+            In this case we need to try raise the point t_1 to
+            above the target plane *if possible*.
+
+            This is a very edge case scenario but nevertheless
+            in the name of accuracy and rigouroness it needs
+            be done.
+            """
+
+            t_1_prime = 0.5 * sum(
+                gss(f_tgt, t_1, t_2, x_tol=max(t_2, 1) * tol, findMin=False)
+            )
+            h_prime = f_tgt(t_1_prime)
+            if h_prime > 0:
+                # the new peak barely crest the target plane.
+                t_t = 0.5 * sum(
+                    bisect(f_tgt, t_1_prime, t_2, x_tol=max(t_2, 1) * tol)
+                )
+
+                # print(t_t, h_prime)
+
+            else:
+                # even the new peak point found cannot crest the target plane.
+                raise ValueError(
+                    "Projectile Cresting Below Target at {:.3f} m".format(
+                        h_prime
+                    )
+                )
+
+        else:
+            t_t = 0.5 * sum(bisect(f_tgt, t_1, t_2, x_tol=max(t_2, 1) * tol))
 
         _, _, _ = RKF78(
             self._ode_t,
@@ -294,21 +349,15 @@ if __name__ == "__main__":
     test = Bullet(
         "test", mass=9.0990629, diam=88e-3, Kd_curve=KdCurve["G8"], form=0.925
     )
-
-    test.record_to_data(
-        test.forward(tol=1e-3, vel=819.912, elev=4.256, tgtH=100)
-    )
-
+    # test.record_to_data(test.forward(tol=1e-6, vel=819.912, elev=45, tgtH=1))
+    """
     print(
-        *test.inverse(tol=1e-3, vel=819.92, tgtR=[1000, 2000, 8000], tgtH=100),
+        *test.inverse(tol=1e-3, vel=819.92, tgtR=[1000, 2000, 8000], tgtH=10),
         sep="\n"
-    )
+    )"""
 
-    """
-    test.rangeTable(
-        tol=1e-3, vel=819.2, minR=0, maxR=5000, deltaR=1000
-    )
-    """
+    test.rangeTable(tol=1e-3, vel=819.2, minR=0, maxR=3000, deltaR=100, tgtH=10)
+
     """
     test = Bullet(
         "M2 ball",

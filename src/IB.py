@@ -116,8 +116,9 @@ FIG_CONTEXT = {
 
 
 class IB(Frame):
-    def __init__(self, parent, dpi, scale):
-        Frame.__init__(self, parent)
+    def __init__(self, parent, menubar, dpi, scale):
+        ttk.Frame.__init__(self, parent)
+        self.pack(expand=1, fill="both")
         self.LANG = StringVar(value=list(STRING.keys())[0])
 
         default_font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
@@ -131,8 +132,6 @@ class IB(Frame):
         self.parent = parent
         self.forceUpdOnThemeWidget = []
         self.scale = scale
-
-        menubar = Menu(parent)
 
         self.menubar = menubar
 
@@ -220,8 +219,6 @@ class IB(Frame):
                 underline=0,
             )
 
-        parent.config(menu=menubar)
-
         self.COMPOSITIONS = GrainComp.readFile(
             resolvepath("data/propellants.csv")
         )  # dict of composition.name (string) -> composition (object)
@@ -230,19 +227,19 @@ class IB(Frame):
         self.gun = None
         self.errorLst = []
 
-        parent.columnconfigure(0, weight=1)
-        parent.rowconfigure(1, weight=1)
-        self.addTopFrm(parent)
-        self.addLeftFrm(parent)
-        self.addRightFrm(parent)
-        self.addErrFrm(parent)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
+        self.addTopFrm()
+        self.addLeftFrm()
+        self.addRightFrm()
+        self.addErrFrm()
 
-        self.addPlotFrm(parent)
-        self.addParFrm(parent)
-        self.addTblFrm(parent)
-        parent.update_idletasks()
+        self.addPlotFrm()
+        self.addParFrm()
+        self.addTblFrm()
+        self.update_idletasks()
         self.addGeomPlot()
-        parent.update_idletasks()
+        self.update_idletasks()
         self.addFigPlot()
 
         self.ambCallback()
@@ -256,7 +253,7 @@ class IB(Frame):
         self.forceUpdOnThemeWidget.append(self.errorText)
         self.forceUpdOnThemeWidget.append(self.specs)
 
-        parent.bind("<Configure>", self.resizePlot)
+        self.bind("<Configure>", self.resizePlot)
         root.protocol("WM_DELETE_WINDOW", self.quit)
         self.tLid = None
         self.timedLoop()
@@ -688,8 +685,8 @@ class IB(Frame):
             except KeyError:
                 return name
 
-    def addTopFrm(self, parent):
-        topFrm = ttk.Frame(parent)
+    def addTopFrm(self):
+        topFrm = ttk.Frame(self)
         topFrm.grid(row=0, column=0, sticky="nsew")
 
         topFrm.columnconfigure(0, weight=1)
@@ -780,14 +777,14 @@ class IB(Frame):
         self.plotVel.trace_add("write", self.updateFigPlot)
         self.plotRecoil.trace_add("write", self.updateFigPlot)
 
-    def addLeftFrm(self, parent):
-        leftFrm = ttk.Frame(parent)
+    def addLeftFrm(self):
+        leftFrm = ttk.Frame(self)
         leftFrm.grid(row=0, column=1, rowspan=4, sticky="nsew")
         leftFrm.columnconfigure(0, weight=1)
         leftFrm.rowconfigure(0, weight=1)
 
-    def addRightFrm(self, parent):
-        rightFrm = ttk.Frame(parent)
+    def addRightFrm(self):
+        rightFrm = ttk.Frame(self)
         rightFrm.grid(row=0, column=3, rowspan=4, sticky="nsew")
         rightFrm.columnconfigure(0, weight=1)
         rightFrm.rowconfigure(0, weight=1)
@@ -850,8 +847,8 @@ class IB(Frame):
             unitText="kg/m³",
         )
 
-        validationNN = parent.register(validateNN)
-        validationPI = parent.register(validatePI)
+        validationNN = self.register(validateNN)
+        validationPI = self.register(validatePI)
 
         solFrm = ttk.LabelFrame(rightFrm, text=self.getLocStr("solFrmLabel"))
         solFrm.grid(row=1, column=0, sticky="nsew")
@@ -1287,8 +1284,8 @@ class IB(Frame):
         self.calButton.config(state="normal")
         self.process = None
 
-    def addErrFrm(self, parent):
-        errorFrm = ttk.LabelFrame(parent, text=self.getLocStr("errFrmLabel"))
+    def addErrFrm(self):
+        errorFrm = ttk.LabelFrame(self, text=self.getLocStr("errFrmLabel"))
         errorFrm.grid(row=3, column=0, sticky="nsew")
         errorFrm.columnconfigure(0, weight=1)
         errorFrm.rowconfigure(0, weight=1)
@@ -1307,13 +1304,13 @@ class IB(Frame):
 
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
-    def addParFrm(self, parent):
-        parFrm = ttk.LabelFrame(parent, text=self.getLocStr("parFrmLabel"))
+    def addParFrm(self):
+        parFrm = ttk.LabelFrame(self, text=self.getLocStr("parFrmLabel"))
         parFrm.grid(row=0, column=2, rowspan=4, sticky="nsew")
         parFrm.columnconfigure(0, weight=1)
         self.parFrm = parFrm
         # validation
-        validationNN = parent.register(validateNN)
+        validationNN = self.register(validateNN)
 
         i = 0
         self.typeOptn = self.IBDropdown(self, parFrm, TYPES)
@@ -1644,9 +1641,9 @@ class IB(Frame):
         geomPlotFrm.grid_propagate(False)
         # last ditch effort to prevent blowing up the frame
 
-    def addPlotFrm(self, parent):
+    def addPlotFrm(self):
         plotFrm = ttk.LabelFrame(
-            parent, text=self.getLocStr("plotFrmLabel"), width=640, height=480
+            self, text=self.getLocStr("plotFrmLabel"), width=640, height=480
         )
         plotFrm.grid(row=1, column=0, sticky="nsew")
         plotFrm.columnconfigure(0, weight=1)
@@ -1731,7 +1728,7 @@ class IB(Frame):
         if self.pos >= 0:  # and not self.process.is_alive():
             self.getValue()
 
-        self.tLid = self.parent.after(100, self.timedLoop)
+        self.tLid = self.after(100, self.timedLoop)
 
     def quit(self):
         root = self.parent
@@ -2056,9 +2053,9 @@ class IB(Frame):
             self.fig.set_layout_engine("constrained")
             self.pltCanvas.draw_idle()
 
-    def addTblFrm(self, parent):
+    def addTblFrm(self):
         columnList = self.getLocStr("columnList")
-        tblFrm = ttk.LabelFrame(parent, text=self.getLocStr("tblFrmLabel"))
+        tblFrm = ttk.LabelFrame(self, text=self.getLocStr("tblFrmLabel"))
         tblFrm.grid(row=2, column=0, sticky="nsew")
 
         tblFrm.columnconfigure(0, weight=1)
@@ -2801,11 +2798,18 @@ if __name__ == "__main__":
     root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
 
     root.option_add("*tearOff", False)
-
     root.title("PIBS v0.4.6")
+    menubar = Menu(root)
+    root.config(menu=menubar)
+    """
+    tabControl = ttk.Notebook(root)
+    tabControl.pack(expand=1, fill="both", side="left")
+    ibFrame = IB(tabControl, menubar, dpi, scale)
+    tabControl.add(ibFrame, text="test")
+    """
 
-    ibPanel = IB(root, dpi, scale)
-
+    ibFrame = IB(root, menubar, dpi, scale)
+    ibFrame.pack(expand=1, fill="both", side="left")
     center(root)
 
     root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
