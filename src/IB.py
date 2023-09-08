@@ -1716,6 +1716,7 @@ class IB(Frame):
     def resizePlot(self, event):
         # we use the bbox method here as it has already accounted for padding
         # so no adjustment here is necessary
+        self.update_idletasks()
         _, _, width, height = self.plotFrm.bbox("insert")
 
         dpi = self.dpi
@@ -2587,6 +2588,12 @@ class IB(Frame):
             font=(FONTNAME, FONTSIZE + 2),
         )
         style.configure("TCheckbutton", font=(FONTNAME, FONTSIZE))
+        # style.configure("TNotebook", tabmargins=[2, 5, 2, 0])
+        style.configure(
+            "TNotebook.Tab",
+            padding=[10, 2],
+            font=(FONTNAME, FONTSIZE + 2, "bold"),
+        )
 
         bgc = str(style.lookup("TFrame", "background"))
         fgc = str(style.lookup("TFrame", "foreground"))
@@ -2801,17 +2808,17 @@ if __name__ == "__main__":
     root.title("PIBS v0.4.6")
     menubar = Menu(root)
     root.config(menu=menubar)
-    """
+
     tabControl = ttk.Notebook(root)
     tabControl.pack(expand=1, fill="both", side="left")
     ibFrame = IB(tabControl, menubar, dpi, scale)
-    tabControl.add(ibFrame, text="test")
-    """
+    tabControl.add(ibFrame, text="INTERIOR")
 
+    """
     ibFrame = IB(root, menubar, dpi, scale)
     ibFrame.pack(expand=1, fill="both", side="left")
     center(root)
-
+    """
     root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
     root.state("zoomed")  # maximize window
 
