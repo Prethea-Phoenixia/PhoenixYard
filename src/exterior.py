@@ -114,8 +114,6 @@ class Bullet:
             Rs.append(R)
             R += deltaR
 
-        print(Rs)
-
         lTrajs, hTrajs = self.inverse(
             tol=tol,
             vel=vel,
@@ -234,10 +232,10 @@ class Bullet:
                     DESCEND=DESCEND,
                 )
                 t, (x, y, vx, vy) = record[-1]
-            except ValueError as e:
+            except ValueError:
                 # this is when the supplied elevation cannot arc the bullet
                 # higher than the target plane
-
+                #
                 # print(elev, -r, DESCEND)
                 return -r, None
 
@@ -262,18 +260,44 @@ class Bullet:
         )
         """
         Find the cresting elevation that ascending solution achieves its
-        maximum range. This is also the value which the elevation barely crests
+        maximum range, or more technically a value less than 1/3600 deg above it.
+    
+        The corresponding range this elevation gives are the upper limit of the
+        ascending solution, and the lower limit of the descending solution.
+
+        It is always desired to make this value small such that the exclusion zone
+        where we cannot solve for either is minimal.
+
+                  /- r_cre
+               __+__
+            _-/     \-_ des.soln
+        ---+-----------+--------
+         / asc.soln      \
+        /                 \
         """
-        elev_cre = 0.5 * sum(
-            gss(
+
+        if gunH < tgtH:
+            elev_cre_i, elev_cre_j = gss(
                 lambda ang: f_r(ang, DESCEND=False)[0],
                 elev_min,
                 elev_max,
                 x_tol=3600**-1,
                 findMin=False,
             )
-        )
-        r_cre = f_r(elev_cre, DESCEND=False)[0]
+            elev_cre = 0.9 * elev_cre_i + 0.1 * elev_cre_j
+            while f_r(elev_cre)[1] is None:
+                elev_cre_i = elev_cre
+                elev_cre = 0.9 * elev_cre_i + 0.1 * elev_cre_j
+
+        else:
+            elev_cre = 0
+
+        r_cre_d = f_r(elev_cre, DESCEND=True)[0]
+        r_cre_a = f_r(elev_cre, DESCEND=False)[0]
+
+        print("CRESTING ELEVATION", elev_cre)
+
+        print(r_cre_d, r_cre_a)
         """the minimum range point is achieved either at minimum or maximum
         elevation specified. Therefore it suffice to compare the two:"""
 
@@ -284,12 +308,10 @@ class Bullet:
         if isinstance(tgtR, int) or isinstance(tgtR, float):
             tgtR = [tgtR]
 
-        # tgtR = [R for R in tgtR if R != 0]
-
         lTrajs = []
         hTrajs = []
         for R in tgtR:
-            if r_min < R < r_cre:
+            if r_min < R < r_cre_a:
                 elev_i, elev_j = bisect(
                     lambda ang: f_r(ang, R, DESCEND=False)[0],
                     # elev_min,
@@ -297,25 +319,27 @@ class Bullet:
                     elev_opt,
                     x_tol=3600**-1,
                 )
+
                 l_elev = 0.5 * (elev_i + elev_j)
                 _, rec = f_r(l_elev, R, DESCEND=False)
+
                 lTrajs.append((l_elev, *rec))
 
-            elif r_min < R < r_opt:
+            elif (r_cre_d if gunH < tgtH else r_min) < R < r_opt:
                 elev_i, elev_j = bisect(
                     lambda ang: f_r(ang, R)[0],
-                    elev_min,
+                    elev_cre if gunH < tgtH else elev_min,
                     elev_opt,
                     x_tol=3600**-1,
                 )
-                """
-                if any((f_r(elev_j)[1] is None, f_r(elev_i)[1] is None)):
-                    lTrajs.append(None)
-                else:
-                """
+
                 l_elev = 0.5 * (elev_i + elev_j)
                 _, rec = f_r(l_elev, R)
+
                 lTrajs.append((l_elev, *rec))
+
+            else:
+                lTrajs.append(None)
 
             if r_max < R < r_opt:
                 elev_i, elev_j = bisect(
@@ -324,19 +348,12 @@ class Bullet:
                     elev_max,
                     x_tol=3600**-1,
                 )
-                """
-                We reject any solution occuring within 1/3600 degree, in
-                elevation, of the cresting point for descending solutions.
-                """
-                if any((f_r(elev_j)[1] is None, f_r(elev_i)[1] is None)):
-                    hTrajs.append(None)
-                else:
-                    h_elev = 0.5 * (elev_i + elev_j)
-                    rec = f_r(h_elev, R)[1]
-                    hTrajs.append((h_elev, *rec))
+
+                h_elev = 0.5 * (elev_i + elev_j)
+                rec = f_r(h_elev, R)[1]
+                hTrajs.append((h_elev, *rec))
 
             else:
-                lTrajs.append(None)
                 hTrajs.append(None)
 
         return lTrajs, hTrajs
@@ -366,13 +383,14 @@ class Bullet:
          C = M / (i D^2)
         """
 
+        if gunH == tgtH:
+            gunH += tol
+
         if (not DESCEND) and gunH > tgtH:
             raise ValueError(
                 "No Ascending Solution Possible Given Gun Height"
                 + " is Higher Than Target."
             )
-        if gunH == tgtH:
-            gunH += tol
 
         x_0, y_0 = 0, R_e + gunH
         theta = elev * pi / 180
@@ -519,10 +537,18 @@ if __name__ == "__main__":
     test = Bullet(
         "test", mass=9.0990629, diam=88e-3, Kd_curve=KdCurve["G8"], form=0.925
     )
-
+    # print(dec_to_dms(1 / 3600))
+    """
     test.record_to_data(
-        test.forward(tol=1e-3, vel=819.92, elev=1.419, tgtH=10, DESCEND=False)
+        test.forward(
+            tol=1e-3,
+            vel=819.92,
+            elev=0.1,
+            DESCEND=False,
+        )
     )
+    """
+
     # input()
     """
     print(
@@ -536,7 +562,7 @@ if __name__ == "__main__":
     )
     """
     test.rangeTable(
-        tol=1e-6, vel=819.92, minR=0, maxR=5000, deltaR=250, tgtH=10
+        tol=1e-4, vel=819.92, minR=1000, maxR=1100, deltaR=10, tgtH=1000
     )
 
     """

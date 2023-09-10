@@ -858,7 +858,7 @@ def intg(f, l, u, tol=1e-3):
 
     another transformation on the variable of integration eliminates the need
     to sample at either end points, which makes it possible to evaluate improper
-    integrals if the asymptotes is at either end point.
+    integrals if asymptotes are at either end point.
 
     1                                        1
     ∫ f(u) du -- let u = 1.5v-0.5v**3 -> 1.5 ∫ f(1.5v-0.5v^3)*(1-v^2) dv
@@ -894,10 +894,6 @@ def intg(f, l, u, tol=1e-3):
     take the increment as an upper bound on error. Therefore we check for three
     consecutive increments smaller than the specified tolerance before
     submitting the result as a good enough estimate for the integral.
-
-    Since specifying a relative error does not work well for values extremely
-    close to 0. Instead we define a error as abs(x_true - x_ref) /
-    (tolerance + abs(x_ref)) x 100%
     """
 
     a = (u - l) / 2
