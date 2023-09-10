@@ -1463,7 +1463,6 @@ class IB(Frame):
             parent=grainFrm,
             rowIndex=j,
             labelText=self.lengthPrimaryAs,
-            # "Arc Thickness",
             unitText="mm",
             default="1.0",
             validation=validationNN,

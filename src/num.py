@@ -701,7 +701,7 @@ def bisect(f, x_0, x_1, x_tol=1e-4):
 
     n = math.ceil(math.log((b - a) / x_tol, 2))
 
-    if sign(fa) * sign(fb) >= 0:
+    if fa * fb >= 0:
         raise ValueError("Initial Guesses Must Be Of Opposite Sign")
 
     for i in range(n):
