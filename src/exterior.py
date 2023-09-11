@@ -183,6 +183,12 @@ class Bullet:
                 )
 
         if prettyprint:
+            print(
+                self.name
+                + " @ {:.3f}m/s Emplaced at {:.1f}m ASL Target at {:}m ASL.".format(
+                    vel, gunH, tgtH
+                )
+            )
             from tabulate import tabulate
 
             headers = (
@@ -278,7 +284,10 @@ class Bullet:
         /                 \
         """
 
-        r_opt = f_r(elev_opt)[0]
+        print(elev_opt)
+
+        r_opt_d = f_r(elev_opt)[0]
+        # r_opt_a = f_r(elev_opt, DESCEND=False)[0]
         r_min_d = f_r(elev_min)[0]
         r_max_d = f_r(elev_max)[0]
 
@@ -313,24 +322,10 @@ class Bullet:
         lTrajs = []
         hTrajs = []
 
-        """
-        target H > gun H:
-
-        ...ascending solution:
-            elev_cresting     <   elev_max
-        r_cresting_ascending  >   r_maximum_asecnding
-
-        ...descending solution:
-            elev_cresting     <   elev_optimum_range
-        r_cresting_descending <   r_optimum_range
-
-
-        """
         for R in tgtR:
             if r_max_a < R < r_min_a:
                 elev_i, elev_j = bisect(
                     lambda ang: f_r(ang, R, DESCEND=False)[0],
-                    # elev_min,
                     elev_min,
                     elev_max,
                     x_tol=3600**-1,
@@ -341,10 +336,9 @@ class Bullet:
 
                 lTrajs.append((l_elev, *rec))
 
-            elif r_min_d < R < r_opt:
+            elif r_min_d < R < r_opt_d:
                 elev_i, elev_j = bisect(
                     lambda ang: f_r(ang, R)[0],
-                    # elev_cre if gunH < tgtH else elev_min,
                     elev_min,
                     elev_opt,
                     x_tol=3600**-1,
@@ -358,7 +352,7 @@ class Bullet:
             else:
                 lTrajs.append(None)
 
-            if r_max_d < R < r_opt:
+            if r_max_d < R < r_opt_d:
                 elev_i, elev_j = bisect(
                     lambda ang: f_r(ang, R)[0],
                     elev_opt,
@@ -579,7 +573,7 @@ if __name__ == "__main__":
     )
     """
     test.rangeTable(
-        tol=1e-4, vel=819.92, minR=1000, maxR=1100, deltaR=10, tgtH=0
+        tol=1e-4, vel=819.92, minR=0, maxR=15000, deltaR=1000, tgtH=10000
     )
 
     """

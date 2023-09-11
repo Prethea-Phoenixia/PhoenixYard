@@ -1724,6 +1724,8 @@ class IB(Frame):
                 ("axes", 1 + 45 * dpi / 96 / width)
             )
 
+            self.pltCanvas.draw_idle()
+
     def timedLoop(self):
         if self.pos >= 0:  # and not self.process.is_alive():
             self.getValue()
@@ -2807,17 +2809,17 @@ if __name__ == "__main__":
     root.title("PIBS v0.4.6")
     menubar = Menu(root)
     root.config(menu=menubar)
-
+    """
     tabControl = ttk.Notebook(root)
     tabControl.pack(expand=1, fill="both", side="left")
     ibFrame = IB(tabControl, menubar, dpi, scale)
     tabControl.add(ibFrame, text="INTERIOR")
-
     """
+
     ibFrame = IB(root, menubar, dpi, scale)
     ibFrame.pack(expand=1, fill="both", side="left")
-    center(root)
-    """
+    # center(root)
+
     root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
     root.state("zoomed")  # maximize window
 
