@@ -1,8 +1,11 @@
 from atmos import atmosphere, R_e
 from drag import KdCurve
 from math import pi, sin, cos, atan2, acos
-
 from num import RKF78, gss, bisect
+
+from multiprocessing import Pool
+
+USE_MP = True
 
 
 def dec_to_dms(deg):
@@ -114,17 +117,19 @@ class Bullet:
             Rs.append(R)
             R += deltaR
 
-        lTrajs, hTrajs = self.inverse(
-            tol=tol,
-            vel=vel,
-            tgtR=Rs,
-            gunH=gunH,
-            tgtH=tgtH,
-            env=env,
-            t_max=t_max,
-            elev_min=elev_min,
-            elev_max=elev_max,
-        )
+        kwargs = {
+            "tol": tol,
+            "vel": vel,
+            "tgtR": Rs,
+            "gunH": gunH,
+            "tgtH": tgtH,
+            "env": env,
+            "t_max": t_max,
+            "elev_min": elev_min,
+            "elev_max": elev_max,
+        }
+
+        lTrajs, hTrajs = self.inverse(**kwargs)
 
         lTable, hTable = [], []
 
@@ -222,27 +227,25 @@ class Bullet:
         Inverse calculation: given shot splash range, calculate in inverse the
         angle necessary to achieve said range.
         """
+        # package the context variables for easy calling of forwards.
+        kwargs = {
+            "tol": tol,
+            "vel": vel,
+            "gunH": gunH,
+            "tgtH": tgtH,
+            "env": env,
+            "t_max": t_max,
+        }
         elev_min = max(elev_min, -90)
         elev_max = min(elev_max, 90)
 
         def f_r(elev, r=0, DESCEND=True):
             try:
-                record = self.forward(
-                    tol=tol,
-                    vel=vel,
-                    elev=elev,
-                    gunH=gunH,
-                    tgtH=tgtH,
-                    env=env,
-                    t_max=t_max,
-                    DESCEND=DESCEND,
-                )
+                record = self.forward(**kwargs, elev=elev, DESCEND=DESCEND)
                 t, (x, y, vx, vy) = record[-1]
             except ValueError:
                 # this is when the supplied elevation cannot arc the bullet
                 # higher than the target plane
-                #
-                # print(elev, -r, DESCEND)
                 return -r, None
 
             psi = -(atan2(y, x) - 0.5 * pi)
@@ -267,7 +270,7 @@ class Bullet:
         """
         Find the cresting elevation that ascending solution achieves its
         maximum range, or more technically a value less than 1/3600 deg above it.
-    
+
         The corresponding range this elevation gives are the upper limit of the
         ascending solution, and the lower limit of the descending solution. Or
         in other words, the cresting elevation is the minimum elevation
@@ -283,8 +286,6 @@ class Bullet:
          / asc.soln      \
         /                 \
         """
-
-        print(elev_opt)
 
         r_opt_d = f_r(elev_opt)[0]
         # r_opt_a = f_r(elev_opt, DESCEND=False)[0]
@@ -319,53 +320,72 @@ class Bullet:
         if isinstance(tgtR, int) or isinstance(tgtR, float):
             tgtR = [tgtR]
 
-        lTrajs = []
-        hTrajs = []
-
-        for R in tgtR:
-            if r_max_a < R < r_min_a:
-                elev_i, elev_j = bisect(
-                    lambda ang: f_r(ang, R, DESCEND=False)[0],
-                    elev_min,
-                    elev_max,
-                    x_tol=3600**-1,
+        mpKwargs = {
+            "forward": self.forward,
+            "r_max_a": r_max_a,
+            "r_max_d": r_max_d,
+            "r_min_a": r_min_a,
+            "r_min_d": r_min_d,
+            "r_opt_d": r_opt_d,
+            "elev_min": elev_min,
+            "elev_max": elev_max,
+            "elev_opt": elev_opt,
+            "forward_kwargs": kwargs,
+        }
+        if USE_MP:
+            with Pool() as p:
+                lTrajs, hTrajs = zip(
+                    *p.starmap(calc_wrapper, [(R, mpKwargs) for R in tgtR]),
                 )
 
-                l_elev = 0.5 * (elev_i + elev_j)
-                _, rec = f_r(l_elev, R, DESCEND=False)
+        else:
+            lTrajs = []
+            hTrajs = []
 
-                lTrajs.append((l_elev, *rec))
+            for R in tgtR:
+                if r_max_a < R < r_min_a:
+                    elev_i, elev_j = bisect(
+                        lambda ang: f_r(ang, R, DESCEND=False)[0],
+                        elev_min,
+                        elev_max,
+                        x_tol=3600**-1,
+                    )
 
-            elif r_min_d < R < r_opt_d:
-                elev_i, elev_j = bisect(
-                    lambda ang: f_r(ang, R)[0],
-                    elev_min,
-                    elev_opt,
-                    x_tol=3600**-1,
-                )
+                    l_elev = 0.5 * (elev_i + elev_j)
+                    _, rec = f_r(l_elev, R, DESCEND=False)
 
-                l_elev = 0.5 * (elev_i + elev_j)
-                _, rec = f_r(l_elev, R)
+                    lTrajs.append((l_elev, *rec))
 
-                lTrajs.append((l_elev, *rec))
+                elif r_min_d < R < r_opt_d:
+                    elev_i, elev_j = bisect(
+                        lambda ang: f_r(ang, R)[0],
+                        elev_min,
+                        elev_opt,
+                        x_tol=3600**-1,
+                    )
 
-            else:
-                lTrajs.append(None)
+                    l_elev = 0.5 * (elev_i + elev_j)
+                    _, rec = f_r(l_elev, R)
 
-            if r_max_d < R < r_opt_d:
-                elev_i, elev_j = bisect(
-                    lambda ang: f_r(ang, R)[0],
-                    elev_opt,
-                    elev_max,
-                    x_tol=3600**-1,
-                )
+                    lTrajs.append((l_elev, *rec))
 
-                h_elev = 0.5 * (elev_i + elev_j)
-                rec = f_r(h_elev, R)[1]
-                hTrajs.append((h_elev, *rec))
+                else:
+                    lTrajs.append(None)
 
-            else:
-                hTrajs.append(None)
+                if r_max_d < R < r_opt_d:
+                    elev_i, elev_j = bisect(
+                        lambda ang: f_r(ang, R)[0],
+                        elev_opt,
+                        elev_max,
+                        x_tol=3600**-1,
+                    )
+
+                    h_elev = 0.5 * (elev_i + elev_j)
+                    rec = f_r(h_elev, R)[1]
+                    hTrajs.append((h_elev, *rec))
+
+                else:
+                    hTrajs.append(None)
 
         return lTrajs, hTrajs
 
@@ -544,6 +564,84 @@ class Bullet:
         return record
 
 
+def calc_wrapper(R, kwargs):
+    return calc_for_R(R=R, **kwargs)
+
+
+def calc_for_R(
+    forward,
+    R,
+    r_max_a,
+    r_max_d,
+    r_min_a,
+    r_min_d,
+    r_opt_d,
+    elev_min,
+    elev_max,
+    elev_opt,
+    forward_kwargs,
+):
+    def f_r(elev, r=0, DESCEND=True):
+        try:
+            record = forward(**forward_kwargs, elev=elev, DESCEND=DESCEND)
+            t, (x, y, vx, vy) = record[-1]
+        except ValueError:
+            # this is when the supplied elevation cannot arc the bullet
+            # higher than the target plane
+            return -r, None
+
+        psi = -(atan2(y, x) - 0.5 * pi)
+        gr = psi * R_e
+
+        return gr - r, record[-1]
+
+    if r_max_a < R < r_min_a:
+        elev_i, elev_j = bisect(
+            lambda ang: f_r(ang, R, DESCEND=False)[0],
+            elev_min,
+            elev_max,
+            x_tol=3600**-1,
+        )
+
+        l_elev = 0.5 * (elev_i + elev_j)
+        _, rec = f_r(l_elev, R, DESCEND=False)
+
+        lTraj = (l_elev, *rec)
+
+    elif r_min_d < R < r_opt_d:
+        elev_i, elev_j = bisect(
+            lambda ang: f_r(ang, R)[0],
+            elev_min,
+            elev_opt,
+            x_tol=3600**-1,
+        )
+
+        l_elev = 0.5 * (elev_i + elev_j)
+        _, rec = f_r(l_elev, R)
+
+        lTraj = (l_elev, *rec)
+
+    else:
+        lTraj = None
+
+    if r_max_d < R < r_opt_d:
+        elev_i, elev_j = bisect(
+            lambda ang: f_r(ang, R)[0],
+            elev_opt,
+            elev_max,
+            x_tol=3600**-1,
+        )
+
+        h_elev = 0.5 * (elev_i + elev_j)
+        rec = f_r(h_elev, R)[1]
+        hTraj = (h_elev, *rec)
+
+    else:
+        hTraj = None
+
+    return lTraj, hTraj
+
+
 if __name__ == "__main__":
     test = Bullet(
         "test", mass=9.0990629, diam=88e-3, Kd_curve=KdCurve["G8"], form=0.925
@@ -573,7 +671,7 @@ if __name__ == "__main__":
     )
     """
     test.rangeTable(
-        tol=1e-4, vel=819.92, minR=0, maxR=15000, deltaR=1000, tgtH=10000
+        tol=1e-3, vel=819.92, minR=0, maxR=15000, deltaR=250, tgtH=100
     )
 
     """

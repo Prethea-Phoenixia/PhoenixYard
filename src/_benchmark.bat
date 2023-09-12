@@ -1,2 +1,2 @@
-py-spy top -- python opt.py
+py-spy top -- python exterior.py
 pause 
