@@ -6,6 +6,7 @@ from num import RKF78, gss, bisect
 from multiprocessing import Pool
 
 USE_MP = True
+PRECISE = True
 
 
 def dec_to_dms(deg):
@@ -37,8 +38,8 @@ class Bullet:
         x, y: cooridnate in 2-d geocentric coordinate system:
         vx, vy: component of velocity
         """
-
-        v = (vx**2 + vy**2) ** 0.5
+        vsq = vx**2 + vy**2
+        v = vsq**0.5
         r = (x**2 + y**2) ** 0.5
         h = r - R_e
         dx = vx
@@ -48,7 +49,7 @@ class Bullet:
 
         M = v / c  # mach
         Kd = self.f_Kd.get(M)  # drag coefficient
-        a = Kd * rho * v**2 / self.C
+        a = Kd * rho * vsq / self.C
         dvx = -a * vx / v - g * x / r
         dvy = -a * vy / v - g * y / r
 
@@ -535,6 +536,7 @@ class Bullet:
                     t_t = 0.5 * sum(
                         bisect(f_tgt, t_prime, t_2, x_tol=max(t_2, 1) * tol)
                     )
+
                 else:
                     t_t = 0.5 * sum(
                         bisect(f_tgt, t_1, t_prime, x_tol=max(t_2, 1) * tol)
@@ -647,16 +649,15 @@ if __name__ == "__main__":
         "test", mass=9.0990629, diam=88e-3, Kd_curve=KdCurve["G8"], form=0.925
     )
     # print(dec_to_dms(1 / 3600))
-    """
+
     test.record_to_data(
         test.forward(
             tol=1e-3,
             vel=819.92,
-            elev=0.1,
-            DESCEND=False,
+            elev=2,
+            DESCEND=True,
         )
     )
-    """
 
     # input()
     """
@@ -670,9 +671,11 @@ if __name__ == "__main__":
         sep="\n"
     )
     """
+    """
     test.rangeTable(
-        tol=1e-3, vel=819.92, minR=0, maxR=15000, deltaR=250, tgtH=100
+        tol=1e-3, vel=819.92, minR=0, maxR=15000, deltaR=1000, tgtH=100
     )
+    """
 
     """
     test = Bullet(

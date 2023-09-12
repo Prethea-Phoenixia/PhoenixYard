@@ -375,7 +375,7 @@ def RKF78(
                     *[
                         y + b91 * k1 + b94 * k4 + b95 * k5 + b96 * k6
                         + b97 * k7 + b98 * k8
-                        for y, k1, k2, k3, k4, k5, k6, k7, k8 in 
+                        for y, k1, k2, k3, k4, k5, k6, k7, k8 in
                         zip(y_this, *allK[:8])
                     ]
                 )
@@ -403,7 +403,7 @@ def RKF78(
                     *[
                         y + b111 * k1 + b114 * k4 + b115 * k5 + b116 * k6
                         + b117 * k7 + b118 * k8 + b119 * k9 + b1110 * k10
-                        for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10 
+                        for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10
                         in zip(y_this, *allK[:10])
                     ]
                 )
@@ -417,7 +417,7 @@ def RKF78(
                     *[
                         y + b121 * k1 + b126 * k6 + b127 * k7 + b128 * k8
                         + b129 * k9 + b1210 * k10
-                        for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11 
+                        for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11
                         in zip(y_this, *allK[:11])
                     ]
                 )
