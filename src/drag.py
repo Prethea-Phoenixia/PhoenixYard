@@ -536,15 +536,21 @@ PARIS_GUN_Drag = [0.072600, 0.072600, 0.072600, 0.072600, 0.072600, 0.072600,
 # fmt: on
 from bisect import bisect
 from enum import Enum
+import csv
+
+with open("data/ffvhl.csv", "r", newline="") as csvFile:
+    reader = csv.reader(csvFile, delimiter=",", quoting=csv.QUOTE_NONNUMERIC)
+    crhs, ffk1, ffk8, ffk2 = zip(*list(reader)[1:])
 
 
 class KdCurve(Enum):
-    def __init__(self, desc, mach, drag):
+    def __init__(self, desc, mach, drag, ffcr=None):
         self.desc = desc
         self.mach = mach
         self.drag = drag
+        self.ffcr = ffcr
 
-    def get(self, M):
+    def Kd(self, M):
         """
         linear interpolation between two closest points
         """
@@ -575,12 +581,33 @@ class KdCurve(Enum):
 
         return k * BCj + (1 - k) * BCi
 
-    G1 = ("G1", G1_Mach, G1_Drag)
-    G2 = ("G2", G2_Mach, G2_Drag)
+    def ff(self, crh):
+        """
+        Given the parameters about the shape of the shell, correct for the
+        effective form factor.
+        """
+        ffcr = self.ffcr
+        if ffcr is None:
+            raise ValueError("No Form Factor Scaling Available for this Type.")
+
+        j = bisect(crhs, crh, hi=len(crhs) - 1)
+        i = j - 1
+
+        crh_i, crh_j = crhs[i], crhs[j]
+        ff_i, ff_j = ffcr[i], ffcr[j]
+        if any((ff_i == "", ff_j == "")):
+            raise ValueError("CRH out of range")
+
+        k = (crh - crh_i) / (crh_j - crh_i)
+
+        return k * ff_j + (1 - k) * ff_i
+
+    G1 = ("G1", G1_Mach, G1_Drag, ffk1)
+    G2 = ("G2", G2_Mach, G2_Drag, ffk2)
     G5 = ("G5", G5_Mach, G5_Drag)
     G6 = ("G6", G6_Mach, G6_Drag)
     G7 = ("G7", G7_Mach, G7_Drag)
-    G8 = ("G8", G8_Mach, G8_Drag)
+    G8 = ("G8", G8_Mach, G8_Drag, ffk8)
     JURENS_KD8 = ("JURENS_KD8", Jurens_KD8_Mach, Jurens_KD8_Drag)
     GL = ("GL", GL_Mach, GL_Drag)
     GS = ("GS", GS_Mach, GS_Drag)
@@ -601,13 +628,24 @@ if __name__ == "__main__":
     ax = plt.subplot()
 
     for curve in KdCurve:
+        xs = [x / 100 for x in range(401)]
+        ys = []
+        for x in xs:
+            try:
+                ys.append(curve.ff(x))
+            except ValueError:
+                ys.append(None)
+        ax.plot(xs, ys)
+
+    """
+    for curve in KdCurve:
         ax.scatter(curve.mach, curve.drag, s=2)
         x = np.linspace(curve.mach[0], curve.mach[-1], 3300)
         ax.plot(x, [curve.get(M) for M in x], label=curve.desc)
 
     labelLines(ax.get_lines(), fontsize=8, outline_width=2, align=True)
-
+    
     ax.set_xlim(0, 9)
     ax.set_ylim(0, None)
-
+    """
     plt.show()

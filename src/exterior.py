@@ -6,7 +6,6 @@ from num import RKF78, gss, bisect
 from multiprocessing import Pool
 
 USE_MP = True
-PRECISE = True
 
 
 def dec_to_dms(deg):
@@ -48,7 +47,7 @@ class Bullet:
         _, _, c, rho, g = self.f_env(h)
 
         M = v / c  # mach
-        Kd = self.f_Kd.get(M)  # drag coefficient
+        Kd = self.f_Kd.Kd(M)  # drag coefficient
         a = Kd * rho * vsq / self.C
         dvx = -a * vx / v - g * x / r
         dvy = -a * vy / v - g * y / r
@@ -671,11 +670,10 @@ if __name__ == "__main__":
         sep="\n"
     )
     """
-    """
+
     test.rangeTable(
-        tol=1e-3, vel=819.92, minR=0, maxR=15000, deltaR=1000, tgtH=100
+        tol=1e-3, vel=819.92, minR=0, maxR=15000, deltaR=100, tgtH=100
     )
-    """
 
     """
     test = Bullet(

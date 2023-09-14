@@ -1058,6 +1058,8 @@ class IB(Frame):
         CreateToolTip(self.calButton, self.calcButtonTip)
 
     def onCalculate(self):
+        self.IBDropdown.disable()
+
         constrain = self.solve_W_Lg.get() == 1
         optimize = self.opt_lf.get() == 1
         debug = self.DEBUG.get() == 1
@@ -1282,6 +1284,7 @@ class IB(Frame):
 
         self.pbar.stop()
         self.calButton.config(state="normal")
+        self.IBDropdown.enable()
         self.process = None
 
     def addErrFrm(self):
@@ -2650,6 +2653,8 @@ class IB(Frame):
         self.update_idletasks()
 
     class IBDropdown:
+        allDropdowns = []
+
         def __init__(self, IB, parentFrm, strObjDict):
             self.textVar = StringVar()
             self.strObjDict = strObjDict
@@ -2666,6 +2671,8 @@ class IB(Frame):
             )
             self.widget.option_add("*TCombobox*Listbox.Justify", "center")
             self.widget.current(0)
+
+            IB.IBDropdown.allDropdowns.append(self)
 
         def reLocalize(self):
             index = self.widget["values"].index(self.textVar.get())
@@ -2694,6 +2701,16 @@ class IB(Frame):
 
         def trace_add(self, *args):
             self.textVar.trace_add(*args)
+
+        @classmethod
+        def disable(cls):
+            for drop in cls.allDropdowns:
+                drop.widget.configure(state="disabled")
+
+        @classmethod
+        def enable(cls):
+            for drop in cls.allDropdowns:
+                drop.widget.configure(state="readonly")
 
 
 def calculate(
