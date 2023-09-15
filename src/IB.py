@@ -50,7 +50,7 @@ from matplotlib.figure import Figure
 from labellines import labelLines, labelLine
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, freeze_support
 from queue import Empty
 
 import sys
@@ -59,7 +59,6 @@ import datetime
 
 from ctypes import windll
 import platform
-import multiprocessing
 
 from matplotlib import font_manager
 
@@ -116,10 +115,12 @@ FIG_CONTEXT = {
 
 
 class IB(Frame):
-    def __init__(self, parent, menubar, dpi, scale):
+    def __init__(self, parent, menubar, dpi):
         ttk.Frame.__init__(self, parent)
         self.pack(expand=1, fill="both")
         self.LANG = StringVar(value=list(STRING.keys())[0])
+        self.dropdowns = []
+        self.inputs = []
 
         default_font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
         self.option_add("*Font", default_font)
@@ -131,7 +132,6 @@ class IB(Frame):
         self.dpi = dpi
         self.parent = parent
         self.forceUpdOnThemeWidget = []
-        self.scale = scale
 
         self.menubar = menubar
 
@@ -335,25 +335,15 @@ class IB(Frame):
                     file.write(line)
                 file.write("COMMENT END\n")
                 file.write("DESIGN BEG\n")
+                # fmt:off
                 for desc, value, unit in zip(
                     (
-                        "SIGNIFICANT FIGURE",
-                        "TYPE",
-                        "CALIBER",
-                        "TUBE LENGTH",
-                        "SHOT MASS",
-                        "CHAMBER VOLUME",
-                        "CHAMBRAGE",
-                        "ENGRAVING PRESSURE",
-                        "NOZZLE EFFICIENCY",
-                        "NOZZLE EXPANSION R.",
-                        "CHARGE MASS",
-                        "PROPELLANT",
-                        "GEOMETRY",
-                        "2xWEB",
-                        "1/ALPHA",
-                        "1/BETA",
-                        "DRAG COEFFICIENT",
+                        "SIGNIFICANT FIGURE", "TYPE", "CALIBER", "TUBE LENGTH",
+                        "SHOT MASS", "CHAMBER VOLUME", "CHAMBRAGE",
+                        "ENGRAVING PRESSURE", "NOZZLE EFFICIENCY",
+                        "NOZZLE EXPANSION R.", "CHARGE MASS",
+                        "PROPELLANT", "GEOMETRY", "2xWEB", "1/ALPHA",
+                        "1/BETA", "DRAG COEFFICIENT",
                     ),
                     (
                         sigfig,
@@ -374,25 +364,9 @@ class IB(Frame):
                         kwargs["propellant"].R2,
                         kwargs["dragCoefficient"] * 1e2,
                     ),
-                    (
-                        "",
-                        "",
-                        "mm",
-                        "mm",
-                        "kg",
-                        "L",
-                        "",
-                        "MPa",
-                        "%",
-                        "",
-                        "kg",
-                        "",
-                        "",
-                        "mm",
-                        "",
-                        "",
-                        "%",
-                    ),
+                    ("", "", "mm", "mm", "kg", "L", "", "MPa", "%", "", "kg",
+                        "", "", "mm", "", "", "%",),
+                    # fmt: on
                 ):
                     file.write(
                         "{:<20}{:>20} {:<4}\n".format(
@@ -602,9 +576,6 @@ class IB(Frame):
         self.ambGamLb.config(text=self.getLocStr("ambGamLabel"))
         self.ammoLb.config(text=self.getLocStr("ammoLabel"))
 
-        self.nozzExpLb.config(text=self.getLocStr("nozzExpLabel"))
-        self.nozzEffLb.config(text=self.getLocStr("nozzEffLabel"))
-
         self.useConstraintTip.set(self.getLocStr("useConsText"))
         self.optimizeLFTip.set(self.getLocStr("optLFText"))
         self.chgTip.set(self.getLocStr("chgText"))
@@ -618,9 +589,7 @@ class IB(Frame):
         self.clrTip.set(self.getLocStr("clrText"))
         self.dgcTip.set(self.getLocStr("dgcText"))
         self.stpTip.set(self.getLocStr("stpText"))
-        self.nozzExpTip.set(self.getLocStr("nozzExpText"))
-        self.nozzEffTip.set(self.getLocStr("nozzEffText"))
-        self.tolTip.set(self.getLocStr("tolText"))
+
         self.sampleTip.set(self.getLocStr("sampText"))
         self.calcButtonTip.set(self.getLocStr("calcButtonText"))
         self.pTgtTip.set(self.getLocStr("pTgtText"))
@@ -661,7 +630,11 @@ class IB(Frame):
 
         self.inAtmosCheck.config(text=self.getLocStr("atmosLabel"))
 
-        self.stepLb.config(text=self.getLocStr("stepLabel"))
+        # self.stepLb.config(text=self.getLocStr("stepLabel"))
+
+        for locInput in self.inputs:
+            locInput.reLocalize()
+
         self.calButton.config(text=self.getLocStr("calcLabel"))
 
         self.typeOptn.reLocalize()
@@ -855,7 +828,9 @@ class IB(Frame):
         solFrm.columnconfigure(0, weight=1)
         self.solFrm = solFrm
 
-        self.dropSoln = self.IBDropdown(self, solFrm, SOLUTIONS)
+        self.dropSoln = LocDropdown(
+            self.getLocStr, solFrm, SOLUTIONS, self.dropdowns
+        )
         self.dropSoln.grid(
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
@@ -999,7 +974,9 @@ class IB(Frame):
         sampleFrm.columnconfigure(1, weight=1)
         self.sampleFrm = sampleFrm
 
-        self.dropDomain = self.IBDropdown(self, sampleFrm, DOMAINS)
+        self.dropDomain = LocDropdown(
+            self.getLocStr, sampleFrm, DOMAINS, self.dropdowns
+        )
 
         j = 0
         self.dropDomain.grid(
@@ -1007,35 +984,38 @@ class IB(Frame):
         )
 
         j += 1
-        self.stepLb, self.step, _, j = self.add2Input(
+        self.step = Loc2Input(
             parent=sampleFrm,
             rowIndex=j,
             colIndex=0,
-            labelText=self.getLocStr("stepLabel"),
+            labelLocKey="stepLabel",
             default="100",
             validation=validationNN,
             formatter=formatIntInput,
             reverse=True,
             anchor="center",
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
 
         self.sampleTip = StringVar(value=self.getLocStr("sampText"))
         CreateToolTip(sampleFrm, self.sampleTip)
 
         i += 1
-
-        self.tolTip = StringVar(value=self.getLocStr("tolText"))
-        self.accExpLb, self.accExp, _, i = self.add2Input(
+        self.accExp = Loc2Input(
             parent=opFrm,
             rowIndex=i,
             colIndex=0,
-            labelText="-log10(ε)",
+            labelLocKey="-log10(ε)",
             default="4",
             validation=validationPI,
             formatter=formatIntInput,
             color="red",
-            infotext=self.tolTip,
+            tooltipLocKey="tolText",
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
+        i += 1
 
         self.pbar = ttk.Progressbar(opFrm, mode="indeterminate", maximum=100)
         self.pbar.grid(
@@ -1058,7 +1038,7 @@ class IB(Frame):
         CreateToolTip(self.calButton, self.calcButtonTip)
 
     def onCalculate(self):
-        self.IBDropdown.disable()
+        LocDropdown.disable(self.dropdowns)
 
         constrain = self.solve_W_Lg.get() == 1
         optimize = self.opt_lf.get() == 1
@@ -1284,7 +1264,7 @@ class IB(Frame):
 
         self.pbar.stop()
         self.calButton.config(state="normal")
-        self.IBDropdown.enable()
+        LocDropdown.enable(self.dropdowns)
         self.process = None
 
     def addErrFrm(self):
@@ -1316,7 +1296,9 @@ class IB(Frame):
         validationNN = self.register(validateNN)
 
         i = 0
-        self.typeOptn = self.IBDropdown(self, parFrm, TYPES)
+        self.typeOptn = LocDropdown(
+            self.getLocStr, parFrm, TYPES, self.dropdowns
+        )
 
         self.typeOptn.grid(
             row=i, column=0, sticky="nsew", padx=2, pady=2, columnspan=3
@@ -1376,7 +1358,9 @@ class IB(Frame):
 
         self.propFrm = propFrm
 
-        self.dropProp = self.IBDropdown(self, propFrm, self.COMPOSITIONS)
+        self.dropProp = LocDropdown(
+            self.getLocStr, propFrm, self.COMPOSITIONS, self.dropdowns
+        )
         self.dropProp.grid(
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
@@ -1452,7 +1436,9 @@ class IB(Frame):
 
         j = 1
 
-        self.dropGeom = self.IBDropdown(self, grainFrm, GEOMETRIES)
+        self.dropGeom = LocDropdown(
+            self.getLocStr, grainFrm, GEOMETRIES, self.dropdowns
+        )
 
         self.dropGeom.grid(
             row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
@@ -1556,40 +1542,29 @@ class IB(Frame):
             infotext=self.stpTip,
         )
 
-        self.nozzExpTip = StringVar(value=self.getLocStr("nozzExpText"))
-        (
-            self.nozzExpLb,
-            self.nozzExp,
-            self.nozzExpw,
-            self.nozzExpU,
-            i,
-        ) = self.add3Input(
+        self.nozzExp = Loc3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getLocStr("nozzExpLabel"),
+            labelLocKey="nozzExpLabel",
             unitText="x",
             default="4",
             validation=validationNN,
-            infotext=self.nozzExpTip,
+            tooltipLocKey="nozzExpText",
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
 
-        self.nozzEffTip = StringVar(value=self.getLocStr("nozzEffText"))
-        (
-            self.nozzEffLb,
-            self.nozzEff,
-            self.nozzEffw,
-            self.nozzEffU,
-            i,
-        ) = self.add3Input(
+        self.nozzEff = Loc3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getLocStr("nozzEffLabel"),
+            labelLocKey="nozzEffLabel",
             unitText="%",
             default="92.0",
             validation=validationNN,
-            infotext=self.nozzEffTip,
+            tooltipLocKey="nozzEffText",
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
-
         self.dropProp.trace_add("write", self.updateSpec)
         self.dropGeom.trace_add("write", self.updateGeom)
 
@@ -2319,26 +2294,12 @@ class IB(Frame):
         gunType = self.typeOptn.getObj()
 
         if gunType == CONVENTIONAL:
-            self.nozzExpw.config(state="disabled")
-            self.nozzEffw.config(state="disabled")
-
-            self.nozzExpLb.grid_remove()
-            self.nozzExpw.grid_remove()
-            self.nozzExpU.grid_remove()
-            self.nozzEffLb.grid_remove()
-            self.nozzEffw.grid_remove()
-            self.nozzEffU.grid_remove()
+            self.nozzExp.remove()
+            self.nozzEff.remove()
 
         elif gunType == RECOILESS:
-            self.nozzExpw.config(state="normal")
-            self.nozzEffw.config(state="normal")
-
-            self.nozzExpLb.grid()
-            self.nozzExpw.grid()
-            self.nozzExpU.grid()
-            self.nozzEffLb.grid()
-            self.nozzEffw.grid()
-            self.nozzEffU.grid()
+            self.nozzExp.restore()
+            self.nozzEff.restore()
 
     def ctrlCallback(self, *args):
         if self.solve_W_Lg.get() == 0:
@@ -2652,65 +2613,204 @@ class IB(Frame):
 
         self.update_idletasks()
 
-    class IBDropdown:
-        allDropdowns = []
 
-        def __init__(self, IB, parentFrm, strObjDict):
-            self.textVar = StringVar()
-            self.strObjDict = strObjDict
-            self.IB = IB
-            self.locStrObjDict = {
-                self.IB.getLocStr(k): v for k, v in strObjDict.items()
-            }
-            self.widget = ttk.Combobox(
-                parentFrm,
-                textvariable=self.textVar,
-                values=tuple(self.locStrObjDict.keys()),
-                justify="center",
-                state="readonly",
-            )
-            self.widget.option_add("*TCombobox*Listbox.Justify", "center")
-            self.widget.current(0)
+class Loc2Input:
+    def __init__(
+        self,
+        parent,
+        rowIndex=0,
+        colIndex=0,
+        labelLocKey="",
+        default="1.0",
+        validation=None,
+        entryWidth=15,
+        formatter=formatFloatInput,
+        color=None,
+        tooltipLocKey=None,
+        anchor="w",
+        reverse=False,
+        locFunc=None,
+        allInputs=[],
+    ):
+        lb = ttk.Label(parent, text=locFunc(labelLocKey), anchor=anchor)
 
-            IB.IBDropdown.allDropdowns.append(self)
+        lb.grid(
+            row=rowIndex,
+            column=colIndex + (1 if reverse else 0),
+            sticky="nsew",
+            padx=2,
+            pady=2,
+        )
+        if tooltipLocKey is not None:
+            self.locTooltipVar = StringVar(value=locFunc(tooltipLocKey))
+            CreateToolTip(lb, self.locTooltipVar)
+        else:
+            self.locTooltipVar = None
 
-        def reLocalize(self):
-            index = self.widget["values"].index(self.textVar.get())
-            self.locStrObjDict = {
-                self.IB.getLocStr(k): v for k, v in self.strObjDict.items()
-            }
-            self.widget.config(values=tuple(self.locStrObjDict.keys()))
-            self.widget.current(index)
+        parent.rowconfigure(rowIndex, weight=0)
+        e = StringVar(parent)
+        e.set(default)
+        en = ttk.Entry(
+            parent,
+            textvariable=e,
+            validate="key",
+            validatecommand=(validation, "%P"),
+            width=entryWidth,
+            foreground=color,
+            justify="center",
+        )
+        en.default = default
+        en.grid(
+            row=rowIndex,
+            column=colIndex + (0 if reverse else 1),
+            sticky="nsew",
+            padx=2,
+            pady=2,
+        )
+        en.bind("<FocusOut>", formatter)
 
-        def getObj(self):
-            return self.locStrObjDict[self.textVar.get()]
+        self.lbWidget = lb
+        self.inputVar = e
+        self.inputWidget = en
 
-        def setByStr(self, string):
-            """
-            Given an unlocalized string, set the drop down menu
-            to the correct position.
-            """
-            self.widget.set(
-                self.widget["values"][
-                    list(self.strObjDict.keys()).index(string)
-                ]
-            )
+        self.rowIndex = rowIndex
+        self.labelLocKey = labelLocKey
+        self.tooltipLocKey = tooltipLocKey
+        self.locFunc = locFunc
+        allInputs.append(self)
 
-        def grid(self, **kwargs):
-            self.widget.grid(**kwargs)
+    def reLocalize(self, newKey=None):
+        if newKey is not None:
+            self.labelLocKey = newKey
 
-        def trace_add(self, *args):
-            self.textVar.trace_add(*args)
+        self.lbWidget.config(text=self.locFunc(self.labelLocKey))
 
-        @classmethod
-        def disable(cls):
-            for drop in cls.allDropdowns:
-                drop.widget.configure(state="disabled")
+        if self.locTooltipVar is not None:
+            self.locTooltipVar.set(self.locFunc(self.tooltipLocKey))
 
-        @classmethod
-        def enable(cls):
-            for drop in cls.allDropdowns:
-                drop.widget.configure(state="readonly")
+    def remove(self):
+        self.lbWidget.grid_remove()
+        self.inputWidget.grid_remove()
+
+    def restore(self):
+        self.lbWidget.grid()
+        self.inputWidget.grid()
+
+    def get(self):
+        return self.inputVar.get()
+
+    def set(self, val):
+        self.inputVar.set(val)
+
+    def trace_add(self, *args):
+        self.inputVar.trace_add(*args)
+
+
+class Loc3Input(Loc2Input):
+    def __init__(
+        self,
+        parent,
+        rowIndex=0,
+        colIndex=0,
+        labelLocKey="",
+        unitText="",
+        default="0.0",
+        validation=None,
+        entryWidth=15,
+        formatter=formatFloatInput,
+        color=None,
+        tooltipLocKey=None,
+        anchor="w",
+        reverse=False,
+        locFunc=None,
+        allInputs=[],
+    ):
+        super().__init__(
+            parent=parent,
+            rowIndex=rowIndex,
+            colIndex=colIndex,
+            labelLocKey=labelLocKey,
+            default=default,
+            validation=validation,
+            entryWidth=entryWidth,
+            formatter=formatter,
+            color=color,
+            tooltipLocKey=tooltipLocKey,
+            anchor=anchor,
+            reverse=reverse,
+            locFunc=locFunc,
+        )
+
+        ulb = ttk.Label(parent, text=unitText)
+        ulb.grid(
+            row=rowIndex, column=colIndex + 2, sticky="nsew", padx=2, pady=2
+        )
+        self.unitLabel = ulb
+
+        allInputs.append(self)
+
+    def remove(self):
+        super().remove()
+        self.unitLabel.grid_remove()
+
+    def restore(self):
+        super().restore()
+        self.unitLabel.grid()
+
+
+class LocDropdown:
+    def __init__(self, locFunc, parentFrm, strObjDict, dropdowns=[]):
+        self.textVar = StringVar()
+        self.strObjDict = strObjDict
+        self.locFunc = locFunc
+        self.locStrObjDict = {self.locFunc(k): v for k, v in strObjDict.items()}
+        self.widget = ttk.Combobox(
+            parentFrm,
+            textvariable=self.textVar,
+            values=tuple(self.locStrObjDict.keys()),
+            justify="center",
+            state="readonly",
+        )
+        self.widget.option_add("*TCombobox*Listbox.Justify", "center")
+        self.widget.current(0)
+
+        dropdowns.append(self)
+
+    def reLocalize(self):
+        index = self.widget["values"].index(self.textVar.get())
+        self.locStrObjDict = {
+            self.locFunc(k): v for k, v in self.strObjDict.items()
+        }
+        self.widget.config(values=tuple(self.locStrObjDict.keys()))
+        self.widget.current(index)
+
+    def getObj(self):
+        return self.locStrObjDict[self.textVar.get()]
+
+    def setByStr(self, string):
+        """
+        Given an unlocalized string, set the drop down menu
+        to the correct position.
+        """
+        self.widget.set(
+            self.widget["values"][list(self.strObjDict.keys()).index(string)]
+        )
+
+    def grid(self, **kwargs):
+        self.widget.grid(**kwargs)
+
+    def trace_add(self, *args):
+        self.textVar.trace_add(*args)
+
+    @staticmethod
+    def disable(dropdowns):
+        for drop in dropdowns:
+            drop.widget.configure(state="disabled")
+
+    @staticmethod
+    def enable(dropdowns):
+        for drop in dropdowns:
+            drop.widget.configure(state="readonly")
 
 
 def calculate(
@@ -2786,7 +2886,7 @@ def calculate(
 
 
 if __name__ == "__main__":
-    multiprocessing.freeze_support()
+    freeze_support()
 
     # this tells windows that our program will handle scaling ourselves
     winRelease = platform.release()
@@ -2833,7 +2933,7 @@ if __name__ == "__main__":
     tabControl.add(ibFrame, text="INTERIOR")
     """
 
-    ibFrame = IB(root, menubar, dpi, scale)
+    ibFrame = IB(root, menubar, dpi)
     ibFrame.pack(expand=1, fill="both", side="left")
     # center(root)
 
