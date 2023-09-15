@@ -727,17 +727,6 @@ class IB(Frame):
 
         i = 0
 
-        """
-         self.lxTip = StringVar(value=self.getLocStr("calLxText"))
-        self.lxLb, self.lx, self.tlx, _, _, i = self.add122Disp(
-            parent=specFrm,
-            rowIndex=i,
-            labelText=self.getLocStr("lxLabel"),
-            unitText_up="Cal",
-            unitText_dn="Cal",
-            infotext=self.lxTip,
-        )"""
-
         self.lx = Loc122Disp(
             parent=specFrm,
             rowIndex=i,
@@ -2314,112 +2303,6 @@ class IB(Frame):
 
         except (ZeroDivisionError, ValueError):
             return
-
-    def add12Disp(
-        self,
-        parent,
-        rowIndex=0,
-        colIndex=0,
-        labelText="",
-        unitText="",
-        default="0.0",
-        entryWidth=15,
-        justify="center",
-        infotext=None,
-        reverse=False,
-    ):
-        lb = ttk.Label(parent, text=labelText)
-        lb.grid(
-            row=rowIndex,
-            column=colIndex,
-            columnspan=2,
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        e = StringVar(parent)
-        e.default = default
-        e.set(default)
-        parent.rowconfigure(rowIndex, weight=0)
-        en = ttk.Entry(
-            parent,
-            textvariable=e,
-            width=entryWidth,
-            state="disabled",
-            justify=justify,
-        )
-        en.grid(
-            row=rowIndex + 1,
-            column=colIndex + (1 if reverse else 0),
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        ttk.Label(parent, text=unitText).grid(
-            row=rowIndex + 1,
-            column=colIndex + (0 if reverse else 1),
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        if infotext is not None:
-            CreateToolTip(lb, infotext)
-
-        return lb, e, en, rowIndex + 2
-
-    def add122Disp(
-        self,
-        parent,
-        rowIndex=0,
-        colIndex=0,
-        labelText="",
-        unitText_up="",
-        unitText_dn="",
-        default_up="0.0",
-        default_dn="0.0",
-        entryWidth=15,
-        justify_up="center",
-        justify_dn="center",
-        infotext=None,
-        reverse=False,
-    ):
-        lb, e, en, rowIndex = self.add12Disp(
-            parent=parent,
-            rowIndex=rowIndex,
-            colIndex=colIndex,
-            labelText=labelText,
-            unitText=unitText_up,
-            default=default_up,
-            entryWidth=entryWidth,
-            justify=justify_up,
-            infotext=infotext,
-            reverse=reverse,
-        )
-        e2 = StringVar(parent)
-        e2.default = default_dn
-        e2.set(default_dn)
-        parent.rowconfigure(rowIndex, weight=0)
-        en2 = ttk.Entry(
-            parent,
-            textvariable=e2,
-            width=entryWidth,
-            state="disabled",
-            justify=justify_dn,
-        )
-        en2.grid(
-            row=rowIndex + 1,
-            column=colIndex + (1 if reverse else 0),
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        ttk.Label(parent, text=unitText_dn).grid(
-            row=rowIndex + 1,
-            column=colIndex + (0 if reverse else 1),
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
 
     def useTheme(self):
         style = ttk.Style(self)
