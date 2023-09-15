@@ -548,17 +548,11 @@ class IB(Frame):
         self.solMenu.entryconfig(0, label=self.getLocStr("useCVLabel"))
         self.solMenu.entryconfig(1, label=self.getLocStr("useLFLabel"))
 
-        # self.vTgtLb.config(text=self.getLocStr("vTgtLabel"))
-        # self.pTgtLb.config(text=self.getLocStr("pTgtLabel"))
-        # self.minWebLb.config(text=self.getLocStr("minWebLabel"))
         self.ldLb.config(text=self.getLocStr("ldLabel"))
         self.lxLb.config(text=self.getLocStr("lxLabel"))
         self.vaLb.config(text=self.getLocStr("vaLabel"))
         self.teLb.config(text=self.getLocStr("teffLabel"))
         self.beLb.config(text=self.getLocStr("beffLabel"))
-        # self.ambPLb.config(text=self.getLocStr("ambPresLabel"))
-        # self.ambRhoLb.config(text=self.getLocStr("ambRhoLabel"))
-        # self.ambGamLb.config(text=self.getLocStr("ambGamLabel"))
         self.ammoLb.config(text=self.getLocStr("ammoLabel"))
 
         self.useConstraintTip.set(self.getLocStr("useConsText"))
@@ -572,7 +566,6 @@ class IB(Frame):
 
         self.sampleTip.set(self.getLocStr("sampText"))
         self.calcButtonTip.set(self.getLocStr("calcButtonText"))
-        # self.pTgtTip.set(self.getLocStr("pTgtText"))
         self.plotTip.set(self.getLocStr("plotText"))
 
         self.tblFrm.config(text=self.getLocStr("tblFrmLabel"))
@@ -605,7 +598,6 @@ class IB(Frame):
         self.plotNozzleVCheck.config(text=self.getLocStr("plotNozzleV"))
         self.plotBurnupCheck.config(text=self.getLocStr("plotBurnup"))
         self.plotEtaCheck.config(text=self.getLocStr("plotEta"))
-
         self.plotRecoilCheck.config(text=self.getLocStr("plotRecoil"))
 
         self.inAtmosCheck.config(text=self.getLocStr("atmosLabel"))
