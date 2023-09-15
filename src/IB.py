@@ -91,7 +91,6 @@ GEOM_CONTEXT = {
     "figure.titlesize": FONTSIZE + 2,
     "lines.markersize": FONTSIZE / 4,
     "axes.axisbelow": True,
-    # "path.simplify_threshold": 1,
     "font.family": "Sarasa Fixed SC",
 }
 
@@ -109,7 +108,6 @@ FIG_CONTEXT = {
     "axes.axisbelow": False,
     "axes.labelweight": "bold",
     "yaxis.labellocation": "top",
-    # "path.simplify_threshold": 1,
     "font.family": "Sarasa Fixed SC",
 }
 
@@ -522,19 +520,16 @@ class IB(Frame):
             messagebox.showinfo(self.getLocStr("excTitle"), str(e))
 
     def ambCallback(self, *args):
-        self.ambPw.config(state="normal" if self.inAtmos.get() else "disabled")
-        self.ambRhow.config(
-            state="normal" if self.inAtmos.get() else "disabled"
-        )
-        self.ambGamw.config(
-            state="normal" if self.inAtmos.get() else "disabled"
-        )
+        self.ambP.enable() if self.inAtmos.get() else self.ambP.disable()
+        self.ambRho.enable() if self.inAtmos.get() else self.ambRho.disable()
+        self.ambGam.enable() if self.inAtmos.get() else self.ambGam.disable()
 
     def cvlfCallback(self, *args):
         useCv = self.useCv.get()
 
-        self.ldfw.config(state="disabled" if useCv else "normal")
-        self.cvLw.config(state="normal" if useCv else "disabled")
+        # self.ldfw.config(state="disabled" if useCv else "normal")
+        self.ldf.disable() if useCv else self.ldf.enable()
+        self.cvL.enable() if useCv else self.cvL.disable()
 
     def changeLang(self):
         self.menubar.entryconfig(0, label=self.getLocStr("fileLabel"))
@@ -553,46 +548,31 @@ class IB(Frame):
         self.solMenu.entryconfig(0, label=self.getLocStr("useCVLabel"))
         self.solMenu.entryconfig(1, label=self.getLocStr("useLFLabel"))
 
-        self.calLb.config(text=self.getLocStr("calLabel"))
-        self.tblLb.config(text=self.getLocStr("tblLabel"))
-        self.shtLb.config(text=self.getLocStr("shtLabel"))
-        self.chgLb.config(text=self.getLocStr("chgLabel"))
-        self.ldfLb.config(text=self.getLocStr("ldfLabel"))
-        self.clrLb.config(text=self.getLocStr("clrLabel"))
-        self.dgcLb.config(text=self.getLocStr("dgcLabel"))
-        self.stpLb.config(text=self.getLocStr("stpLabel"))
-        self.vTgtLb.config(text=self.getLocStr("vTgtLabel"))
-        self.pTgtLb.config(text=self.getLocStr("pTgtLabel"))
-        self.minWebLb.config(text=self.getLocStr("minWebLabel"))
-        self.lgmaxLb.config(text=self.getLocStr("maxLgLabel"))
+        # self.vTgtLb.config(text=self.getLocStr("vTgtLabel"))
+        # self.pTgtLb.config(text=self.getLocStr("pTgtLabel"))
+        # self.minWebLb.config(text=self.getLocStr("minWebLabel"))
         self.ldLb.config(text=self.getLocStr("ldLabel"))
         self.lxLb.config(text=self.getLocStr("lxLabel"))
         self.vaLb.config(text=self.getLocStr("vaLabel"))
         self.teLb.config(text=self.getLocStr("teffLabel"))
         self.beLb.config(text=self.getLocStr("beffLabel"))
-        self.cvLLb.config(text=self.getLocStr("cvLabel"))
-        self.ambPLb.config(text=self.getLocStr("ambPresLabel"))
-        self.ambRhoLb.config(text=self.getLocStr("ambRhoLabel"))
-        self.ambGamLb.config(text=self.getLocStr("ambGamLabel"))
+        # self.ambPLb.config(text=self.getLocStr("ambPresLabel"))
+        # self.ambRhoLb.config(text=self.getLocStr("ambRhoLabel"))
+        # self.ambGamLb.config(text=self.getLocStr("ambGamLabel"))
         self.ammoLb.config(text=self.getLocStr("ammoLabel"))
 
         self.useConstraintTip.set(self.getLocStr("useConsText"))
         self.optimizeLFTip.set(self.getLocStr("optLFText"))
-        self.chgTip.set(self.getLocStr("chgText"))
         self.vinfTip.set(self.getLocStr("vinfText"))
         self.lxTip.set(self.getLocStr("calLxText"))
         self.geomPlotTip.set(self.getLocStr("geomPlotText"))
         self.teffTip.set(self.getLocStr("teffText"))
         self.beffTip.set(self.getLocStr("beffText"))
         self.specsTip.set(self.getLocStr("specsText"))
-        self.ldfTip.set(self.getLocStr("ldfText"))
-        self.clrTip.set(self.getLocStr("clrText"))
-        self.dgcTip.set(self.getLocStr("dgcText"))
-        self.stpTip.set(self.getLocStr("stpText"))
 
         self.sampleTip.set(self.getLocStr("sampText"))
         self.calcButtonTip.set(self.getLocStr("calcButtonText"))
-        self.pTgtTip.set(self.getLocStr("pTgtText"))
+        # self.pTgtTip.set(self.getLocStr("pTgtText"))
         self.plotTip.set(self.getLocStr("plotText"))
 
         self.tblFrm.config(text=self.getLocStr("tblFrmLabel"))
@@ -629,8 +609,6 @@ class IB(Frame):
         self.plotRecoilCheck.config(text=self.getLocStr("plotRecoil"))
 
         self.inAtmosCheck.config(text=self.getLocStr("atmosLabel"))
-
-        # self.stepLb.config(text=self.getLocStr("stepLabel"))
 
         for locInput in self.inputs:
             locInput.reLocalize()
@@ -847,35 +825,41 @@ class IB(Frame):
             envFrm, text=self.getLocStr("atmosLabel"), variable=self.inAtmos
         )
         self.inAtmosCheck.grid(row=i, column=0, columnspan=3, sticky="nsew")
-        i += 1
 
-        self.ambPLb, self.ambP, self.ambPw, _, i = self.add3Input(
+        i += 1
+        self.ambP = Loc3Input(
             parent=envFrm,
             rowIndex=i,
             colIndex=0,
-            labelText=self.getLocStr("ambPresLabel"),
+            labelLocKey="ambPresLabel",
             unitText="kPa",
             default="101.325",
             validation=validationNN,
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
-
-        self.ambRhoLb, self.ambRho, self.ambRhow, _, i = self.add3Input(
+        i += 1
+        self.ambRho = Loc3Input(
             parent=envFrm,
             rowIndex=i,
             colIndex=0,
-            labelText=self.getLocStr("ambRhoLabel"),
+            labelLocKey="ambRhoLabel",
             unitText="kg/m³",
             default="1.204",
             validation=validationNN,
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
-
-        self.ambGamLb, self.ambGam, self.ambGamw, _, i = self.add3Input(
+        i += 1
+        self.ambGam = Loc3Input(
             parent=envFrm,
             rowIndex=i,
             colIndex=0,
-            labelText=self.getLocStr("ambGamLabel"),
+            labelLocKey="ambGamLabel",
             default="1.400",
             validation=validationNN,
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
 
         opFrm = ttk.LabelFrame(rightFrm, text=self.getLocStr("opFrmLabel"))
@@ -895,48 +879,57 @@ class IB(Frame):
         )
         self.consFrm = consFrm
         j = 0
-
-        self.vTgtLb, self.vTgt, _, _, j = self.add3Input(
+        self.vTgt = Loc3Input(
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
-            labelText=self.getLocStr("vTgtLabel"),
+            labelLocKey="vTgtLabel",
             unitText="m/s",
             default="1500.0",
             validation=validationNN,
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
 
-        self.pTgtTip = StringVar(value=self.getLocStr("pTgtText"))
-        self.pTgtLb, self.pTgt, _, _, j = self.add3Input(
+        j += 1
+        self.pTgt = Loc3Input(
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
-            labelText=self.getLocStr("pTgtLabel"),
+            labelLocKey="pTgtLabel",
             unitText="MPa",
             default="350.0",
             validation=validationNN,
-            infotext=self.pTgtTip,
+            tooltipLocKey="pTgtText",
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
 
-        self.minWebLb, self.minWeb, self.minWebw, _, j = self.add3Input(
+        j += 1
+        self.minWeb = Loc3Input(
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
-            labelText=self.getLocStr("minWebLabel"),
+            labelLocKey="minWebLabel",
             unitText="μm",
             default="1.0",
             validation=validationNN,
             color="red",
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
-        self.lgmaxLb, self.lgmax, self.lgmaxw, _, j = self.add3Input(
+        j += 1
+        self.lgmax = Loc3Input(
             parent=consFrm,
             rowIndex=j,
             colIndex=0,
-            labelText=self.getLocStr("maxLgLabel"),
+            labelLocKey="maxLgLabel",
             unitText="m",
             default="1000.0",
             validation=validationNN,
             color="red",
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
 
         j += 1
@@ -1305,45 +1298,53 @@ class IB(Frame):
         )
 
         i += 1
-        self.calLb, self.calmm, _, _, i = self.add3Input(
+        self.calmm = Loc3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getLocStr("calLabel"),
+            labelLocKey="calLabel",
             unitText="mm",
             default="50.0",
             validation=validationNN,
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
-        self.tblLb, self.tblmm, _, _, i = self.add3Input(
+        i += 1
+        self.tblmm = Loc3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getLocStr("tblLabel"),
+            labelLocKey="tblLabel",
             unitText="mm",
             default="3500.0",
             validation=validationNN,
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
-        self.shtLb, self.shtkg, _, _, i = self.add3Input(
+        i += 1
+        self.shtkg = Loc3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getLocStr("shtLabel"),
+            labelLocKey="shtLabel",
             unitText="kg",
             default="1.0",
             validation=validationNN,
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
-
-        self.chgTip = StringVar(value=self.getLocStr("chgText"))
-        self.chgLb, self.chgkg, _, _, i = self.add3Input(
+        i += 1
+        self.chgkg = Loc3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getLocStr("chgLabel"),
+            labelLocKey="chgLabel",
             unitText="kg",
             default="1.0",
             validation=validationNN,
-            infotext=self.chgTip,
+            tooltipLocKey="chgText",
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
 
         # allow propellant specification to grow
-        parFrm.rowconfigure(i, weight=4)
-
+        i += 1
         propFrm = ttk.LabelFrame(
             parFrm,
             text=self.getLocStr("propFrmLabel"),
@@ -1352,6 +1353,7 @@ class IB(Frame):
         propFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
+        parFrm.rowconfigure(i, weight=4)
 
         propFrm.rowconfigure(1, weight=1)
         propFrm.columnconfigure(0, weight=1)
@@ -1397,8 +1399,6 @@ class IB(Frame):
         CreateToolTip(propFrm, self.specsTip)
 
         i += 1
-
-        # allow grain frame to grow
         parFrm.rowconfigure(i, weight=1)
 
         grainFrm = ttk.LabelFrame(
@@ -1419,8 +1419,9 @@ class IB(Frame):
             style="SubLabelFrame.TLabelframe",
         )
 
+        j = 0
         geomPlotFrm.grid(
-            row=0,
+            row=j,
             column=0,
             columnspan=3,
             sticky="nsew",
@@ -1430,78 +1431,75 @@ class IB(Frame):
 
         self.geomPlotTip = StringVar(value=self.getLocStr("geomPlotText"))
         CreateToolTip(geomPlotFrm, self.geomPlotTip)
-
         self.geomParentFrm = grainFrm
         self.geomPlotFrm = geomPlotFrm
-
-        j = 1
-
         self.dropGeom = LocDropdown(
             self.getLocStr, grainFrm, GEOMETRIES, self.dropdowns
         )
 
+        j += 1
         self.dropGeom.grid(
             row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
-
-        self.lengthPrimaryAs = StringVar()
-        self.lengthPrimaryTip = StringVar()
-
         j += 1
-        self.arcLb, self.arcmm, _, _, j = self.add3Input(
+        self.arcmm = Loc3Input(
             parent=grainFrm,
             rowIndex=j,
-            labelText=self.lengthPrimaryAs,
+            labelLocKey="",
             unitText="mm",
             default="1.0",
             validation=validationNN,
-            infotext=self.lengthPrimaryTip,
+            tooltipLocKey="",
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
-
-        self.ratioAs = StringVar()
-        self.lengthSecondaryTip = StringVar()
-        self.grdRLb, self.grdR, self.grdRw, _, j = self.add3Input(
+        j += 1
+        self.grdR = Loc3Input(
             parent=grainFrm,
             rowIndex=j,
-            labelText=self.ratioAs,
+            labelLocKey="",
             unitText="x",
             default="1.0",
             validation=validationNN,
-            infotext=self.lengthSecondaryTip,
+            tooltipLocKey="",
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
-
-        self.lengthRatioAs = StringVar()
-        self.lengthRatioTip = StringVar()
-
-        self.grlRLb, self.grlR, self.grlRw, _, j = self.add3Input(
+        j += 1
+        self.grlR = Loc3Input(
             parent=grainFrm,
             rowIndex=j,
-            labelText=self.lengthRatioAs,
+            labelLocKey="",
             unitText="x",
             default="2.5",
             validation=validationNN,
-            infotext=self.lengthRatioTip,
+            tooltipLocKey="",
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
 
         i += 1
-        self.ldfTip = StringVar(value=self.getLocStr("ldfText"))
-        self.ldfLb, self.ldf, self.ldfw, _, i = self.add3Input(
+        self.ldf = Loc3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getLocStr("ldfLabel"),
+            labelLocKey="ldfLabel",
             unitText="%",
             default="50.0",
             validation=validationNN,
-            infotext=self.ldfTip,
+            tooltipLocKey="ldfText",
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
-
-        self.cvLLb, self.cvL, self.cvLw, _, i = self.add3Input(
+        i += 1
+        self.cvL = Loc3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getLocStr("cvLabel"),
+            labelLocKey="cvLabel",
             unitText="L",
             default="20",
             validation=validationNN,
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
 
         self.cvL.trace_add("write", self.cvlfConsisCallback)
@@ -1509,39 +1507,43 @@ class IB(Frame):
         self.chgkg.trace_add("write", self.cvlfConsisCallback)
         self.accExp.trace_add("write", self.cvlfConsisCallback)
 
-        self.clrTip = StringVar(value=self.getLocStr("clrText"))
-        self.clrLb, self.clr, _, _, i = self.add3Input(
+        i += 1
+        self.clr = Loc3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getLocStr("clrLabel"),
+            labelLocKey="clrLabel",
             unitText="x",
             default="1.5",
             validation=validationNN,
-            infotext=self.clrTip,
+            tooltipLocKey="clrText",
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
-
-        self.dgcTip = StringVar(value=self.getLocStr("dgcText"))
-        self.dgcLb, self.dgc, _, _, i = self.add3Input(
+        i += 1
+        self.dgc = Loc3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getLocStr("dgcLabel"),
+            labelLocKey="dgcLabel",
             unitText="%",
             default="5.0",
             validation=validationNN,
-            infotext=self.dgcTip,
+            tooltipLocKey="dgcText",
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
-
-        self.stpTip = StringVar(value=self.getLocStr("stpText"))
-        self.stpLb, self.stpMPa, _, _, i = self.add3Input(
+        i += 1
+        self.stpMPa = Loc3Input(
             parent=parFrm,
             rowIndex=i,
-            labelText=self.getLocStr("stpLabel"),
+            labelLocKey="stpLabel",
             unitText="MPa",
             default="10",
             validation=validationNN,
-            infotext=self.stpTip,
+            tooltipLocKey="stpText",
+            locFunc=self.getLocStr,
+            allInputs=self.inputs,
         )
-
+        i += 1
         self.nozzExp = Loc3Input(
             parent=parFrm,
             rowIndex=i,
@@ -1553,7 +1555,7 @@ class IB(Frame):
             locFunc=self.getLocStr,
             allInputs=self.inputs,
         )
-
+        i += 1
         self.nozzEff = Loc3Input(
             parent=parFrm,
             rowIndex=i,
@@ -2157,53 +2159,36 @@ class IB(Frame):
     def updateGeom(self, *args):
         geom = self.dropGeom.getObj()
         if geom == SimpleGeometry.SPHERE:
-            self.grdRw.config(state="disabled")
-            self.grlRw.config(state="disabled")
+            self.grlR.disable()
+            self.grdR.disable()
 
         elif geom == SimpleGeometry.CYLINDER:
-            self.grdRw.config(state="disabled")
-            self.grlRw.config(state="normal")
+            self.grlR.enable()
+            self.grdR.disable()
 
         else:
-            self.grdRw.config(state="normal")
-            self.grlRw.config(state="normal")
+            self.grlR.enable()
+            self.grdR.enable()
 
         if geom == SimpleGeometry.SPHERE:
-            self.lengthPrimaryAs.set(self.getLocStr("diamLabel"))
-
-            self.lengthRatioAs.set("")
-            self.ratioAs.set("")
-
-            self.lengthPrimaryTip.set(self.getLocStr("diaText"))
-            self.lengthRatioTip.set("")
-            self.lengthSecondaryTip.set("")
+            self.arcmm.reLocalize("diamLabel", "diaText")
+            self.grlR.reLocalize("", "")
+            self.grdR.reLocalize("", "")
 
         elif geom == SimpleGeometry.ROD:
-            self.lengthPrimaryAs.set(self.getLocStr("widtLabel"))
-            self.lengthRatioAs.set(self.getLocStr("ltwLabel"))
-            self.ratioAs.set(self.getLocStr("htwLabel"))
-
-            self.lengthPrimaryTip.set(self.getLocStr("widthText"))
-            self.lengthRatioTip.set(self.getLocStr("rodRText"))
-            self.lengthSecondaryTip.set(self.getLocStr("heightRText"))
+            self.arcmm.reLocalize("widthLabel", "widthText")
+            self.grlR.reLocalize("ltwLabel", "rodRText")
+            self.grdR.reLocalize("htwLabel", "heightRText")
 
         elif geom == SimpleGeometry.CYLINDER:
-            self.lengthPrimaryAs.set(self.getLocStr("diamLabel"))
-            self.lengthRatioAs.set(self.getLocStr("ltdLabel"))
-            self.ratioAs.set("")
-
-            self.lengthPrimaryTip.set(self.getLocStr("diaText"))
-            self.lengthRatioTip.set(self.getLocStr("cylLRText"))
-            self.lengthSecondaryTip.set("")
+            self.arcmm.reLocalize("diamLabel", "diaText")
+            self.grlR.reLocalize("ltdLabel", "cylLRText")
+            self.grdR.reLocalize("", "")
 
         else:
-            self.lengthPrimaryAs.set(self.getLocStr("athLabel"))
-            self.lengthRatioAs.set(self.getLocStr("ltdLabel"))
-            self.ratioAs.set(self.getLocStr("pdtalLabel"))
-
-            self.lengthPrimaryTip.set(self.getLocStr("arcText"))
-            self.lengthRatioTip.set(self.getLocStr("perfLRText"))
-            self.lengthSecondaryTip.set(self.getLocStr("pDiaRText"))
+            self.arcmm.reLocalize("athLabel", "arcText")
+            self.grlR.reLocalize("ltdLabel", "perfLRText")
+            self.grdR.reLocalize("pdtalLabel", "pDiaRText")
 
         self.callback()
 
@@ -2304,12 +2289,14 @@ class IB(Frame):
     def ctrlCallback(self, *args):
         if self.solve_W_Lg.get() == 0:
             self.optimizeLF.config(state="disabled")
-            self.minWebw.config(state="disabled")
-            self.lgmaxw.config(state="disabled")
+            # self.minWebw.config(state="disabled")
+            self.minWeb.disable()
+            self.lgmax.disable()
         else:
             self.optimizeLF.config(state="normal")
-            self.minWebw.config(state="normal")
-            self.lgmaxw.config(state="normal")
+            # self.minWebw.config(state="normal")
+            self.minWeb.enable()
+            self.lgmax.enable()
 
     def cvlfConsisCallback(self, *args):
         try:
@@ -2328,91 +2315,6 @@ class IB(Frame):
 
         except (ZeroDivisionError, ValueError):
             return
-
-    def add2Input(
-        self,
-        parent,
-        rowIndex=0,
-        colIndex=0,
-        labelText="",
-        default="1.0",
-        validation=None,
-        entryWidth=15,
-        formatter=formatFloatInput,
-        color=None,
-        infotext=None,
-        anchor="w",
-        reverse=False,
-    ):
-        if isinstance(labelText, StringVar):
-            lb = ttk.Label(parent, textvariable=labelText, anchor=anchor)
-        else:
-            lb = ttk.Label(parent, text=labelText, anchor=anchor)
-
-        lb.grid(
-            row=rowIndex,
-            column=colIndex + (1 if reverse else 0),
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        if infotext is not None:
-            CreateToolTip(lb, infotext)
-        parent.rowconfigure(rowIndex, weight=0)
-        e = StringVar(parent)
-        e.set(default)
-        en = ttk.Entry(
-            parent,
-            textvariable=e,
-            validate="key",
-            validatecommand=(validation, "%P"),
-            width=entryWidth,
-            foreground=color,
-            justify="center",
-        )
-        en.default = default
-        en.grid(
-            row=rowIndex,
-            column=colIndex + (0 if reverse else 1),
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        en.bind("<FocusOut>", formatter)
-        return lb, e, en, rowIndex + 1
-
-    def add3Input(
-        self,
-        parent,
-        rowIndex=0,
-        colIndex=0,
-        labelText="",
-        unitText="",
-        default="0.0",
-        validation=None,
-        entryWidth=15,
-        formatter=formatFloatInput,
-        color=None,
-        infotext=None,
-    ):
-        lb, e, en, _ = self.add2Input(
-            parent=parent,
-            rowIndex=rowIndex,
-            colIndex=colIndex,
-            labelText=labelText,
-            default=default,
-            validation=validation,
-            entryWidth=entryWidth,
-            formatter=formatter,
-            color=color,
-            infotext=infotext,
-        )
-        ulb = ttk.Label(parent, text=unitText)
-        ulb.grid(
-            row=rowIndex, column=colIndex + 2, sticky="nsew", padx=2, pady=2
-        )
-
-        return lb, e, en, ulb, rowIndex + 1
 
     def add12Disp(
         self,
@@ -2679,13 +2581,14 @@ class Loc2Input:
         self.locFunc = locFunc
         allInputs.append(self)
 
-    def reLocalize(self, newKey=None):
-        if newKey is not None:
-            self.labelLocKey = newKey
-
+    def reLocalize(self, newLocKey=None, newTooltipKey=None):
+        if newLocKey is not None:
+            self.labelLocKey = newLocKey
         self.lbWidget.config(text=self.locFunc(self.labelLocKey))
 
         if self.locTooltipVar is not None:
+            if newTooltipKey is not None:
+                self.tooltipLocKey = newTooltipKey
             self.locTooltipVar.set(self.locFunc(self.tooltipLocKey))
 
     def remove(self):
@@ -2704,6 +2607,12 @@ class Loc2Input:
 
     def trace_add(self, *args):
         self.inputVar.trace_add(*args)
+
+    def disable(self):
+        self.inputWidget.config(state="disabled")
+
+    def enable(self):
+        self.inputWidget.config(state="normal")
 
 
 class Loc3Input(Loc2Input):
