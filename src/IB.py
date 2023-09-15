@@ -118,7 +118,7 @@ class IB(Frame):
         self.pack(expand=1, fill="both")
         self.LANG = StringVar(value=list(STRING.keys())[0])
         self.dropdowns = []
-        self.inputs = []
+        self.locs = []
 
         default_font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
         self.option_add("*Font", default_font)
@@ -527,7 +527,6 @@ class IB(Frame):
     def cvlfCallback(self, *args):
         useCv = self.useCv.get()
 
-        # self.ldfw.config(state="disabled" if useCv else "normal")
         self.ldf.disable() if useCv else self.ldf.enable()
         self.cvL.enable() if useCv else self.cvL.disable()
 
@@ -548,20 +547,9 @@ class IB(Frame):
         self.solMenu.entryconfig(0, label=self.getLocStr("useCVLabel"))
         self.solMenu.entryconfig(1, label=self.getLocStr("useLFLabel"))
 
-        self.ldLb.config(text=self.getLocStr("ldLabel"))
-        self.lxLb.config(text=self.getLocStr("lxLabel"))
-        self.vaLb.config(text=self.getLocStr("vaLabel"))
-        self.teLb.config(text=self.getLocStr("teffLabel"))
-        self.beLb.config(text=self.getLocStr("beffLabel"))
-        self.ammoLb.config(text=self.getLocStr("ammoLabel"))
-
         self.useConstraintTip.set(self.getLocStr("useConsText"))
         self.optimizeLFTip.set(self.getLocStr("optLFText"))
-        self.vinfTip.set(self.getLocStr("vinfText"))
-        self.lxTip.set(self.getLocStr("calLxText"))
         self.geomPlotTip.set(self.getLocStr("geomPlotText"))
-        self.teffTip.set(self.getLocStr("teffText"))
-        self.beffTip.set(self.getLocStr("beffText"))
         self.specsTip.set(self.getLocStr("specsText"))
 
         self.sampleTip.set(self.getLocStr("sampText"))
@@ -602,7 +590,7 @@ class IB(Frame):
 
         self.inAtmosCheck.config(text=self.getLocStr("atmosLabel"))
 
-        for locInput in self.inputs:
+        for locInput in self.locs:
             locInput.reLocalize()
 
         self.calButton.config(text=self.getLocStr("calcLabel"))
@@ -739,7 +727,8 @@ class IB(Frame):
 
         i = 0
 
-        self.lxTip = StringVar(value=self.getLocStr("calLxText"))
+        """
+         self.lxTip = StringVar(value=self.getLocStr("calLxText"))
         self.lxLb, self.lx, self.tlx, _, _, i = self.add122Disp(
             parent=specFrm,
             rowIndex=i,
@@ -747,49 +736,67 @@ class IB(Frame):
             unitText_up="Cal",
             unitText_dn="Cal",
             infotext=self.lxTip,
-        )
+        )"""
 
-        self.ammoLb, self.ammo, _, i = self.add12Disp(
+        self.lx = Loc122Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText=self.getLocStr("ammoLabel"),
+            labelLocKey="lxLabel",
+            unitText_up="Cal",
+            unitText_dn="Cal",
+            tooltipLocKey="calLxText",
+            locFunc=self.getLocStr,
+            allDisps=self.locs,
+        )
+        i += 3
+        self.ammo = Loc12Disp(
+            parent=specFrm,
+            rowIndex=i,
+            labelLocKey="ammoLabel",
             unitText="",
             default="0.00 x 0.000 mm",
+            locFunc=self.getLocStr,
+            allDisps=self.locs,
         )
-
-        self.vinfTip = StringVar(value=self.getLocStr("vinfText"))
-        self.vaLb, self.va, _, i = self.add12Disp(
+        i += 2
+        self.va = Loc12Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText=self.getLocStr("vaLabel"),
-            infotext=self.vinfTip,
+            labelLocKey="vaLabel",
+            tooltipLocKey="vinfText",
+            locFunc=self.getLocStr,
+            allDisps=self.locs,
         )
-
-        self.teffTip = StringVar(value=self.getLocStr("teffText"))
-        self.teLb, self.te, _, i = self.add12Disp(
+        i += 2
+        self.te = Loc12Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText=self.getLocStr("teffLabel"),
+            labelLocKey="teffLabel",
             unitText="%",
-            infotext=self.teffTip,
+            tooltipLocKey="teffText",
+            locFunc=self.getLocStr,
+            allDisps=self.locs,
         )
-
-        self.beffTip = StringVar(value=self.getLocStr("beffText"))
-        self.beLb, self.be, _, i = self.add12Disp(
+        i += 2
+        self.be = Loc12Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText=self.getLocStr("beffLabel"),
+            labelLocKey="beffLabel",
             unitText="%",
-            infotext=self.beffTip,
+            tooltipLocKey="beffText",
+            locFunc=self.getLocStr,
+            allDisps=self.locs,
         )
-
-        self.ldLb, self.ld, _, i = self.add12Disp(
+        i += 2
+        self.ld = Loc12Disp(
             parent=specFrm,
             rowIndex=i,
-            labelText=self.getLocStr("ldLabel"),
+            labelLocKey="ldLabel",
             unitText="kg/m³",
+            locFunc=self.getLocStr,
+            allDisps=self.locs,
         )
-
+        i += 2
         validationNN = self.register(validateNN)
         validationPI = self.register(validatePI)
 
@@ -828,7 +835,7 @@ class IB(Frame):
             default="101.325",
             validation=validationNN,
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
         i += 1
         self.ambRho = Loc3Input(
@@ -840,7 +847,7 @@ class IB(Frame):
             default="1.204",
             validation=validationNN,
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
         i += 1
         self.ambGam = Loc3Input(
@@ -851,7 +858,7 @@ class IB(Frame):
             default="1.400",
             validation=validationNN,
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
 
         opFrm = ttk.LabelFrame(rightFrm, text=self.getLocStr("opFrmLabel"))
@@ -880,7 +887,7 @@ class IB(Frame):
             default="1500.0",
             validation=validationNN,
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
 
         j += 1
@@ -894,7 +901,7 @@ class IB(Frame):
             validation=validationNN,
             tooltipLocKey="pTgtText",
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
 
         j += 1
@@ -908,7 +915,7 @@ class IB(Frame):
             validation=validationNN,
             color="red",
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
         j += 1
         self.lgmax = Loc3Input(
@@ -921,7 +928,7 @@ class IB(Frame):
             validation=validationNN,
             color="red",
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
 
         j += 1
@@ -980,7 +987,7 @@ class IB(Frame):
             reverse=True,
             anchor="center",
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
 
         self.sampleTip = StringVar(value=self.getLocStr("sampText"))
@@ -998,7 +1005,7 @@ class IB(Frame):
             color="red",
             tooltipLocKey="tolText",
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
         i += 1
 
@@ -1201,12 +1208,12 @@ class IB(Frame):
             self.te.set(round(eta_t * 100, 1))
             self.be.set(round(eta_b * 100, 1))
 
-            self.lx.set(toSI(kwargs["lengthGun"] / kwargs["caliber"]))
-            self.tlx.set(
+            self.lx.set(
+                toSI(kwargs["lengthGun"] / kwargs["caliber"]),
                 toSI(
                     (kwargs["lengthGun"] + self.gun.l_0 / kwargs["chambrage"])
                     / kwargs["caliber"]
-                )
+                ),
             )
             self.va.set(toSI(self.gun.v_j, unit="m/s"))
 
@@ -1298,7 +1305,7 @@ class IB(Frame):
             default="50.0",
             validation=validationNN,
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
         i += 1
         self.tblmm = Loc3Input(
@@ -1309,7 +1316,7 @@ class IB(Frame):
             default="3500.0",
             validation=validationNN,
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
         i += 1
         self.shtkg = Loc3Input(
@@ -1320,7 +1327,7 @@ class IB(Frame):
             default="1.0",
             validation=validationNN,
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
         i += 1
         self.chgkg = Loc3Input(
@@ -1332,7 +1339,7 @@ class IB(Frame):
             validation=validationNN,
             tooltipLocKey="chgText",
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
 
         # allow propellant specification to grow
@@ -1443,7 +1450,7 @@ class IB(Frame):
             validation=validationNN,
             tooltipLocKey="",
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
         j += 1
         self.grdR = Loc3Input(
@@ -1455,7 +1462,7 @@ class IB(Frame):
             validation=validationNN,
             tooltipLocKey="",
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
         j += 1
         self.grlR = Loc3Input(
@@ -1467,7 +1474,7 @@ class IB(Frame):
             validation=validationNN,
             tooltipLocKey="",
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
 
         i += 1
@@ -1480,7 +1487,7 @@ class IB(Frame):
             validation=validationNN,
             tooltipLocKey="ldfText",
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
         i += 1
         self.cvL = Loc3Input(
@@ -1491,7 +1498,7 @@ class IB(Frame):
             default="20",
             validation=validationNN,
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
 
         self.cvL.trace_add("write", self.cvlfConsisCallback)
@@ -1509,7 +1516,7 @@ class IB(Frame):
             validation=validationNN,
             tooltipLocKey="clrText",
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
         i += 1
         self.dgc = Loc3Input(
@@ -1521,7 +1528,7 @@ class IB(Frame):
             validation=validationNN,
             tooltipLocKey="dgcText",
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
         i += 1
         self.stpMPa = Loc3Input(
@@ -1533,7 +1540,7 @@ class IB(Frame):
             validation=validationNN,
             tooltipLocKey="stpText",
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
         i += 1
         self.nozzExp = Loc3Input(
@@ -1545,7 +1552,7 @@ class IB(Frame):
             validation=validationNN,
             tooltipLocKey="nozzExpText",
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
         i += 1
         self.nozzEff = Loc3Input(
@@ -1557,7 +1564,7 @@ class IB(Frame):
             validation=validationNN,
             tooltipLocKey="nozzEffText",
             locFunc=self.getLocStr,
-            allInputs=self.inputs,
+            allInputs=self.locs,
         )
         self.dropProp.trace_add("write", self.updateSpec)
         self.dropGeom.trace_add("write", self.updateGeom)
@@ -2414,8 +2421,6 @@ class IB(Frame):
             pady=2,
         )
 
-        return lb, e, e2, en, en2, rowIndex + 2
-
     def useTheme(self):
         style = ttk.Style(self)
         choice = self.themeRadio.get()
@@ -2508,6 +2513,155 @@ class IB(Frame):
         self.update_idletasks()
 
 
+class Loc12Disp:
+    def __init__(
+        self,
+        parent,
+        rowIndex=0,
+        colIndex=0,
+        labelLocKey="",
+        unitText="",
+        default="0.0",
+        entryWidth=15,
+        justify="center",
+        tooltipLocKey=None,
+        reverse=False,
+        locFunc=None,
+        allDisps=[],
+    ):
+        lb = ttk.Label(parent, text=locFunc(labelLocKey))
+        lb.grid(
+            row=rowIndex,
+            column=colIndex,
+            columnspan=2,
+            sticky="nsew",
+            padx=2,
+            pady=2,
+        )
+        e = StringVar(parent)
+        e.default = default
+        e.set(default)
+        parent.rowconfigure(rowIndex, weight=0)
+        en = ttk.Entry(
+            parent,
+            textvariable=e,
+            width=entryWidth,
+            state="disabled",
+            justify=justify,
+        )
+        en.grid(
+            row=rowIndex + 1,
+            column=colIndex + (1 if reverse else 0),
+            sticky="nsew",
+            padx=2,
+            pady=2,
+        )
+        ttk.Label(parent, text=unitText).grid(
+            row=rowIndex + 1,
+            column=colIndex + (0 if reverse else 1),
+            sticky="nsew",
+            padx=2,
+            pady=2,
+        )
+        if tooltipLocKey is not None:
+            self.locTooltipVar = StringVar(value=locFunc(tooltipLocKey))
+            CreateToolTip(lb, self.locTooltipVar)
+        else:
+            self.locTooltipVar = None
+
+        self.locFunc = locFunc
+        self.labelLocKey = labelLocKey
+        self.labelWidget = lb
+
+        self.tooltipLocKey = tooltipLocKey
+
+        self.entryVar = e
+        self.entryWidget = en
+
+        allDisps.append(self)
+
+    def reLocalize(self, newLocKey=None, newTooltipKey=None):
+        if newLocKey is not None:
+            self.labelLocKey = newLocKey
+        self.labelWidget.config(text=self.locFunc(self.labelLocKey))
+
+        if self.locTooltipVar is not None:
+            if newTooltipKey is not None:
+                self.tooltipLocKey = newTooltipKey
+            self.locTooltipVar.set(self.locFunc(self.tooltipLocKey))
+
+    def set(self, val):
+        self.entryVar.set(val)
+
+
+class Loc122Disp(Loc12Disp):
+    def __init__(
+        self,
+        parent,
+        rowIndex=0,
+        colIndex=0,
+        labelLocKey="",
+        unitText_up="",
+        unitText_dn="",
+        default_up="0.0",
+        default_dn="0.0",
+        entryWidth=15,
+        justify_up="center",
+        justify_dn="center",
+        tooltipLocKey=None,
+        reverse=False,
+        locFunc=None,
+        allDisps=[],
+    ):
+        super().__init__(
+            parent=parent,
+            rowIndex=rowIndex,
+            colIndex=colIndex,
+            labelLocKey=labelLocKey,
+            unitText=unitText_up,
+            default=default_up,
+            entryWidth=entryWidth,
+            justify=justify_up,
+            tooltipLocKey=tooltipLocKey,
+            reverse=reverse,
+            locFunc=locFunc,
+        )
+        e2 = StringVar(parent)
+        e2.default = default_dn
+        e2.set(default_dn)
+        parent.rowconfigure(rowIndex, weight=0)
+        en2 = ttk.Entry(
+            parent,
+            textvariable=e2,
+            width=entryWidth,
+            state="disabled",
+            justify=justify_dn,
+        )
+        en2.grid(
+            row=rowIndex + 2,
+            column=colIndex + (1 if reverse else 0),
+            sticky="nsew",
+            padx=2,
+            pady=2,
+        )
+        ttk.Label(parent, text=unitText_dn).grid(
+            row=rowIndex + 2,
+            column=colIndex + (0 if reverse else 1),
+            sticky="nsew",
+            padx=2,
+            pady=2,
+        )
+
+        self.auxEntryVar = e2
+        self.auxEntryWidget = en2
+
+        allDisps.append(self)
+
+    def set(self, val_1, val_2):
+        self.entryVar.set(val_1)
+        self.auxEntryVar.set(val_2)
+
+
 class Loc2Input:
     def __init__(
         self,
@@ -2563,7 +2717,7 @@ class Loc2Input:
         )
         en.bind("<FocusOut>", formatter)
 
-        self.lbWidget = lb
+        self.labelWidget = lb
         self.inputVar = e
         self.inputWidget = en
 
@@ -2576,7 +2730,7 @@ class Loc2Input:
     def reLocalize(self, newLocKey=None, newTooltipKey=None):
         if newLocKey is not None:
             self.labelLocKey = newLocKey
-        self.lbWidget.config(text=self.locFunc(self.labelLocKey))
+        self.labelWidget.config(text=self.locFunc(self.labelLocKey))
 
         if self.locTooltipVar is not None:
             if newTooltipKey is not None:
@@ -2584,11 +2738,11 @@ class Loc2Input:
             self.locTooltipVar.set(self.locFunc(self.tooltipLocKey))
 
     def remove(self):
-        self.lbWidget.grid_remove()
+        self.labelWidget.grid_remove()
         self.inputWidget.grid_remove()
 
     def restore(self):
-        self.lbWidget.grid()
+        self.labelWidget.grid()
         self.inputWidget.grid()
 
     def get(self):
