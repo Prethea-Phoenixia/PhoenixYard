@@ -309,12 +309,6 @@ class Bullet:
         r_min_d = f_r(elev_min, DESCEND=True)[0]
         r_min_a = f_r(elev_min, DESCEND=False)[0]
 
-        # else:
-        # elev_cre = 0
-
-        # r_cre_d = f_r(elev_cre, DESCEND=True)[0]
-        # r_cre_a = f_r(elev_cre, DESCEND=False)[0]
-
         r_max_a = f_r(elev_max, DESCEND=False)[0]
 
         if isinstance(tgtR, int) or isinstance(tgtR, float):

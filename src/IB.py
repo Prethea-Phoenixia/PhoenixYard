@@ -132,7 +132,7 @@ class IB(Frame):
         self.queue = Queue()
         self.process = None
 
-        self.pos = -1
+        # self.pos = -1
         self.dpi = dpi
         self.parent = parent
         self.forceUpdOnThemeWidget = []
@@ -704,6 +704,17 @@ class IB(Frame):
         leftFrm.rowconfigure(0, weight=1)
 
     def addRightFrm(self):
+        """
+
+        rightFrm
+        |-specFrm
+        |-solFrm
+        |-envFrm
+        |-opFrm
+          |-consFrm
+          |-sampleFrm
+
+        """
         rightFrm = ttk.Frame(self)
         rightFrm.grid(row=0, column=3, rowspan=4, sticky="nsew")
         rightFrm.columnconfigure(0, weight=1)
@@ -808,7 +819,7 @@ class IB(Frame):
             allLLF=self.locs,
         )
         envFrm.grid(row=2, column=0, sticky="nsew")
-        envFrm.columnconfigure(1, weight=1)
+        envFrm.columnconfigure(0, weight=1)
 
         i = 0
         self.inAtmos = LocLabelCheck(
@@ -864,7 +875,8 @@ class IB(Frame):
             allLLF=self.locs,
         )
         opFrm.grid(row=3, column=0, sticky="nsew")
-        opFrm.columnconfigure(1, weight=1)
+        opFrm.columnconfigure(0, weight=1)
+        # opFrm.columnconfigure(1, weight=1)
 
         i = 0
 
@@ -878,7 +890,7 @@ class IB(Frame):
         consFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
-        consFrm.columnconfigure(1, weight=1)
+        consFrm.columnconfigure(0, weight=1)
 
         j = 0
         self.solve_W_Lg = LocLabelCheck(
@@ -974,9 +986,8 @@ class IB(Frame):
             allLLF=self.locs,
         )
         sampleFrm.grid(
-            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+            row=i, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
-        sampleFrm.columnconfigure(0, weight=1)
         sampleFrm.columnconfigure(1, weight=1)
 
         self.dropDomain = LocDropdown(
@@ -1021,13 +1032,11 @@ class IB(Frame):
             allInputs=self.locs,
         )
         i += 1
-
         self.pbar = ttk.Progressbar(opFrm, mode="indeterminate", maximum=100)
         self.pbar.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
         i += 1
-
         self.calButton = ttk.Button(
             opFrm,
             text=self.getLocStr("calcLabel"),
@@ -1128,7 +1137,7 @@ class IB(Frame):
                     self.kwargs,
                 ),
             )
-            self.pos = 0
+            # self.pos = 0
             self.calButton.config(state="disabled")
             self.pbar.start(interval=10)
             self.process.start()
@@ -1156,29 +1165,16 @@ class IB(Frame):
         queue = self.queue
 
         try:
-            if self.pos == 0:
-                self.kwargs = queue.get_nowait()
-                self.pos += 1
+            (
+                self.kwargs,
+                self.gun,
+                self.intgRecord,
+                self.tableData,
+                self.errorData,
+                errorLst,
+            ) = queue.get_nowait()
 
-            if self.pos == 1:
-                self.gun = queue.get_nowait()
-                self.pos += 1
-
-            if self.pos == 2:
-                self.intgRecord = queue.get_nowait()
-                self.pos += 1
-
-            if self.pos == 3:
-                self.tableData = queue.get_nowait()
-                self.pos += 1
-
-            if self.pos == 4:
-                self.errorData = queue.get_nowait()
-                self.pos += 1
-
-            if self.pos == 5:
-                self.errorLst.extend(queue.get_nowait())
-                self.pos += 1
+            self.errorLst.extend(errorLst)
 
         except Empty:
             return
@@ -1187,7 +1183,7 @@ class IB(Frame):
         optimize = self.kwargs["opt"]
         gunType = self.kwargs["typ"]
 
-        self.pos = -1
+        # self.pos = -1
         kwargs = self.kwargs
         sigfig = int(-log10(kwargs["tol"]))
 
@@ -1717,6 +1713,7 @@ class IB(Frame):
     def resizePlot(self, event):
         # we use the bbox method here as it has already accounted for padding
         # so no adjustment here is necessary
+
         self.update_idletasks()
         _, _, width, height = self.plotFrm.bbox("insert")
 
@@ -1729,7 +1726,8 @@ class IB(Frame):
             self.pltCanvas.draw_idle()
 
     def timedLoop(self):
-        if self.pos >= 0:  # and not self.process.is_alive():
+        # if self.pos >= 0:  # and not self.process.is_alive():
+        if self.process is not None:
             self.getValue()
 
         self.tLid = self.after(100, self.timedLoop)
@@ -1742,6 +1740,9 @@ class IB(Frame):
         # root.destroy()
 
     def updateFigPlot(self, *args):
+        gun = self.gun
+        if gun == None:
+            return
         with mpl.rc_context(FIG_CONTEXT):
             self.ax.cla()
             self.axP.cla()
@@ -1754,304 +1755,298 @@ class IB(Frame):
             self.axv.spines.right.set_position(
                 ("axes", 1 + 45 * dpi / 96 / size[0])
             )
-            gun = self.gun
-            if gun is not None:
-                vTgt = self.kwargs["designVelocity"]
-                gunType = self.kwargs["typ"]
-                dom = self.kwargs["dom"]
-                tol = self.kwargs["tol"]
 
-                xs, vs = [], []
-                Pas, Pss, Pbs, P0s = [], [], [], []
-                Frs = []  # recoil forces
-                psis, etas = [], []
-                vxs = []
+            vTgt = self.kwargs["designVelocity"]
+            gunType = self.kwargs["typ"]
+            dom = self.kwargs["dom"]
+            tol = self.kwargs["tol"]
 
-                for i, (t, (l, psi, v, p, T, eta)) in enumerate(
-                    self.intgRecord
-                ):
-                    if dom == DOMAIN_TIME:
-                        xs.append(t * 1000)
-                    elif dom == DOMAIN_LENG:
-                        xs.append(l)
+            xs, vs = [], []
+            Pas, Pss, Pbs, P0s = [], [], [], []
+            Frs = []  # recoil forces
+            psis, etas = [], []
+            vxs = []
 
-                    vs.append(v)
-                    Pas.append(p / 1e6)
+            for i, (t, (l, psi, v, p, T, eta)) in enumerate(self.intgRecord):
+                if dom == DOMAIN_TIME:
+                    xs.append(t * 1000)
+                elif dom == DOMAIN_LENG:
+                    xs.append(l)
 
-                    if gunType == CONVENTIONAL:
-                        Ps, Pb = gun.toPsPb(l, p)
-                        P0 = 0
-                        vx = 0
-                        Fr = p * gun.S
+                vs.append(v)
+                Pas.append(p / 1e6)
 
-                    elif gunType == RECOILESS:
-                        Ps, P0, Pb, vx = gun.toPsP0PxVx(l, v, p, T, eta)
-                        Fr = p * gun.S * (1 - gun.C_f * gun.S_j_bar)
+                if gunType == CONVENTIONAL:
+                    Ps, Pb = gun.toPsPb(l, p)
+                    P0 = 0
+                    vx = 0
+                    Fr = p * gun.S
 
-                    Pss.append(Ps / 1e6)
-                    Pbs.append(Pb / 1e6)
-                    P0s.append(P0 / 1e6)
-                    vxs.append(vx)
+                elif gunType == RECOILESS:
+                    Ps, P0, Pb, vx = gun.toPsP0PxVx(l, v, p, T, eta)
+                    Fr = p * gun.S * (1 - gun.C_f * gun.S_j_bar)
 
-                    Frs.append(Fr / 1e6)
+                Pss.append(Ps / 1e6)
+                Pbs.append(Pb / 1e6)
+                P0s.append(P0 / 1e6)
+                vxs.append(vx)
 
-                    psis.append(psi)
-                    etas.append(eta)
+                Frs.append(Fr / 1e6)
 
-                if self.plotVel.get():
-                    self.axv.scatter(
-                        xs, vs, color="tab:blue", marker="s", s=FONTSIZE
-                    )
-                if self.plotAvgP.get():
-                    self.axP.scatter(
-                        xs, Pas, color="tab:green", marker="s", s=FONTSIZE
-                    )
-                if self.plotBurnup.get():
-                    self.ax.scatter(
-                        xs, psis, color="tab:red", marker="s", s=FONTSIZE
-                    )
+                psis.append(psi)
+                etas.append(eta)
 
-                xPeak = 0
-                for i, (tag, t, l, psi, v, p, T, eta) in enumerate(
-                    self.tableData
-                ):
-                    if dom == DOMAIN_TIME:
-                        x = t * 1000
-                    elif dom == DOMAIN_LENG:
-                        x = l
-                    xs.append(x)
-                    if tag == POINT_PEAK:
-                        xPeak = x
-                    vs.append(v)
-                    Pas.append(p / 1e6)
-
-                    if gunType == CONVENTIONAL:
-                        Ps, Pb = gun.toPsPb(l, p)
-                        P0 = 0
-                        vx = 0
-                        Fr = p * gun.S
-
-                    elif gunType == RECOILESS:
-                        Ps, P0, Pb, vx = gun.toPsP0PxVx(l, v, p, T, eta)
-                        Fr = p * gun.S * (1 - gun.C_f * gun.S_j_bar)
-
-                    Pss.append(Ps / 1e6)
-                    Pbs.append(Pb / 1e6)
-                    P0s.append(P0 / 1e6)
-                    vxs.append(vx)
-                    psis.append(psi)
-                    etas.append(eta)
-
-                    Frs.append(Fr / 1e6)
-
-                self.axP.spines.right.set_position(("data", xPeak))
-
-                (xs, vs, vxs, Pas, Pss, Pbs, P0s, psis, etas, Frs) = zip(
-                    *sorted(
-                        zip(xs, vs, vxs, Pas, Pss, Pbs, P0s, psis, etas, Frs),
-                        key=lambda line: line[0],
-                    )
+            if self.plotVel.get():
+                self.axv.scatter(
+                    xs, vs, color="tab:blue", marker="s", s=FONTSIZE
+                )
+            if self.plotAvgP.get():
+                self.axP.scatter(
+                    xs, Pas, color="tab:green", marker="s", s=FONTSIZE
+                )
+            if self.plotBurnup.get():
+                self.ax.scatter(
+                    xs, psis, color="tab:red", marker="s", s=FONTSIZE
                 )
 
-                if self.plotVel.get():
+            xPeak = 0
+            for i, (tag, t, l, psi, v, p, T, eta) in enumerate(self.tableData):
+                if dom == DOMAIN_TIME:
+                    x = t * 1000
+                elif dom == DOMAIN_LENG:
+                    x = l
+                xs.append(x)
+                if tag == POINT_PEAK:
+                    xPeak = x
+                vs.append(v)
+                Pas.append(p / 1e6)
+
+                if gunType == CONVENTIONAL:
+                    Ps, Pb = gun.toPsPb(l, p)
+                    P0 = 0
+                    vx = 0
+                    Fr = p * gun.S
+
+                elif gunType == RECOILESS:
+                    Ps, P0, Pb, vx = gun.toPsP0PxVx(l, v, p, T, eta)
+                    Fr = p * gun.S * (1 - gun.C_f * gun.S_j_bar)
+
+                Pss.append(Ps / 1e6)
+                Pbs.append(Pb / 1e6)
+                P0s.append(P0 / 1e6)
+                vxs.append(vx)
+                psis.append(psi)
+                etas.append(eta)
+
+                Frs.append(Fr / 1e6)
+
+            self.axP.spines.right.set_position(("data", xPeak))
+
+            (xs, vs, vxs, Pas, Pss, Pbs, P0s, psis, etas, Frs) = zip(
+                *sorted(
+                    zip(xs, vs, vxs, Pas, Pss, Pbs, P0s, psis, etas, Frs),
+                    key=lambda line: line[0],
+                )
+            )
+
+            if self.plotVel.get():
+                self.axv.plot(
+                    xs,
+                    vs,
+                    "tab:blue",
+                    label=self.getLocStr("figShotVel"),
+                    marker=".",
+                    alpha=1,
+                )
+            self.axv.scatter(
+                xs[-1],
+                vTgt,
+                s=FONTSIZE**2,
+                c="tab:blue",
+                marker=5,
+                alpha=1,
+            )
+
+            if self.plotBreechNozzleP.get():
+                self.axP.plot(
+                    xs,
+                    Pbs,
+                    c="xkcd:goldenrod",
+                    label=self.getLocStr("figBreech")
+                    if gunType == CONVENTIONAL
+                    else self.getLocStr("figNozzleP")
+                    if gunType == RECOILESS
+                    else "",
+                    linestyle="dashed",
+                    alpha=0.75,
+                )
+
+            if gunType == RECOILESS:
+                if self.plotStagP.get():
+                    self.axP.plot(
+                        xs,
+                        P0s,
+                        "seagreen",
+                        label=self.getLocStr("figStagnation"),
+                        linestyle="dashed",
+                        alpha=0.75,
+                    )
+
+                if self.plotNozzleV.get():
                     self.axv.plot(
                         xs,
-                        vs,
-                        "tab:blue",
-                        label=self.getLocStr("figShotVel"),
-                        marker=".",
-                        alpha=1,
-                    )
-                self.axv.scatter(
-                    xs[-1],
-                    vTgt,
-                    s=FONTSIZE**2,
-                    c="tab:blue",
-                    marker=5,
-                    alpha=1,
-                )
-
-                if self.plotBreechNozzleP.get():
-                    self.axP.plot(
-                        xs,
-                        Pbs,
-                        c="xkcd:goldenrod",
-                        label=self.getLocStr("figBreech")
-                        if gunType == CONVENTIONAL
-                        else self.getLocStr("figNozzleP")
-                        if gunType == RECOILESS
-                        else "",
-                        linestyle="dashed",
+                        vxs,
+                        "royalblue",
+                        label=self.getLocStr("figNozzleV"),
                         alpha=0.75,
-                    )
-
-                if gunType == RECOILESS:
-                    if self.plotStagP.get():
-                        self.axP.plot(
-                            xs,
-                            P0s,
-                            "seagreen",
-                            label=self.getLocStr("figStagnation"),
-                            linestyle="dashed",
-                            alpha=0.75,
-                        )
-
-                    if self.plotNozzleV.get():
-                        self.axv.plot(
-                            xs,
-                            vxs,
-                            "royalblue",
-                            label=self.getLocStr("figNozzleV"),
-                            alpha=0.75,
-                            linestyle="dashed",
-                        )
-
-                    if self.plotEta.get():
-                        self.ax.plot(
-                            xs,
-                            etas,
-                            "crimson",
-                            label=self.getLocStr("figOutflow"),
-                            alpha=0.75,
-                            linestyle="dashed",
-                        )
-
-                if self.plotAvgP.get():
-                    self.axP.plot(
-                        xs,
-                        Pas,
-                        "tab:green",
-                        label=self.getLocStr("figAvgP"),
-                        marker=".",
-                        alpha=1,
-                    )
-
-                if self.plotBaseP.get():
-                    self.axP.plot(
-                        xs,
-                        Pss,
-                        "yellowgreen",
-                        label=self.getLocStr("figShotBase"),
                         linestyle="dashed",
-                        alpha=0.75,
                     )
 
-                Pd = float(self.pTgt.get())
-                self.axP.scatter(
-                    xPeak,
-                    Pd,
-                    s=FONTSIZE**2,
-                    c="tab:green",
-                    alpha=1,
-                    marker=5,  # caret right:5
-                    label=self.getLocStr("figTgtP"),
-                )
-
-                if self.plotBurnup.get():
+                if self.plotEta.get():
                     self.ax.plot(
                         xs,
-                        psis,
-                        c="tab:red",
-                        label=self.getLocStr("figPsi"),
-                        marker=".",
-                        alpha=1,
+                        etas,
+                        "crimson",
+                        label=self.getLocStr("figOutflow"),
+                        alpha=0.75,
+                        linestyle="dashed",
                     )
 
-                if self.plotRecoil.get():
-                    if gunType == CONVENTIONAL:
-                        self.axF.plot(
-                            xs,
-                            Frs,
-                            c="tab:green",
-                            label=self.getLocStr("figRecoil"),
-                            linestyle="dotted",
-                        )
-                    elif gunType == RECOILESS:
-                        self.axF.plot(
-                            xs,
-                            tuple(-v for v in Frs),
-                            c="tab:green",
-                            label="-" + self.getLocStr("figRecoil"),
-                            linestyle="dotted",
-                        )
-
-                linesLabeled = []
-                for lines, xvals in zip(
-                    (
-                        self.axP.get_lines(),
-                        self.ax.get_lines(),
-                        self.axv.get_lines(),
-                        self.axF.get_lines(),
-                    ),
-                    (
-                        (0.2 * xs[-1] + 0.8 * xPeak, xs[-1]),
-                        (0, xPeak),
-                        (xPeak, 0.2 * xs[-1] + 0.8 * xPeak),
-                        (0, xPeak),
-                    ),
-                ):
-                    labelLines(lines, align=True, xvals=xvals, outline_width=4)
-                    linesLabeled.append(lines)
-
-                _, ti, li, _, vi, pi, Ti, etai = self.readTable(POINT_PEAK_SHOT)
-
-                if gunType == CONVENTIONAL:
-                    pi, _ = gun.toPsPb(li, pi)
-                elif gunType == RECOILESS:
-                    pi, _, _, _ = gun.toPsP0PxVx(li, vi, pi, Ti, etai)
-
-                if self.plotBaseP.get():
-                    self.axP.scatter(
-                        ti * 1e3 if dom == DOMAIN_TIME else li,
-                        pi / 1e6,
-                        marker="+",
-                        s=FONTSIZE**2,
-                        c="yellowgreen",
-                    )
-
-                _, ti, li, _, vi, pi, Ti, etai = self.readTable(
-                    POINT_PEAK_BREECH
+            if self.plotAvgP.get():
+                self.axP.plot(
+                    xs,
+                    Pas,
+                    "tab:green",
+                    label=self.getLocStr("figAvgP"),
+                    marker=".",
+                    alpha=1,
                 )
 
-                if gunType == CONVENTIONAL:
-                    _, pi = gun.toPsPb(li, pi)
-                elif gunType == RECOILESS:
-                    _, _, pi, _ = gun.toPsP0PxVx(li, vi, pi, Ti, etai)
+            if self.plotBaseP.get():
+                self.axP.plot(
+                    xs,
+                    Pss,
+                    "yellowgreen",
+                    label=self.getLocStr("figShotBase"),
+                    linestyle="dashed",
+                    alpha=0.75,
+                )
 
-                if self.plotBreechNozzleP.get():
-                    self.axP.scatter(
-                        ti * 1e3 if dom == DOMAIN_TIME else li,
-                        pi / 1e6,
-                        marker="+",
-                        s=FONTSIZE**2,
-                        c="xkcd:goldenrod",
+            Pd = float(self.pTgt.get())
+            self.axP.scatter(
+                xPeak,
+                Pd,
+                s=FONTSIZE**2,
+                c="tab:green",
+                alpha=1,
+                marker=5,  # caret right:5
+                label=self.getLocStr("figTgtP"),
+            )
+
+            if self.plotBurnup.get():
+                self.ax.plot(
+                    xs,
+                    psis,
+                    c="tab:red",
+                    label=self.getLocStr("figPsi"),
+                    marker=".",
+                    alpha=1,
+                )
+
+            if self.plotRecoil.get():
+                if gunType == CONVENTIONAL:
+                    self.axF.plot(
+                        xs,
+                        Frs,
+                        c="tab:green",
+                        label=self.getLocStr("figRecoil"),
+                        linestyle="dotted",
+                    )
+                elif gunType == RECOILESS:
+                    self.axF.plot(
+                        xs,
+                        tuple(-v for v in Frs),
+                        c="tab:green",
+                        label="-" + self.getLocStr("figRecoil"),
+                        linestyle="dotted",
                     )
 
-                self.ax.set_xlim(left=0, right=xs[-1])
-                self.ax.set_ylim(bottom=0, top=1.05)
-                pmax = max(Pas + Pbs + Pss + P0s)
-                self.axP.set(ylim=(0, pmax * 1.05))
-                self.axv.set(ylim=(0, max(vs) * 1.05))
-                self.axF.set(ylim=(0, pmax * gun.S * 1.05))
+            linesLabeled = []
+            for lines, xvals in zip(
+                (
+                    self.axP.get_lines(),
+                    self.ax.get_lines(),
+                    self.axv.get_lines(),
+                    self.axF.get_lines(),
+                ),
+                (
+                    (0.2 * xs[-1] + 0.8 * xPeak, xs[-1]),
+                    (0, xPeak),
+                    (xPeak, 0.2 * xs[-1] + 0.8 * xPeak),
+                    (0, xPeak),
+                ),
+            ):
+                labelLines(lines, align=True, xvals=xvals, outline_width=4)
+                linesLabeled.append(lines)
 
-                tkw = dict(size=4, width=1.5)
-                self.ax.yaxis.tick_right()
-                self.axF.yaxis.tick_left()
-                self.ax.tick_params(axis="y", colors="tab:red", **tkw)
-                self.axv.tick_params(axis="y", colors="tab:blue", **tkw)
-                self.axP.tick_params(axis="y", colors="tab:green", **tkw)
-                self.axF.tick_params(axis="y", colors="tab:green", **tkw)
-                self.ax.tick_params(axis="x", **tkw)
+            _, ti, li, _, vi, pi, Ti, etai = self.readTable(POINT_PEAK_SHOT)
 
-                if dom == DOMAIN_TIME:
-                    self.ax.set_xlabel(self.getLocStr("figTimeDomain"))
-                elif dom == DOMAIN_LENG:
-                    self.ax.set_xlabel(self.getLocStr("figLengDomain"))
+            if gunType == CONVENTIONAL:
+                pi, _ = gun.toPsPb(li, pi)
+            elif gunType == RECOILESS:
+                pi, _, _, _ = gun.toPsP0PxVx(li, vi, pi, Ti, etai)
 
+            if self.plotBaseP.get():
+                self.axP.scatter(
+                    ti * 1e3 if dom == DOMAIN_TIME else li,
+                    pi / 1e6,
+                    marker="+",
+                    s=FONTSIZE**2,
+                    c="yellowgreen",
+                )
+
+            _, ti, li, _, vi, pi, Ti, etai = self.readTable(POINT_PEAK_BREECH)
+
+            if gunType == CONVENTIONAL:
+                _, pi = gun.toPsPb(li, pi)
+            elif gunType == RECOILESS:
+                _, _, pi, _ = gun.toPsP0PxVx(li, vi, pi, Ti, etai)
+
+            if self.plotBreechNozzleP.get():
+                self.axP.scatter(
+                    ti * 1e3 if dom == DOMAIN_TIME else li,
+                    pi / 1e6,
+                    marker="+",
+                    s=FONTSIZE**2,
+                    c="xkcd:goldenrod",
+                )
+
+            self.ax.set_xlim(left=0, right=xs[-1])
+            self.ax.set_ylim(bottom=0, top=1.05)
+            pmax = max(Pas + Pbs + Pss + P0s)
+            self.axP.set(ylim=(0, pmax * 1.05))
+            self.axv.set(ylim=(0, max(vs) * 1.05))
+            self.axF.set(ylim=(0, pmax * gun.S * 1.05))
+
+            tkw = dict(size=4, width=1.5)
+            self.ax.yaxis.tick_right()
+            self.axF.yaxis.tick_left()
+            self.ax.tick_params(axis="y", colors="tab:red", **tkw)
+            self.axv.tick_params(axis="y", colors="tab:blue", **tkw)
+            self.axP.tick_params(axis="y", colors="tab:green", **tkw)
+            self.axF.tick_params(axis="y", colors="tab:green", **tkw)
+            self.ax.tick_params(axis="x", **tkw)
+
+            if dom == DOMAIN_TIME:
+                self.ax.set_xlabel(self.getLocStr("figTimeDomain"))
+            elif dom == DOMAIN_LENG:
+                self.ax.set_xlabel(self.getLocStr("figLengDomain"))
+
+            """
             else:
                 self.axP.spines.right.set_position(("axes", 0.5))
                 self.ax.set_xlabel(" ")
-
+            """
             self.axP.yaxis.set_ticks(self.axP.get_yticks()[1:-1:])
 
             self.fig.set_layout_engine("constrained")
@@ -2491,12 +2486,15 @@ def calculate(
         else:
             errorReport.append(str(e))
 
+    """
     queue.put(kwargs)
     queue.put(gun)
     queue.put(intgRecord)
     queue.put(tableData)
     queue.put(errorData)
     queue.put(errorReport)
+    """
+    queue.put((kwargs, gun, intgRecord, tableData, errorData, errorReport))
 
 
 if __name__ == "__main__":
