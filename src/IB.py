@@ -123,7 +123,7 @@ class IB(Frame):
         ttk.Frame.__init__(self, parent)
         self.pack(expand=1, fill="both")
         self.LANG = StringVar(value=list(STRING.keys())[0])
-        self.dropdowns = []
+
         self.locs = []
 
         default_font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
@@ -558,7 +558,7 @@ class IB(Frame):
         for i, columnName in enumerate(self.getLocStr("columnList")):
             self.tv.heading(i, text=columnName)
 
-        for locWidget in self.locs + self.dropdowns:
+        for locWidget in self.locs:
             locWidget.reLocalize()
 
         self.calButton.config(text=self.getLocStr("calcLabel"))
@@ -806,7 +806,7 @@ class IB(Frame):
             parent=solFrm,
             strObjDict=SOLUTIONS,
             locFunc=self.getLocStr,
-            dropdowns=self.dropdowns,
+            dropdowns=self.locs,
         )
         self.dropSoln.grid(
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
@@ -994,7 +994,7 @@ class IB(Frame):
             parent=sampleFrm,
             strObjDict=DOMAINS,
             locFunc=self.getLocStr,
-            dropdowns=self.dropdowns,
+            dropdowns=self.locs,
         )
 
         j = 0
@@ -1051,7 +1051,16 @@ class IB(Frame):
         CreateToolTip(self.calButton, self.calcButtonTip)
 
     def onCalculate(self):
-        LocDropdown.disable(self.dropdowns)
+        """
+        for drop in self.locs:
+            drop.disable()
+        """
+
+        for loc in self.locs:
+            try:
+                loc.inhibit()
+            except AttributeError:
+                pass
 
         constrain = self.solve_W_Lg.get() == 1
         optimize = self.opt_lf.get() == 1
@@ -1264,7 +1273,15 @@ class IB(Frame):
 
         self.pbar.stop()
         self.calButton.config(state="normal")
-        LocDropdown.enable(self.dropdowns)
+        """
+        for drop in self.locs:
+            drop.enable()
+        """
+        for loc in self.locs:
+            try:
+                loc.disinhibit()
+            except AttributeError:
+                pass
         self.process = None
 
     def addErrFrm(self):
@@ -1303,7 +1320,7 @@ class IB(Frame):
             parent=parFrm,
             strObjDict=TYPES,
             locFunc=self.getLocStr,
-            dropdowns=self.dropdowns,
+            dropdowns=self.locs,
         )
 
         self.typeOptn.grid(
@@ -1378,7 +1395,7 @@ class IB(Frame):
             parent=propFrm,
             strObjDict=self.COMPOSITIONS,
             locFunc=self.getLocStr,
-            dropdowns=self.dropdowns,
+            dropdowns=self.locs,
         )
         self.dropProp.grid(
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
@@ -1448,7 +1465,7 @@ class IB(Frame):
             parent=grainFrm,
             strObjDict=GEOMETRIES,
             locFunc=self.getLocStr,
-            dropdowns=self.dropdowns,
+            dropdowns=self.locs,
         )
 
         j += 1
@@ -2042,11 +2059,6 @@ class IB(Frame):
             elif dom == DOMAIN_LENG:
                 self.ax.set_xlabel(self.getLocStr("figLengDomain"))
 
-            """
-            else:
-                self.axP.spines.right.set_position(("axes", 0.5))
-                self.ax.set_xlabel(" ")
-            """
             self.axP.yaxis.set_ticks(self.axP.get_yticks()[1:-1:])
 
             self.fig.set_layout_engine("constrained")

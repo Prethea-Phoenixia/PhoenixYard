@@ -215,6 +215,7 @@ class Loc2Input:
         self.labelLocKey = labelLocKey
         self.tooltipLocKey = tooltipLocKey
         self.locFunc = locFunc
+        self.nominalState = "normal"
         allInputs.append(self)
 
     def reLocalize(self, newLocKey=None, newTooltipKey=None):
@@ -249,6 +250,13 @@ class Loc2Input:
 
     def enable(self):
         self.inputWidget.config(state="normal")
+
+    def inhibit(self):
+        self.nominalState = self.inputWidget.state()
+        self.inputWidget.config(state="disabled")
+
+    def disinhibit(self):
+        self.inputWidget.config(state=self.nominalState)
 
 
 class Loc3Input(Loc2Input):
@@ -345,15 +353,17 @@ class LocDropdown:
     def trace_add(self, *args):
         self.textVar.trace_add(*args)
 
-    @staticmethod
-    def disable(dropdowns):
-        for drop in dropdowns:
-            drop.widget.configure(state="disabled")
+    def disable(self):
+        self.widget.configure(state="disabled")
 
-    @staticmethod
-    def enable(dropdowns):
-        for drop in dropdowns:
-            drop.widget.configure(state="readonly")
+    def enable(self):
+        self.widget.configure(state="readonly")
+
+    def inhibit(self):
+        self.disable()
+
+    def disinhibit(self):
+        self.enable()
 
 
 class LocLabelFrame(ttk.LabelFrame):
@@ -399,6 +409,7 @@ class LocLabelCheck:
         locFunc=None,
         allLC=[],
     ):
+        self.nominalState = default
         self.checkVar = IntVar(value=default)
         self.locFunc = locFunc
         self.checkWidget = ttk.Checkbutton(
@@ -439,3 +450,10 @@ class LocLabelCheck:
 
     def trace_add(self, *args):
         self.checkVar.trace_add(*args)
+
+    def inhibit(self):
+        self.nominalState = self.checkWidget.state()
+        self.checkWidget.config(state="disabled")
+
+    def disinhibit(self):
+        self.checkWidget.config(state=self.nominalState)
