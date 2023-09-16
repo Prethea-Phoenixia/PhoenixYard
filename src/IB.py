@@ -553,29 +553,10 @@ class IB(Frame):
         self.solMenu.entryconfig(0, label=self.getLocStr("useCVLabel"))
         self.solMenu.entryconfig(1, label=self.getLocStr("useLFLabel"))
 
-        self.useConstraintTip.set(self.getLocStr("useConsText"))
-        self.optimizeLFTip.set(self.getLocStr("optLFText"))
         self.calcButtonTip.set(self.getLocStr("calcButtonText"))
-
-        self.useConstraint.config(text=self.getLocStr("consButton"))
-        self.optimizeLF.config(text=self.getLocStr("minTVButton"))
 
         for i, columnName in enumerate(self.getLocStr("columnList")):
             self.tv.heading(i, text=columnName)
-
-        # self.plotAvgPCheck.config(text=self.getLocStr("plotAvgP"))
-        # self.plotBasePCheck.config(text=self.getLocStr("plotBaseP"))
-        # self.plotBreechNozzlePCheck.config(
-        #    text=self.getLocStr("plotBreechNozzleP")
-        # )
-        # self.plotStagPCheck.config(text=self.getLocStr("plotStagP"))
-        # self.plotVelCheck.config(text=self.getLocStr("plotVel"))
-        # self.plotNozzleVCheck.config(text=self.getLocStr("plotNozzleV"))
-        # self.plotBurnupCheck.config(text=self.getLocStr("plotBurnup"))
-        # self.plotEtaCheck.config(text=self.getLocStr("plotEta"))
-        # self.plotRecoilCheck.config(text=self.getLocStr("plotRecoil"))
-
-        self.inAtmosCheck.config(text=self.getLocStr("atmosLabel"))
 
         for locWidget in self.locs + self.dropdowns:
             locWidget.reLocalize()
@@ -827,15 +808,18 @@ class IB(Frame):
             allLLF=self.locs,
         )
         envFrm.grid(row=2, column=0, sticky="nsew")
-        envFrm.columnconfigure(0, weight=1)
+        envFrm.columnconfigure(1, weight=1)
 
         i = 0
-        self.inAtmos = IntVar(value=1)
-        self.inAtmos.trace_add("write", self.ambCallback)
-        self.inAtmosCheck = ttk.Checkbutton(
-            envFrm, text=self.getLocStr("atmosLabel"), variable=self.inAtmos
+        self.inAtmos = LocLabelCheck(
+            parent=envFrm,
+            labelLocKey="atmosLabel",
+            row=i,
+            col=0,
+            locFunc=self.getLocStr,
+            allLC=self.locs,
+            columnspan=3,
         )
-        self.inAtmosCheck.grid(row=i, column=0, columnspan=3, sticky="nsew")
 
         i += 1
         self.ambP = Loc3Input(
@@ -892,10 +876,40 @@ class IB(Frame):
             allLLF=self.locs,
         )
         consFrm.grid(
-            row=i, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
+            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
+        consFrm.columnconfigure(1, weight=1)
 
         j = 0
+        self.solve_W_Lg = LocLabelCheck(
+            parent=consFrm,
+            row=j,
+            col=0,
+            columnspan=3,
+            default=0,
+            labelLocKey="consButton",
+            tooltipLocKey="useConsText",
+            locFunc=self.getLocStr,
+            allLC=self.locs,
+        )
+
+        self.solve_W_Lg.trace_add("write", self.ctrlCallback)
+
+        j += 1
+
+        self.opt_lf = LocLabelCheck(
+            parent=consFrm,
+            row=j,
+            col=0,
+            columnspan=3,
+            default=0,
+            labelLocKey="minTVButton",
+            tooltipLocKey="optLFText",
+            locFunc=self.getLocStr,
+            allLC=self.locs,
+        )
+
+        j += 1
         self.vTgt = Loc3Input(
             parent=consFrm,
             row=j,
@@ -949,27 +963,6 @@ class IB(Frame):
             allInputs=self.locs,
         )
 
-        j += 1
-        self.solve_W_Lg = IntVar()
-        self.solve_W_Lg.set(0)
-        self.useConstraint = ttk.Checkbutton(
-            consFrm, text=self.getLocStr("consButton"), variable=self.solve_W_Lg
-        )
-        self.useConstraint.grid(row=j, column=0, columnspan=3, sticky="nsew")
-        self.solve_W_Lg.trace_add("write", self.ctrlCallback)
-
-        self.useConstraintTip = StringVar(value=self.getLocStr("useConsText"))
-        CreateToolTip(self.useConstraint, self.useConstraintTip)
-
-        j += 1
-        self.opt_lf = IntVar()
-
-        self.optimizeLF = ttk.Checkbutton(
-            consFrm, text=self.getLocStr("minTVButton"), variable=self.opt_lf
-        )
-        self.optimizeLF.grid(row=j, column=0, columnspan=3, sticky="nsew")
-        self.optimizeLFTip = StringVar(value=self.getLocStr("optLFText"))
-        CreateToolTip(self.optimizeLF, self.optimizeLFTip)
         i += 1
 
         sampleFrm = LocLabelFrame(
@@ -1038,7 +1031,6 @@ class IB(Frame):
         self.calButton = ttk.Button(
             opFrm,
             text=self.getLocStr("calcLabel"),
-            # command=self.calculate,  # underline=0
             command=self.onCalculate,
         )
         self.calButton.grid(
@@ -1451,12 +1443,7 @@ class IB(Frame):
 
         j = 0
         geomPlotFrm.grid(
-            row=j,
-            column=0,
-            columnspan=3,
-            sticky="nsew",
-            padx=2,
-            pady=2,
+            row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
 
         self.geomParentFrm = grainFrm
@@ -2322,13 +2309,11 @@ class IB(Frame):
 
     def ctrlCallback(self, *args):
         if self.solve_W_Lg.get() == 0:
-            self.optimizeLF.config(state="disabled")
-            # self.minWebw.config(state="disabled")
+            self.opt_lf.disable()
             self.minWeb.disable()
             self.lgmax.disable()
         else:
-            self.optimizeLF.config(state="normal")
-            # self.minWebw.config(state="normal")
+            self.opt_lf.enable()
             self.minWeb.enable()
             self.lgmax.enable()
 

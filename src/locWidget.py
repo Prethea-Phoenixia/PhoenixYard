@@ -393,6 +393,7 @@ class LocLabelCheck:
         default=1,
         row=0,
         col=0,
+        columnspan=None,
         labelLocKey="",
         tooltipLocKey=None,
         locFunc=None,
@@ -403,11 +404,18 @@ class LocLabelCheck:
         self.checkWidget = ttk.Checkbutton(
             parent, text=locFunc(labelLocKey), variable=self.checkVar
         )
-        self.checkWidget.grid(row=row, column=col, sticky="nsew")
+        self.checkWidget.grid(
+            row=row,
+            column=col,
+            sticky="nsew",
+            columnspan=columnspan,
+            padx=2,
+            pady=2,
+        )
 
         if tooltipLocKey is not None:
             self.locTooltipVar = StringVar(value=locFunc(tooltipLocKey))
-            CreateToolTip(self, self.locTooltipVar)
+            CreateToolTip(self.checkWidget, self.locTooltipVar)
         else:
             self.locTooltipVar = None
 
@@ -417,6 +425,14 @@ class LocLabelCheck:
 
     def reLocalize(self):
         self.checkWidget.config(text=self.locFunc(self.labelLocKey))
+        if self.locTooltipVar is not None:
+            self.locTooltipVar.set(self.locFunc(self.tooltipLocKey))
+
+    def disable(self):
+        self.checkWidget.config(state="disabled")
+
+    def enable(self):
+        self.checkWidget.config(state="normal")
 
     def get(self):
         return self.checkVar.get()
