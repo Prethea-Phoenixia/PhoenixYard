@@ -549,26 +549,7 @@ class IB(Frame):
 
         self.useConstraintTip.set(self.getLocStr("useConsText"))
         self.optimizeLFTip.set(self.getLocStr("optLFText"))
-        self.geomPlotTip.set(self.getLocStr("geomPlotText"))
-        self.specsTip.set(self.getLocStr("specsText"))
-
-        self.sampleTip.set(self.getLocStr("sampText"))
         self.calcButtonTip.set(self.getLocStr("calcButtonText"))
-        self.plotTip.set(self.getLocStr("plotText"))
-
-        self.tblFrm.config(text=self.getLocStr("tblFrmLabel"))
-        self.plotFrm.config(text=self.getLocStr("plotFrmLabel"))
-        self.errorFrm.config(text=self.getLocStr("errFrmLabel"))
-        self.parFrm.config(text=self.getLocStr("parFrmLabel"))
-        self.specFrm.config(text=self.getLocStr("specFrmLabel"))
-        self.opFrm.config(text=self.getLocStr("opFrmLabel"))
-        self.consFrm.config(text=self.getLocStr("consFrmLabel"))
-        self.pltOptnFrm.config(text=self.getLocStr("pltOptnFrm"))
-        self.sampleFrm.config(text=self.getLocStr("sampleFrmLabel"))
-        self.propFrm.config(text=self.getLocStr("propFrmLabel"))
-        self.grainFrm.config(text=self.getLocStr("grainFrmLabel"))
-        self.envFrm.config(text=self.getLocStr("envFrmLabel"))
-        self.solFrm.config(text=self.getLocStr("solFrmLabel"))
 
         self.useConstraint.config(text=self.getLocStr("consButton"))
         self.optimizeLF.config(text=self.getLocStr("minTVButton"))
@@ -623,9 +604,13 @@ class IB(Frame):
         topFrm.columnconfigure(0, weight=1)
         topFrm.rowconfigure(0, weight=1)
 
-        pltOptnFrm = ttk.LabelFrame(topFrm, text=self.getLocStr("pltOptnFrm"))
+        pltOptnFrm = LocLabelFrame(
+            topFrm,
+            locKey="pltOptnFrm",
+            locFunc=self.getLocStr,
+            allLLF=self.locs,
+        )
         pltOptnFrm.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
-        self.pltOptnFrm = pltOptnFrm
 
         for i in range(10):
             pltOptnFrm.columnconfigure(i, weight=1)
@@ -720,10 +705,14 @@ class IB(Frame):
         rightFrm.columnconfigure(0, weight=1)
         rightFrm.rowconfigure(0, weight=1)
 
-        specFrm = ttk.LabelFrame(rightFrm, text=self.getLocStr("specFrmLabel"))
+        specFrm = LocLabelFrame(
+            rightFrm,
+            locKey="specFrmLabel",
+            locFunc=self.getLocStr,
+            allLLF=self.locs,
+        )
         specFrm.grid(row=0, column=0, sticky="nsew")
         specFrm.columnconfigure(0, weight=1)
-        self.specFrm = specFrm
 
         i = 0
 
@@ -789,10 +778,14 @@ class IB(Frame):
         validationNN = self.register(validateNN)
         validationPI = self.register(validatePI)
 
-        solFrm = ttk.LabelFrame(rightFrm, text=self.getLocStr("solFrmLabel"))
+        solFrm = LocLabelFrame(
+            rightFrm,
+            locKey="solFrmLabel",
+            locFunc=self.getLocStr,
+            allLLF=self.locs,
+        )
         solFrm.grid(row=1, column=0, sticky="nsew")
         solFrm.columnconfigure(0, weight=1)
-        self.solFrm = solFrm
 
         self.dropSoln = LocDropdown(
             self.getLocStr, solFrm, SOLUTIONS, self.dropdowns
@@ -801,10 +794,14 @@ class IB(Frame):
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
 
-        envFrm = ttk.LabelFrame(rightFrm, text=self.getLocStr("envFrmLabel"))
+        envFrm = LocLabelFrame(
+            rightFrm,
+            locKey="envFrmLabel",
+            locFunc=self.getLocStr,
+            allLLF=self.locs,
+        )
         envFrm.grid(row=2, column=0, sticky="nsew")
         envFrm.columnconfigure(0, weight=1)
-        self.envFrm = envFrm
 
         i = 0
         self.inAtmos = IntVar(value=1)
@@ -850,22 +847,28 @@ class IB(Frame):
             allInputs=self.locs,
         )
 
-        opFrm = ttk.LabelFrame(rightFrm, text=self.getLocStr("opFrmLabel"))
+        opFrm = LocLabelFrame(
+            rightFrm,
+            locKey="opFrmLabel",
+            locFunc=self.getLocStr,
+            allLLF=self.locs,
+        )
         opFrm.grid(row=3, column=0, sticky="nsew")
         opFrm.columnconfigure(1, weight=1)
-        self.opFrm = opFrm
 
         i = 0
 
-        consFrm = ttk.LabelFrame(
+        consFrm = LocLabelFrame(
             opFrm,
-            text=self.getLocStr("consFrmLabel"),
+            locKey="consFrmLabel",
             style="SubLabelFrame.TLabelframe",
+            locFunc=self.getLocStr,
+            allLLF=self.locs,
         )
         consFrm.grid(
             row=i, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
-        self.consFrm = consFrm
+
         j = 0
         self.vTgt = Loc3Input(
             parent=consFrm,
@@ -943,17 +946,19 @@ class IB(Frame):
         CreateToolTip(self.optimizeLF, self.optimizeLFTip)
         i += 1
 
-        sampleFrm = ttk.LabelFrame(
+        sampleFrm = LocLabelFrame(
             opFrm,
-            text=self.getLocStr("sampleFrmLabel"),
+            locKey="sampleFrmLabel",
             style="SubLabelFrame.TLabelframe",
+            tooltipLocKey="sampText",
+            locFunc=self.getLocStr,
+            allLLF=self.locs,
         )
         sampleFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
         sampleFrm.columnconfigure(0, weight=1)
         sampleFrm.columnconfigure(1, weight=1)
-        self.sampleFrm = sampleFrm
 
         self.dropDomain = LocDropdown(
             self.getLocStr, sampleFrm, DOMAINS, self.dropdowns
@@ -978,9 +983,6 @@ class IB(Frame):
             locFunc=self.getLocStr,
             allInputs=self.locs,
         )
-
-        self.sampleTip = StringVar(value=self.getLocStr("sampText"))
-        CreateToolTip(sampleFrm, self.sampleTip)
 
         i += 1
         self.accExp = Loc2Input(
@@ -1249,11 +1251,12 @@ class IB(Frame):
         self.process = None
 
     def addErrFrm(self):
-        errorFrm = ttk.LabelFrame(self, text=self.getLocStr("errFrmLabel"))
+        errorFrm = LocLabelFrame(
+            self, locKey="errFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
+        )
         errorFrm.grid(row=3, column=0, sticky="nsew")
         errorFrm.columnconfigure(0, weight=1)
         errorFrm.rowconfigure(0, weight=1)
-        self.errorFrm = errorFrm
 
         errScroll = ttk.Scrollbar(errorFrm, orient="vertical")
         errScroll.grid(row=0, column=1, sticky="nsew")
@@ -1269,10 +1272,12 @@ class IB(Frame):
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
     def addParFrm(self):
-        parFrm = ttk.LabelFrame(self, text=self.getLocStr("parFrmLabel"))
+        parFrm = LocLabelFrame(
+            self, locKey="parFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
+        )
         parFrm.grid(row=0, column=2, rowspan=4, sticky="nsew")
         parFrm.columnconfigure(0, weight=1)
-        self.parFrm = parFrm
+
         # validation
         validationNN = self.register(validateNN)
 
@@ -1333,10 +1338,13 @@ class IB(Frame):
 
         # allow propellant specification to grow
         i += 1
-        propFrm = ttk.LabelFrame(
+        propFrm = LocLabelFrame(
             parFrm,
-            text=self.getLocStr("propFrmLabel"),
+            locKey="propFrmLabel",
             style="SubLabelFrame.TLabelframe",
+            locFunc=self.getLocStr,
+            tooltipLocKey="specsText",
+            allLLF=self.locs,
         )
         propFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
@@ -1345,8 +1353,6 @@ class IB(Frame):
 
         propFrm.rowconfigure(1, weight=1)
         propFrm.columnconfigure(0, weight=1)
-
-        self.propFrm = propFrm
 
         self.dropProp = LocDropdown(
             self.getLocStr, propFrm, self.COMPOSITIONS, self.dropdowns
@@ -1383,28 +1389,29 @@ class IB(Frame):
         specScroll.config(command=self.specs.yview)
         specHScroll.config(command=self.specs.xview)
 
-        self.specsTip = StringVar(value=self.getLocStr("specsText"))
-        CreateToolTip(propFrm, self.specsTip)
-
         i += 1
         parFrm.rowconfigure(i, weight=1)
 
-        grainFrm = ttk.LabelFrame(
+        grainFrm = LocLabelFrame(
             parFrm,
-            text=self.getLocStr("grainFrmLabel"),
+            locKey="grainFrmLabel",
             style="SubLabelFrame.TLabelframe",
+            locFunc=self.getLocStr,
+            allLLF=self.locs,
         )
         grainFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
         grainFrm.columnconfigure(0, weight=1)
         grainFrm.rowconfigure(0, weight=1)
-        self.grainFrm = grainFrm
 
-        geomPlotFrm = ttk.LabelFrame(
+        geomPlotFrm = LocLabelFrame(
             grainFrm,
-            text="σ(Z)",
+            locKey="σ(Z)",
             style="SubLabelFrame.TLabelframe",
+            locFunc=self.getLocStr,
+            tooltipLocKey="geomPlotText",
+            allLLF=self.locs,
         )
 
         j = 0
@@ -1417,8 +1424,6 @@ class IB(Frame):
             pady=2,
         )
 
-        self.geomPlotTip = StringVar(value=self.getLocStr("geomPlotText"))
-        CreateToolTip(geomPlotFrm, self.geomPlotTip)
         self.geomParentFrm = grainFrm
         self.geomPlotFrm = geomPlotFrm
         self.dropGeom = LocDropdown(
@@ -1609,16 +1614,20 @@ class IB(Frame):
         # last ditch effort to prevent blowing up the frame
 
     def addPlotFrm(self):
-        plotFrm = ttk.LabelFrame(
-            self, text=self.getLocStr("plotFrmLabel"), width=640, height=480
+        plotFrm = LocLabelFrame(
+            self,
+            locKey="plotFrmLabel",
+            width=640,
+            height=480,
+            locFunc=self.getLocStr,
+            tooltipLocKey="plotText",
+            allLLF=self.locs,
         )
         plotFrm.grid(row=1, column=0, sticky="nsew")
         plotFrm.columnconfigure(0, weight=1)
         plotFrm.rowconfigure(0, weight=1)
 
         self.plotFrm = plotFrm
-        self.plotTip = StringVar(value=self.getLocStr("plotText"))
-        CreateToolTip(self.plotFrm, self.plotTip)
 
     def addFigPlot(self):
         plotFrm = self.plotFrm
@@ -2025,13 +2034,14 @@ class IB(Frame):
 
     def addTblFrm(self):
         columnList = self.getLocStr("columnList")
-        tblFrm = ttk.LabelFrame(self, text=self.getLocStr("tblFrmLabel"))
+        tblFrm = LocLabelFrame(
+            self, locKey="tblFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
+        )
         tblFrm.grid(row=2, column=0, sticky="nsew")
 
         tblFrm.columnconfigure(0, weight=1)
         tblFrm.rowconfigure(0, weight=1)
         # configure the numerical
-        self.tblFrm = tblFrm
         self.tv = ttk.Treeview(
             tblFrm, selectmode="browse", height=10
         )  # this set the nbr. of values
@@ -2394,6 +2404,36 @@ class IB(Frame):
             pass
 
         self.update_idletasks()
+
+
+class LocLabelFrame(ttk.LabelFrame):
+    def __init__(
+        self,
+        *args,
+        locKey="",
+        tooltipLocKey=None,
+        locFunc=None,
+        allLLF=[],
+        **kwargs,
+    ):
+        self.locKey = locKey
+        self.locFunc = locFunc
+        super().__init__(*args, text=locFunc(locKey), **kwargs)
+
+        if tooltipLocKey is not None:
+            self.locTooltipVar = StringVar(value=locFunc(tooltipLocKey))
+            CreateToolTip(self, self.locTooltipVar)
+        else:
+            self.locTooltipVar = None
+
+        self.tooltipLocKey = tooltipLocKey
+
+        allLLF.append(self)
+
+    def reLocalize(self):
+        self.config(text=self.locFunc(self.locKey))
+        if self.locTooltipVar is not None:
+            self.locTooltipVar.set(self.locFunc(self.tooltipLocKey))
 
 
 class Loc12Disp:
