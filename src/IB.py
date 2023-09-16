@@ -35,19 +35,17 @@ from misc import (
     toSI,
     validateNN,
     validatePI,
-    formatFloatInput,
     formatIntInput,
     dot_aligned,
     resolvepath,
     roundSig,
-    center,
     loadfont,
 )
 from math import ceil, pi, log10
 
 import matplotlib.pyplot as mpl
 from matplotlib.figure import Figure
-from labellines import labelLines, labelLine
+from labellines import labelLines
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from multiprocessing import Process, Queue, freeze_support
@@ -61,7 +59,15 @@ from ctypes import windll
 import platform
 
 from matplotlib import font_manager
-
+from locWidget import (
+    LocDropdown,
+    Loc12Disp,
+    Loc122Disp,
+    Loc2Input,
+    Loc3Input,
+    LocLabelFrame,
+    LocLabelCheck,
+)
 
 RECOILESS = "RECOILESS"
 CONVENTIONAL = "CONVENTIONAL"
@@ -557,29 +563,25 @@ class IB(Frame):
         for i, columnName in enumerate(self.getLocStr("columnList")):
             self.tv.heading(i, text=columnName)
 
-        self.plotAvgPCheck.config(text=self.getLocStr("plotAvgP"))
-        self.plotBasePCheck.config(text=self.getLocStr("plotBaseP"))
-        self.plotBreechNozzlePCheck.config(
-            text=self.getLocStr("plotBreechNozzleP")
-        )
-        self.plotStagPCheck.config(text=self.getLocStr("plotStagP"))
-        self.plotVelCheck.config(text=self.getLocStr("plotVel"))
-        self.plotNozzleVCheck.config(text=self.getLocStr("plotNozzleV"))
-        self.plotBurnupCheck.config(text=self.getLocStr("plotBurnup"))
-        self.plotEtaCheck.config(text=self.getLocStr("plotEta"))
-        self.plotRecoilCheck.config(text=self.getLocStr("plotRecoil"))
+        # self.plotAvgPCheck.config(text=self.getLocStr("plotAvgP"))
+        # self.plotBasePCheck.config(text=self.getLocStr("plotBaseP"))
+        # self.plotBreechNozzlePCheck.config(
+        #    text=self.getLocStr("plotBreechNozzleP")
+        # )
+        # self.plotStagPCheck.config(text=self.getLocStr("plotStagP"))
+        # self.plotVelCheck.config(text=self.getLocStr("plotVel"))
+        # self.plotNozzleVCheck.config(text=self.getLocStr("plotNozzleV"))
+        # self.plotBurnupCheck.config(text=self.getLocStr("plotBurnup"))
+        # self.plotEtaCheck.config(text=self.getLocStr("plotEta"))
+        # self.plotRecoilCheck.config(text=self.getLocStr("plotRecoil"))
 
         self.inAtmosCheck.config(text=self.getLocStr("atmosLabel"))
 
-        for locInput in self.locs:
-            locInput.reLocalize()
+        for locWidget in self.locs + self.dropdowns:
+            locWidget.reLocalize()
 
         self.calButton.config(text=self.getLocStr("calcLabel"))
 
-        self.typeOptn.reLocalize()
-        self.dropDomain.reLocalize()
-        self.dropGeom.reLocalize()
-        self.dropSoln.reLocalize()
         self.updateGeom()
         self.updateSpec()
         self.updateFigPlot()
@@ -615,83 +617,104 @@ class IB(Frame):
         for i in range(10):
             pltOptnFrm.columnconfigure(i, weight=1)
 
+        checks = []
+
         j = 0
-
-        self.plotAvgP = IntVar(value=1)
-        self.plotAvgPCheck = ttk.Checkbutton(
-            pltOptnFrm, text=self.getLocStr("plotAvgP"), variable=self.plotAvgP
+        k = 0
+        self.plotAvgP = LocLabelCheck(
+            parent=pltOptnFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotAvgP",
+            locFunc=self.getLocStr,
+            allLC=checks,
         )
-        self.plotAvgPCheck.grid(row=j, column=0, sticky="nsew")
-
-        self.plotBaseP = IntVar(value=1)
-        self.plotBasePCheck = ttk.Checkbutton(
-            pltOptnFrm,
-            text=self.getLocStr("plotBaseP"),
-            variable=self.plotBaseP,
+        k += 1
+        self.plotBaseP = LocLabelCheck(
+            parent=pltOptnFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotBaseP",
+            locFunc=self.getLocStr,
+            allLC=checks,
         )
-        self.plotBasePCheck.grid(row=j, column=1, sticky="nsew")
-
-        self.plotBreechNozzleP = IntVar(value=1)
-        self.plotBreechNozzlePCheck = ttk.Checkbutton(
-            pltOptnFrm,
-            text=self.getLocStr("plotBreechNozzleP"),
-            variable=self.plotBreechNozzleP,
+        k += 1
+        self.plotBaseP = LocLabelCheck(
+            parent=pltOptnFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotBreechNozzleP",
+            locFunc=self.getLocStr,
+            allLC=checks,
         )
-        self.plotBreechNozzlePCheck.grid(row=j, column=2, sticky="nsew")
-
-        self.plotStagP = IntVar(value=1)
-        self.plotStagPCheck = ttk.Checkbutton(
-            pltOptnFrm,
-            text=self.getLocStr("plotStagP"),
-            variable=self.plotStagP,
+        k += 1
+        self.plotBreechNozzleP = LocLabelCheck(
+            parent=pltOptnFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotBreechNozzleP",
+            locFunc=self.getLocStr,
+            allLC=checks,
         )
-        self.plotStagPCheck.grid(row=j, column=3, sticky="nsew")
-
-        self.plotVel = IntVar(value=1)
-        self.plotVelCheck = ttk.Checkbutton(
-            pltOptnFrm, text=self.getLocStr("plotVel"), variable=self.plotVel
+        k += 1
+        self.plotStagP = LocLabelCheck(
+            parent=pltOptnFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotStagP",
+            locFunc=self.getLocStr,
+            allLC=checks,
         )
-        self.plotVelCheck.grid(row=j, column=4, sticky="nsew")
-
-        self.plotNozzleV = IntVar(value=1)
-        self.plotNozzleVCheck = ttk.Checkbutton(
-            pltOptnFrm,
-            text=self.getLocStr("plotNozzleV"),
-            variable=self.plotNozzleV,
+        k += 1
+        self.plotVel = LocLabelCheck(
+            parent=pltOptnFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotVel",
+            locFunc=self.getLocStr,
+            allLC=checks,
         )
-        self.plotNozzleVCheck.grid(row=j, column=5, sticky="nsew")
-
-        self.plotBurnup = IntVar(value=1)
-        self.plotBurnupCheck = ttk.Checkbutton(
-            pltOptnFrm,
-            text=self.getLocStr("plotBurnup"),
-            variable=self.plotBurnup,
+        k += 1
+        self.plotNozzleV = LocLabelCheck(
+            parent=pltOptnFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotNozzleV",
+            locFunc=self.getLocStr,
+            allLC=checks,
         )
-        self.plotBurnupCheck.grid(row=j, column=6, sticky="nsew")
-
-        self.plotEta = IntVar(value=1)
-        self.plotEtaCheck = ttk.Checkbutton(
-            pltOptnFrm, text=self.getLocStr("plotEta"), variable=self.plotEta
+        k += 1
+        self.plotBurnup = LocLabelCheck(
+            parent=pltOptnFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotBurnup",
+            locFunc=self.getLocStr,
+            allLC=checks,
         )
-        self.plotEtaCheck.grid(row=j, column=7, sticky="nsew")
-
-        self.plotRecoil = IntVar(value=1)
-        self.plotRecoilCheck = ttk.Checkbutton(
-            pltOptnFrm,
-            text=self.getLocStr("plotRecoil"),
-            variable=self.plotRecoil,
+        k += 1
+        self.plotEta = LocLabelCheck(
+            parent=pltOptnFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotEta",
+            locFunc=self.getLocStr,
+            allLC=checks,
         )
-        self.plotRecoilCheck.grid(row=j, column=8, sticky="nsew")
+        k += 1
+        self.plotRecoil = LocLabelCheck(
+            parent=pltOptnFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotRecoil",
+            locFunc=self.getLocStr,
+            allLC=checks,
+        )
 
-        self.plotAvgP.trace_add("write", self.updateFigPlot)
-        self.plotBaseP.trace_add("write", self.updateFigPlot)
-        self.plotBreechNozzleP.trace_add("write", self.updateFigPlot)
-        self.plotStagP.trace_add("write", self.updateFigPlot)
-        self.plotEta.trace_add("write", self.updateFigPlot)
-        self.plotNozzleV.trace_add("write", self.updateFigPlot)
-        self.plotBurnup.trace_add("write", self.updateFigPlot)
-        self.plotVel.trace_add("write", self.updateFigPlot)
-        self.plotRecoil.trace_add("write", self.updateFigPlot)
+        for check in checks:
+            check.trace_add("write", self.updateFigPlot)
+
+        self.locs.extend(checks)
 
     def addLeftFrm(self):
         leftFrm = ttk.Frame(self)
@@ -718,7 +741,7 @@ class IB(Frame):
 
         self.lx = Loc122Disp(
             parent=specFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="lxLabel",
             unitText_up="Cal",
             unitText_dn="Cal",
@@ -729,7 +752,7 @@ class IB(Frame):
         i += 3
         self.ammo = Loc12Disp(
             parent=specFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="ammoLabel",
             unitText="",
             default="0.00 x 0.000 mm",
@@ -739,7 +762,7 @@ class IB(Frame):
         i += 2
         self.va = Loc12Disp(
             parent=specFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="vaLabel",
             tooltipLocKey="vinfText",
             locFunc=self.getLocStr,
@@ -748,7 +771,7 @@ class IB(Frame):
         i += 2
         self.te = Loc12Disp(
             parent=specFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="teffLabel",
             unitText="%",
             tooltipLocKey="teffText",
@@ -758,7 +781,7 @@ class IB(Frame):
         i += 2
         self.be = Loc12Disp(
             parent=specFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="beffLabel",
             unitText="%",
             tooltipLocKey="beffText",
@@ -768,7 +791,7 @@ class IB(Frame):
         i += 2
         self.ld = Loc12Disp(
             parent=specFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="ldLabel",
             unitText="kg/m³",
             locFunc=self.getLocStr,
@@ -788,7 +811,10 @@ class IB(Frame):
         solFrm.columnconfigure(0, weight=1)
 
         self.dropSoln = LocDropdown(
-            self.getLocStr, solFrm, SOLUTIONS, self.dropdowns
+            parent=solFrm,
+            strObjDict=SOLUTIONS,
+            locFunc=self.getLocStr,
+            dropdowns=self.dropdowns,
         )
         self.dropSoln.grid(
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
@@ -814,8 +840,8 @@ class IB(Frame):
         i += 1
         self.ambP = Loc3Input(
             parent=envFrm,
-            rowIndex=i,
-            colIndex=0,
+            row=i,
+            col=0,
             labelLocKey="ambPresLabel",
             unitText="kPa",
             default="101.325",
@@ -826,8 +852,8 @@ class IB(Frame):
         i += 1
         self.ambRho = Loc3Input(
             parent=envFrm,
-            rowIndex=i,
-            colIndex=0,
+            row=i,
+            col=0,
             labelLocKey="ambRhoLabel",
             unitText="kg/m³",
             default="1.204",
@@ -838,8 +864,8 @@ class IB(Frame):
         i += 1
         self.ambGam = Loc3Input(
             parent=envFrm,
-            rowIndex=i,
-            colIndex=0,
+            row=i,
+            col=0,
             labelLocKey="ambGamLabel",
             default="1.400",
             validation=validationNN,
@@ -872,8 +898,8 @@ class IB(Frame):
         j = 0
         self.vTgt = Loc3Input(
             parent=consFrm,
-            rowIndex=j,
-            colIndex=0,
+            row=j,
+            col=0,
             labelLocKey="vTgtLabel",
             unitText="m/s",
             default="1500.0",
@@ -885,8 +911,8 @@ class IB(Frame):
         j += 1
         self.pTgt = Loc3Input(
             parent=consFrm,
-            rowIndex=j,
-            colIndex=0,
+            row=j,
+            col=0,
             labelLocKey="pTgtLabel",
             unitText="MPa",
             default="350.0",
@@ -899,8 +925,8 @@ class IB(Frame):
         j += 1
         self.minWeb = Loc3Input(
             parent=consFrm,
-            rowIndex=j,
-            colIndex=0,
+            row=j,
+            col=0,
             labelLocKey="minWebLabel",
             unitText="μm",
             default="1.0",
@@ -912,8 +938,8 @@ class IB(Frame):
         j += 1
         self.lgmax = Loc3Input(
             parent=consFrm,
-            rowIndex=j,
-            colIndex=0,
+            row=j,
+            col=0,
             labelLocKey="maxLgLabel",
             unitText="m",
             default="1000.0",
@@ -961,7 +987,10 @@ class IB(Frame):
         sampleFrm.columnconfigure(1, weight=1)
 
         self.dropDomain = LocDropdown(
-            self.getLocStr, sampleFrm, DOMAINS, self.dropdowns
+            parent=sampleFrm,
+            strObjDict=DOMAINS,
+            locFunc=self.getLocStr,
+            dropdowns=self.dropdowns,
         )
 
         j = 0
@@ -972,8 +1001,8 @@ class IB(Frame):
         j += 1
         self.step = Loc2Input(
             parent=sampleFrm,
-            rowIndex=j,
-            colIndex=0,
+            row=j,
+            col=0,
             labelLocKey="stepLabel",
             default="100",
             validation=validationNN,
@@ -987,8 +1016,8 @@ class IB(Frame):
         i += 1
         self.accExp = Loc2Input(
             parent=opFrm,
-            rowIndex=i,
-            colIndex=0,
+            row=i,
+            col=0,
             labelLocKey="-log10(ε)",
             default="4",
             validation=validationPI,
@@ -1283,7 +1312,10 @@ class IB(Frame):
 
         i = 0
         self.typeOptn = LocDropdown(
-            self.getLocStr, parFrm, TYPES, self.dropdowns
+            parent=parFrm,
+            strObjDict=TYPES,
+            locFunc=self.getLocStr,
+            dropdowns=self.dropdowns,
         )
 
         self.typeOptn.grid(
@@ -1293,7 +1325,7 @@ class IB(Frame):
         i += 1
         self.calmm = Loc3Input(
             parent=parFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="calLabel",
             unitText="mm",
             default="50.0",
@@ -1304,7 +1336,7 @@ class IB(Frame):
         i += 1
         self.tblmm = Loc3Input(
             parent=parFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="tblLabel",
             unitText="mm",
             default="3500.0",
@@ -1315,7 +1347,7 @@ class IB(Frame):
         i += 1
         self.shtkg = Loc3Input(
             parent=parFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="shtLabel",
             unitText="kg",
             default="1.0",
@@ -1326,7 +1358,7 @@ class IB(Frame):
         i += 1
         self.chgkg = Loc3Input(
             parent=parFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="chgLabel",
             unitText="kg",
             default="1.0",
@@ -1355,7 +1387,10 @@ class IB(Frame):
         propFrm.columnconfigure(0, weight=1)
 
         self.dropProp = LocDropdown(
-            self.getLocStr, propFrm, self.COMPOSITIONS, self.dropdowns
+            parent=propFrm,
+            strObjDict=self.COMPOSITIONS,
+            locFunc=self.getLocStr,
+            dropdowns=self.dropdowns,
         )
         self.dropProp.grid(
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
@@ -1427,7 +1462,10 @@ class IB(Frame):
         self.geomParentFrm = grainFrm
         self.geomPlotFrm = geomPlotFrm
         self.dropGeom = LocDropdown(
-            self.getLocStr, grainFrm, GEOMETRIES, self.dropdowns
+            parent=grainFrm,
+            strObjDict=GEOMETRIES,
+            locFunc=self.getLocStr,
+            dropdowns=self.dropdowns,
         )
 
         j += 1
@@ -1437,7 +1475,7 @@ class IB(Frame):
         j += 1
         self.arcmm = Loc3Input(
             parent=grainFrm,
-            rowIndex=j,
+            row=j,
             labelLocKey="",
             unitText="mm",
             default="1.0",
@@ -1449,7 +1487,7 @@ class IB(Frame):
         j += 1
         self.grdR = Loc3Input(
             parent=grainFrm,
-            rowIndex=j,
+            row=j,
             labelLocKey="",
             unitText="x",
             default="1.0",
@@ -1461,7 +1499,7 @@ class IB(Frame):
         j += 1
         self.grlR = Loc3Input(
             parent=grainFrm,
-            rowIndex=j,
+            row=j,
             labelLocKey="",
             unitText="x",
             default="2.5",
@@ -1474,7 +1512,7 @@ class IB(Frame):
         i += 1
         self.ldf = Loc3Input(
             parent=parFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="ldfLabel",
             unitText="%",
             default="50.0",
@@ -1486,7 +1524,7 @@ class IB(Frame):
         i += 1
         self.cvL = Loc3Input(
             parent=parFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="cvLabel",
             unitText="L",
             default="20",
@@ -1503,7 +1541,7 @@ class IB(Frame):
         i += 1
         self.clr = Loc3Input(
             parent=parFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="clrLabel",
             unitText="x",
             default="1.5",
@@ -1515,7 +1553,7 @@ class IB(Frame):
         i += 1
         self.dgc = Loc3Input(
             parent=parFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="dgcLabel",
             unitText="%",
             default="5.0",
@@ -1527,7 +1565,7 @@ class IB(Frame):
         i += 1
         self.stpMPa = Loc3Input(
             parent=parFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="stpLabel",
             unitText="MPa",
             default="10",
@@ -1539,7 +1577,7 @@ class IB(Frame):
         i += 1
         self.nozzExp = Loc3Input(
             parent=parFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="nozzExpLabel",
             unitText="x",
             default="4",
@@ -1551,7 +1589,7 @@ class IB(Frame):
         i += 1
         self.nozzEff = Loc3Input(
             parent=parFrm,
-            rowIndex=i,
+            row=i,
             labelLocKey="nozzEffLabel",
             unitText="%",
             default="92.0",
@@ -2243,8 +2281,6 @@ class IB(Frame):
         Double calling is due to value validation, no workaround has been
         found at this time!
         """
-
-        # geom = self.geometries[self.dropGeom.get()]
         geom = self.dropGeom.getObj()
         compo = self.dropProp.getObj()
 
@@ -2404,391 +2440,6 @@ class IB(Frame):
             pass
 
         self.update_idletasks()
-
-
-class LocLabelFrame(ttk.LabelFrame):
-    def __init__(
-        self,
-        *args,
-        locKey="",
-        tooltipLocKey=None,
-        locFunc=None,
-        allLLF=[],
-        **kwargs,
-    ):
-        self.locKey = locKey
-        self.locFunc = locFunc
-        super().__init__(*args, text=locFunc(locKey), **kwargs)
-
-        if tooltipLocKey is not None:
-            self.locTooltipVar = StringVar(value=locFunc(tooltipLocKey))
-            CreateToolTip(self, self.locTooltipVar)
-        else:
-            self.locTooltipVar = None
-
-        self.tooltipLocKey = tooltipLocKey
-
-        allLLF.append(self)
-
-    def reLocalize(self):
-        self.config(text=self.locFunc(self.locKey))
-        if self.locTooltipVar is not None:
-            self.locTooltipVar.set(self.locFunc(self.tooltipLocKey))
-
-
-class Loc12Disp:
-    def __init__(
-        self,
-        parent,
-        rowIndex=0,
-        colIndex=0,
-        labelLocKey="",
-        unitText="",
-        default="0.0",
-        entryWidth=15,
-        justify="center",
-        tooltipLocKey=None,
-        reverse=False,
-        locFunc=None,
-        allDisps=[],
-    ):
-        lb = ttk.Label(parent, text=locFunc(labelLocKey))
-        lb.grid(
-            row=rowIndex,
-            column=colIndex,
-            columnspan=2,
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        e = StringVar(parent)
-        e.default = default
-        e.set(default)
-        parent.rowconfigure(rowIndex, weight=0)
-        en = ttk.Entry(
-            parent,
-            textvariable=e,
-            width=entryWidth,
-            state="disabled",
-            justify=justify,
-        )
-        en.grid(
-            row=rowIndex + 1,
-            column=colIndex + (1 if reverse else 0),
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        ttk.Label(parent, text=unitText).grid(
-            row=rowIndex + 1,
-            column=colIndex + (0 if reverse else 1),
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        if tooltipLocKey is not None:
-            self.locTooltipVar = StringVar(value=locFunc(tooltipLocKey))
-            CreateToolTip(lb, self.locTooltipVar)
-        else:
-            self.locTooltipVar = None
-
-        self.locFunc = locFunc
-        self.labelLocKey = labelLocKey
-        self.labelWidget = lb
-
-        self.tooltipLocKey = tooltipLocKey
-
-        self.entryVar = e
-        self.entryWidget = en
-
-        allDisps.append(self)
-
-    def reLocalize(self, newLocKey=None, newTooltipKey=None):
-        if newLocKey is not None:
-            self.labelLocKey = newLocKey
-        self.labelWidget.config(text=self.locFunc(self.labelLocKey))
-
-        if self.locTooltipVar is not None:
-            if newTooltipKey is not None:
-                self.tooltipLocKey = newTooltipKey
-            self.locTooltipVar.set(self.locFunc(self.tooltipLocKey))
-
-    def set(self, val):
-        self.entryVar.set(val)
-
-
-class Loc122Disp(Loc12Disp):
-    def __init__(
-        self,
-        parent,
-        rowIndex=0,
-        colIndex=0,
-        labelLocKey="",
-        unitText_up="",
-        unitText_dn="",
-        default_up="0.0",
-        default_dn="0.0",
-        entryWidth=15,
-        justify_up="center",
-        justify_dn="center",
-        tooltipLocKey=None,
-        reverse=False,
-        locFunc=None,
-        allDisps=[],
-    ):
-        super().__init__(
-            parent=parent,
-            rowIndex=rowIndex,
-            colIndex=colIndex,
-            labelLocKey=labelLocKey,
-            unitText=unitText_up,
-            default=default_up,
-            entryWidth=entryWidth,
-            justify=justify_up,
-            tooltipLocKey=tooltipLocKey,
-            reverse=reverse,
-            locFunc=locFunc,
-        )
-        e2 = StringVar(parent)
-        e2.default = default_dn
-        e2.set(default_dn)
-        parent.rowconfigure(rowIndex, weight=0)
-        en2 = ttk.Entry(
-            parent,
-            textvariable=e2,
-            width=entryWidth,
-            state="disabled",
-            justify=justify_dn,
-        )
-        en2.grid(
-            row=rowIndex + 2,
-            column=colIndex + (1 if reverse else 0),
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        ttk.Label(parent, text=unitText_dn).grid(
-            row=rowIndex + 2,
-            column=colIndex + (0 if reverse else 1),
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-
-        self.auxEntryVar = e2
-        self.auxEntryWidget = en2
-
-        allDisps.append(self)
-
-    def set(self, val_1, val_2):
-        self.entryVar.set(val_1)
-        self.auxEntryVar.set(val_2)
-
-
-class Loc2Input:
-    def __init__(
-        self,
-        parent,
-        rowIndex=0,
-        colIndex=0,
-        labelLocKey="",
-        default="1.0",
-        validation=None,
-        entryWidth=15,
-        formatter=formatFloatInput,
-        color=None,
-        tooltipLocKey=None,
-        anchor="w",
-        reverse=False,
-        locFunc=None,
-        allInputs=[],
-    ):
-        lb = ttk.Label(parent, text=locFunc(labelLocKey), anchor=anchor)
-
-        lb.grid(
-            row=rowIndex,
-            column=colIndex + (1 if reverse else 0),
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        if tooltipLocKey is not None:
-            self.locTooltipVar = StringVar(value=locFunc(tooltipLocKey))
-            CreateToolTip(lb, self.locTooltipVar)
-        else:
-            self.locTooltipVar = None
-
-        parent.rowconfigure(rowIndex, weight=0)
-        e = StringVar(parent)
-        e.set(default)
-        en = ttk.Entry(
-            parent,
-            textvariable=e,
-            validate="key",
-            validatecommand=(validation, "%P"),
-            width=entryWidth,
-            foreground=color,
-            justify="center",
-        )
-        en.default = default
-        en.grid(
-            row=rowIndex,
-            column=colIndex + (0 if reverse else 1),
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
-        en.bind("<FocusOut>", formatter)
-
-        self.labelWidget = lb
-        self.inputVar = e
-        self.inputWidget = en
-
-        self.rowIndex = rowIndex
-        self.labelLocKey = labelLocKey
-        self.tooltipLocKey = tooltipLocKey
-        self.locFunc = locFunc
-        allInputs.append(self)
-
-    def reLocalize(self, newLocKey=None, newTooltipKey=None):
-        if newLocKey is not None:
-            self.labelLocKey = newLocKey
-        self.labelWidget.config(text=self.locFunc(self.labelLocKey))
-
-        if self.locTooltipVar is not None:
-            if newTooltipKey is not None:
-                self.tooltipLocKey = newTooltipKey
-            self.locTooltipVar.set(self.locFunc(self.tooltipLocKey))
-
-    def remove(self):
-        self.labelWidget.grid_remove()
-        self.inputWidget.grid_remove()
-
-    def restore(self):
-        self.labelWidget.grid()
-        self.inputWidget.grid()
-
-    def get(self):
-        return self.inputVar.get()
-
-    def set(self, val):
-        self.inputVar.set(val)
-
-    def trace_add(self, *args):
-        self.inputVar.trace_add(*args)
-
-    def disable(self):
-        self.inputWidget.config(state="disabled")
-
-    def enable(self):
-        self.inputWidget.config(state="normal")
-
-
-class Loc3Input(Loc2Input):
-    def __init__(
-        self,
-        parent,
-        rowIndex=0,
-        colIndex=0,
-        labelLocKey="",
-        unitText="",
-        default="0.0",
-        validation=None,
-        entryWidth=15,
-        formatter=formatFloatInput,
-        color=None,
-        tooltipLocKey=None,
-        anchor="w",
-        reverse=False,
-        locFunc=None,
-        allInputs=[],
-    ):
-        super().__init__(
-            parent=parent,
-            rowIndex=rowIndex,
-            colIndex=colIndex,
-            labelLocKey=labelLocKey,
-            default=default,
-            validation=validation,
-            entryWidth=entryWidth,
-            formatter=formatter,
-            color=color,
-            tooltipLocKey=tooltipLocKey,
-            anchor=anchor,
-            reverse=reverse,
-            locFunc=locFunc,
-        )
-
-        ulb = ttk.Label(parent, text=unitText)
-        ulb.grid(
-            row=rowIndex, column=colIndex + 2, sticky="nsew", padx=2, pady=2
-        )
-        self.unitLabel = ulb
-
-        allInputs.append(self)
-
-    def remove(self):
-        super().remove()
-        self.unitLabel.grid_remove()
-
-    def restore(self):
-        super().restore()
-        self.unitLabel.grid()
-
-
-class LocDropdown:
-    def __init__(self, locFunc, parentFrm, strObjDict, dropdowns=[]):
-        self.textVar = StringVar()
-        self.strObjDict = strObjDict
-        self.locFunc = locFunc
-        self.locStrObjDict = {self.locFunc(k): v for k, v in strObjDict.items()}
-        self.widget = ttk.Combobox(
-            parentFrm,
-            textvariable=self.textVar,
-            values=tuple(self.locStrObjDict.keys()),
-            justify="center",
-            state="readonly",
-        )
-        self.widget.option_add("*TCombobox*Listbox.Justify", "center")
-        self.widget.current(0)
-
-        dropdowns.append(self)
-
-    def reLocalize(self):
-        index = self.widget["values"].index(self.textVar.get())
-        self.locStrObjDict = {
-            self.locFunc(k): v for k, v in self.strObjDict.items()
-        }
-        self.widget.config(values=tuple(self.locStrObjDict.keys()))
-        self.widget.current(index)
-
-    def getObj(self):
-        return self.locStrObjDict[self.textVar.get()]
-
-    def setByStr(self, string):
-        """
-        Given an unlocalized string, set the drop down menu
-        to the correct position.
-        """
-        self.widget.set(
-            self.widget["values"][list(self.strObjDict.keys()).index(string)]
-        )
-
-    def grid(self, **kwargs):
-        self.widget.grid(**kwargs)
-
-    def trace_add(self, *args):
-        self.textVar.trace_add(*args)
-
-    @staticmethod
-    def disable(dropdowns):
-        for drop in dropdowns:
-            drop.widget.configure(state="disabled")
-
-    @staticmethod
-    def enable(dropdowns):
-        for drop in dropdowns:
-            drop.widget.configure(state="readonly")
 
 
 def calculate(
