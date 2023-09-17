@@ -8,7 +8,7 @@ from ctypes import windll
 import platform
 
 
-class IB(Frame):
+class EB(Frame):
     def __init__(self, parent, menubar):
         ttk.Frame.__init__(self, parent)
         pass
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     menubar = Menu(root)
     root.config(menu=menubar)
 
-    ibFrame = IB(root, menubar)
+    ibFrame = EB(root, menubar)
     ibFrame.pack(expand=1, fill="both", side="left")
 
     root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size

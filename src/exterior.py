@@ -267,6 +267,7 @@ class Bullet:
                 findMin=False,
             )
         )
+
         """
         Find the cresting elevation that ascending solution achieves its
         maximum range, or more technically a value less than 1/3600 deg above it.
@@ -287,7 +288,11 @@ class Bullet:
         /                 \
         """
 
-        r_opt_d = f_r(elev_opt)[0]
+        r_opt_d, check = f_r(elev_opt)
+        if (
+            check is None
+        ):  # TODO: make this vigorous. if tgtH is too high, then most of the entire search space for gss would be a stright line, not conducive to getting accurate results.
+            raise ValueError("No Range of Elevation Satisfying Target Height")
         # r_opt_a = f_r(elev_opt, DESCEND=False)[0]
         r_min_d = f_r(elev_min)[0]
         r_max_d = f_r(elev_max)[0]
@@ -646,8 +651,8 @@ if __name__ == "__main__":
     test.record_to_data(
         test.forward(
             tol=1e-3,
-            vel=819.92,
-            elev=2,
+            vel=1819.92,
+            elev=90,
             DESCEND=True,
         )
     )
@@ -664,7 +669,6 @@ if __name__ == "__main__":
         sep="\n"
     )
     """
-
     test.rangeTable(
         tol=1e-3, vel=819.92, minR=0, maxR=15000, deltaR=100, tgtH=100
     )

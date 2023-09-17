@@ -1,4 +1,5 @@
 from math import cos, pi, exp
+from bisect import bisect
 
 """
 USA Standard Atmospere 1976, from left to right:
@@ -40,34 +41,34 @@ USSA1976 = [
 """
 ICAO adopted vertical temperature gradients.
 """
-ICAOTbbeta = [
-    [-5.00, -6.50],
-    [0.00, -6.50],
-    [11.00, 0.00],
-    [20.00, +1.00],
-    [32.00, +2.80],
-    [47.00, 0.00],
-    [51.00, -2.80],
-    [71.00, -2.00],
-    [84.8520, 0],
-    [89.7157, 0],
+ICAOHbTbbetaPb = [
+    [0.00e3, 288.150, -6.50e-3, 1.013250e5],
+    [11.00e3, 216.650, 0.00, 2.263206e4],
+    [20.00e3, 216.650, +1.00e-3, 5.474889e3],
+    [32.00e3, 228.650, +2.80e-3, 8.680187e2],
+    [47.00e3, 270.650, 0.00e-3, 1.109063e2],
+    [51.00e3, 270.650, -2.80e-3, 6.693887e1],
+    [71.00e3, 214.650, -2.00e-3, 3.956420e0],
+    [84.8520e3, 186.946, 0, 3.733836e-1],
 ]
+
+ICAOHb = [line[0] for line in ICAOHbTbbetaPb]
+
+print(ICAOHb)
 
 R_e = 6356766  # nominal earth's radius
 
+M0 = 28.9644e-3  # kg/mol
 
-def atmosphere(h, T0=288.15, P0=101.325e3):
-    """
-    ICAO standard atmosphere
-        h   : Geometrical altitude
-     #   lat : Latitiude (in degrees)
-        p0  : pressure ASL
-    """
 
+def atmosphere(h):
+    # ICAO standard atmosphere
+    #    h   : Geometrical altitude
+    # #   lat : Latitiude (in degrees)
+    #    p0  : pressure ASL
     # Standard acceleration due to gravtiy, it conforms with latitude phi =
     # 42deg 32min 33sec using Lambert's equation of the acceleration due to
     # gravity as a function of latitude
-
     # 45 deg 32 min 33 sec is approximated by 45.5425 deg
 
     # phi = lat * pi / 180
@@ -80,78 +81,29 @@ def atmosphere(h, T0=288.15, P0=101.325e3):
 
     g = g0 * (r / (r + h)) ** 2  # approximate local gravitational acceleration
     # <0.001% error at 60km altitude
-    H = (
-        r * h / (r + h) * 1e-3
-    )  # H: approximate geopotential height in kilometer
+    H = r * h / (r + h)  # H: approximate geopotential height in kilometer
+    i = max(bisect(ICAOHb, H) - 1, 0)
 
-    if H < ICAOTbbeta[0][0] or H > ICAOTbbeta[-1][0]:
-        raise ValueError(
-            "Geopotential altitude {:.3f} km is outside of range {:} to {:} km".format(
-                H, ICAOTbbeta[0][0], ICAOTbbeta[-1][0]
-            )
-        )
+    Hb, Tb, beta, Pb = ICAOHbTbbetaPb[i]
 
     R = 287.05287  # J/(K · kg), R / M
 
-    if H >= 0:
-        i, j = 1, 2
-        Pb = P0
-        T_b = T0
-        H_b, beta = ICAOTbbeta[i]  # bottom
-        H_c, beta_c = ICAOTbbeta[j]  # ceiling
-
-        while H_c < H:
-            T_c = T_b + beta * (H_c - H_b)
-            if beta != 0:
-                Pb = Pb * (1 + beta / T_b * (H_c - H_b)) ** (
-                    -g0 / (beta * 1e-3 * R)
-                )
-            else:
-                Pb = Pb * exp(-g0 * (H_c - H_b) * 1e3 / (R * T_c))
-
-            i += 1
-            j += 1
-
-            T_b = T_c
-            H_b = H_c
-            beta = beta_c
-
-            H_b, beta = ICAOTbbeta[i]  # bottom
-            H_c, beta_c = ICAOTbbeta[j]  # ceiling
-
-        T = T_b + beta * (H - H_b)
-        if beta != 0:
-            P = Pb * (1 + beta / T_b * (H - H_b)) ** (-g0 / (beta * 1e-3 * R))
-        else:
-            P = Pb * exp(-g0 * (H - H_b) * 1e3 / (R * T))
-
+    T = Tb + beta * (H - Hb)
+    if beta != 0:
+        P = Pb * (1 + beta / Tb * (H - Hb)) ** (-g0 / (beta * R))
     else:
-        i, j = 0, 1
-        Pc = P0
-        T_c = T0
-        H_b, beta = ICAOTbbeta[i]  # bottom
-        H_c, beta_c = ICAOTbbeta[j]  # ceiling
+        P = Pb * exp(-g0 * (H - Hb) / (R * T))
 
-        T = T_c + beta * (H - H_c)
-        if beta != 0:
-            P = Pc * (1 + beta / T_c * (H - H_c)) ** (-g0 / (beta * 1e-3 * R))
-        else:
-            P = Pc * exp(-g0 * (H - H_c) * 1e3 / (R * T))
-
-    # derived terms:
     kappa = 1.4
     a = (kappa * R * T) ** 0.5
-
     rho = P / (R * T)
 
-    """
-    Return values:
-        T : Temperature in K
-        P : Pressure in Pa
-        a : Speed of sound in m/s
-      rho : Density in kg m^-3
-        g : Acceleration due gravity.
-    """
+    # Return values:
+    #    T : Temperature in K
+    #    P : Pressure in Pa
+    #    a : Speed of sound in m/s
+    #  rho : Density in kg m^-3
+    #    g : Acceleration due gravity.
     return T, P, a, rho, g
 
 
@@ -161,18 +113,20 @@ if __name__ == "__main__":
 
     ax = plt.subplot()
 
-    x = np.linspace(-4.9, 91, 1000)
-    ax.plot(x, [atmosphere(h * 1e3)[0] - 273.15 for h in x])
+    x = np.linspace(-6e3, 85e3, 1000)
+
+    ax.plot(x, [atmosphere(h)[0] - 273.15 for h in x])
     ax.scatter(
-        [line[0] * 1e-3 for line in USSA1976],
+        [line[0] for line in USSA1976],
         [line[1] for line in USSA1976],
         s=4,
     )
 
-    ax.plot(x, [atmosphere(h * 1e3)[1] * 1e-4 for h in x])
+    ax.plot(x, [atmosphere(h)[1] * 1e-4 for h in x])
     ax.scatter(
-        [line[0] * 1e-3 for line in USSA1976],
+        [line[0] for line in USSA1976],
         [line[3] for line in USSA1976],
         s=4,
     )
+
     plt.show()

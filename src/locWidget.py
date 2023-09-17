@@ -311,6 +311,9 @@ class Loc3Input(Loc2Input):
 
 class LocDropdown:
     def __init__(self, parent, strObjDict, locFunc, dropdowns=[]):
+        """
+        localized key of string type: underlying object
+        """
         self.textVar = StringVar(parent)
         self.strObjDict = strObjDict
         self.locFunc = locFunc

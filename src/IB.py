@@ -83,6 +83,7 @@ DOMAINS = {
     DOMAIN_LENG: DOMAIN_LENG,
 }
 
+USE = {"useLFLabel": 0, "useCVLabel": 1}
 
 FONTNAME = "Sarasa Fixed SC"
 FONTSIZE = 9
@@ -153,15 +154,16 @@ class IB(Frame):
         )
         langMenu = Menu(menubar)
         menubar.add_cascade(label="Lang 语言", menu=langMenu, underline=0)
-        solMenu = Menu(menubar)
+
+        """solMenu = Menu(menubar)
         menubar.add_cascade(
             label=self.getLocStr("solLabel"), menu=solMenu, underline=0
-        )
+        )"""
 
         self.fileMenu = fileMenu
         self.themeMenu = themeMenu
         self.debugMenu = debugMenu
-        self.solMenu = solMenu
+        # self.solMenu = solMenu
 
         self.themeRadio = IntVar(value=0)
         self.useTheme()
@@ -204,15 +206,6 @@ class IB(Frame):
             offvalue=0,
             underline=0,
         )
-
-        solMenu.add_checkbutton(
-            label=self.getLocStr("useLFLabel"), variable=self.useCv, onvalue=0
-        )
-        solMenu.add_checkbutton(
-            label=self.getLocStr("useCVLabel"), variable=self.useCv, onvalue=1
-        )
-
-        self.useCv.trace_add("write", self.cvlfCallback)
 
         for lang in STRING.keys():
             langMenu.add_radiobutton(
@@ -531,7 +524,7 @@ class IB(Frame):
         self.ambGam.enable() if self.inAtmos.get() else self.ambGam.disable()
 
     def cvlfCallback(self, *args):
-        useCv = self.useCv.get()
+        useCv = self.useCv.getObj()
 
         self.ldf.disable() if useCv else self.ldf.enable()
         self.cvL.enable() if useCv else self.cvL.disable()
@@ -540,7 +533,7 @@ class IB(Frame):
         self.menubar.entryconfig(0, label=self.getLocStr("fileLabel"))
         self.menubar.entryconfig(1, label=self.getLocStr("themeLabel"))
         self.menubar.entryconfig(2, label=self.getLocStr("debugLabel"))
-        self.menubar.entryconfig(4, label=self.getLocStr("solLabel"))
+        # self.menubar.entryconfig(4, label=self.getLocStr("solLabel"))
 
         self.fileMenu.entryconfig(0, label=self.getLocStr("saveLabel"))
         self.fileMenu.entryconfig(1, label=self.getLocStr("loadLabel"))
@@ -549,9 +542,6 @@ class IB(Frame):
         self.themeMenu.entryconfig(0, label=self.getLocStr("darkLabel"))
         self.themeMenu.entryconfig(1, label=self.getLocStr("lightLabel"))
         self.debugMenu.entryconfig(0, label=self.getLocStr("enableLabel"))
-
-        self.solMenu.entryconfig(0, label=self.getLocStr("useCVLabel"))
-        self.solMenu.entryconfig(1, label=self.getLocStr("useLFLabel"))
 
         self.calcButtonTip.set(self.getLocStr("calcButtonText"))
 
@@ -790,6 +780,16 @@ class IB(Frame):
             allDisps=self.locs,
         )
         i += 2
+
+        self.pa = Loc12Disp(
+            parent=specFrm,
+            row=i,
+            labelLocKey="paLabel",
+            # unitText="m/s²",
+            locFunc=self.getLocStr,
+            allDisps=self.locs,
+        )
+
         validationNN = self.register(validateNN)
         validationPI = self.register(validatePI)
 
@@ -811,6 +811,18 @@ class IB(Frame):
         self.dropSoln.grid(
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
+
+        self.useCv = LocDropdown(
+            parent=solFrm,
+            strObjDict=USE,
+            locFunc=self.getLocStr,
+            dropdowns=self.locs,
+        )
+        self.useCv.grid(
+            row=1, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
+        )
+
+        self.useCv.trace_add("write", self.cvlfCallback)
 
         envFrm = LocLabelFrame(
             rightFrm,
@@ -1097,7 +1109,7 @@ class IB(Frame):
             if self.prop is None:
                 raise ValueError("Invalid propellant.")
 
-            if self.useCv.get():
+            if self.useCv.getObj():
                 chamberVolume = float(self.cvL.get()) * 1e-3
             else:
                 chamberVolume = (
@@ -1195,8 +1207,9 @@ class IB(Frame):
         # self.pos = -1
         kwargs = self.kwargs
         sigfig = int(-log10(kwargs["tol"]))
+        gun = self.gun
 
-        if self.gun is not None:
+        if gun is not None:
             if constrain:
                 webmm = roundSig(1e3 * kwargs["grainSize"], n=sigfig)
                 self.arcmm.set(webmm)
@@ -1205,7 +1218,7 @@ class IB(Frame):
                 self.tblmm.set(lgmm)
 
                 if optimize:
-                    if self.useCv.get():
+                    if self.useCv.getObj():
                         self.cvL.set(
                             roundSig(kwargs["chamberVolume"] * 1e3, n=sigfig)
                         )
@@ -1220,7 +1233,7 @@ class IB(Frame):
 
             _, te, lg, _, vg, pe, Te, _ = self.readTable(POINT_EXIT)
 
-            eta_t, eta_b = self.gun.getEff(vg)
+            eta_t, eta_b = gun.getEff(vg)
 
             self.te.set(round(eta_t * 100, 1))
             self.be.set(round(eta_b * 100, 1))
@@ -1228,11 +1241,11 @@ class IB(Frame):
             self.lx.set(
                 toSI(kwargs["lengthGun"] / kwargs["caliber"]),
                 toSI(
-                    (kwargs["lengthGun"] + self.gun.l_0 / kwargs["chambrage"])
+                    (kwargs["lengthGun"] + gun.l_0 / kwargs["chambrage"])
                     / kwargs["caliber"]
                 ),
             )
-            self.va.set(toSI(self.gun.v_j, unit="m/s"))
+            self.va.set(toSI(gun.v_j, unit="m/s"))
 
             caliber = kwargs["caliber"]
             cartridge_len = kwargs["chamberVolume"] / (
@@ -1241,6 +1254,10 @@ class IB(Frame):
             self.ammo.set(
                 "{:.3g} x {:.4g} mm".format(caliber * 1e3, cartridge_len * 1e3)
             )
+
+            _, _, _, _, _, ps, _, _ = self.readTable(POINT_PEAK_SHOT)
+
+            self.pa.set(toSI(ps * gun.S / gun.m, unit="m/s²"))
 
         # populate the table with new values
 
@@ -1273,10 +1290,7 @@ class IB(Frame):
 
         self.pbar.stop()
         self.calButton.config(state="normal")
-        """
-        for drop in self.locs:
-            drop.enable()
-        """
+
         for loc in self.locs:
             try:
                 loc.disinhibit()
@@ -2327,7 +2341,7 @@ class IB(Frame):
     def cvlfConsisCallback(self, *args):
         try:
             sigfig = int(self.accExp.get())
-            if self.useCv.get():  # use Cv
+            if self.useCv.getObj():  # use Cv
                 cv = float(self.cvL.get()) / 1e3
                 w = float(self.chgkg.get())
                 rho = self.prop.rho_p
