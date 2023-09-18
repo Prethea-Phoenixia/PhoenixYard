@@ -540,7 +540,6 @@ class Reaction:
         J/molK   |   1   |
         cal/molK |   1   |
         """
-        C = "p"
         Delta_G = 0  # Gibbs free energy for constant pressure case.
         for therm, count in self.LHS.items():
             Delta_G -= therm.G(T, R) * count

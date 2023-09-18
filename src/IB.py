@@ -585,7 +585,7 @@ class IB(Frame):
         )
         pltOptnFrm.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
 
-        for i in range(10):
+        for i in range(5):
             pltOptnFrm.columnconfigure(i, weight=1)
 
         checks = []
@@ -609,21 +609,13 @@ class IB(Frame):
             locFunc=self.getLocStr,
             allLC=checks,
         )
-        k += 1
-        self.plotBaseP = LocLabelCheck(
-            parent=pltOptnFrm,
-            row=j,
-            col=k,
-            labelLocKey="plotBreechNozzleP",
-            locFunc=self.getLocStr,
-            allLC=checks,
-        )
+
         k += 1
         self.plotBreechNozzleP = LocLabelCheck(
             parent=pltOptnFrm,
             row=j,
             col=k,
-            labelLocKey="plotBreechNozzleP",
+            # labelLocKey="plotBreechNozzleP",
             locFunc=self.getLocStr,
             allLC=checks,
         )
@@ -636,7 +628,10 @@ class IB(Frame):
             locFunc=self.getLocStr,
             allLC=checks,
         )
-        k += 1
+
+        j = 1
+        k = 0
+
         self.plotVel = LocLabelCheck(
             parent=pltOptnFrm,
             row=j,
@@ -1283,8 +1278,8 @@ class IB(Frame):
                 values=tuple("±" + e if e != erow[0] else e for e in erow),
                 tags="error",
             )
-
             self.tv.move(str(-i - 1), str(i + 1), "end")
+
         self.updateError()
         self.updateFigPlot()
 
@@ -1772,7 +1767,7 @@ class IB(Frame):
 
     def updateFigPlot(self, *args):
         gun = self.gun
-        if gun == None:
+        if gun is None:
             return
         with mpl.rc_context(FIG_CONTEXT):
             self.ax.cla()
@@ -1790,7 +1785,7 @@ class IB(Frame):
             vTgt = self.kwargs["designVelocity"]
             gunType = self.kwargs["typ"]
             dom = self.kwargs["dom"]
-            tol = self.kwargs["tol"]
+            # tol = self.kwargs["tol"]
 
             xs, vs = [], []
             Pas, Pss, Pbs, P0s = [], [], [], []
@@ -2323,10 +2318,18 @@ class IB(Frame):
         if gunType == CONVENTIONAL:
             self.nozzExp.remove()
             self.nozzEff.remove()
+            self.plotBreechNozzleP.reLocalize("plotBreechP")
+
+            for widget in (self.plotEta, self.plotNozzleV):
+                widget.disable()
 
         elif gunType == RECOILESS:
             self.nozzExp.restore()
             self.nozzEff.restore()
+            self.plotBreechNozzleP.reLocalize("plotNozzleP")
+
+            for widget in (self.plotEta, self.plotNozzleV):
+                widget.enable()
 
     def ctrlCallback(self, *args):
         if self.solve_W_Lg.get() == 0:

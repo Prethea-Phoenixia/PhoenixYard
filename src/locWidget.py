@@ -252,10 +252,11 @@ class Loc2Input:
         self.inputWidget.config(state="normal")
 
     def inhibit(self):
-        self.nominalState = self.inputWidget.state()
+        self.nominalState = self.inputWidget.cget("state")
         self.inputWidget.config(state="disabled")
 
     def disinhibit(self):
+        # print(self.labelLocKey, self.nominalState)
         self.inputWidget.config(state=self.nominalState)
 
 
@@ -412,7 +413,7 @@ class LocLabelCheck:
         locFunc=None,
         allLC=[],
     ):
-        self.nominalState = default
+        self.nominalState = "normal"
         self.checkVar = IntVar(value=default)
         self.locFunc = locFunc
         self.checkWidget = ttk.Checkbutton(
@@ -437,7 +438,9 @@ class LocLabelCheck:
         self.tooltipLocKey = tooltipLocKey
         allLC.append(self)
 
-    def reLocalize(self):
+    def reLocalize(self, newLocKey=None):
+        if newLocKey is not None:
+            self.labelLocKey = newLocKey
         self.checkWidget.config(text=self.locFunc(self.labelLocKey))
         if self.locTooltipVar is not None:
             self.locTooltipVar.set(self.locFunc(self.tooltipLocKey))
@@ -455,7 +458,7 @@ class LocLabelCheck:
         self.checkVar.trace_add(*args)
 
     def inhibit(self):
-        self.nominalState = self.checkWidget.state()
+        self.nominalState = self.checkWidget.cget("state")
         self.checkWidget.config(state="disabled")
 
     def disinhibit(self):

@@ -77,7 +77,7 @@ class Constrained:
         containBurnout=True,
         maxLength=1e3,
         labda_2=None,
-        cc=1,
+        cc=None,
         sol=SOL_LAGRANGE,
         ambientRho=1.204,
         ambientP=101.325e3,
@@ -123,6 +123,9 @@ class Constrained:
         chi_k = self.chi_k
         f_psi_Z = self.f_psi_Z
 
+        if cc is None:
+            cc = 1 / chi_k
+
         if loadFraction > maxLF:
             raise ValueError(
                 "Specified Load Fraction Violates Geometrical Constraint"
@@ -132,7 +135,6 @@ class Constrained:
         V_0 = omega / (rho_p * loadFraction)
         Delta = omega / V_0
         l_0 = V_0 / S
-
         gamma = theta + 1
 
         if labda_2 is None:
@@ -164,7 +166,6 @@ class Constrained:
             )
 
         psi_0 = (1 / Delta - 1 / rho_p) / (f / p_0 + alpha - 1 / rho_p)
-
         Zs = cubic(a=chi * mu, b=chi * labda, c=chi, d=-psi_0)
         # pick a valid solution between 0 and 1
         Zs = tuple(
@@ -181,7 +182,6 @@ class Constrained:
 
         def _fp_bar(Z, l_bar, v_bar):
             psi = f_psi_Z(Z)
-
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
             p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
             return p_bar
