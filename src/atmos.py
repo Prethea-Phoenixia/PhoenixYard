@@ -54,8 +54,6 @@ ICAOHbTbbetaPb = [
 
 ICAOHb = [line[0] for line in ICAOHbTbbetaPb]
 
-print(ICAOHb)
-
 R_e = 6356766  # nominal earth's radius
 
 M0 = 28.9644e-3  # kg/mol

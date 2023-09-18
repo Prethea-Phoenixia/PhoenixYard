@@ -2,7 +2,7 @@ from atmos import atmosphere, R_e
 from drag import KdCurve
 from math import pi, sin, cos, atan2, acos
 from num import RKF78, gss, bisect
-
+from random import uniform
 from multiprocessing import Pool
 
 USE_MP = True
@@ -239,6 +239,48 @@ class Bullet:
         elev_min = max(elev_min, -90)
         elev_max = min(elev_max, 90)
 
+        N = 33
+
+        for i in range(N):
+            elev_probe = uniform(elev_min, elev_max)
+            try:
+                self.forward(**kwargs, elev=elev_probe, DESCEND=False)
+                break
+            except ValueError:
+                pass
+
+        if i == N - 1:
+            raise ValueError(
+                "No valid elevation can be found within specified in {:} samples".format(
+                    N
+                )
+            )
+
+        def bisect_serach(elev_tgt):
+            try:
+                self.forward(**kwargs, elev=elev_tgt)
+                return elev_tgt
+            except ValueError:
+                pass
+
+            delta = elev_tgt - elev_probe
+            probe_i = elev_probe
+            probe_j = probe_i + delta
+            while abs(delta) > 3600**-1:
+                try:
+                    self.forward(**kwargs, elev=probe_j)
+                    probe_i = probe_j
+                except ValueError:
+                    delta *= 0.5
+                probe_j = probe_i + delta
+
+            return probe_i
+
+        elev_max = bisect_serach(elev_max)
+        elev_min = bisect_serach(elev_min)
+
+        print(elev_min, elev_max)
+
         def f_r(elev, r=0, DESCEND=True):
             try:
                 record = self.forward(**kwargs, elev=elev, DESCEND=DESCEND)
@@ -250,9 +292,6 @@ class Bullet:
 
             psi = -(atan2(y, x) - 0.5 * pi)
             gr = psi * R_e
-
-            # print(elev, gr - r, DESCEND)
-
             return gr - r, record[-1]
 
         """we assume 0 deg 0 min 1 sec is the maximum practical precision in
@@ -288,11 +327,8 @@ class Bullet:
         /                 \
         """
 
-        r_opt_d, check = f_r(elev_opt)
-        if (
-            check is None
-        ):  # TODO: make this vigorous. if tgtH is too high, then most of the entire search space for gss would be a stright line, not conducive to getting accurate results.
-            raise ValueError("No Range of Elevation Satisfying Target Height")
+        r_opt_d, _ = f_r(elev_opt)
+
         # r_opt_a = f_r(elev_opt, DESCEND=False)[0]
         r_min_d = f_r(elev_min)[0]
         r_max_d = f_r(elev_max)[0]
@@ -647,7 +683,7 @@ if __name__ == "__main__":
         "test", mass=9.0990629, diam=88e-3, Kd_curve=KdCurve["G8"], form=0.925
     )
     # print(dec_to_dms(1 / 3600))
-
+    """
     test.record_to_data(
         test.forward(
             tol=1e-3,
@@ -656,7 +692,7 @@ if __name__ == "__main__":
             DESCEND=True,
         )
     )
-
+    """
     # input()
     """
     print(
@@ -670,7 +706,7 @@ if __name__ == "__main__":
     )
     """
     test.rangeTable(
-        tol=1e-3, vel=819.92, minR=0, maxR=15000, deltaR=100, tgtH=100
+        tol=1e-3, vel=819.92, minR=0, maxR=15000, deltaR=100, tgtH=11000
     )
 
     """
