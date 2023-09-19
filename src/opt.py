@@ -4,6 +4,7 @@ from random import uniform
 from math import pi, log
 from gun import pidduck
 from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
+import time
 
 KAPPA = 0.5
 """
@@ -84,6 +85,7 @@ class Constrained:
         ambientGamma=1.4,
         **_,
     ):
+        # start = time.time()
         if any(
             (
                 minWeb <= 0,
@@ -206,18 +208,18 @@ class Constrained:
             )
 
             def _ode_Z(Z, t_bar, l_bar, v_bar):
-                """burnout domain ode of internal ballistics"""
-
+                """burnup domain ode of internal ballistics"""
                 psi = f_psi_Z(Z)
-
                 l_psi_bar = (
                     1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
                 )
-
+                """
                 p_bar = (
                     f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
                 ) / (S * l_0 * (l_bar + l_psi_bar) * f * Delta)
+                """
 
+                p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
                 if c_1_bar != 0:
                     v_r = v_bar / c_1_bar
                     p_2_bar = (
@@ -296,10 +298,6 @@ class Constrained:
             Z_p = 0.5 * (Z_1 + Z_2)
             return _fp_Z(Z_p) - p_bar_d, Z_j, v_bar_i, l_bar_i, t_bar_i
 
-        """
-        The two initial guesses are good enough for the majority of cases,
-        guess one: 0.1mm, guess two: 1mm
-        """
         dp_bar_probe = _fp_e_1(minWeb)[0]
         probeWeb = minWeb
 
@@ -330,6 +328,8 @@ class Constrained:
         if v_j * v_bar_i > v_d and containBurnout:
             raise ValueError("Design velocity exceeded before peak pressure")
 
+        # webtime = time.time()
+        # print("determine web used", webtime - start)
         """
         step 2, find the requisite muzzle length to achieve design velocity
         """
@@ -345,10 +345,12 @@ class Constrained:
             psi = f_psi_Z(Z)
 
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
-
+            """
             p_bar = (
                 f * omega * psi - 0.5 * theta * phi * m * (v_bar * v_j) ** 2
             ) / (S * l_0 * (l_bar + l_psi_bar) * f * Delta)
+            """
+            p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
             if c_1_bar != 0:
                 v_r = v_bar / c_1_bar
@@ -413,6 +415,9 @@ class Constrained:
         # calculate the averaged chambrage correction factor
         # implied by this solution
         cc_n = 1 - (1 - 1 / chi_k) * log(l_bar_g + 1) / l_bar_g
+
+        # lengtime = time.time()
+        # print("determine barrel length took", lengtime - webtime)
 
         if abs(cc_n - cc) > tol:
             # successive better approximations will eventually
@@ -614,6 +619,6 @@ if __name__ == "__main__":
     for i in range(10):
         print(
             test.findMinV(
-                chargeMassRatio=1, tol=1e-4, minWeb=1e-6, maxLength=1000
+                chargeMassRatio=1, tol=1e-3, minWeb=1e-6, maxLength=1000
             )
         )

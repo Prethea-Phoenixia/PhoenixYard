@@ -184,11 +184,13 @@ class Gun:
             - self.Delta / self.rho_p
             - self.Delta * (self.alpha - 1 / self.rho_p) * psi
         )
-
+        """
         p_bar = (
             self.f * self.omega * psi
             - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
         ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
+        """
+        p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
         if self.c_1_bar != 0:
             k = self.k_1  # gamma
@@ -223,11 +225,13 @@ class Gun:
             - self.Delta / self.rho_p
             - self.Delta * (self.alpha - 1 / self.rho_p) * psi
         )
-
+        """
         p_bar = (
             self.f * self.omega * psi
             - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
         ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
+        """
+        p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
         if self.c_1_bar != 0:
             k = self.k_1  # gamma
@@ -258,11 +262,13 @@ class Gun:
             - self.Delta / self.rho_p
             - self.Delta * (self.alpha - 1 / self.rho_p) * psi
         )
-
+        """
         p_bar = (
             self.f * self.omega * psi
             - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
         ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
+        """
+        p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
         if self.c_1_bar != 0:
             k = self.k_1  # gamma

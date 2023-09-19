@@ -535,7 +535,7 @@ CHINESE = {
     "beffLabel": "弹道效率",
     "cvLabel": "药室容积",
     "ldLabel": "装填密度",
-    "paLabel": "弹最大加速度",
+    "paLabel": "最大加速",
     "propFrmLabel": "火药",
     "grainFrmLabel": "药粒形状参数",
     "diamLabel": "直径",
