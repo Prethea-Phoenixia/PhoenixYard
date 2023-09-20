@@ -184,20 +184,13 @@ class Gun:
             - self.Delta / self.rho_p
             - self.Delta * (self.alpha - 1 / self.rho_p) * psi
         )
-        """
-        p_bar = (
-            self.f * self.omega * psi
-            - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
-        ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
-        """
         p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
         if self.c_1_bar != 0:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_1_bar
             p_2_bar = (
-                1
-                + 0.25 * k * (k + 1) * v_r**2
+                0.25 * k * (k + 1) * v_r**2
                 + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
             ) * self.p_1_bar
         else:
@@ -225,20 +218,13 @@ class Gun:
             - self.Delta / self.rho_p
             - self.Delta * (self.alpha - 1 / self.rho_p) * psi
         )
-        """
-        p_bar = (
-            self.f * self.omega * psi
-            - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
-        ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
-        """
         p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
         if self.c_1_bar != 0:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_1_bar
             p_2_bar = (
-                1
-                + 0.25 * k * (k + 1) * v_r**2
+                0.25 * k * (k + 1) * v_r**2
                 + k * v_r * (1 + (0.25 * (k + 1) * v_r) ** 2) ** 0.5
             ) * self.p_1_bar
         else:
@@ -262,23 +248,16 @@ class Gun:
             - self.Delta / self.rho_p
             - self.Delta * (self.alpha - 1 / self.rho_p) * psi
         )
-        """
-        p_bar = (
-            self.f * self.omega * psi
-            - 0.5 * self.theta * self.phi * self.m * (v_bar * self.v_j) ** 2
-        ) / (self.S * self.l_0 * (l_bar + l_psi_bar) * self.f * self.Delta)
-        """
         p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
         if self.c_1_bar != 0:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_1_bar
             p_2_bar = (
-                1
-                + 0.25 * k * (k + 1) * v_r**2
+                0.25 * k * (k + 1) * v_r**2
                 + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
             ) * self.p_1_bar
-            # print(p_bar, p_2_bar)
+
         else:
             p_2_bar = 0
 
@@ -483,7 +462,7 @@ class Gun:
         i within or on the muzzle, with the propellant either still
         burning or right on the burnout point..
         """
-        ztlv_record = []
+        ztlv_record = [(Z_0, (0, 0, 0))]
         p_max = 1e9  # 1GPa
         p_bar_max = p_max / pScale
 
@@ -519,50 +498,7 @@ class Gun:
                 p_bar_j = self._fp_bar(Z_j, l_bar_j, v_bar_j)
 
             except ValueError as e:
-                """
-                Z, t_bar, l_bar, v_bar = (
-                    ztlv_record[-1][0],
-                    *ztlv_record[-1][1],
-                )
-                dt_bar, dl_bar, dv_bar = self._ode_Z(Z, t_bar, l_bar, v_bar)
-                p_bar = self._fp_bar(Z, l_bar, v_bar)
-                """
                 raise e
-
-            if v_bar_j <= 0:
-                Z, t_bar, l_bar, v_bar = (
-                    ztlv_record_i[-1][0],
-                    *ztlv_record_i[-1][1],
-                )
-
-                raise ValueError(
-                    "Squib load condition detected: Shot stopped in bore.\n"
-                    + "Shot is last calculated at {:.0f} mm at {:.0f} mm/s after {:.0f} ms".format(
-                        l_bar * self.l_0 * 1e3,
-                        v_bar * self.v_j * 1e3,
-                        t_bar * tScale * 1e3,
-                    )
-                )
-
-            if any(v < 0 for v in (t_bar_j, l_bar_j, p_bar_j)):
-                raise ValueError(
-                    "Numerical Integration diverged: negative"
-                    + " values encountered in results.\n"
-                    + "{:.0f} ms, {:.0f} mm, {:.0f} m/s, {:.0f} MPa".format(
-                        t_bar_j * tScale * 1e3,
-                        l_bar_j * self.l_0 * 1e3,
-                        v_bar_j * self.v_j,
-                        p_bar_j * pScale / 1e6,
-                    )
-                )
-
-            # if Z != Z_j:
-            if p_bar_j > p_bar_max:
-                raise ValueError(
-                    "Nobel-Abel EoS is generally accurate enough below"
-                    + " 600MPa. However, Unreasonably high pressure "
-                    + "(>{:.0f} MPa) was encountered.".format(p_max / 1e6),
-                )  # in practice most press-related spikes are captured here
 
             if l_bar_j >= l_g_bar:
                 if abs(l_bar_i - l_g_bar) / (l_g_bar) > tol or l_bar_i == 0:
@@ -574,7 +510,43 @@ class Gun:
 
             else:
                 ztlv_record.extend(ztlv_record_i)
+                if v_bar_j <= 0:
+                    Z, t_bar, l_bar, v_bar = (
+                        ztlv_record[-1][0],
+                        *ztlv_record[-1][1],
+                    )
+
+                    raise ValueError(
+                        "Squib load condition detected: Shot stopped in bore.\n"
+                        + "Shot is last calculated at {:.0f} mm at {:.0f} mm/s after {:.0f} ms".format(
+                            l_bar * self.l_0 * 1e3,
+                            v_bar * self.v_j * 1e3,
+                            t_bar * tScale * 1e3,
+                        )
+                    )
+
+                if any(v < 0 for v in (t_bar_j, l_bar_j, p_bar_j)):
+                    raise ValueError(
+                        "Numerical Integration diverged: negative"
+                        + " values encountered in results.\n"
+                        + "{:.0f} ms, {:.0f} mm, {:.0f} m/s, {:.0f} MPa".format(
+                            t_bar_j * tScale * 1e3,
+                            l_bar_j * self.l_0 * 1e3,
+                            v_bar_j * self.v_j,
+                            p_bar_j * pScale / 1e6,
+                        )
+                    )
+
+                # if Z != Z_j:
+                if p_bar_j > p_bar_max:
+                    raise ValueError(
+                        "Nobel-Abel EoS is generally accurate enough below"
+                        + " 600MPa. However, Unreasonably high pressure "
+                        + "(>{:.0f} MPa) was encountered.".format(p_max / 1e6),
+                    )  # in practice most press-related spikes are captured here
+
                 (t_bar_i, l_bar_i, v_bar_i) = (t_bar_j, l_bar_j, v_bar_j)
+
                 Z_i = Z_j
                 """
                 this way the group of values denoted by _i is always updated
@@ -607,6 +579,7 @@ class Gun:
                     ),
                 )
                 for (Z, (t_bar, l_bar, v_bar)) in ztlv_record
+                if t_bar != 0
             )
 
         """

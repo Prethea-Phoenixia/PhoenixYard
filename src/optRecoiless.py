@@ -243,8 +243,7 @@ class ConstrainedRecoiless:
                 if c_1_bar != 0:
                     v_r = v_bar / c_1_bar
                     p_2_bar = (
-                        1
-                        + 0.25 * gamma_1 * (gamma_1 + 1) * v_r**2
+                        +0.25 * gamma_1 * (gamma_1 + 1) * v_r**2
                         + gamma_1
                         * v_r
                         * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5
@@ -407,8 +406,7 @@ class ConstrainedRecoiless:
             if c_1_bar != 0:
                 v_r = v_bar / c_1_bar
                 p_2_bar = (
-                    1
-                    + 0.25 * gamma_1 * (gamma_1 + 1) * v_r**2
+                    +0.25 * gamma_1 * (gamma_1 + 1) * v_r**2
                     + gamma_1
                     * v_r
                     * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5

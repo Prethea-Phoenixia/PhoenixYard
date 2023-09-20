@@ -533,7 +533,6 @@ class IB(Frame):
         self.menubar.entryconfig(0, label=self.getLocStr("fileLabel"))
         self.menubar.entryconfig(1, label=self.getLocStr("themeLabel"))
         self.menubar.entryconfig(2, label=self.getLocStr("debugLabel"))
-        # self.menubar.entryconfig(4, label=self.getLocStr("solLabel"))
 
         self.fileMenu.entryconfig(0, label=self.getLocStr("saveLabel"))
         self.fileMenu.entryconfig(1, label=self.getLocStr("loadLabel"))
@@ -1015,7 +1014,7 @@ class IB(Frame):
             row=j,
             col=0,
             labelLocKey="stepLabel",
-            default="100",
+            default="33",
             validation=validationNN,
             formatter=formatIntInput,
             reverse=True,
@@ -1030,7 +1029,7 @@ class IB(Frame):
             row=i,
             col=0,
             labelLocKey="-log10(ε)",
-            default="4",
+            default="3",
             validation=validationPI,
             formatter=formatIntInput,
             color="red",

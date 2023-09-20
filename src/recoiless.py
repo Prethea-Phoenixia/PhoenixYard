@@ -166,8 +166,7 @@ class Recoiless:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_1_bar
             p_2_bar = (
-                1
-                + 0.25 * k * (k + 1) * v_r**2
+                +0.25 * k * (k + 1) * v_r**2
                 + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
             ) * self.p_1_bar
         else:
@@ -209,8 +208,7 @@ class Recoiless:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_1_bar
             p_2_bar = (
-                1
-                + 0.25 * k * (k + 1) * v_r**2
+                +0.25 * k * (k + 1) * v_r**2
                 + k * v_r * (1 + (0.25 * (k + 1) * v_r) ** 2) ** 0.5
             ) * self.p_1_bar
         else:
@@ -246,8 +244,7 @@ class Recoiless:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_1_bar
             p_2_bar = (
-                1
-                + 0.25 * k * (k + 1) * v_r**2
+                +0.25 * k * (k + 1) * v_r**2
                 + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
             ) * self.p_1_bar
         else:
@@ -464,9 +461,10 @@ class Recoiless:
                 p_bar_j = self._fp_bar(Z_j, l_bar_j, eta_j, tau_j)
 
             except ValueError as e:
+                ztlvet_record.extend(ztlvet_record_i)
                 Z, t_bar, l_bar, v_bar, eta, tau = (
-                    ztlvet_record_i[-1][0],
-                    *ztlvet_record_i[-1][1],
+                    ztlvet_record[-1][0],
+                    *ztlvet_record[-1][1],
                 )
                 dt_bar, dl_bar, dv_bar, deta, dtau = self._ode_Z(
                     Z, t_bar, l_bar, v_bar, eta, tau
@@ -486,41 +484,6 @@ class Recoiless:
                 else:
                     raise e  # unknown issues
 
-            if p_bar_j > p_bar_max:
-                raise ValueError(
-                    "Nobel-Abel EoS is generally accurate enough below 600MPa. However,"
-                    + " Unreasonably high pressure (>{:.0f} MPa) was encountered.".format(
-                        p_max / 1e6
-                    )  # in practice most of the pressure-realted spikes are captured here.
-                )
-
-            if v_bar_j <= 0:
-                Z, t_bar, l_bar, v_bar, eta, tau = (
-                    ztlvet_record_i[-1][0],
-                    *ztlvet_record_i[-1][1],
-                )
-
-                raise ValueError(
-                    "Squib load condition detected: Shot stopped in bore.\n"
-                    + "Shot is last calculated at {:.0f} mm at {:.0f} mm/s after {:.0f} ms".format(
-                        l_bar * self.l_0 * 1e3,
-                        v_bar * self.v_j * 1e3,
-                        t_bar * tScale * 1e3,
-                    )
-                )
-
-            if any(v < 0 for v in (t_bar_j, l_bar_j, p_bar_j)):
-                raise ValueError(
-                    "Numerical Integration diverged: negative"
-                    + " values encountered in results.\n"
-                    + "{:.0f} ms, {:.0f} mm, {:.0f} m/s, {:.0f} MPa".format(
-                        t_bar_j * tScale * 1e3,
-                        l_bar_j * self.l_0 * 1e3,
-                        v_bar_j * self.v_j,
-                        p_bar_j * pScale / 1e6,
-                    )
-                )  # this will catch any case where t, l, p are negative
-
             if l_bar_j >= l_g_bar:
                 if abs(l_bar_i - l_g_bar) / (l_g_bar) > tol or l_bar_i == 0:
                     N *= 2
@@ -531,6 +494,41 @@ class Recoiless:
 
             else:
                 ztlvet_record.extend(ztlvet_record_i)
+                if p_bar_j > p_bar_max:
+                    raise ValueError(
+                        "Nobel-Abel EoS is generally accurate enough below 600MPa. However,"
+                        + " Unreasonably high pressure (>{:.0f} MPa) was encountered.".format(
+                            p_max / 1e6
+                        )  # in practice most of the pressure-realted spikes are captured here.
+                    )
+
+                if v_bar_j <= 0:
+                    Z, t_bar, l_bar, v_bar, eta, tau = (
+                        ztlvet_record[-1][0],
+                        *ztlvet_record[-1][1],
+                    )
+
+                    raise ValueError(
+                        "Squib load condition detected: Shot stopped in bore.\n"
+                        + "Shot is last calculated at {:.0f} mm at {:.0f} mm/s after {:.0f} ms".format(
+                            l_bar * self.l_0 * 1e3,
+                            v_bar * self.v_j * 1e3,
+                            t_bar * tScale * 1e3,
+                        )
+                    )
+
+                if any(v < 0 for v in (t_bar_j, l_bar_j, p_bar_j)):
+                    raise ValueError(
+                        "Numerical Integration diverged: negative"
+                        + " values encountered in results.\n"
+                        + "{:.0f} ms, {:.0f} mm, {:.0f} m/s, {:.0f} MPa".format(
+                            t_bar_j * tScale * 1e3,
+                            l_bar_j * self.l_0 * 1e3,
+                            v_bar_j * self.v_j,
+                            p_bar_j * pScale / 1e6,
+                        )
+                    )  # this will catch any case where t, l, p are negative
+
                 (
                     t_bar_i,
                     l_bar_i,
