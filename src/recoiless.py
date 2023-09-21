@@ -455,7 +455,7 @@ class Recoiless:
                     minTol=minTol,
                     abortFunc=abort,
                     record=ztlvet_record_i,
-                    adaptTo=(True, True, True, True, False),
+                    # adaptTo=(True, True, True, True, False),
                 )
 
                 p_bar_j = self._fp_bar(Z_j, l_bar_j, eta_j, tau_j)

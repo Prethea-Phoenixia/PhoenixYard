@@ -683,7 +683,7 @@ if __name__ == "__main__":
         "test", mass=9.0990629, diam=88e-3, Kd_curve=KdCurve["G8"], form=0.925
     )
     # print(dec_to_dms(1 / 3600))
-    """
+
     test.record_to_data(
         test.forward(
             tol=1e-3,
@@ -692,8 +692,8 @@ if __name__ == "__main__":
             DESCEND=True,
         )
     )
-    """
-    # input()
+
+    input()
     """
     print(
         *test.inverse(
@@ -706,7 +706,7 @@ if __name__ == "__main__":
     )
     """
     test.rangeTable(
-        tol=1e-3, vel=819.92, minR=0, maxR=15000, deltaR=100, tgtH=11000
+        tol=1e-3, vel=819.92, minR=0, maxR=15000, deltaR=100, tgtH=10000
     )
 
     """

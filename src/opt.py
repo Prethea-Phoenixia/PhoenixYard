@@ -4,9 +4,8 @@ from random import uniform
 from math import pi, log
 from gun import pidduck
 from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
-import time
 
-KAPPA = 0.5
+KAPPA = 0.33
 """
 Machine-accuracy factor, determines that, if a numerical method
 is used within another, then how much more accurate should the
@@ -584,6 +583,8 @@ class Constrained:
 
 
 if __name__ == "__main__":
+    import cProfile
+
     from prop import GrainComp, SimpleGeometry
 
     compositions = GrainComp.readFile("data/propellants.csv")
@@ -602,11 +603,15 @@ if __name__ == "__main__":
         chambrage=1.5,
     )
 
-    print(test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-4))
+    # print(test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-4))
 
+    pr = cProfile.Profile()
+    pr.enable()
     for i in range(10):
         print(
             test.findMinV(
                 chargeMassRatio=1, tol=1e-3, minWeb=1e-6, maxLength=1000
             )
         )
+    pr.disable()
+    pr.print_stats(sort="time")

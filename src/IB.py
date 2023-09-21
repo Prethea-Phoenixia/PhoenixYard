@@ -689,7 +689,6 @@ class IB(Frame):
 
     def addRightFrm(self):
         """
-
         rightFrm
         |-specFrm
         |-solFrm
@@ -1200,7 +1199,8 @@ class IB(Frame):
 
         # self.pos = -1
         kwargs = self.kwargs
-        sigfig = int(-log10(kwargs["tol"]))
+        sigfig = int(-log10(kwargs["tol"])) + 1
+        print(sigfig)
         gun = self.gun
 
         if gun is not None:
@@ -2342,7 +2342,7 @@ class IB(Frame):
 
     def cvlfConsisCallback(self, *args):
         try:
-            sigfig = int(self.accExp.get())
+            sigfig = int(self.accExp.get()) + 1
             if self.useCv.getObj():  # use Cv
                 cv = float(self.cvL.get()) / 1e3
                 w = float(self.chgkg.get())
@@ -2464,7 +2464,7 @@ def calculate(
     optimize = kwargs["opt"]
     debug = kwargs["deb"]
 
-    sigfig = int(-log10(kwargs["tol"]))
+    sigfig = int(-log10(kwargs["tol"])) + 1
 
     try:
         if constrain:
