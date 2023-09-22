@@ -1028,7 +1028,7 @@ class IB(Frame):
             row=i,
             col=0,
             labelLocKey="-log10(ε)",
-            default="3",
+            default="4",
             validation=validationPI,
             formatter=formatIntInput,
             color="red",
@@ -1822,15 +1822,19 @@ class IB(Frame):
 
             if self.plotVel.get():
                 self.axv.scatter(
-                    xs, vs, color="tab:blue", marker="s", s=FONTSIZE
+                    xs, vs, color="tab:blue", marker="x", s=FONTSIZE**2 * 0.5
                 )
             if self.plotAvgP.get():
                 self.axP.scatter(
-                    xs, Pas, color="tab:green", marker="s", s=FONTSIZE
+                    xs,
+                    Pas,
+                    color="tab:green",
+                    marker="x",
+                    s=FONTSIZE**2 * 0.5,
                 )
             if self.plotBurnup.get():
                 self.ax.scatter(
-                    xs, psis, color="tab:red", marker="s", s=FONTSIZE
+                    xs, psis, color="tab:red", marker="x", s=FONTSIZE**2 * 0.5
                 )
 
             xPeak = 0
@@ -1882,12 +1886,11 @@ class IB(Frame):
                     marker=".",
                     alpha=1,
                 )
-            self.axv.scatter(
-                xs[-1],
+            self.axv.axhline(
                 vTgt,
-                s=FONTSIZE**2,
                 c="tab:blue",
-                marker=5,
+                linestyle=":",
+                label=self.getLocStr("vTgtLabel"),
                 alpha=1,
             )
 
@@ -1957,13 +1960,11 @@ class IB(Frame):
                 )
 
             Pd = float(self.pTgt.get())
-            self.axP.scatter(
-                xPeak,
+            self.axP.axhline(
                 Pd,
-                s=FONTSIZE**2,
                 c="tab:green",
                 alpha=1,
-                marker=5,  # caret right:5
+                linestyle=":",
                 label=self.getLocStr("figTgtP"),
             )
 
@@ -2013,6 +2014,17 @@ class IB(Frame):
                 labelLines(lines, align=True, xvals=xvals, outline_width=4)
                 linesLabeled.append(lines)
 
+            _, ti, li, _, vi, pi, Ti, etai = self.readTable(POINT_PEAK)
+
+            if self.plotAvgP.get():
+                self.axP.scatter(
+                    ti * 1e3 if dom == DOMAIN_TIME else li,
+                    pi / 1e6,
+                    marker="^",
+                    s=FONTSIZE**2 * 0.5,
+                    c="tab:green",
+                )
+
             _, ti, li, _, vi, pi, Ti, etai = self.readTable(POINT_PEAK_SHOT)
 
             if gunType == CONVENTIONAL:
@@ -2024,8 +2036,8 @@ class IB(Frame):
                 self.axP.scatter(
                     ti * 1e3 if dom == DOMAIN_TIME else li,
                     pi / 1e6,
-                    marker="+",
-                    s=FONTSIZE**2,
+                    marker="^",
+                    s=FONTSIZE**2 * 0.5,
                     c="yellowgreen",
                 )
 
@@ -2040,8 +2052,8 @@ class IB(Frame):
                 self.axP.scatter(
                     ti * 1e3 if dom == DOMAIN_TIME else li,
                     pi / 1e6,
-                    marker="+",
-                    s=FONTSIZE**2,
+                    marker="^",
+                    s=FONTSIZE**2 * 0.5,
                     c="xkcd:goldenrod",
                 )
 

@@ -259,7 +259,7 @@ class Constrained:
                 x_0=Z_0,
                 x_1=Z_b,
                 relTol=tol,
-                absTol=tol,
+                absTol=tol**2,
                 abortFunc=abort,
                 record=record,
             )
@@ -276,7 +276,7 @@ class Constrained:
                     x_0=Z_i,
                     x_1=Z,
                     relTol=KAPPA * tol,
-                    absTol=KAPPA * tol,
+                    absTol=KAPPA * tol**2,
                 )
 
                 return _fp_bar(Z, l_bar, v_bar)
@@ -378,7 +378,7 @@ class Constrained:
                 x_0=0,
                 x_1=v_bar_d,
                 relTol=tol,
-                absTol=tol,
+                absTol=tol**2,
                 abortFunc=abort,
                 record=tr,
             )
@@ -624,7 +624,7 @@ if __name__ == "__main__":
         delta.append((v - m) / m for v, m in zip(line, means))
 
     print(tabulate(datas, headers=("load fract.", "web", "length")))
-    print(means)
+    print(*means)
     print(
         tabulate(
             delta, headers=("load fract.", "web", "length"), floatfmt=".3e"

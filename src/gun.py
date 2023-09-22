@@ -489,7 +489,7 @@ class Gun:
                     Z_i,
                     Z_j,
                     relTol=tol,
-                    absTol=tol,
+                    absTol=tol**2,
                     minTol=minTol,
                     abortFunc=abort,
                     record=ztlv_record_i,
@@ -601,7 +601,7 @@ class Gun:
             l_bar_i,
             l_g_bar,
             relTol=tol,
-            absTol=tol,
+            absTol=tol**2,
             minTol=minTol,
             record=ltzv_record,
         )
@@ -656,7 +656,7 @@ class Gun:
                 Z_0,
                 1,
                 relTol=tol,
-                absTol=tol,
+                absTol=tol**2,
                 minTol=minTol,
             )
 
@@ -690,7 +690,7 @@ class Gun:
                 Z_0,
                 Z_b,
                 relTol=tol,
-                absTol=tol,
+                absTol=tol**2,
                 minTol=minTol,
             )
 
@@ -746,7 +746,7 @@ class Gun:
                 0,
                 t_bar,
                 relTol=tol,
-                absTol=tol,
+                absTol=tol**2,
                 minTol=minTol,
             )
             t_bar_err = 0.5 * t_bar_tol
@@ -769,8 +769,8 @@ class Gun:
                 (Z_0, 0, 0),
                 0,
                 t,
-                relTol=0.1 * tol,
-                absTol=0.1 * tol,
+                relTol=tol,
+                absTol=tol**2,
                 minTol=minTol,
             )[1]
 
@@ -807,7 +807,7 @@ class Gun:
                         t_bar_j,
                         t_bar_k,
                         relTol=tol,
-                        absTol=tol,
+                        absTol=tol**2,
                         minTol=minTol,
                     )
                     t_bar_j = t_bar_k
@@ -843,7 +843,7 @@ class Gun:
                     0,
                     t_bar_j,
                     relTol=tol,
-                    absTol=tol,
+                    absTol=tol**2,
                     minTol=minTol,
                 )[1]
 
@@ -860,7 +860,7 @@ class Gun:
                         l_bar_j,
                         l_bar_k,
                         relTol=tol,
-                        absTol=tol,
+                        absTol=tol**2,
                         minTol=minTol,
                     )
                     l_bar_j = l_bar_k

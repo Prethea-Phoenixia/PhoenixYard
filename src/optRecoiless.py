@@ -4,7 +4,7 @@ from random import uniform
 from math import pi
 from recoiless import Recoiless
 
-from opt import KAPPA
+KAPPA = 1
 
 
 class ConstrainedRecoiless:
@@ -273,11 +273,8 @@ class ConstrainedRecoiless:
 
             def abort(x, ys, o_x, o_ys):
                 Z, t_bar, l_bar, v_bar, eta, tau = x, *ys
-
                 p_bar = _fp_bar(Z, l_bar, eta, tau)
-
                 oZ, ot_bar, ol_bar, ov_bar, oeta, otau = o_x, *o_ys
-
                 op_bar = _fp_bar(oZ, ol_bar, oeta, otau)
 
                 return (p_bar < op_bar) or (p_bar > 2 * p_bar_d)
@@ -287,14 +284,14 @@ class ConstrainedRecoiless:
             (
                 Z_j,
                 (t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j),
-                (_, _, _, _, _),
+                _,
             ) = RKF78(
                 dFunc=_ode_Z,
                 iniVal=(0, 0, 0, 0, 1),
                 x_0=Z_0,
                 x_1=Z_b,
                 relTol=tol,
-                absTol=tol,
+                absTol=tol**2,
                 abortFunc=abort,
                 record=record,
             )
@@ -313,13 +310,13 @@ class ConstrainedRecoiless:
                 )
 
             def _fp_Z(Z):
-                _, (t_bar, l_bar, v_bar, eta, tau), (_, _, _, _, _) = RKF78(
+                _, (t_bar, l_bar, v_bar, eta, tau), _ = RKF78(
                     dFunc=_ode_Z,
                     iniVal=(t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i),
                     x_0=Z_i,
                     x_1=Z,
                     relTol=KAPPA * tol,
-                    absTol=KAPPA * tol,
+                    absTol=KAPPA * tol**2,
                 )
 
                 return _fp_bar(Z, l_bar, eta, tau)
@@ -445,7 +442,7 @@ class ConstrainedRecoiless:
             (
                 v_bar_g,
                 (t_bar_g, Z_g, l_bar_g, eta, tau),
-                (_, _, _, _, _),
+                _,
             ) = RKF78(
                 dFunc=_ode_v,
                 # iniVal=(t_bar_i, Z_i, l_bar_i, eta_i, tau_i),
@@ -454,7 +451,7 @@ class ConstrainedRecoiless:
                 x_0=0,
                 x_1=v_bar_d,
                 relTol=tol,
-                absTol=tol,
+                absTol=tol**2,
                 abortFunc=abort,
                 record=vtzlet_record,  # debug
             )
@@ -462,7 +459,7 @@ class ConstrainedRecoiless:
         except ValueError:
             vmax = vtzlet_record[-1][0] * v_j
             raise ValueError(
-                "Diminishing gains for velocity beyond {:.4g} m/s.".format(vmax)
+                "Velocity asymptotically approaching {:.4g} m/s.".format(vmax)
                 + " This indicates an excessive velocity target."
             )
 
@@ -493,7 +490,7 @@ class ConstrainedRecoiless:
         """
 
         """
-        Step 1, find a valid range of values for load fraction, 
+        Step 1, find a valid range of values for load fraction,
         using psuedo-bisection.
 
         high lf -> high web
@@ -549,7 +546,7 @@ class ConstrainedRecoiless:
                 _, lt_i, lg_i = f(new_low)
                 records.append((new_low, lt_i))
                 probe = new_low
-            except ValueError as e:
+            except ValueError:
                 delta_low *= 0.5
             finally:
                 new_low = probe + delta_low
@@ -566,7 +563,7 @@ class ConstrainedRecoiless:
                 _, lt_i, lg_i = f(new_high)
                 records.append((new_high, lt_i))
                 probe = new_high
-            except ValueError as e:
+            except ValueError:
                 delta_high *= 0.5
             finally:
                 new_high = probe + delta_high
@@ -596,11 +593,7 @@ class ConstrainedRecoiless:
         Step 2, gss to min.
         """
         lf_low, lf_high = gss(
-            lambda lf: f(lf)[1],
-            low,
-            high,
-            x_tol=tol,
-            findMin=True,
+            lambda lf: f(lf)[1], low, high, x_tol=tol, findMin=True
         )
         lf = 0.5 * (lf_high + lf_low)
 
@@ -629,11 +622,28 @@ if __name__ == "__main__":
         chambrage=1,
     )
 
-    print(test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-4))
+    # print(test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-4))
 
-    for i in range(10):
-        print(
+    datas = []
+    for i in range(5):
+        datas.append(
             test.findMinV(
                 chargeMassRatio=1, tol=1e-3, minWeb=1e-6, maxLength=100
             )
         )
+
+    from tabulate import tabulate
+
+    means = [sum(x) / len(datas) for x in zip(*datas)]
+
+    delta = []
+    for line in datas:
+        delta.append((v - m) / m for v, m in zip(line, means))
+
+    print(tabulate(datas, headers=("load fract.", "web", "length")))
+    print(*means)
+    print(
+        tabulate(
+            delta, headers=("load fract.", "web", "length"), floatfmt=".3e"
+        )
+    )
