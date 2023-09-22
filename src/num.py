@@ -17,7 +17,15 @@ invphi2 = (3 - math.sqrt(5)) / 2  # 1 / phi^2
 
 
 def gss(
-    f, a, b, x_tol=1e-16, y_abs_tol=1e-16, y_rel_tol=1e-16, findMin=True, it=1e4
+    f,
+    a,
+    b,
+    x_tol=1e-16,
+    y_abs_tol=1e-16,
+    y_rel_tol=1e-16,
+    findMin=True,
+    it=1e4,
+    debug=False,
 ):
     """Golden-section search. improved from the example
     given on wikipedia. Reuse half the evaluatins.
@@ -53,44 +61,52 @@ def gss(
     k = 0
     while k < n:
         if (yc < yd and findMin) or (yc > yd and not findMin):
-            # a---c---d
+            # a---c---d  b
             b = d
             d = c
             yb = yd
             yd = yc
-            h = invphi * h
+            h *= invphi
             c = a + invphi2 * h
             yc = f(c)
 
             if (
                 (abs(a - d) <= x_tol)
-                or (abs(ya - yd) < y_rel_tol * abs(min(ya, yd)))
+                or (abs(ya - yd) < (y_rel_tol * min(abs(ya), abs(yd))))
                 or (abs(ya - yd) <= y_abs_tol)
             ):
                 break
 
         else:
-            # c--d---b
+            # a   c--d---b
             a = c
             c = d
             ya = yc
             yc = yd
-            h = invphi * h
+            h *= invphi
             d = a + invphi * h
             yd = f(d)
 
             if (
-                (abs(c - b) <= x_tol)
-                or (abs(yc - yb) < y_rel_tol * abs(min(yc, yb)))
-                or (abs(yc - yd) <= y_abs_tol)
+                (abs(c - b) < x_tol)
+                or (abs(yc - yb) < (y_rel_tol * min(abs(yc), abs(yb))))
+                or (abs(yc - yd) < y_abs_tol)
             ):
                 break
+
+        if debug:
+            print(a, c, d, b)
+            print(ya, yc, yd, yb)
 
         k += 1
 
     if (yc < yd and findMin) or (yc > yd and not findMin):
+        if debug:
+            print(a, d)
         return (a, d)
     else:
+        if debug:
+            print(c, b)
         return (c, b)
 
 
@@ -102,28 +118,6 @@ Formulas With Stepsize Control
 Erwin Fehlberg, George C. Marshall Spcae Flight Center
 Huntsville, Ala.
 NASA, Washington D.C., October 1968
-"""
-"""
-# fmt:off
-A = [0, 2 / 27, 1 / 9, 1 / 6, 5 / 12, 1 / 2, 5 / 6, 1 / 6, 2 / 3, 1 / 3, 1, 0, 1]
-B = [
-    [0],
-    [2 / 27],
-    [1 / 36, 1 / 12],
-    [1 / 24, 0, 1 / 8],
-    [5 / 12, 0, -25 / 16, 25 / 16],
-    [1 / 20, 0, 0, 1 / 4, 1 / 5],
-    [-25 / 108, 0, 0, 125 / 108, -65 / 27, 125 / 54],
-    [31 / 300, 0, 0, 0, 61 / 225, -2 / 9, 13 / 900],
-    [2, 0, 0, -53 / 6, 704 / 45, -107 / 9, 67 / 90, 3],
-    [-91 / 108, 0, 0, 23 / 108, -976 / 135, 311 / 54, -19 / 60, 17 / 6, -1 / 12],
-    [2383 / 4100, 0, 0, -341 / 164, 4496 / 1025, -301 / 82, 2133 / 4100, 45 / 82, 45 / 164, 18 / 41],
-    [3 / 205, 0, 0, 0, 0, -6 / 41, -3 / 205, -3 / 41, 3 / 41, 6 / 41, 0],
-    [-1777 / 4100, 0, 0, -341 / 164, 4496 / 1025, -289 / 82, 2193 / 4100, 51 / 82, 33 / 164, 12 / 41, 0, 1],
-]
-C = [41 / 840, 0, 0, 0, 0, 34 / 105, 9 / 35, 9 / 35, 9 / 280, 9 / 280, 41 / 840, 0, 0]
-C_hat = [41 / 840, 0, 0, 0, 0, 0, 0, 0, 0, 0, 41 / 840, -41 / 840, -41 / 840]
-# fmt:on
 """
 
 a2 = 2 / 27
@@ -293,7 +287,7 @@ def RKF78(
     else:
         raise ValueError("Unclear variables to adapt stepsize for.")
 
-    allK = [[] for _ in range(13)]
+    allK = [None for _ in range(13)]
 
     if h == 0:
         return x, y_this, Rm
@@ -305,38 +299,8 @@ def RKF78(
             h = x_1 - x
 
         try:
-            """
-            for i in range(13):
-                if i > 0:
-                    allK[i] = [
-                        *map(
-                            (h).__mul__,
-                            dFunc(
-                                x + A[i] * h,
-                                *[
-                                    y + sum(b * k for b, k in zip(B[i], K))
-                                    for y, *K in zip(y_this, *allK[:i])
-                                ]
-                            ),
-                        )
-                    ]
-
-                else:
-                    allK[0] = [*map((h).__mul__, dFunc(x, *y_this))]
-
-                if any(
-                    isinstance(v, complex) or v is NotImplemented
-                    for v in allK[i]
-                ):
-                    raise ValueError
-
-            """
             # fmt: off
             allK[0] = [*map((h).__mul__, dFunc(x, *y_this))]
-            if any(
-                v is NotImplemented for v in allK[0]
-            ):
-                raise ValueError
 
             allK[1] = [
                 *map(
@@ -347,11 +311,7 @@ def RKF78(
                     )
                 )
             ]
-            if any(
-                v is NotImplemented for v in allK[1]
-            ):
-                raise ValueError
-
+            
             allK[2] = [
                 *map(
                     (h).__mul__,
@@ -364,10 +324,6 @@ def RKF78(
                     )
                 )
             ]
-            if any(
-                v is NotImplemented for v in allK[2]
-            ):
-                raise ValueError
 
             allK[3] = [
                 *map(
@@ -381,10 +337,6 @@ def RKF78(
                     )
                 )
             ]
-            if any(
-                v is NotImplemented for v in allK[3]
-            ):
-                raise ValueError
 
             allK[4] = [
                 *map(
@@ -398,10 +350,6 @@ def RKF78(
                     )
                 )
             ]
-            if any(
-                v is NotImplemented for v in allK[4]
-            ):
-                raise ValueError
 
             allK[5] = [
                 *map(
@@ -415,10 +363,6 @@ def RKF78(
                     )
                 )
             ]
-            if any(
-                v is NotImplemented for v in allK[5]
-            ):
-                raise ValueError
 
             allK[6] = [
                 *map(
@@ -432,10 +376,6 @@ def RKF78(
                     )
                 )
             ]
-            if any(
-                v is NotImplemented for v in allK[6]
-            ):
-                raise ValueError
 
             allK[7] = [
                 *map(
@@ -451,10 +391,6 @@ def RKF78(
                     )
                 )
             ]
-            if any(
-                v is NotImplemented for v in allK[7]
-            ):
-                raise ValueError
 
             allK[8] = [
                 *map(
@@ -470,10 +406,6 @@ def RKF78(
                     )
                 )
             ]
-            if any(
-                v is NotImplemented for v in allK[8]
-            ):
-                raise ValueError
 
             allK[9] = [
                 *map(
@@ -489,10 +421,6 @@ def RKF78(
                     )
                 )
             ]
-            if any(
-                v is NotImplemented for v in allK[9]
-            ):
-                raise ValueError
 
             allK[10] = [
                 *map(
@@ -508,10 +436,6 @@ def RKF78(
                     )
                 )
             ]
-            if any(
-                v is NotImplemented for v in allK[10]
-            ):
-                raise ValueError
 
             allK[11] = [
                 *map(
@@ -527,10 +451,6 @@ def RKF78(
                     )
                 )
             ]
-            if any(
-                v is NotImplemented for v in allK[11]
-            ):
-                raise ValueError
 
             allK[12] = [
                 *map(
@@ -547,10 +467,21 @@ def RKF78(
                     )
                 )
             ]
-            if any(
-                v is NotImplemented for v in allK[12]
-            ):
-                raise ValueError
+
+            y_next = [
+                y + c1 * k1 + c6 * k6 + c7 * k7 + c8 * k8 + c9 * k9 + c10 * k10
+                + c11 * k11
+                for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, _, _ in zip(
+                    y_this, *allK
+                )
+            ]
+
+            te = [
+                c_hat * (k1 + k11 - k12 - k13)
+                for y, k1, _, _, _, _, _, _, _, _, _, k11, k12, k13 in zip(
+                    y_this, *allK
+                )
+            ]  # local truncation error, or difference per step
 
             # fmt: on
 
@@ -559,27 +490,12 @@ def RKF78(
             TypeError,
             ZeroDivisionError,
             OverflowError,
-        ):  # complex value has been encountered during calculation
+        ) as e:  # complex value has been encountered during calculation
             # or that through unfortuante chance we got a divide by zero
             # or that a step is too large that some operation overflowed
             # print(e)
             h *= beta
             continue
-        # fmt:off
-        y_next = [
-            y + c1 * k1 + c6 * k6 + c7 * k7 + c8 * k8 + c9 * k9 + c10 * k10
-            + c11 * k11
-            for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, _, _ in zip(
-                y_this, *allK
-            )
-        ]
-        # fmt:on
-        te = [
-            c_hat * (k1 + k11 - k12 - k13)
-            for y, k1, _, _, _, _, _, _, _, _, _, k11, k12, k13 in zip(
-                y_this, *allK
-            )
-        ]  # local truncation error, or difference per step
 
         """
         Extrapolating global error from local truncation error.

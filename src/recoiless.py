@@ -761,9 +761,9 @@ class Recoiless:
             )
 
             if m == "b":
-                return Px
+                return Px / pScale
             elif m == "s":
-                return Ps
+                return Ps / pScale
 
         def findPeak(f, tag):
             """

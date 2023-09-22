@@ -370,6 +370,7 @@ class ConstrainedRecoiless:
             0,
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
+            # x_tol=0.75 * probeWeb * tol,
             y_abs_tol=p_bar_d * tol,
             x_min=0.5 * probeWeb,  # <=0
         )  # this is the e_1 that satisifies the pressure specification.

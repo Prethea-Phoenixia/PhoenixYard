@@ -1200,7 +1200,6 @@ class IB(Frame):
         # self.pos = -1
         kwargs = self.kwargs
         sigfig = int(-log10(kwargs["tol"])) + 1
-        print(sigfig)
         gun = self.gun
 
         if gun is not None:

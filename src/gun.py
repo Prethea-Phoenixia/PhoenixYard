@@ -781,9 +781,9 @@ class Gun:
 
             Ps, Pb = self.toPsPb(l_bar * self.l_0, p_bar * pScale)
             if m == "s":
-                return Ps
+                return Ps / pScale
             elif m == "b":
-                return Pb
+                return Pb / pScale
 
         findPeak(lambda x: f(x, "a"), POINT_PEAK)
         findPeak(lambda x: f(x, "s"), POINT_PEAK_SHOT)

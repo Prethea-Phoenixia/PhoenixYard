@@ -5,7 +5,7 @@ from math import pi, log
 from gun import pidduck
 from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
 
-KAPPA = 0.33
+KAPPA = 1
 """
 Machine-accuracy factor, determines that, if a numerical method
 is used within another, then how much more accurate should the
@@ -309,6 +309,7 @@ class Constrained:
             0,
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
+            # x_tol=0.75 * probeWeb * tol,
             y_abs_tol=p_bar_d * tol,
             x_min=0.5 * probeWeb,  # <=0
         )  # this is the e_1 that satisifies the pressure specification.
@@ -419,8 +420,6 @@ class Constrained:
                 labda_2=labda_2,
                 sol=sol,
                 cc=cc_n,
-                # cc=0.4 * cc_n
-                # + 0.6 * cc,
                 ambientRho=ambientRho,
                 ambientP=ambientP,
                 ambientGamma=ambientGamma,
@@ -499,7 +498,7 @@ class Constrained:
                 _, lt_i, lg_i = f(startProbe)
                 records.append((startProbe, lt_i))
                 break
-            except ValueError as e:
+            except ValueError:
                 pass
 
         if i == N - 1:
@@ -519,7 +518,7 @@ class Constrained:
                 _, lt_i, lg_i = f(new_low)
                 records.append((new_low, lt_i))
                 probe = new_low
-            except ValueError as e:
+            except ValueError:
                 delta_low *= 0.5
             finally:
                 new_low = probe + delta_low
@@ -537,7 +536,7 @@ class Constrained:
                 _, lt_i, lg_i = f(new_high)
                 records.append((new_high, lt_i))
                 probe = new_high
-            except ValueError as e:
+            except ValueError:
                 delta_high *= 0.5
             finally:
                 new_high = probe + delta_high
@@ -604,14 +603,30 @@ if __name__ == "__main__":
     )
 
     # print(test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-4))
-
+    datas = []
     pr = cProfile.Profile()
     pr.enable()
     for i in range(10):
-        print(
+        datas.append(
             test.findMinV(
                 chargeMassRatio=1, tol=1e-3, minWeb=1e-6, maxLength=1000
             )
         )
     pr.disable()
     pr.print_stats(sort="time")
+
+    from tabulate import tabulate
+
+    means = [sum(x) / len(datas) for x in zip(*datas)]
+
+    delta = []
+    for line in datas:
+        delta.append((v - m) / m for v, m in zip(line, means))
+
+    print(tabulate(datas, headers=("load fract.", "web", "length")))
+    print(means)
+    print(
+        tabulate(
+            delta, headers=("load fract.", "web", "length"), floatfmt=".3e"
+        )
+    )
