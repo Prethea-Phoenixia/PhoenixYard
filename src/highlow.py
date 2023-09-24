@@ -26,7 +26,7 @@ class Highlow:
         expansionVolume,  # low pressure chamber
         expansionStartPressure,  # low pressure chamber starting pressure
         startPressure,  # shot start pressure
-        meshAreaRatio,  # total area of passable "mesh" relative to bore.
+        portAreaRatio,  # total area of passable "mesh" relative to bore.
         chambrage,
         lengthGun,
         nozzleExpansion,
@@ -122,18 +122,26 @@ class Highlow:
             )
 
         self.Z_0 = Zs[0]  # pick the smallest solution
-        self.S_j_bar = meshAreaRatio
-        self.S_j = self.S * meshAreaRatio
+        self.S_j_bar = portAreaRatio
+        self.S_j = self.S * portAreaRatio
 
         gamma = self.theta + 1
-        phi_2 = 0.15  # for small holes 1.5mm to 2mm in size
+        phi_2 = 0.15  # for small ports 1.5mm to 2mm in size
         self.C_A = (
-            (0.5 * self.theta * self.phi * self.m / self.omega) ** 0.5
+            phi_2
+            * (0.5 * self.theta * self.phi * self.m / self.omega) ** 0.5
             * gamma**0.5
             * (2 / (gamma + 1)) ** (0.5 * (gamma + 1) / self.theta)
-            * phi_2
+        )
+        self.C_B = (
+            phi_2
+            * (0.5 * self.theta * self.phi * self.m / self.omega) ** 0.5
+            * ((2 * gamma) / self.theta) ** 0.5
         )
 
+        self.cfpr = (2 / (gamma + 1)) ** (
+            gamma / self.theta
+        )  # pressure ratio threshold for critical flow
         self.V_bar = self.V_1 / self.V_0
 
     def __getattr__(self, attrName):
@@ -169,6 +177,9 @@ class Highlow:
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
 
+        # VALUES FOR LOW PRESSURE CHAMBER
+        p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
+
         # COMBUSTION OF POWDER
         if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_1_bar**self.n
@@ -176,14 +187,22 @@ class Highlow:
             dZ = 0  # dZ/dt_bar
 
         # FLOW INTO LOW PRESSURE CHAMBER
-        deta = self.C_A * self.S_j_bar * p_1_bar / tau_1**0.5  # deta / dt_bar
+        pr = p_2_bar / p_1_bar
+        if pr < self.cfpr:
+            deta = self.C_A * self.S_j_bar * p_1_bar  # deta / dt_bar
+        else:
+            gamma = self.theta + 1
+            deta = (
+                self.C_B
+                * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
+                * self.S_j_bar
+                * p_1_bar
+            )
+
         # CHANGE IN HIGH PRESSURE CHAMBER
         dtau_1 = ((1 - tau_1) * (dpsi * dZ) - self.theta * tau_1 * deta) / (
             psi - eta
         )  # dtau/dt_bar
-
-        # VALUES FOR LOW PRESSURE CHAMBER
-        p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
 
         # ATMOSPHERIC DRAG
         if self.c_a_bar != 0:
@@ -214,6 +233,8 @@ class Highlow:
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
+        # VALUES FOR LOW PRESSURE CHAMBER
+        p_2_bar = self._f_p_2_bar(0, eta, tau_2)
 
         # COMBUSTION OF POWDER
         if Z <= self.Z_b:
@@ -222,7 +243,22 @@ class Highlow:
             dZ = 0  # dZ/dt_bar
 
         # FLOW INTO LOW PRESSURE CHAMBER
-        deta = self.C_A * self.S_j_bar * p_1_bar / tau_1**0.5  # deta / dt_bar
+        pr = p_2_bar / p_1_bar
+
+        if pr < self.cfpr:
+            # FLOW IS CRITICAL
+            deta = self.C_A * self.S_j_bar * p_1_bar  # deta / dt_bar
+
+        else:
+            # FLOW IS SUB CRITICAL
+            gamma = self.theta + 1
+            deta = (
+                self.C_B
+                * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
+                * self.S_j_bar
+                * p_1_bar
+            )
+
         # CHANGE IN HIGH PRESSURE CHAMBER
         dtau_1 = ((1 - tau_1) * (dpsi * dZ) - self.theta * tau_1 * deta) / (
             psi - eta
@@ -243,6 +279,9 @@ class Highlow:
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
 
+        # VALUES FOR LOW PRESSURE CHAMBER
+        p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
+
         # COMBUSTION OF POWDER
         if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_1_bar**self.n / v_bar
@@ -250,16 +289,24 @@ class Highlow:
             dZ = 0  # dZ /dl_bar
 
         # FLOW INTO LOW PRESSURE CHAMBER
-        deta = (
-            self.C_A * self.S_j_bar * p_1_bar / tau_1**0.5 / v_bar
-        )  # deta / dl_bar
+        pr = p_2_bar / p_1_bar
+        if pr < self.cfpr:
+            # FLOW IS CRITICAL
+            deta = self.C_A * self.S_j_bar * p_1_bar / v_bar  # deta / dl_bar
+        else:
+            # FLOW IS SUBCRITICAL
+            gamma = self.theta + 1
+            deta = (
+                self.C_B
+                * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
+                * self.S_j_bar
+                * p_1_bar
+            ) / v_bar
+
         # CHANGE IN HIGH PRESSURE CHAMBER
         dtau_1 = ((1 - tau_1) * (dpsi * dZ) - self.theta * tau_1 * (deta)) / (
             psi - eta
         )  # dtau/dl_bar
-
-        # VALUES FOR LOW PRESSURE CHAMBER
-        p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
 
         # ATMOSPHERIC DRAG
         if self.c_a_bar != 0:
@@ -293,22 +340,32 @@ class Highlow:
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
+        # VALUES FOR LOW PRESSURE CHAMBER
+        p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
 
         # PASSAGE OF TIME
         dt_bar = (2 * self.B / self.theta) ** 0.5 * p_1_bar**-self.n
 
         # FLOW INTO LOW PRESSURE CHAMBER
-        deta = (
-            self.C_A * self.S_j_bar * p_1_bar / tau_1**0.5 * dt_bar
-        )  # deta / dZ
+        pr = p_2_bar / p_1_bar
+        if pr < self.cfpr:
+            # FLOW IS CRITICAL
+            deta = self.C_A * self.S_j_bar * p_1_bar * dt_bar  # deta / dZ
+        else:
+            # FLOW IS SUB CRITICAL
+            gamma = self.theta + 1
+            deta = (
+                self.C_B
+                * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
+                * self.S_j_bar
+                * p_1_bar
+            ) * dt_bar
+
         # CHANGE IN HIGH PRESSURE CHAMBER
 
         dtau_1 = ((1 - tau_1) * (dpsi) - self.theta * tau_1 * (deta)) / (
             psi - eta
         )  # dtau_1 / dZ
-
-        # VALUES FOR LOW PRESSURE CHAMBER
-        p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
 
         # ATMOSPHERIC DRAG
         if self.c_a_bar != 0:
@@ -343,15 +400,26 @@ class Highlow:
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
+        # VALUES FOR LOW PRESSURE CHAMBER
+        p_2_bar = self._f_p_2_bar(0, eta, tau_2)
 
         # PASSAGE OF TIME
         dt_bar = (2 * self.B / self.theta) ** 0.5 * p_1_bar**-self.n
 
         # FLOW INTO LOW PRESSURE CHAMBER
-        deta = (
-            self.C_A * self.S_j_bar * p_1_bar / tau_1**0.5 * dt_bar
-        )  # deta / dZ
-        # CHANGE IN HIGH PRESSURE CHAMBER
+        pr = p_2_bar / p_1_bar
+        if pr < self.cfpr:
+            # FLOW IS CRITICAL
+            deta = self.C_A * self.S_j_bar * p_1_bar * dt_bar  # deta / dZ
+        else:
+            # FLOW IS SUB CRITICAL
+            gamma = self.theta + 1
+            deta = (
+                self.C_B
+                * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
+                * self.S_j_bar
+                * p_1_bar
+            ) * dt_bar
 
         dtau_1 = ((1 - tau_1) * (dpsi) - self.theta * tau_1 * (deta)) / (
             psi - eta
@@ -362,7 +430,7 @@ class Highlow:
             dtau_2 = 0
         else:
             dtau_2 = (self.theta * tau_1 * deta) / eta  # dtau_2/dZ
-        # print("out", dt_bar, deta, dtau_1, dtau_2)
+
         return (dt_bar, deta, dtau_1, dtau_2)
 
     def integrate(
@@ -884,7 +952,6 @@ class Highlow:
                 # fmt: off
                 for j in range(step):
                     t_bar_j = t_bar_e / (step + 1) * (j + 1)
-
                     if t_bar_j < t_bar_1:
                         (
                             _,
@@ -900,7 +967,7 @@ class Highlow:
                             minTol=minTol,
                         )
                         # fmt: on
-
+                        #print(self._f_p_2_bar(l_bar_j, eta_j, tau_2_j) * pScale)
                         l_bar_j, v_bar_j = 0, 0
                         l_bar_err, v_bar_err = 0, 0
 
@@ -963,6 +1030,7 @@ class Highlow:
 
                 for j in range(step):
                     l_bar_k = l_g_bar / (step + 1) * (j + 1)
+
                     # fmt: off
                     (
                         _,
@@ -1078,7 +1146,7 @@ class Highlow:
 
 
 if __name__ == "__main__":
-    """standard 7 hole cylinder has d_0=e_1, hole dia = 0.5 * arc width
+    """standard 7 port cylinder has d_0=e_1, port dia = 0.5 * arc width
     d_0 = 4*2e_1+3*d_0 = 11 * e_1
     """
     from tabulate import tabulate
@@ -1097,15 +1165,15 @@ if __name__ == "__main__":
         caliber=0.082,
         shotMass=2,
         propellant=M1C,
-        grainSize=1e-3,
+        grainSize=0.75e-3,
         chargeMass=0.3,
         chamberVolume=0.3 / M1C.rho_p / lf,
-        expansionVolume=0.1 / M1C.rho_p / lf,
-        startPressure=30e6,
+        expansionVolume=0.3 / M1C.rho_p / lf,
+        startPressure=20e6,
         expansionStartPressure=10e6,
         lengthGun=3.5,
         nozzleExpansion=2.0,
-        meshAreaRatio=1,
+        portAreaRatio=1,
         chambrage=1,
     )
     record = []
@@ -1113,7 +1181,7 @@ if __name__ == "__main__":
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(10, 1e-4, dom=DOMAIN_TIME)[0],
+            test.integrate(100, 1e-4, dom=DOMAIN_TIME)[0],
             headers=(
                 "tag",
                 "t",
