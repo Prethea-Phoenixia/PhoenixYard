@@ -153,11 +153,11 @@ class Constrained:
         v_bar_d = v_d / v_j
 
         if ambientRho != 0:
-            c_1_bar = (ambientGamma * ambientP / ambientRho) ** 0.5 / v_j
-            p_1_bar = ambientP / (f * Delta)
+            c_a_bar = (ambientGamma * ambientP / ambientRho) ** 0.5 / v_j
+            p_a_bar = ambientP / (f * Delta)
         else:
-            c_1_bar = 0
-            p_1_bar = 0
+            c_a_bar = 0
+            p_a_bar = 0
 
         gamma_1 = ambientGamma
 
@@ -181,7 +181,7 @@ class Constrained:
             )
         Z_0 = Zs[0]
 
-        def _fp_bar(Z, l_bar, v_bar):
+        def _f_p_bar(Z, l_bar, v_bar):
             psi = f_psi_Z(Z)
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
             p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
@@ -193,7 +193,7 @@ class Constrained:
         p_bar_d = p_d / (f * Delta)  # convert to unitless
         l_bar_d = maxLength / l_0
 
-        def _fp_e_1(e_1, tol=KAPPA * tol):
+        def _f_p_e_1(e_1, tol=KAPPA * tol):
             """
             calculate either the peak pressure, given the arc thickness,
             or until the system develops 2x design pressure.
@@ -214,22 +214,22 @@ class Constrained:
                 )
 
                 p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
-                if c_1_bar != 0:
-                    v_r = v_bar / c_1_bar
-                    p_2_bar = (
+                if c_a_bar != 0:
+                    v_r = v_bar / c_a_bar
+                    p_d_bar = (
                         +0.25 * gamma_1 * (gamma_1 + 1) * v_r**2
                         + gamma_1
                         * v_r
                         * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5
-                    ) * p_1_bar
+                    ) * p_a_bar
 
                 else:
-                    p_2_bar = 0
+                    p_d_bar = 0
 
                 if Z <= Z_b:
                     dt_bar = (2 * B / theta) ** 0.5 * p_bar**-n  # dt_bar/dZ
                     dl_bar = v_bar * dt_bar
-                    dv_bar = 0.5 * theta * (p_bar - p_2_bar) * dt_bar
+                    dv_bar = 0.5 * theta * (p_bar - p_d_bar) * dt_bar
 
                 else:
                     dt_bar = 0
@@ -242,12 +242,12 @@ class Constrained:
                 Z = x
                 t_bar, l_bar, v_bar = ys
 
-                p_bar = _fp_bar(Z, l_bar, v_bar)
+                p_bar = _f_p_bar(Z, l_bar, v_bar)
 
                 oZ = o_x
                 ot_bar, ol_bar, ov_bar = o_ys
 
-                op_bar = _fp_bar(oZ, ol_bar, ov_bar)
+                op_bar = _f_p_bar(oZ, ol_bar, ov_bar)
 
                 return (p_bar < op_bar) or (p_bar > 2 * p_bar_d)
 
@@ -269,7 +269,7 @@ class Constrained:
             else:
                 Z_i, (t_bar_i, l_bar_i, v_bar_i) = Z_0, (0, 0, 0)
 
-            def _fp_Z(Z):
+            def _f_p_Z(Z):
                 _, (t_bar, l_bar, v_bar), _ = RKF78(
                     dFunc=_ode_Z,
                     iniVal=(t_bar_i, l_bar_i, v_bar_i),
@@ -279,7 +279,7 @@ class Constrained:
                     absTol=KAPPA * tol**2,
                 )
 
-                return _fp_bar(Z, l_bar, v_bar)
+                return _f_p_bar(Z, l_bar, v_bar)
 
             """
             find the peak pressure point.
@@ -287,11 +287,11 @@ class Constrained:
             error does not become rampant
             """
 
-            Z_1, Z_2 = gss(_fp_Z, Z_i, Z_j, y_rel_tol=tol, findMin=False)
+            Z_1, Z_2 = gss(_f_p_Z, Z_i, Z_j, y_rel_tol=tol, findMin=False)
             Z_p = 0.5 * (Z_1 + Z_2)
-            return _fp_Z(Z_p) - p_bar_d, Z_j, v_bar_i, l_bar_i, t_bar_i
+            return _f_p_Z(Z_p) - p_bar_d, Z_j, v_bar_i, l_bar_i, t_bar_i
 
-        dp_bar_probe = _fp_e_1(minWeb)[0]
+        dp_bar_probe = _f_p_e_1(minWeb)[0]
         probeWeb = minWeb
 
         if dp_bar_probe < 0:
@@ -302,11 +302,10 @@ class Constrained:
 
         while dp_bar_probe > 0:
             probeWeb *= 2
-            dp_bar_probe = _fp_e_1(probeWeb)[0]
+            dp_bar_probe = _f_p_e_1(probeWeb)[0]
 
         e_1, _ = secant(
-            lambda web: _fp_e_1(web)[0],
-            0,
+            lambda web: _f_p_e_1(web)[0],
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
             # x_tol=0.75 * probeWeb * tol,
@@ -314,7 +313,7 @@ class Constrained:
             x_min=0.5 * probeWeb,  # <=0
         )  # this is the e_1 that satisifies the pressure specification.
 
-        p_bar_dev, Z_i, v_bar_i, l_bar_i, t_bar_i = _fp_e_1(e_1)
+        p_bar_dev, Z_i, v_bar_i, l_bar_i, t_bar_i = _f_p_e_1(e_1)
 
         if abs(p_bar_dev) > tol * p_bar_d:
             raise ValueError("Design pressure is not met")
@@ -341,19 +340,19 @@ class Constrained:
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
             p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
-            if c_1_bar != 0:
-                v_r = v_bar / c_1_bar
-                p_2_bar = (
+            if c_a_bar != 0:
+                v_r = v_bar / c_a_bar
+                p_d_bar = (
                     0.25 * gamma_1 * (gamma_1 + 1) * v_r**2
                     + gamma_1
                     * v_r
                     * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5
-                ) * p_1_bar
+                ) * p_a_bar
 
             else:
-                p_2_bar = 0
+                p_d_bar = 0
 
-            dt_bar = 2 / (theta * (p_bar - p_2_bar))
+            dt_bar = 2 / (theta * (p_bar - p_d_bar))
 
             if Z <= Z_b:
                 dZ = dt_bar * (0.5 * theta / B) ** 0.5 * p_bar**n

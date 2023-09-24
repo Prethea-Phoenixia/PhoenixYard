@@ -99,7 +99,7 @@ class Gun:
         ):
             raise ValueError("Invalid gun parameters")
 
-        if chargeMass / chamberVolume > (propellant.maxLF * propellant.rho_p):
+        if chargeMass > (propellant.maxLF * propellant.rho_p * chamberVolume):
             raise ValueError(
                 "Specified Load Fraction Violates Geometrical Constraint"
             )
@@ -165,7 +165,7 @@ class Gun:
         else:
             raise AttributeError
 
-    def _fp_bar(self, Z, l_bar, v_bar):
+    def _f_p_bar(self, Z, l_bar, v_bar):
         psi = self.f_psi_Z(Z)
 
         l_psi_bar = 1 - self.Delta * (
@@ -186,15 +186,15 @@ class Gun:
         )
         p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
-        if self.c_1_bar != 0:
+        if self.c_a_bar != 0:
             k = self.k_1  # gamma
-            v_r = v_bar / self.c_1_bar
-            p_2_bar = (
+            v_r = v_bar / self.c_a_bar
+            p_d_bar = (
                 0.25 * k * (k + 1) * v_r**2
                 + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
-            ) * self.p_1_bar
+            ) * self.p_a_bar
         else:
-            p_2_bar = 0
+            p_d_bar = 0
 
         if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_bar**self.n
@@ -202,7 +202,7 @@ class Gun:
             dZ = 0  # dZ/dt_bar
 
         dl_bar = v_bar
-        dv_bar = self.theta * 0.5 * (p_bar - p_2_bar)
+        dv_bar = self.theta * 0.5 * (p_bar - p_d_bar)
 
         return (dZ, dl_bar, dv_bar)
 
@@ -220,22 +220,22 @@ class Gun:
         )
         p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
-        if self.c_1_bar != 0:
+        if self.c_a_bar != 0:
             k = self.k_1  # gamma
-            v_r = v_bar / self.c_1_bar
-            p_2_bar = (
+            v_r = v_bar / self.c_a_bar
+            p_d_bar = (
                 0.25 * k * (k + 1) * v_r**2
                 + k * v_r * (1 + (0.25 * (k + 1) * v_r) ** 2) ** 0.5
-            ) * self.p_1_bar
+            ) * self.p_a_bar
         else:
-            p_2_bar = 0
+            p_d_bar = 0
 
         if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_bar**self.n / v_bar
         else:
             dZ = 0  # dZ /dl_bar
 
-        dv_bar = self.theta * 0.5 * (p_bar - p_2_bar) / v_bar  # dv_bar/dl_bar
+        dv_bar = self.theta * 0.5 * (p_bar - p_d_bar) / v_bar  # dv_bar/dl_bar
         dt_bar = 1 / v_bar  # dt_bar / dl_bar
 
         return (dt_bar, dZ, dv_bar)
@@ -250,23 +250,23 @@ class Gun:
         )
         p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
-        if self.c_1_bar != 0:
+        if self.c_a_bar != 0:
             k = self.k_1  # gamma
-            v_r = v_bar / self.c_1_bar
-            p_2_bar = (
+            v_r = v_bar / self.c_a_bar
+            p_d_bar = (
                 0.25 * k * (k + 1) * v_r**2
                 + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
-            ) * self.p_1_bar
+            ) * self.p_a_bar
 
         else:
-            p_2_bar = 0
+            p_d_bar = 0
 
         if Z <= self.Z_b:
             dt_bar = (
                 2 * self.B / self.theta
             ) ** 0.5 * p_bar**-self.n  # dt_bar/dZ
             dl_bar = v_bar * dt_bar  # dv_bar/dZ
-            dv_bar = 0.5 * self.theta * (p_bar - p_2_bar) * dt_bar
+            dv_bar = 0.5 * self.theta * (p_bar - p_d_bar) * dt_bar
         else:
             # technically speaking it is undefined in this area
             dt_bar = 0  # dt_bar/dZ
@@ -290,7 +290,7 @@ class Gun:
 
     def _dPdZ(self, Z, l_bar, v_bar):
         psi = self.f_psi_Z(Z)
-        p_bar = self._fp_bar(Z, l_bar, v_bar)
+        p_bar = self._f_p_bar(Z, l_bar, v_bar)
         if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_bar**self.n
         else:
@@ -321,7 +321,6 @@ class Gun:
         ambientRho=1.204,
         ambientP=101.325e3,
         ambientGamma=1.4,
-        record=None,
         **_,
     ):
         """
@@ -345,6 +344,7 @@ class Gun:
         at breech face and shot velocity at shot base.
 
         """
+        record = []
         minTol = 1e-16  # based on experience
 
         if any((step < 0, tol < 0)):
@@ -392,13 +392,13 @@ class Gun:
         pScale = self.f * self.Delta
 
         # ambient conditions
-        self.p_1_bar = ambientP / pScale
+        self.p_a_bar = ambientP / pScale
         if ambientRho != 0:
-            self.c_1_bar = (
+            self.c_a_bar = (
                 ambientGamma * ambientP / ambientRho
             ) ** 0.5 / self.v_j
         else:
-            self.c_1_bar = 0
+            self.c_a_bar = 0
 
         self.k_1 = ambientGamma
 
@@ -421,7 +421,7 @@ class Gun:
             Z_err,
             v_bar_err,
         ):
-            p_bar = self._fp_bar(Z, l_bar, v_bar)
+            p_bar = self._f_p_bar(Z, l_bar, v_bar)
             bar_data.append((tag, t_bar, l_bar, Z, v_bar, p_bar))
 
             p_bar_err = abs(self._dPdZ(Z, l_bar, v_bar) * Z_err)
@@ -442,8 +442,7 @@ class Gun:
             v_bar_err=0,
         )
 
-        if record is not None:
-            record.append((0, (0, self.psi_0, 0, p_bar_0)))
+        record.append((0, (0, self.psi_0, 0, p_bar_0)))
 
         Z_i = Z_0
         Z_j = Z_b
@@ -470,7 +469,7 @@ class Gun:
             Z = x
             t_bar, l_bar, v_bar = ys
 
-            p_bar = self._fp_bar(Z, l_bar, v_bar)
+            p_bar = self._f_p_bar(Z, l_bar, v_bar)
 
             return l_bar > l_g_bar or p_bar > p_bar_max or v_bar < 0
 
@@ -495,7 +494,7 @@ class Gun:
                     record=ztlv_record_i,
                 )
 
-                p_bar_j = self._fp_bar(Z_j, l_bar_j, v_bar_j)
+                p_bar_j = self._f_p_bar(Z_j, l_bar_j, v_bar_j)
 
             except ValueError as e:
                 raise e
@@ -518,7 +517,7 @@ class Gun:
 
                     raise ValueError(
                         "Squib load condition detected: Shot stopped in bore.\n"
-                        + "Shot is last calculated at {:.0f} mm at {:.0f} mm/s after {:.0f} ms".format(
+                        + "Shot is last calculated at:.0f} mm at {:.0f} mm/s after {:.0f} ms".format(
                             l_bar * self.l_0 * 1e3,
                             v_bar * self.v_j * 1e3,
                             t_bar * tScale * 1e3,
@@ -567,20 +566,19 @@ class Gun:
         if isBurnOutContained:
             Z_i = Z_b + tol
 
-        if record is not None:
-            record.extend(
+        record.extend(
+            (
+                t_bar,
                 (
-                    t_bar,
-                    (
-                        l_bar,
-                        self.f_psi_Z(Z),
-                        v_bar,
-                        self._fp_bar(Z, l_bar, v_bar),
-                    ),
-                )
-                for (Z, (t_bar, l_bar, v_bar)) in ztlv_record
-                if t_bar != 0
+                    l_bar,
+                    self.f_psi_Z(Z),
+                    v_bar,
+                    self._f_p_bar(Z, l_bar, v_bar),
+                ),
             )
+            for (Z, (t_bar, l_bar, v_bar)) in ztlv_record
+            if t_bar != 0
+        )
 
         """
         Subscript e indicate exit condition.
@@ -613,19 +611,18 @@ class Gun:
                     + " Round stopped in bore at {:}".format(l_bar * self.l_0)
                 )
 
-        if record is not None:
-            record.extend(
+        record.extend(
+            (
+                t_bar,
                 (
-                    t_bar,
-                    (
-                        l_bar,
-                        self.f_psi_Z(Z),
-                        v_bar,
-                        self._fp_bar(Z, l_bar, v_bar),
-                    ),
-                )
-                for (l_bar, (t_bar, Z, v_bar)) in ltzv_record
+                    l_bar,
+                    self.f_psi_Z(Z),
+                    v_bar,
+                    self._f_p_bar(Z, l_bar, v_bar),
+                ),
             )
+            for (l_bar, (t_bar, Z, v_bar)) in ltzv_record
+        )
 
         updBarData(
             tag=POINT_EXIT,
@@ -774,7 +771,7 @@ class Gun:
                 minTol=minTol,
             )[1]
 
-            p_bar = self._fp_bar(Z, l_bar, v_bar)
+            p_bar = self._f_p_bar(Z, l_bar, v_bar)
 
             if m == "a":
                 return p_bar
@@ -888,15 +885,6 @@ class Gun:
         sort the data points
         """
 
-        bar_data, bar_err = zip(
-            *(
-                (a, b)
-                for a, b in sorted(
-                    zip(bar_data, bar_err), key=lambda x: x[0][1]
-                )
-            )
-        )
-
         data = []
         error = []
 
@@ -918,29 +906,59 @@ class Gun:
 
             p, p_err = p_bar * pScale, p_bar_err * pScale
 
+            ps, pb = self.toPsPb(l, p)
+
             T = self._T(psi, l, p)
 
-            data.append((dtag, t, l, psi, v, p, T, 0))
+            data.append((dtag, t, l, psi, v, pb, p, ps, T))
             error.append(
-                (etag, t_err, l_err, psi_err, v_err, p_err, "N/A", "N/A")
+                (
+                    etag,
+                    t_err,
+                    l_err,
+                    psi_err,
+                    v_err,
+                    "---",
+                    p_err,
+                    "---",
+                    "---",
+                )
             )
 
         """
         scale the records too
         """
-        if record is not None:
-            for i, (t_bar, (l_bar, psi, v_bar, p_bar)) in enumerate(record):
-                record[i] = (
+
+        for t_bar, (l_bar, psi, v_bar, p_bar) in record:
+            t = t_bar * tScale
+            if t in [line[1] for line in data]:
+                continue
+
+            l = l_bar * self.l_0
+            p = p_bar * pScale
+            ps, pb = self.toPsPb(l, p)
+            data.append(
+                (
+                    "*",
                     t_bar * tScale,
-                    (
-                        l_bar * self.l_0,
-                        psi,
-                        v_bar * self.v_j,
-                        p_bar * pScale,
-                        self._T(psi, l, p),
-                        0,
-                    ),
-                )
+                    l,
+                    psi,
+                    v_bar * self.v_j,
+                    pb,
+                    p,
+                    ps,
+                    self._T(psi, l, p),
+                ),
+            )
+            errLine = ("L", *("--" for _ in range(8)))
+            error.append(errLine)
+
+        data, error = zip(
+            *(
+                (a, b)
+                for a, b in sorted(zip(data, error), key=lambda x: x[0][1])
+            )
+        )
 
         return data, error
 
@@ -1026,11 +1044,11 @@ if __name__ == "__main__":
         )
     )
     """
-    result = test.integrate(0, 1e-6, dom=DOMAIN_TIME, sol=SOL_LAGRANGE)
+    result = test.integrate(10, 1e-3, dom=DOMAIN_TIME, sol=SOL_LAGRANGE)
     print(
         tabulate(
             result[0],
-            headers=("tag", "t", "l", "phi", "v", "p", "T", "eta"),
+            headers=("tag", "t", "l", "phi", "v", "pb", "p", "ps", "T", "eta"),
         )
     )
 

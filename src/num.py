@@ -223,6 +223,7 @@ def RKF78(
     adaptTo=True,
     abortFunc=None,
     record=None,
+    debug=False,
 ):
     """
     use Runge Kutta Fehlberg of 7(8)th power to solve system of Equation dFunc
@@ -493,7 +494,8 @@ def RKF78(
         ) as e:  # complex value has been encountered during calculation
             # or that through unfortuante chance we got a divide by zero
             # or that a step is too large that some operation overflowed
-            # print(e)
+            if debug:
+                print(e)
             h *= beta
             continue
 
@@ -560,15 +562,15 @@ def RKF78(
 
     if abs(x - x_1) > abs(x_1 - x_0) * relTol:
         # debug code
-        """
-        print("x0", x_0)
-        print("x1", x_1)
-        print(x, *y_this)
-        print(dFunc(x, *y_this))
+        if debug:
+            print("x0", x_0)
+            print("x1", x_1)
+            print("x", x, "y", *y_this)
+            print("dy/dx", *dFunc(x, *y_this))
 
-        if record is not None:
-            print(*record, sep="\n")
-        """
+            if record is not None:
+                print(*record, sep="\n")
+
         raise ValueError(
             "Premature Termination of Integration due to vanishing step size,"
             + " x at {}, h at {}.".format(x, h)
@@ -657,9 +659,9 @@ def quadratic(a, b, c):
 
 def secant(
     f,
-    y,
     x_0,
     x_1,
+    y=0,
     x_min=None,
     x_max=None,
     x_tol=1e-16,
@@ -694,7 +696,7 @@ def secant(
         if (
             (abs(x_2 - x_1) < x_tol)
             or (abs(fx_2) < y_abs_tol)
-            or (abs(fx_2) < abs(y) * y_rel_tol)
+            or (abs(fx_2) < (abs(y) * y_rel_tol))
         ):
             return x_2, fx_2
         else:
@@ -707,7 +709,7 @@ def secant(
     )
 
 
-def bisect(f, x_0, x_1, x_tol=1e-4):
+def bisect(f, x_0, x_1, x_tol=1e-4, y_abs_tol=1e-16, y=0):
     """bisection method to numerically solve for zero
     two initial guesses must be of opposite sign.
     The root found is guaranteed to be within the range specified.
@@ -716,7 +718,10 @@ def bisect(f, x_0, x_1, x_tol=1e-4):
     fa = f(a)
     fb = f(b)
 
-    n = math.ceil(math.log((b - a) / x_tol, 2))
+    if x_tol > 0:
+        n = math.ceil(math.log((b - a) / x_tol, 2))
+    else:
+        n = math.inf
 
     if fa * fb >= 0:
         raise ValueError("Initial Guesses Must Be Of Opposite Sign")
@@ -724,6 +729,7 @@ def bisect(f, x_0, x_1, x_tol=1e-4):
     for i in range(n):
         c = 0.5 * (a + b)
         fc = f(c)
+
         # print("a", a, "b", b)
         # print("fa", fa, "fb", fb)
 
@@ -733,6 +739,9 @@ def bisect(f, x_0, x_1, x_tol=1e-4):
         else:
             b = c
             fb = fc
+
+        if abs(fc) < y_abs_tol:
+            break
 
     return a, b
 

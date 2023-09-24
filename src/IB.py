@@ -71,6 +71,7 @@ from locWidget import (
 
 RECOILESS = "RECOILESS"
 CONVENTIONAL = "CONVENTIONAL"
+HIGHLOW = "HIGHLOW"
 
 TYPES = {CONVENTIONAL: CONVENTIONAL, RECOILESS: RECOILESS}
 SOLUTIONS = {
@@ -544,9 +545,13 @@ class IB(Frame):
 
         self.calcButtonTip.set(self.getLocStr("calcButtonText"))
 
-        for i, columnName in enumerate(self.getLocStr("columnList")):
-            self.tv.heading(i, text=columnName)
-
+        try:
+            for i, columnName in enumerate(
+                self.getLocStr("columnList")[self.kwargs["typ"]]
+            ):
+                self.tv.heading(i, text=columnName)
+        except AttributeError:
+            pass
         for locWidget in self.locs:
             locWidget.reLocalize()
 
@@ -1182,7 +1187,6 @@ class IB(Frame):
             (
                 self.kwargs,
                 self.gun,
-                self.intgRecord,
                 self.tableData,
                 self.errorData,
                 errorLst,
@@ -1224,7 +1228,7 @@ class IB(Frame):
                 toSI(kwargs["loadFraction"] * self.prop.rho_p, useSN=True)
             )
 
-            _, te, lg, _, vg, pe, Te, _ = self.readTable(POINT_EXIT)
+            _, _, _, _, vg, *_ = self.readTable(POINT_EXIT)
 
             eta_t, eta_b = gun.getEff(vg)
 
@@ -1248,15 +1252,62 @@ class IB(Frame):
                 "{:.3g} x {:.4g} mm".format(caliber * 1e3, cartridge_len * 1e3)
             )
 
-            _, _, _, _, _, ps, _, _ = self.readTable(POINT_PEAK_SHOT)
+            if gunType == CONVENTIONAL:
+                ps = self.readTable(POINT_PEAK_SHOT)[7]
+            elif gunType == RECOILESS:
+                ps = self.readTable(POINT_PEAK_SHOT)[9]
 
             self.pa.set(toSI(ps * gun.S / gun.m, unit="m/s²"))
 
         # populate the table with new values
 
         self.tv.delete(*self.tv.get_children())
-        useSN = (False, False, False, True, False, False, True, True)
-        units = (None, "s", "m", None, "m/s", "Pa", "K", None)
+
+        if gunType == CONVENTIONAL:
+            useSN = (
+                False,
+                False,
+                False,
+                True,
+                False,
+                False,
+                False,
+                False,
+                True,
+            )
+
+            units = (None, "s", "m", None, "m/s", "Pa", "Pa", "Pa", "K")
+
+        elif gunType == RECOILESS:
+            useSN = (
+                False,
+                False,
+                False,
+                True,
+                False,
+                False,
+                False,
+                False,
+                False,
+                False,
+                True,
+                True,
+            )
+            units = (
+                None,
+                "s",
+                "m",
+                None,
+                "m/s",
+                "m/s",
+                "Pa",
+                "Pa",
+                "Pa",
+                "Pa",
+                "K",
+                None,
+            )
+
         tableData = dot_aligned(
             self.tableData,
             units=units,
@@ -1264,6 +1315,35 @@ class IB(Frame):
         )
 
         errorData = dot_aligned(self.errorData, units=units, useSN=useSN)
+
+        columnList = self.getLocStr("columnList")[gunType]
+        self.tv["columns"] = columnList
+        self.tv["show"] = "headings"
+        self.tv.tag_configure(POINT_PEAK, foreground="#2ca02c")
+        self.tv.tag_configure(POINT_PEAK_BREECH, foreground="orange")
+        self.tv.tag_configure(POINT_PEAK_SHOT, foreground="yellow green")
+        self.tv.tag_configure(POINT_BURNOUT, foreground="red")
+        self.tv.tag_configure(POINT_FRACTURE, foreground="brown")
+
+        t_Font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
+
+        self.tv.tag_configure("monospace", font=t_Font)
+        self.tv.tag_configure("error", font=t_Font, foreground="grey")
+
+        # we use a fixed width font so any char will do
+        fontWidth, _ = t_Font.measure("m"), t_Font.metrics("linespace")
+
+        for i, column in enumerate(columnList):  # foreach column
+            self.tv.heading(
+                i, text=column, anchor="e"
+            )  # let the column heading = column name
+            self.tv.column(
+                column,
+                stretch=True,  # will adjust to window resizing
+                width=fontWidth * 14,
+                minwidth=fontWidth * 14,
+                anchor="e",
+            )
 
         for i, (row, erow) in enumerate(zip(tableData, errorData)):
             self.tv.insert(
@@ -1786,96 +1866,77 @@ class IB(Frame):
             # tol = self.kwargs["tol"]
 
             xs, vs = [], []
+
+            Pa_m = []
             Pas, Pss, Pbs, P0s = [], [], [], []
-            Frs = []  # recoil forces
+            Frs = []
             psis, etas = [], []
             vxs = []
 
-            for i, (t, (l, psi, v, p, T, eta)) in enumerate(self.intgRecord):
-                if dom == DOMAIN_TIME:
-                    xs.append(t * 1000)
-                elif dom == DOMAIN_LENG:
-                    xs.append(l)
+            if gunType == CONVENTIONAL:
+                for tag, t, l, psi, v, Pb, P, Ps, T in self.tableData:
+                    if tag == POINT_PEAK:
+                        if dom == DOMAIN_TIME:
+                            xPeak = t * 1e3
+                        elif dom == DOMAIN_LENG:
+                            xPeak = l
 
-                vs.append(v)
-                Pas.append(p / 1e6)
+                    if dom == DOMAIN_TIME:
+                        xs.append(t * 1000)
+                    elif dom == DOMAIN_LENG:
+                        xs.append(l)
 
-                if gunType == CONVENTIONAL:
-                    Ps, Pb = gun.toPsPb(l, p)
-                    P0 = 0
-                    vx = 0
-                    Fr = p * gun.S
+                    Fr = P * gun.S
+                    vs.append(v)
+                    Pas.append(P / 1e6)
+                    Pss.append(Ps / 1e6)
+                    Pbs.append(Pb / 1e6)
+                    Frs.append(Fr / 1e6)
+                    psis.append(psi)
 
-                elif gunType == RECOILESS:
-                    Ps, P0, Pb, vx = gun.toPsP0PxVx(l, v, p, T, eta)
-                    Fr = p * gun.S * (1 - gun.C_f * gun.S_j_bar)
+            elif gunType == RECOILESS:
+                for (
+                    tag,
+                    t,
+                    l,
+                    psi,
+                    v,
+                    vx,
+                    Px,
+                    P0,
+                    P,
+                    Ps,
+                    T,
+                    eta,
+                ) in self.tableData:
+                    if tag == POINT_PEAK:
+                        if dom == DOMAIN_TIME:
+                            xPeak = t * 1e3
+                        elif dom == DOMAIN_LENG:
+                            xPeak = l
+                        Pa_m.append("^")
+                    elif tag == "*":
+                        Pa_m.append("x")
+                    else:
+                        Pa_m.append(",")
 
-                Pss.append(Ps / 1e6)
-                Pbs.append(Pb / 1e6)
-                P0s.append(P0 / 1e6)
-                vxs.append(vx)
+                    if dom == DOMAIN_TIME:
+                        xs.append(t * 1000)
+                    elif dom == DOMAIN_LENG:
+                        xs.append(l)
 
-                Frs.append(Fr / 1e6)
-
-                psis.append(psi)
-                etas.append(eta)
-
-            if self.plotVel.get():
-                self.axv.scatter(
-                    xs, vs, color="tab:blue", marker="x", s=FONTSIZE**2 * 0.5
-                )
-            if self.plotAvgP.get():
-                self.axP.scatter(
-                    xs,
-                    Pas,
-                    color="tab:green",
-                    marker="x",
-                    s=FONTSIZE**2 * 0.5,
-                )
-            if self.plotBurnup.get():
-                self.ax.scatter(
-                    xs, psis, color="tab:red", marker="x", s=FONTSIZE**2 * 0.5
-                )
-
-            xPeak = 0
-            for i, (tag, t, l, psi, v, p, T, eta) in enumerate(self.tableData):
-                if dom == DOMAIN_TIME:
-                    x = t * 1000
-                elif dom == DOMAIN_LENG:
-                    x = l
-                xs.append(x)
-                if tag == POINT_PEAK:
-                    xPeak = x
-                vs.append(v)
-                Pas.append(p / 1e6)
-
-                if gunType == CONVENTIONAL:
-                    Ps, Pb = gun.toPsPb(l, p)
-                    P0 = 0
-                    vx = 0
-                    Fr = p * gun.S
-
-                elif gunType == RECOILESS:
-                    Ps, P0, Pb, vx = gun.toPsP0PxVx(l, v, p, T, eta)
-                    Fr = p * gun.S * (1 - gun.C_f * gun.S_j_bar)
-
-                Pss.append(Ps / 1e6)
-                Pbs.append(Pb / 1e6)
-                P0s.append(P0 / 1e6)
-                vxs.append(vx)
-                psis.append(psi)
-                etas.append(eta)
-
-                Frs.append(Fr / 1e6)
+                    Fr = P * gun.S * (1 - gun.C_f * gun.S_j_bar)
+                    vs.append(v)
+                    vxs.append(vx)
+                    Pas.append(P / 1e6)
+                    Pss.append(Ps / 1e6)
+                    Pbs.append(Px / 1e6)
+                    P0s.append(P0 / 1e6)
+                    Frs.append(Fr / 1e6)
+                    psis.append(psi)
+                    etas.append(eta)
 
             self.axP.spines.right.set_position(("data", xPeak))
-
-            (xs, vs, vxs, Pas, Pss, Pbs, P0s, psis, etas, Frs) = zip(
-                *sorted(
-                    zip(xs, vs, vxs, Pas, Pss, Pbs, P0s, psis, etas, Frs),
-                    key=lambda line: line[0],
-                )
-            )
 
             if self.plotVel.get():
                 self.axv.plot(
@@ -1883,7 +1944,6 @@ class IB(Frame):
                     vs,
                     "tab:blue",
                     label=self.getLocStr("figShotVel"),
-                    marker=".",
                     alpha=1,
                 )
             self.axv.axhline(
@@ -1945,7 +2005,6 @@ class IB(Frame):
                     Pas,
                     "tab:green",
                     label=self.getLocStr("figAvgP"),
-                    marker=".",
                     alpha=1,
                 )
 
@@ -1974,7 +2033,6 @@ class IB(Frame):
                     psis,
                     c="tab:red",
                     label=self.getLocStr("figPsi"),
-                    marker=".",
                     alpha=1,
                 )
 
@@ -2014,49 +2072,6 @@ class IB(Frame):
                 labelLines(lines, align=True, xvals=xvals, outline_width=4)
                 linesLabeled.append(lines)
 
-            _, ti, li, _, vi, pi, Ti, etai = self.readTable(POINT_PEAK)
-
-            if self.plotAvgP.get():
-                self.axP.scatter(
-                    ti * 1e3 if dom == DOMAIN_TIME else li,
-                    pi / 1e6,
-                    marker="^",
-                    s=FONTSIZE**2 * 0.5,
-                    c="tab:green",
-                )
-
-            _, ti, li, _, vi, pi, Ti, etai = self.readTable(POINT_PEAK_SHOT)
-
-            if gunType == CONVENTIONAL:
-                pi, _ = gun.toPsPb(li, pi)
-            elif gunType == RECOILESS:
-                pi, _, _, _ = gun.toPsP0PxVx(li, vi, pi, Ti, etai)
-
-            if self.plotBaseP.get():
-                self.axP.scatter(
-                    ti * 1e3 if dom == DOMAIN_TIME else li,
-                    pi / 1e6,
-                    marker="^",
-                    s=FONTSIZE**2 * 0.5,
-                    c="yellowgreen",
-                )
-
-            _, ti, li, _, vi, pi, Ti, etai = self.readTable(POINT_PEAK_BREECH)
-
-            if gunType == CONVENTIONAL:
-                _, pi = gun.toPsPb(li, pi)
-            elif gunType == RECOILESS:
-                _, _, pi, _ = gun.toPsP0PxVx(li, vi, pi, Ti, etai)
-
-            if self.plotBreechNozzleP.get():
-                self.axP.scatter(
-                    ti * 1e3 if dom == DOMAIN_TIME else li,
-                    pi / 1e6,
-                    marker="^",
-                    s=FONTSIZE**2 * 0.5,
-                    c="xkcd:goldenrod",
-                )
-
             self.ax.set_xlim(left=0, right=xs[-1])
             self.ax.set_ylim(bottom=0, top=1.05)
             pmax = max(Pas + Pbs + Pss + P0s)
@@ -2084,7 +2099,6 @@ class IB(Frame):
             self.pltCanvas.draw_idle()
 
     def addTblFrm(self):
-        columnList = self.getLocStr("columnList")
         tblFrm = LocLabelFrame(
             self, locKey="tblFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
         )
@@ -2098,34 +2112,6 @@ class IB(Frame):
         )  # this set the nbr. of values
         self.tv.grid(row=0, column=0, sticky="nsew")
 
-        self.tv["columns"] = columnList
-        self.tv["show"] = "headings"
-        self.tv.tag_configure(POINT_PEAK, foreground="#2ca02c")
-        self.tv.tag_configure(POINT_PEAK_BREECH, foreground="orange")
-        self.tv.tag_configure(POINT_PEAK_SHOT, foreground="yellow green")
-        self.tv.tag_configure(POINT_BURNOUT, foreground="red")
-        self.tv.tag_configure(POINT_FRACTURE, foreground="brown")
-
-        t_Font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
-
-        self.tv.tag_configure("monospace", font=t_Font)
-        self.tv.tag_configure("error", font=t_Font, foreground="grey")
-
-        # we use a fixed width font so any char will do
-        fontWidth, _ = t_Font.measure("m"), t_Font.metrics("linespace")
-
-        for i, column in enumerate(columnList):  # foreach column
-            self.tv.heading(
-                i, text=column, anchor="e"
-            )  # let the column heading = column name
-            self.tv.column(
-                column,
-                stretch=True,  # will adjust to window resizing
-                width=fontWidth * 16,
-                minwidth=fontWidth * 16,
-                anchor="e",
-            )
-
         vertscroll = ttk.Scrollbar(
             tblFrm, orient="vertical"
         )  # create a scrollbar
@@ -2138,12 +2124,6 @@ class IB(Frame):
         self.tv.configure(
             yscrollcommand=vertscroll.set, xscrollcommand=horzscroll.set
         )  # assign the scrollbar to the Treeview Widget
-
-        """
-        self.tv.configure(
-            yscrollcommand=vertscroll.set
-        )  # assign the scrollbar to the Treeview Widget
-        """
 
     def updateSpec(self, *args):
         self.specs.config(state="normal")
@@ -2468,7 +2448,6 @@ def calculate(
     tableData = []
     errorData = []
     errorReport = []
-    intgRecord = []
 
     gunType = kwargs["typ"]
     constrain = kwargs["con"]
@@ -2505,10 +2484,7 @@ def calculate(
         elif gunType == RECOILESS:
             gun = Recoiless(**kwargs)
 
-        tableData, errorData = gun.integrate(
-            **kwargs,
-            record=intgRecord,
-        )
+        tableData, errorData = gun.integrate(**kwargs)
 
     except Exception as e:
         gun = None
@@ -2525,15 +2501,7 @@ def calculate(
         else:
             errorReport.append(str(e))
 
-    """
-    queue.put(kwargs)
-    queue.put(gun)
-    queue.put(intgRecord)
-    queue.put(tableData)
-    queue.put(errorData)
-    queue.put(errorReport)
-    """
-    queue.put((kwargs, gun, intgRecord, tableData, errorData, errorReport))
+    queue.put((kwargs, gun, tableData, errorData, errorReport))
 
 
 if __name__ == "__main__":
