@@ -1,5 +1,5 @@
-from math import pi
-from num import gss, RKF78, cubic, bisect
+from math import pi, inf
+from num import gss, RKF78, cubic, secant, bisect
 from prop import GrainComp, Propellant
 
 from gun import DOMAIN_TIME, DOMAIN_LENG
@@ -42,7 +42,6 @@ class Highlow:
                 chamberVolume <= 0,
                 expansionVolume <= 0,
                 lengthGun <= 0,
-                nozzleExpansion < 1,
                 dragCoefficient < 0,
                 dragCoefficient >= 1,
                 expansionStartPressure < 0,
@@ -118,7 +117,7 @@ class Highlow:
         if len(Zs) < 1:
             raise ValueError(
                 "Propellant either could not develop enough pressure to overcome"
-                + " start pressure, or has burnt to post fracture."
+                + " port open pressure, or has burnt to post fracture."
             )
 
         self.Z_0 = Zs[0]  # pick the smallest solution
@@ -199,6 +198,8 @@ class Highlow:
                 * p_1_bar
             )
 
+        deta /= tau_1**0.5
+
         # CHANGE IN HIGH PRESSURE CHAMBER
         dtau_1 = ((1 - tau_1) * (dpsi * dZ) - self.theta * tau_1 * deta) / (
             psi - eta
@@ -224,7 +225,10 @@ class Highlow:
         if eta == 0:
             dtau_2 = 0
         else:
-            dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
+            # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
+            dtau_2 = (
+                ((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar
+            ) / eta
 
         return (dZ, dl_bar, dv_bar, deta, dtau_1, dtau_2)
 
@@ -259,6 +263,8 @@ class Highlow:
                 * p_1_bar
             )
 
+        deta /= tau_1**0.5
+
         # CHANGE IN HIGH PRESSURE CHAMBER
         dtau_1 = ((1 - tau_1) * (dpsi * dZ) - self.theta * tau_1 * deta) / (
             psi - eta
@@ -269,7 +275,8 @@ class Highlow:
         if eta == 0:
             dtau_2 = 0
         else:
-            dtau_2 = (self.theta * tau_1 * deta) / eta
+            # dtau_2 = (self.theta * tau_1 * deta) / eta
+            dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
 
         return (dZ, deta, dtau_1, dtau_2)
 
@@ -303,6 +310,8 @@ class Highlow:
                 * p_1_bar
             ) / v_bar
 
+        deta /= tau_1**0.5
+
         # CHANGE IN HIGH PRESSURE CHAMBER
         dtau_1 = ((1 - tau_1) * (dpsi * dZ) - self.theta * tau_1 * (deta)) / (
             psi - eta
@@ -326,11 +335,13 @@ class Highlow:
         )  # dv_bar/dl_bar
 
         # CHANGE IN LOW PRESSURE CHAMBER
+
         if eta == 0:
             dtau_2 = 0
         else:
+            # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
             dtau_2 = (
-                self.theta * tau_1 * deta - 2 * v_bar * dv_bar
+                ((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar
             ) / eta  # dtau_2/dl_bar
 
         return (dt_bar, dZ, dv_bar, deta, dtau_1, dtau_2)
@@ -351,6 +362,7 @@ class Highlow:
         if pr < self.cfpr:
             # FLOW IS CRITICAL
             deta = self.C_A * self.S_j_bar * p_1_bar * dt_bar  # deta / dZ
+
         else:
             # FLOW IS SUB CRITICAL
             gamma = self.theta + 1
@@ -360,6 +372,8 @@ class Highlow:
                 * self.S_j_bar
                 * p_1_bar
             ) * dt_bar
+
+        deta /= tau_1**0.5
 
         # CHANGE IN HIGH PRESSURE CHAMBER
 
@@ -388,8 +402,9 @@ class Highlow:
         if eta == 0:
             dtau_2 = 0
         else:
+            # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
             dtau_2 = (
-                self.theta * tau_1 * deta - 2 * v_bar * dv_bar
+                ((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar
             ) / eta  # dtau_2/dZ
 
         return (dt_bar, dl_bar, dv_bar, deta, dtau_1, dtau_2)
@@ -411,6 +426,7 @@ class Highlow:
         if pr < self.cfpr:
             # FLOW IS CRITICAL
             deta = self.C_A * self.S_j_bar * p_1_bar * dt_bar  # deta / dZ
+            # print("{:.3f}, crit, {:.3f}".format(pr, deta))
         else:
             # FLOW IS SUB CRITICAL
             gamma = self.theta + 1
@@ -420,16 +436,23 @@ class Highlow:
                 * self.S_j_bar
                 * p_1_bar
             ) * dt_bar
+            # print("{:.3f}, subcrit, {:.3f}".format(pr, deta))
+
+        deta /= tau_1**0.5
 
         dtau_1 = ((1 - tau_1) * (dpsi) - self.theta * tau_1 * (deta)) / (
             psi - eta
         )  # dtau_1 / dZ
 
         # CHANGE IN LOW PRESSURE CHAMBER
+
         if eta == 0:
             dtau_2 = 0
         else:
-            dtau_2 = (self.theta * tau_1 * deta) / eta  # dtau_2/dZ
+            # dtau_2 = (self.theta * tau_1 * deta) / eta
+            dtau_2 = (
+                ((1 + self.theta) * tau_1 - tau_2) * deta
+            ) / eta  # dtau_2/dZ
 
         return (dt_bar, deta, dtau_1, dtau_2)
 
@@ -520,7 +543,7 @@ class Highlow:
             l_bar=0,
             Z=Z_0,
             v_bar=0,
-            eta=0,
+            eta=tol,
             tau_1=1,
             tau_2=0,
             t_bar_err=0,
@@ -532,30 +555,53 @@ class Highlow:
             tau_2_err=0,
         )
 
-        def abort_s(x, ys, o_x, o_ys):
-            Z, t_bar, eta, tau_1, tau_2 = x, *ys
+        def abort(x, ys, o_x, o_ys):
+            _, eta, _, tau_2 = ys
             p_2_bar = self._f_p_2_bar(0, eta, tau_2)
 
-            return p_2_bar > 2 * self.p_0_s_bar
+            _, o_eta, _, o_tau_2 = o_ys
+            o_p_2_bar = self._f_p_2_bar(0, o_eta, o_tau_2)
+
+            return p_2_bar > 2 * self.p_0_s_bar or p_2_bar < o_p_2_bar
 
         def f(Z):
-            t_bar, eta, tau_1, tau_2 = RKF78(
-                self._ode_Zs,
-                (0, tol, 1, 0),
-                Z_0,
-                Z,
-                relTol=tol,
-                absTol=tol**2,
-                minTol=minTol,
-                debug=False,
-                abortFunc=abort_s,
-            )[1]
+            r = []
+            try:
+                t_bar, eta, tau_1, tau_2 = RKF78(
+                    self._ode_Zs,
+                    (0, tol, 1, 0),
+                    Z_0,
+                    Z,
+                    relTol=tol,
+                    absTol=tol**2,
+                    minTol=minTol,
+                    abortFunc=abort,
+                    record=r,
+                )[1]
+
+            except ValueError:
+                t_bar, eta, tau_1, tau_2 = r[-1][1]
 
             p_2_bar = self._f_p_2_bar(0, eta, tau_2)
+            return p_2_bar
 
-            return p_2_bar - self.p_0_s_bar
+        p_bar_m = f(Z_b)
+        if p_bar_m < self.p_0_s_bar:
+            raise ValueError(
+                "Maximum pressure developed in low-chamber ({:.6f} MPa) ".format(
+                    p_bar_m * pScale / 1e6
+                )
+                + "not enough to start the shot."
+            )
 
-        Z_1 = 0.5 * sum(bisect(f, Z_0, Z_b, y_abs_tol=self.p_0_s_bar * tol))
+        Z_1 = 0.5 * sum(
+            bisect(
+                lambda x: f(x) - self.p_0_s_bar,
+                Z_0,
+                Z_b,
+                y_abs_tol=self.p_0_s_bar * tol,
+            )
+        )
 
         t_bar_1, eta_1, tau_1_1, tau_2_1 = RKF78(
             self._ode_Zs,
@@ -565,8 +611,6 @@ class Highlow:
             relTol=tol,
             absTol=tol**2,
             minTol=minTol,
-            debug=False,
-            abortFunc=abort_s,
         )[1]
 
         updBarData(
@@ -959,7 +1003,7 @@ class Highlow:
                             (Z_err, eta_err, tau_1_err, tau_2_err),
                         ) = RKF78(
                             self._ode_ts,
-                            (Z_0, 0, 1, 0),
+                            (Z_0, tol, 1, 0),
                             0,
                             t_bar_j,
                             relTol=tol,
@@ -967,7 +1011,7 @@ class Highlow:
                             minTol=minTol,
                         )
                         # fmt: on
-                        #print(self._f_p_2_bar(l_bar_j, eta_j, tau_2_j) * pScale)
+                        # print(self._f_p_2_bar(l_bar_j, eta_j, tau_2_j) * pScale)
                         l_bar_j, v_bar_j = 0, 0
                         l_bar_err, v_bar_err = 0, 0
 
@@ -1117,8 +1161,12 @@ class Highlow:
         """
         # fmt: off
         for t_bar, (l_bar, psi, v_bar, p_1_bar, p_2_bar, eta, tau_1, tau_2) in record:
+            t = t_bar * tScale
+            if t in [line[1] for line in data]:
+                continue
+
             data.append((
-                "*", t_bar * tScale, l_bar * self.l_0, psi, v_bar * self.v_j,
+                "*", t, l_bar * self.l_0, psi, v_bar * self.v_j,
                 p_1_bar * pScale, p_2_bar * pScale,
                 eta, tau_1 * self.T_v, tau_2 * self.T_v,
             ))
@@ -1163,17 +1211,17 @@ if __name__ == "__main__":
     print("DELTA/rho:", lf)
     test = Highlow(
         caliber=0.082,
-        shotMass=2,
-        propellant=M1C,
-        grainSize=0.75e-3,
+        shotMass=5,
+        propellant=M17C,
+        grainSize=5e-3,
         chargeMass=0.3,
         chamberVolume=0.3 / M1C.rho_p / lf,
-        expansionVolume=0.3 / M1C.rho_p / lf,
-        startPressure=20e6,
+        expansionVolume=0.9 / M1C.rho_p / lf,
+        startPressure=100e6,
         expansionStartPressure=10e6,
         lengthGun=3.5,
         nozzleExpansion=2.0,
-        portAreaRatio=1,
+        portAreaRatio=0.1,
         chambrage=1,
     )
     record = []
@@ -1181,7 +1229,7 @@ if __name__ == "__main__":
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(100, 1e-4, dom=DOMAIN_TIME)[0],
+            test.integrate(10, 1e-3, dom=DOMAIN_TIME)[0],
             headers=(
                 "tag",
                 "t",
@@ -1196,10 +1244,11 @@ if __name__ == "__main__":
             ),
         )
     )
+
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(10, 1e-4, dom=DOMAIN_LENG)[0],
+            test.integrate(0, 1e-4, dom=DOMAIN_LENG)[0],
             headers=(
                 "tag",
                 "t",
