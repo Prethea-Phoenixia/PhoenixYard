@@ -1061,7 +1061,7 @@ class Highlow:
                  of value by subscipt i will not guarantee burning is still
                  ongoing).
                 """
-                t_bar_j = 0.5 * t_bar_i
+                t_bar_j = 0.5 * (t_bar_i - t_bar_1) + t_bar_1
                 Z_j, l_bar_j, v_bar_j, eta_j, tau_1_j, tau_2_j = RKF78(
                     self._ode_t,
                     (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1),
@@ -1217,11 +1217,11 @@ if __name__ == "__main__":
         chargeMass=0.3,
         chamberVolume=0.3 / M1C.rho_p / lf,
         expansionVolume=0.9 / M1C.rho_p / lf,
-        startPressure=100e6,
+        startPressure=200e6,
         expansionStartPressure=10e6,
         lengthGun=3.5,
         nozzleExpansion=2.0,
-        portAreaRatio=0.1,
+        portAreaRatio=1,
         chambrage=1,
     )
     record = []
