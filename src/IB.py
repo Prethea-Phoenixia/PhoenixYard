@@ -245,6 +245,7 @@ class IB(Frame):
         self.typeCallback()
         self.ctrlCallback()
 
+        self.updateTable()
         self.updateSpec()
         self.updateGeom()
 
@@ -545,18 +546,12 @@ class IB(Frame):
 
         self.calcButtonTip.set(self.getLocStr("calcButtonText"))
 
-        try:
-            for i, columnName in enumerate(
-                self.getLocStr("columnList")[self.kwargs["typ"]]
-            ):
-                self.tv.heading(i, text=columnName)
-        except AttributeError:
-            pass
         for locWidget in self.locs:
             locWidget.reLocalize()
 
         self.calButton.config(text=self.getLocStr("calcLabel"))
 
+        self.updateTable()
         self.updateGeom()
         self.updateSpec()
         self.updateFigPlot()
@@ -1061,11 +1056,6 @@ class IB(Frame):
         CreateToolTip(self.calButton, self.calcButtonTip)
 
     def onCalculate(self):
-        """
-        for drop in self.locs:
-            drop.disable()
-        """
-
         for loc in self.locs:
             try:
                 loc.inhibit()
@@ -1176,7 +1166,7 @@ class IB(Frame):
             else:
                 self.errorLst.append(str(e))
 
-            self.tv.delete(*self.tv.get_children())
+            self.updateTable()
             self.updateError()
             self.updateFigPlot()
 
@@ -1196,6 +1186,8 @@ class IB(Frame):
 
         except Empty:
             return
+
+        self.process = None
 
         constrain = self.kwargs["con"]
         optimize = self.kwargs["opt"]
@@ -1259,105 +1251,7 @@ class IB(Frame):
 
             self.pa.set(toSI(ps * gun.S / gun.m, unit="m/s²"))
 
-        # populate the table with new values
-
-        self.tv.delete(*self.tv.get_children())
-
-        if gunType == CONVENTIONAL:
-            useSN = (
-                False,
-                False,
-                False,
-                True,
-                False,
-                False,
-                False,
-                False,
-                True,
-            )
-
-            units = (None, "s", "m", None, "m/s", "Pa", "Pa", "Pa", "K")
-
-        elif gunType == RECOILESS:
-            useSN = (
-                False,
-                False,
-                False,
-                True,
-                False,
-                False,
-                False,
-                False,
-                False,
-                False,
-                True,
-                True,
-            )
-            units = (
-                None,
-                "s",
-                "m",
-                None,
-                "m/s",
-                "m/s",
-                "Pa",
-                "Pa",
-                "Pa",
-                "Pa",
-                "K",
-                None,
-            )
-
-        tableData = dot_aligned(
-            self.tableData,
-            units=units,
-            useSN=useSN,
-        )
-
-        errorData = dot_aligned(self.errorData, units=units, useSN=useSN)
-
-        columnList = self.getLocStr("columnList")[gunType]
-        self.tv["columns"] = columnList
-        self.tv["show"] = "headings"
-        self.tv.tag_configure(POINT_PEAK, foreground="#2ca02c")
-        self.tv.tag_configure(POINT_PEAK_BREECH, foreground="orange")
-        self.tv.tag_configure(POINT_PEAK_SHOT, foreground="yellow green")
-        self.tv.tag_configure(POINT_BURNOUT, foreground="red")
-        self.tv.tag_configure(POINT_FRACTURE, foreground="brown")
-
-        t_Font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
-
-        self.tv.tag_configure("monospace", font=t_Font)
-        self.tv.tag_configure("error", font=t_Font, foreground="grey")
-
-        # we use a fixed width font so any char will do
-        fontWidth, _ = t_Font.measure("m"), t_Font.metrics("linespace")
-
-        for i, column in enumerate(columnList):  # foreach column
-            self.tv.heading(
-                i, text=column, anchor="e"
-            )  # let the column heading = column name
-            self.tv.column(
-                column,
-                stretch=True,  # will adjust to window resizing
-                width=fontWidth * 14,
-                minwidth=fontWidth * 14,
-                anchor="e",
-            )
-
-        for i, (row, erow) in enumerate(zip(tableData, errorData)):
-            self.tv.insert(
-                "", "end", str(i + 1), values=row, tags=(row[0], "monospace")
-            )
-            self.tv.insert(
-                str(i + 1),
-                "end",
-                str(-i - 1),
-                values=tuple("±" + e if e != erow[0] else e for e in erow),
-                tags="error",
-            )
-            self.tv.move(str(-i - 1), str(i + 1), "end")
-
+        self.updateTable()
         self.updateError()
         self.updateFigPlot()
 
@@ -1369,7 +1263,6 @@ class IB(Frame):
                 loc.disinhibit()
             except AttributeError:
                 pass
-        self.process = None
 
     def addErrFrm(self):
         errorFrm = LocLabelFrame(
@@ -1841,9 +1734,11 @@ class IB(Frame):
         if self.tLid is not None:
             root.after_cancel(self.tLid)
         root.quit()
-        # root.destroy()
 
     def updateFigPlot(self, *args):
+        if self.process is not None:
+            return
+
         gun = self.gun
         if gun is None:
             return
@@ -2265,6 +2160,90 @@ class IB(Frame):
         for line in self.errorLst:
             self.errorText.insert("end", line + "\n")
         self.errorLst = []
+
+    def updateTable(self):
+        if self.process is not None:
+            return
+
+        self.tv.delete(*self.tv.get_children())
+
+        try:
+            gunType = self.kwargs["typ"]
+            tableData, errorData = self.tableData, self.errorData
+        except AttributeError:
+            gunType = self.typeOptn.getObj()
+            tableData, errorData = [], []
+
+        if gunType == CONVENTIONAL:
+            # fmt: off
+            useSN = (
+                False, False, False, True, False, False, False, False, True
+            )
+            # fmt: on
+
+            units = (None, "s", "m", None, "m/s", "Pa", "Pa", "Pa", "K")
+
+        elif gunType == RECOILESS:
+            # fmt: off
+            useSN = (
+                False, False, False, True, False, False, False, False, False,
+                False, True, True
+            )
+            units = (
+                None, "s", "m", None, "m/s", "m/s", "Pa", "Pa", "Pa", "Pa", "K",
+                None
+            )
+            # fmt: on
+
+        tableData = dot_aligned(
+            tableData,
+            units=units,
+            useSN=useSN,
+        )
+
+        errorData = dot_aligned(errorData, units=units, useSN=useSN)
+
+        columnList = self.getLocStr("columnList")[gunType]
+        self.tv["columns"] = columnList
+        self.tv["show"] = "headings"
+        self.tv.tag_configure(POINT_PEAK, foreground="#2ca02c")
+        self.tv.tag_configure(POINT_PEAK_BREECH, foreground="orange")
+        self.tv.tag_configure(POINT_PEAK_SHOT, foreground="yellow green")
+        self.tv.tag_configure(POINT_BURNOUT, foreground="red")
+        self.tv.tag_configure(POINT_FRACTURE, foreground="brown")
+
+        t_Font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
+
+        self.tv.tag_configure("monospace", font=t_Font)
+        self.tv.tag_configure("error", font=t_Font, foreground="grey")
+
+        # we use a fixed width font so any char will do
+        fontWidth, _ = t_Font.measure("m"), t_Font.metrics("linespace")
+
+        for i, column in enumerate(columnList):  # foreach column
+            self.tv.heading(
+                i, text=column, anchor="e"
+            )  # let the column heading = column name
+            self.tv.column(
+                column,
+                stretch=True,  # will adjust to window resizing
+                width=fontWidth * 14,
+                minwidth=fontWidth * 14,
+                anchor="e",
+            )
+
+        for i, (row, erow) in enumerate(zip(tableData, errorData)):
+            self.tv.insert(
+                "", "end", str(i + 1), values=row, tags=(row[0], "monospace")
+            )
+            self.tv.insert(
+                str(i + 1),
+                "end",
+                str(-i - 1),
+                values=tuple("±" + e if e != erow[0] else e for e in erow),
+                tags="error",
+            )
+            self.tv.move(str(-i - 1), str(i + 1), "end")
 
     def callback(self, *args):
         """
