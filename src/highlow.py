@@ -603,8 +603,6 @@ class Highlow:
             )
         )
 
-        input()
-
         t_bar_1, eta_1, tau_1_1, tau_2_1 = RKF78(
             self._ode_Zs,
             (0, tol, 1, 0),

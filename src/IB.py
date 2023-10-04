@@ -2156,6 +2156,9 @@ class IB(Frame):
             self.geomCanvas.draw_idle()
 
     def updateError(self):
+        if self.process is not None:
+            return
+
         self.errorText.delete("1.0", "end")
         for line in self.errorLst:
             self.errorText.insert("end", line + "\n")
