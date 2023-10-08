@@ -424,7 +424,7 @@ class IB(Frame):
 
             self.shtkg.set(fileKwargs["SHOT MASS"])
             self.chgkg.set(fileKwargs["CHARGE MASS"])
-            self.useCv.set(1)
+            self.useCv.setByStr("useCVLabel")
             self.cvL.set(fileKwargs["CHAMBER VOLUME"])
             self.clr.set(fileKwargs["CHAMBRAGE"])
             self.stpMPa.set(fileKwargs["ENGRAVING PRESSURE"])
@@ -457,6 +457,8 @@ class IB(Frame):
             defaultextension=".csv",
             initialfile=self.getDescriptive(),
         )
+        gunType = self.kwargs["typ"]
+        columnList = self.getLocStr("columnList")[gunType]
 
         if fileName == "":
             messagebox.showinfo(
@@ -464,53 +466,15 @@ class IB(Frame):
             )
             return
         try:
-            gunType = self.kwargs["typ"]
             with open(fileName, "w", encoding="utf-8", newline="") as csvFile:
                 csvWriter = csv.writer(
                     csvFile, delimiter=",", quoting=csv.QUOTE_MINIMAL
                 )
 
-                if gunType == CONVENTIONAL:
-                    headers = (
-                        "",
-                        "T - s",
-                        "L - m",
-                        "V - m/s",
-                        "P_l=L - Pa",
-                        "1/L ∫{0->L} P_l dl - Pa",
-                        "P_l=0 - Pa",
-                        "ψ - 1",
-                        "T - K",
-                    )
-                elif gunType == RECOILESS:
-                    headers = (
-                        "",
-                        "T - s",
-                        "L - m",
-                        "V - m/s",
-                        "V_l=0 - m/s",
-                        "P_l=L - Pa",
-                        "1/L ∫{0->L} P_l dl - Pa",
-                        "P_v=0 - Pa",
-                        "P_l=0 - Pa",
-                        "ψ - 1",
-                        "η - 1",
-                        "T - K",
-                    )
-
-                csvWriter.writerow(headers)
+                csvWriter.writerow(columnList)
 
                 for line in self.tableData:
-                    tag, t, l, psi, v, P, T, eta = line
-
-                    if gunType == CONVENTIONAL:
-                        Pb, Pt = gun.toPsPb(l, P)
-                        csvWriter.writerow((tag, t, l, v, Pb, P, Pt, psi, T))
-                    elif gunType == RECOILESS:
-                        Ps, P0, Px, vx = gun.toPsP0PxVx(l, v, P, T, eta)
-                        csvWriter.writerow(
-                            (tag, t, l, v, vx, Ps, P, P0, Px, psi, eta, T)
-                        )
+                    csvWriter.writerow(line)
 
             messagebox.showinfo(
                 self.getLocStr("sucTitle"),
@@ -1839,14 +1803,12 @@ class IB(Frame):
                     vs,
                     "tab:blue",
                     label=self.getLocStr("figShotVel"),
-                    alpha=1,
                 )
             self.axv.axhline(
                 vTgt,
                 c="tab:blue",
                 linestyle=":",
-                label=self.getLocStr("vTgtLabel"),
-                alpha=1,
+                label=self.getLocStr("figTgtV"),
             )
 
             if self.plotBreechNozzleP.get():
@@ -1859,8 +1821,6 @@ class IB(Frame):
                     else self.getLocStr("figNozzleP")
                     if gunType == RECOILESS
                     else "",
-                    linestyle="dashed",
-                    alpha=0.75,
                 )
 
             if gunType == RECOILESS:
@@ -1870,65 +1830,39 @@ class IB(Frame):
                         P0s,
                         "seagreen",
                         label=self.getLocStr("figStagnation"),
-                        linestyle="dashed",
-                        alpha=0.75,
                     )
 
                 if self.plotNozzleV.get():
                     self.axv.plot(
-                        xs,
-                        vxs,
-                        "royalblue",
-                        label=self.getLocStr("figNozzleV"),
-                        alpha=0.75,
-                        linestyle="dashed",
+                        xs, vxs, "royalblue", label=self.getLocStr("figNozzleV")
                     )
 
                 if self.plotEta.get():
                     self.ax.plot(
-                        xs,
-                        etas,
-                        "crimson",
-                        label=self.getLocStr("figOutflow"),
-                        alpha=0.75,
-                        linestyle="dashed",
+                        xs, etas, "crimson", label=self.getLocStr("figOutflow")
                     )
 
             if self.plotAvgP.get():
                 self.axP.plot(
-                    xs,
-                    Pas,
-                    "tab:green",
-                    label=self.getLocStr("figAvgP"),
-                    alpha=1,
+                    xs, Pas, "tab:green", label=self.getLocStr("figAvgP")
                 )
 
             if self.plotBaseP.get():
                 self.axP.plot(
-                    xs,
-                    Pss,
-                    "yellowgreen",
-                    label=self.getLocStr("figShotBase"),
-                    linestyle="dashed",
-                    alpha=0.75,
+                    xs, Pss, "yellowgreen", label=self.getLocStr("figShotBase")
                 )
 
             Pd = float(self.pTgt.get())
             self.axP.axhline(
                 Pd,
                 c="tab:green",
-                alpha=1,
                 linestyle=":",
                 label=self.getLocStr("figTgtP"),
             )
 
             if self.plotBurnup.get():
                 self.ax.plot(
-                    xs,
-                    psis,
-                    c="tab:red",
-                    label=self.getLocStr("figPsi"),
-                    alpha=1,
+                    xs, psis, c="tab:red", label=self.getLocStr("figPsi")
                 )
 
             if self.plotRecoil.get():
@@ -2119,6 +2053,8 @@ class IB(Frame):
         return True
 
     def updateGeomPlot(self):
+        if self.process is not None:
+            return
         with mpl.rc_context(GEOM_CONTEXT):
             N = 10
             prop = self.prop
@@ -2417,6 +2353,12 @@ class IB(Frame):
             self.updateGeomPlot()
             self.updateFigPlot()
 
+        except AttributeError:
+            pass
+
+        try:
+            self.tv.tag_configure("oddrow", background=bgc)
+            self.tv.tag_configure("evenrow", background=ebgc)
         except AttributeError:
             pass
 

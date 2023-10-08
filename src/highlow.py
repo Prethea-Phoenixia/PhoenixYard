@@ -252,7 +252,6 @@ class Highlow:
         if pr < self.cfpr:
             # FLOW IS CRITICAL
             deta = self.C_A * self.S_j_bar * p_1_bar  # deta / dt_bar
-
         else:
             # FLOW IS SUB CRITICAL
             gamma = self.theta + 1
@@ -362,7 +361,6 @@ class Highlow:
         if pr < self.cfpr:
             # FLOW IS CRITICAL
             deta = self.C_A * self.S_j_bar * p_1_bar * dt_bar  # deta / dZ
-
         else:
             # FLOW IS SUB CRITICAL
             gamma = self.theta + 1
@@ -372,7 +370,6 @@ class Highlow:
                 * self.S_j_bar
                 * p_1_bar
             ) * dt_bar
-
         deta /= tau_1**0.5
 
         # CHANGE IN HIGH PRESSURE CHAMBER
@@ -437,7 +434,6 @@ class Highlow:
                 * p_1_bar
             ) * dt_bar
             # print("{:.3f}, subcrit, {:.3f}".format(pr, deta))
-
         deta /= tau_1**0.5
 
         dtau_1 = ((1 - tau_1) * (dpsi) - self.theta * tau_1 * (deta)) / (
