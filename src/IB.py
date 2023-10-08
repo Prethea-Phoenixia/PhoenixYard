@@ -74,6 +74,12 @@ CONVENTIONAL = "CONVENTIONAL"
 HIGHLOW = "HIGHLOW"
 
 TYPES = {CONVENTIONAL: CONVENTIONAL, RECOILESS: RECOILESS}
+
+CARTRIDGE = "CARTRIDGE"
+TELESCOPED = "TELESCOPED"
+
+AMMUNITIONS = {CARTRIDGE: CARTRIDGE, TELESCOPED: TELESCOPED}
+
 SOLUTIONS = {
     SOL_LAGRANGE: SOL_LAGRANGE,
     SOL_PIDDUCK: SOL_PIDDUCK,
@@ -1032,7 +1038,7 @@ class IB(Frame):
         atmosphere = self.inAtmos.get() == 1
 
         gunType = self.typeOptn.getObj()
-
+        telescoped = self.ammoOptn.getObj() == TELESCOPED
         self.kwargs = {
             "opt": optimize,
             "con": constrain,
@@ -1040,6 +1046,7 @@ class IB(Frame):
             "typ": gunType,
             "dom": self.dropDomain.getObj(),
             "sol": self.dropSoln.getObj(),
+            "inset": 0,
         }
 
         if atmosphere:
@@ -1071,20 +1078,46 @@ class IB(Frame):
                     * 100
                 )
 
+            chambrage = float(self.clr.get())
+            chargeMass = float(self.chgkg.get())
+            caliber = float(self.calmm.get()) * 1e-3
+            maxInset = float(self.insetmm.get()) * 1e-3
+            gunLength = float(self.tblmm.get()) * 1e-3
+            loadFraction = float(self.ldf.get()) * 1e-2
+
+            if telescoped:  # converting to equivalent cartridged gun.
+                boreS = pi * 0.25 * caliber**2
+                breechS = chambrage * boreS
+
+                exactlyTelescopedV = breechS * maxInset
+
+                if chamberVolume > exactlyTelescopedV:
+                    inset = maxInset
+                else:
+                    inset = chamberVolume / breechS
+                    # chamberVolume *= (chambrage - 1) / chambrage
+
+                # gunLength += inset
+                insetV = inset * boreS
+                chamberVolume -= insetV
+                loadFraction *= 1 + insetV / chamberVolume
+
+                self.kwargs.update({"inset": inset})
+
             self.kwargs.update(
                 {
-                    "caliber": float(self.calmm.get()) * 1e-3,
+                    "caliber": caliber,
                     "shotMass": float(self.shtkg.get()),
                     "propellant": self.prop,
                     "grainSize": float(self.arcmm.get()) * 1e-3,
-                    "chargeMass": float(self.chgkg.get()),
+                    "chargeMass": chargeMass,
                     "chargeMassRatio": (
                         float(self.chgkg.get()) / float(self.shtkg.get())
                     ),
                     "chamberVolume": chamberVolume,
                     "startPressure": float(self.stpMPa.get()) * 1e6,
-                    "lengthGun": float(self.tblmm.get()) * 1e-3,
-                    "chambrage": float(self.clr.get()),  # chamber expansion
+                    "lengthGun": gunLength,
+                    "chambrage": chambrage,  # chamber expansion
                     "nozzleExpansion": float(
                         self.nozzExp.get()
                     ),  # nozzle expansion
@@ -1098,7 +1131,7 @@ class IB(Frame):
                     "tol": 10 ** -int(self.accExp.get()),
                     "minWeb": 1e-6 * float(self.minWeb.get()),
                     "maxLength": float(self.lgmax.get()),
-                    "loadFraction": 1e-2 * float(self.ldf.get()),
+                    "loadFraction": loadFraction,
                     "step": int(self.step.get()),
                 }
             )
@@ -1152,15 +1185,30 @@ class IB(Frame):
             return
 
         self.process = None
-
-        constrain = self.kwargs["con"]
-        optimize = self.kwargs["opt"]
-        gunType = self.kwargs["typ"]
-
-        # self.pos = -1
         kwargs = self.kwargs
+
+        constrain = kwargs["con"]
+        optimize = kwargs["opt"]
+        gunType = kwargs["typ"]
+        inset = kwargs["inset"]
+        caliber = kwargs["caliber"]
+        chambrage = kwargs["chambrage"]
+        trueLF = kwargs["loadFraction"]
+
+        boreS = pi * 0.25 * caliber**2
+        breechS = boreS * chambrage
+        insetV = boreS * inset
+
         sigfig = int(-log10(kwargs["tol"])) + 1
         gun = self.gun
+        # kwargs["lengthGun"] -= inset
+
+        kwargs["loadFraction"] /= (
+            1 + insetV / kwargs["chamberVolume"]
+        )  # convert the "true load fraction" to "apparent"
+        kwargs[
+            "chamberVolume"
+        ] += insetV  # convert the "real volume" returned to "apparent volume"
 
         if gun is not None:
             if constrain:
@@ -1178,11 +1226,11 @@ class IB(Frame):
                     else:
                         self.ldf.set(
                             roundSig(kwargs["loadFraction"] * 100, n=sigfig)
-                        )
+                        )  # corrected "bulk" load fraction
 
             self.ld.set(
-                toSI(kwargs["loadFraction"] * self.prop.rho_p, useSN=True)
-            )
+                toSI(trueLF * self.prop.rho_p, useSN=True)
+            )  # true load density
 
             _, _, _, _, vg, *_ = self.readTable(POINT_EXIT)
 
@@ -1191,19 +1239,20 @@ class IB(Frame):
             self.te.set(round(eta_t * 100, 1))
             self.be.set(round(eta_b * 100, 1))
 
+            self.va.set(toSI(gun.v_j, unit="m/s"))
+
+            cartridge_len = (
+                kwargs["chamberVolume"] / breechS
+            )  # is equivalent to chamber length
+
             self.lx.set(
-                toSI(kwargs["lengthGun"] / kwargs["caliber"]),
+                toSI(kwargs["lengthGun"] / caliber),
                 toSI(
-                    (kwargs["lengthGun"] + gun.l_0 / kwargs["chambrage"])
+                    (kwargs["lengthGun"] + cartridge_len / kwargs["chambrage"])
                     / kwargs["caliber"]
                 ),
             )
-            self.va.set(toSI(gun.v_j, unit="m/s"))
 
-            caliber = kwargs["caliber"]
-            cartridge_len = kwargs["chamberVolume"] / (
-                pi * (0.5 * caliber) ** 2 * kwargs["chambrage"]
-            )
             self.ammo.set(
                 "{:.3g} x {:.4g} mm".format(caliber * 1e3, cartridge_len * 1e3)
             )
@@ -1260,6 +1309,7 @@ class IB(Frame):
         validationNN = self.register(validateNN)
 
         i = 0
+
         self.typeOptn = LocDropdown(
             parent=parFrm,
             strObjDict=TYPES,
@@ -1270,8 +1320,8 @@ class IB(Frame):
         self.typeOptn.grid(
             row=i, column=0, sticky="nsew", padx=2, pady=2, columnspan=3
         )
-
         i += 1
+
         self.calmm = Loc3Input(
             parent=parFrm,
             row=i,
@@ -1305,6 +1355,31 @@ class IB(Frame):
             allInputs=self.locs,
         )
         i += 1
+
+        self.ammoOptn = LocDropdown(
+            parent=parFrm,
+            strObjDict=AMMUNITIONS,
+            locFunc=self.getLocStr,
+            dropdowns=self.locs,
+        )
+
+        self.ammoOptn.grid(
+            row=i, column=0, sticky="nsew", padx=2, pady=2, columnspan=3
+        )
+        i += 1
+
+        self.insetmm = Loc3Input(
+            parent=parFrm,
+            row=i,
+            labelLocKey="insetLabel",
+            unitText="mm",
+            default="100.0",
+            validation=validationNN,
+            locFunc=self.getLocStr,
+            allInputs=self.locs,
+        )
+        i += 1
+
         self.chgkg = Loc3Input(
             parent=parFrm,
             row=i,
@@ -1316,9 +1391,8 @@ class IB(Frame):
             locFunc=self.getLocStr,
             allInputs=self.locs,
         )
-
-        # allow propellant specification to grow
         i += 1
+
         propFrm = LocLabelFrame(
             parFrm,
             locKey="propFrmLabel",
