@@ -2555,7 +2555,7 @@ if __name__ == "__main__":
     root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
 
     root.option_add("*tearOff", False)
-    root.title("PIBS v0.4.6")
+    root.title("PIBS v0.4.7")
     menubar = Menu(root)
     root.config(menu=menubar)
     """
