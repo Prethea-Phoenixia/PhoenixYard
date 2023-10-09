@@ -509,8 +509,8 @@ ENGLISH = {
     "pamaxLabel": "Maximum Average Pressure",
     "pbmaxLabel": "Maximum Breech Pressure",
     "psmaxLabel": "Maximum Shot Pressure",
-    "CARTRIDGE": "Conventional",
-    "TELESCOPED": "Telescoped",
+    "CARTRIDGE": "Conventional Cartridge",
+    "TELESCOPED": "Telescoped Cartridge",
     "insetLabel": "Maximum Inset",
 }
 CHINESE = {
@@ -879,7 +879,7 @@ CHINESE = {
     "pamaxLabel": "最大平均压强",
     "pbmaxLabel": "最大膛底压强",
     "psmaxLabel": "最大弹底压强",
-    "CARTRIDGE": "非埋头弹药",
+    "CARTRIDGE": "常规弹药",
     "TELESCOPED": "（半）埋头弹药",
     "insetLabel": "最大弹头缩进量",
 }

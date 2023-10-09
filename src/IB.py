@@ -249,6 +249,7 @@ class IB(Frame):
         self.ambCallback()
         self.cvlfCallback()
         self.typeCallback()
+        self.insetCallback()
         self.ctrlCallback()
 
         self.updateTable()
@@ -500,6 +501,10 @@ class IB(Frame):
 
         self.ldf.disable() if useCv else self.ldf.enable()
         self.cvL.enable() if useCv else self.cvL.disable()
+
+    def insetCallback(self, *args):
+        isCartridge = self.ammoOptn.getObj() == CARTRIDGE
+        self.insetmm.remove() if isCartridge else self.insetmm.restore()
 
     def changeLang(self):
         self.menubar.entryconfig(0, label=self.getLocStr("fileLabel"))
@@ -1046,7 +1051,6 @@ class IB(Frame):
             "typ": gunType,
             "dom": self.dropDomain.getObj(),
             "sol": self.dropSoln.getObj(),
-            "inset": 0,
         }
 
         if atmosphere:
@@ -1081,11 +1085,12 @@ class IB(Frame):
             chambrage = float(self.clr.get())
             chargeMass = float(self.chgkg.get())
             caliber = float(self.calmm.get()) * 1e-3
-            maxInset = float(self.insetmm.get()) * 1e-3
+
             gunLength = float(self.tblmm.get()) * 1e-3
             loadFraction = float(self.ldf.get()) * 1e-2
 
             if telescoped:  # converting to equivalent cartridged gun.
+                maxInset = float(self.insetmm.get()) * 1e-3
                 boreS = pi * 0.25 * caliber**2
                 breechS = chambrage * boreS
 
@@ -1101,8 +1106,8 @@ class IB(Frame):
                 insetV = inset * boreS
                 chamberVolume -= insetV
                 loadFraction *= 1 + insetV / chamberVolume
-
-                self.kwargs.update({"inset": inset})
+            else:
+                maxInset = 0
 
             self.kwargs.update(
                 {
@@ -1133,6 +1138,7 @@ class IB(Frame):
                     "maxLength": float(self.lgmax.get()),
                     "loadFraction": loadFraction,
                     "step": int(self.step.get()),
+                    "maxInset": maxInset,
                 }
             )
 
@@ -1190,18 +1196,26 @@ class IB(Frame):
         constrain = kwargs["con"]
         optimize = kwargs["opt"]
         gunType = kwargs["typ"]
-        inset = kwargs["inset"]
+        maxInset = kwargs["maxInset"]
         caliber = kwargs["caliber"]
         chambrage = kwargs["chambrage"]
         trueLF = kwargs["loadFraction"]
 
         boreS = pi * 0.25 * caliber**2
         breechS = boreS * chambrage
-        insetV = boreS * inset
+        # insetV = boreS * inset
+        exactlyTelescopedVreal = (breechS - boreS) * maxInset
 
         sigfig = int(-log10(kwargs["tol"])) + 1
         gun = self.gun
         # kwargs["lengthGun"] -= inset
+
+        if kwargs["chamberVolume"] > exactlyTelescopedVreal:
+            inset = maxInset
+        else:
+            inset = kwargs["chamberVolume"] / (breechS - boreS)
+
+        insetV = boreS * inset
 
         kwargs["loadFraction"] /= (
             1 + insetV / kwargs["chamberVolume"]
@@ -1624,6 +1638,7 @@ class IB(Frame):
         self.arcmm.trace_add("write", self.callback)
 
         self.typeOptn.trace_add("write", self.typeCallback)
+        self.ammoOptn.trace_add("write", self.insetCallback)
 
     def addGeomPlot(self):
         geomPlotFrm = self.geomPlotFrm

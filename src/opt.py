@@ -368,24 +368,24 @@ class Constrained:
             return l_bar > l_bar_d
 
         try:
-            tr = []
+            vtzl_record = []
             (v_bar_g, (t_bar_g, Z_g, l_bar_g), (_, _, _)) = RKF78(
                 dFunc=_ode_v,
-                # iniVal=(t_bar_i, Z_i, l_bar_i),
                 iniVal=(0, Z_0, 0),
-                # x_0=v_bar_i,
                 x_0=0,
                 x_1=v_bar_d,
                 relTol=tol,
                 absTol=tol**2,
                 abortFunc=abort,
-                record=tr,
+                record=vtzl_record,
             )
 
         except ValueError:
+            vmax = vtzl_record[-1][0] * v_j
+            lmax = vtzl_record[-1][-1][-1] * l_0
             raise ValueError(
-                "Velocity plateaued below specification at {:} m/s.".format(
-                    tr[-1][0] * v_j
+                "Velocity plateaued below specification at {:.4g} m/s and {:.4g} m.".format(
+                    vmax, lmax
                 )
             )
         if l_bar_g > l_bar_d:

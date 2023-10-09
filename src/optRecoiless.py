@@ -430,17 +430,15 @@ class ConstrainedRecoiless:
             t_bar, Z, l_bar, eta, tau = ys
             return l_bar > l_bar_d
 
-        vtzlet_record = []
         try:
+            vtzlet_record = []
             (
                 v_bar_g,
                 (t_bar_g, Z_g, l_bar_g, eta, tau),
                 _,
             ) = RKF78(
                 dFunc=_ode_v,
-                # iniVal=(t_bar_i, Z_i, l_bar_i, eta_i, tau_i),
                 iniVal=(0, Z_0, 0, 0, 1),
-                # x_0=v_bar_i,
                 x_0=0,
                 x_1=v_bar_d,
                 relTol=tol,
@@ -451,8 +449,11 @@ class ConstrainedRecoiless:
             # todo: something up here
         except ValueError:
             vmax = vtzlet_record[-1][0] * v_j
+            lmax = vtzlet_record[-1][-1][2] * l_0
             raise ValueError(
-                "Velocity asymptotically approaching {:.4g} m/s.".format(vmax)
+                "Velocity asymptotically approaching {:.4g} m/s and {:.4g} m.".format(
+                    vmax, lmax
+                )
                 + " This indicates an excessive velocity target."
             )
 
