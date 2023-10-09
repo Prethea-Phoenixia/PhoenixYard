@@ -1982,7 +1982,7 @@ class IB(Frame):
                 ),
                 (
                     (0.2 * xs[-1] + 0.8 * xPeak, xs[-1]),
-                    (0, xPeak),
+                    (0, xs[-1]),
                     (xPeak, 0.2 * xs[-1] + 0.8 * xPeak),
                     (0, xPeak),
                 ),
@@ -2254,7 +2254,7 @@ class IB(Frame):
             )  # let the column heading = column name
             self.tv.column(
                 column,
-                stretch=True,  # will adjust to window resizing
+                stretch="YES",  # will adjust to window resizing
                 width=fontWidth * 14,
                 minwidth=fontWidth * 14,
                 anchor="e",
