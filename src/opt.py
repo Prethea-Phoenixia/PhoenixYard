@@ -1,4 +1,4 @@
-from num import gss, RKF78, cubic, secant
+from num import gss, RKF78, secant
 from prop import Propellant
 from random import uniform
 from math import pi, log
@@ -317,6 +317,21 @@ class Constrained:
             y_abs_tol=p_bar_d * tol,
             x_min=0.5 * probeWeb,  # <=0
         )  # this is the e_1 that satisifies the pressure specification.
+        """
+        e_1 = (
+            sum(
+                bisect(
+                    lambda web: _f_p_e_1(web)[0],
+                    probeWeb,  # >0
+                    0.5 * probeWeb,  # ?0
+                    # x_tol=0.75 * probeWeb * tol,
+                    y_abs_tol=p_bar_d * tol,
+                    # x_min=0.5 * probeWeb,  # <=0
+                )
+            )
+            * 0.5
+        )  # this is the e_1 that satisifies the pressure specification.
+        """
 
         (p_bar_dev, Z_i, t_bar_i, l_bar_i, v_bar_i) = _f_p_e_1(e_1)
 
