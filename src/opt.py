@@ -193,6 +193,17 @@ class Constrained:
         p_bar_d = p_d / (f * Delta)  # convert to unitless
         l_bar_d = maxLength / l_0
 
+        def abort_Z(x, ys, o_x, o_ys):
+            Z = x
+            t_bar, l_bar, v_bar = ys
+            p_bar = _f_p_bar(Z, l_bar, v_bar)
+
+            oZ = o_x
+            ot_bar, ol_bar, ov_bar = o_ys
+            op_bar = _f_p_bar(oZ, ol_bar, ov_bar)
+
+            return (p_bar < op_bar) or (p_bar > 2 * p_bar_d)
+
         def _f_p_e_1(e_1, tol=KAPPA * tol):
             """
             calculate either the peak pressure, given the arc thickness,
@@ -206,7 +217,7 @@ class Constrained:
                 * (f * Delta) ** (2 * (1 - n))
             )
 
-            def _ode_Z(Z, t_bar, l_bar, v_bar):
+            def _ode_Z(Z, t_bar, l_bar, v_bar, _):
                 """burnup domain ode of internal ballistics"""
                 psi = f_psi_Z(Z)
                 l_psi_bar = (
@@ -238,20 +249,7 @@ class Constrained:
 
                 return [dt_bar, dl_bar, dv_bar]
 
-            def abort(x, ys, o_x, o_ys):
-                Z = x
-                t_bar, l_bar, v_bar = ys
-
-                p_bar = _f_p_bar(Z, l_bar, v_bar)
-
-                oZ = o_x
-                ot_bar, ol_bar, ov_bar = o_ys
-
-                op_bar = _f_p_bar(oZ, ol_bar, ov_bar)
-
-                return (p_bar < op_bar) or (p_bar > 2 * p_bar_d)
-
-            record = []
+            record = [[Z_0, [0, 0, 0]]]
 
             Z_j, (t_bar_j, l_bar_j, v_bar_j), e = RKF78(
                 dFunc=_ode_Z,
@@ -260,25 +258,32 @@ class Constrained:
                 x_1=Z_b,
                 relTol=tol,
                 absTol=tol**2,
-                abortFunc=abort,
+                abortFunc=abort_Z,
                 record=record,
             )
 
             if len(record) > 1:
-                Z_i, (t_bar_i, l_bar_i, v_bar_i) = record[-2]
+                Z_i = record[-2][0]
             else:
-                Z_i, (t_bar_i, l_bar_i, v_bar_i) = Z_0, (0, 0, 0)
+                Z_i = Z_0
 
             def _f_p_Z(Z):
+                i = record.index([v for v in record if v[0] <= Z][-1])
+                x = record[i][0]
+                ys = record[i][1]
+
+                r = []
                 _, (t_bar, l_bar, v_bar), _ = RKF78(
                     dFunc=_ode_Z,
-                    iniVal=(t_bar_i, l_bar_i, v_bar_i),
-                    x_0=Z_i,
+                    iniVal=ys,
+                    x_0=x,
                     x_1=Z,
                     relTol=KAPPA * tol,
                     absTol=KAPPA * tol**2,
+                    record=r,
                 )
 
+                record.extend(v for v in r if v[0] > record[-1][0])
                 return _f_p_bar(Z, l_bar, v_bar)
 
             """
@@ -289,7 +294,7 @@ class Constrained:
 
             Z_1, Z_2 = gss(_f_p_Z, Z_i, Z_j, y_rel_tol=tol, findMin=False)
             Z_p = 0.5 * (Z_1 + Z_2)
-            return _f_p_Z(Z_p) - p_bar_d, Z_j, v_bar_i, l_bar_i, t_bar_i
+            return _f_p_Z(Z_p) - p_bar_d, record[-1][0], *record[-1][-1]
 
         dp_bar_probe = _f_p_e_1(minWeb)[0]
         probeWeb = minWeb
@@ -313,7 +318,7 @@ class Constrained:
             x_min=0.5 * probeWeb,  # <=0
         )  # this is the e_1 that satisifies the pressure specification.
 
-        p_bar_dev, Z_i, v_bar_i, l_bar_i, t_bar_i = _f_p_e_1(e_1)
+        (p_bar_dev, Z_i, t_bar_i, l_bar_i, v_bar_i) = _f_p_e_1(e_1)
 
         if abs(p_bar_dev) > tol * p_bar_d:
             raise ValueError("Design pressure is not met")
@@ -334,7 +339,7 @@ class Constrained:
             * (f * Delta) ** (2 * (1 - n))
         )
 
-        def _ode_v(v_bar, t_bar, Z, l_bar):
+        def _ode_v(v_bar, t_bar, Z, l_bar, _):
             psi = f_psi_Z(Z)
 
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
@@ -363,20 +368,20 @@ class Constrained:
 
             return [dt_bar, dZ, dl_bar]
 
-        def abort(x, ys, o_x, o_ys):
+        def abort_v(x, ys, o_x, o_ys):
             t_bar, Z, l_bar = ys
             return l_bar > l_bar_d
 
         try:
-            vtzl_record = []
-            (v_bar_g, (t_bar_g, Z_g, l_bar_g), (_, _, _)) = RKF78(
+            vtzl_record = [[v_bar_i, (t_bar_i, Z_i, l_bar_i)]]
+            (v_bar_g, (t_bar_g, Z_g, l_bar_g), _) = RKF78(
                 dFunc=_ode_v,
-                iniVal=(0, Z_0, 0),
-                x_0=0,
+                iniVal=(t_bar_i, Z_i, l_bar_i),
+                x_0=v_bar_i,
                 x_1=v_bar_d,
                 relTol=tol,
                 absTol=tol**2,
-                abortFunc=abort,
+                abortFunc=abort_v,
                 record=vtzl_record,
             )
 

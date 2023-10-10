@@ -1,6 +1,5 @@
 import math
-
-from itertools import starmap
+import inspect
 
 
 def sign(x):
@@ -229,12 +228,11 @@ def RKF78(
     use Runge Kutta Fehlberg of 7(8)th power to solve system of Equation dFunc
 
     Arguments:
-        dFunc   : d/dx|x=x(y1, y2, y3....) = dFunc(x, y1, y2, y3...)
+        dFunc   : d/dx|x=x(y1, y2, y3....) = dFunc(x, y1, y2, y3..., dx)
         iniVal  : initial values for (y1, y2, y3...)
         x_0, x_1: integration limits
         relTol  : relative tolerance, per component
         absTol  : absolute tolerance, per component
-
 
         abortFunc
                 : optional, accepts following arguments:
@@ -251,7 +249,6 @@ def RKF78(
 
         minTol  : optional, minimum magnitude of error
         record  : optional, if supplied will record all committed steps
-
 
 
     Returns:
@@ -278,15 +275,34 @@ def RKF78(
 
     if adaptTo is True:
         adaptTo = [True] * len(iniVal)
-    elif isinstance(adaptTo, list) or isinstance(adaptTo, tuple):
-        if len(adaptTo) != len(iniVal):
-            raise ValueError("adaptTo and dFunc length mismatch")
-        if all(not b for b in adaptTo):
-            raise ValueError("At least 1 variable must be specified in adaptTo")
-        else:
-            pass
+
+    sig = inspect.signature(dFunc)
+    params = len(
+        [
+            param
+            for param in sig.parameters.values()
+            if param.kind == param.POSITIONAL_OR_KEYWORD
+        ]
+    )
+    if debug:
+        print(
+            *[
+                param
+                for param in sig.parameters.values()
+                if param.kind == param.POSITIONAL_OR_KEYWORD
+            ],
+            sep=", "
+        )
+
+    if adaptTo is False or ((params - 2) == len(adaptTo) == len(iniVal)):
+        pass
     else:
-        raise ValueError("Unclear variables to adapt stepsize for.")
+        raise ValueError(
+            "Argument number mismatch between dFunc, adapTo and iniVal.\n"
+            + "dFunc(x, y_0...y_i, dx)\n"
+            + "adaptTo = True or (boolean_0....boolean_i)\n"
+            + "iniVal = (y_0.....y_i)"
+        )
 
     allK = [None for _ in range(13)]
 
@@ -301,18 +317,18 @@ def RKF78(
 
         try:
             # fmt: off
-            allK[0] = [*map((h).__mul__, dFunc(x, *y_this))]
+            allK[0] = [*map((h).__mul__, dFunc(x, *y_this, h))]
 
             allK[1] = [
                 *map(
                     (h).__mul__,
                     dFunc(
                         x + a2 * h,
-                        *[y + b21 * k1 for y, k1 in zip(y_this, *allK[:1])]
+                        *[y + b21 * k1 for y, k1 in zip(y_this, *allK[:1])], h
                     )
                 )
             ]
-            
+
             allK[2] = [
                 *map(
                     (h).__mul__,
@@ -321,7 +337,7 @@ def RKF78(
                         *[
                             y + b31 * k1 + b32 * k2
                             for y, k1, k2 in zip(y_this, *allK[:2])
-                        ]
+                        ], h
                     )
                 )
             ]
@@ -334,7 +350,7 @@ def RKF78(
                         *[
                             y + b41 * k1 + b43 * k3
                             for y, k1, k2, k3 in zip(y_this, *allK[:3])
-                        ]
+                        ], h
                     )
                 )
             ]
@@ -347,7 +363,7 @@ def RKF78(
                         *[
                             y + b51 * k1 + b53 * k3 + b54 * k4
                             for y, k1, k2, k3, k4 in zip(y_this, *allK[:4])
-                        ]
+                        ], h
                     )
                 )
             ]
@@ -360,7 +376,7 @@ def RKF78(
                         *[
                             y + b61 * k1 + b64 * k4 + b65 * k5
                             for y, k1, k2, k3, k4, k5 in zip(y_this, *allK[:5])
-                        ]
+                        ], h
                     )
                 )
             ]
@@ -373,7 +389,7 @@ def RKF78(
                         *[
                             y + b71 * k1 + b74 * k4 + b75 * k5 + b76 * k6
                             for y, k1, k2, k3, k4, k5, k6 in zip(y_this, *allK[:6])
-                        ]
+                        ], h
                     )
                 )
             ]
@@ -388,7 +404,7 @@ def RKF78(
                             for y, k1, k2, k3, k4, k5, k6, k7 in zip(
                                 y_this, *allK[:7]
                             )
-                        ]
+                        ], h
                     )
                 )
             ]
@@ -403,7 +419,7 @@ def RKF78(
                             + b97 * k7 + b98 * k8
                             for y, k1, k2, k3, k4, k5, k6, k7, k8 in
                             zip(y_this, *allK[:8])
-                        ]
+                        ], h
                     )
                 )
             ]
@@ -418,7 +434,7 @@ def RKF78(
                             + b107 * k7 + b108 * k8 + b109 * k9
                             for y, k1, k2, k3, k4, k5, k6, k7, k8, k9
                             in zip(y_this, *allK[:9])
-                        ]
+                        ], h
                     )
                 )
             ]
@@ -433,7 +449,7 @@ def RKF78(
                             + b117 * k7 + b118 * k8 + b119 * k9 + b1110 * k10
                             for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10
                             in zip(y_this, *allK[:10])
-                        ]
+                        ], h
                     )
                 )
             ]
@@ -448,7 +464,7 @@ def RKF78(
                             + b129 * k9 + b1210 * k10
                             for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11
                             in zip(y_this, *allK[:11])
-                        ]
+                        ], h
                     )
                 )
             ]
@@ -464,7 +480,7 @@ def RKF78(
                             + b1312 * k12
                             for y, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12
                             in zip(y_this, *allK[:12])
-                        ]
+                        ], h
                     )
                 )
             ]
@@ -494,8 +510,8 @@ def RKF78(
         ) as e:  # complex value has been encountered during calculation
             # or that through unfortuante chance we got a divide by zero
             # or that a step is too large that some operation overflowed
-            if debug:
-                print(e)
+            # if debug:
+            # print(e)
             h *= beta
             continue
 
@@ -566,7 +582,7 @@ def RKF78(
             print("x0", x_0)
             print("x1", x_1)
             print("x", x, "y", *y_this)
-            print("dy/dx", *dFunc(x, *y_this))
+            print("dy/dx", *dFunc(x, *y_this, h))
 
             if record is not None:
                 print(*record, sep="\n")
@@ -955,7 +971,7 @@ def intg(f, l, u, tol=1e-3):
 if __name__ == "__main__":
     print(cubic(1, 1, 2, 3))
 
-    def df1(x, y):
+    def df1(x, y, _):
         return (7 * y**2 * x**3,)
 
     _, v, e = RKF78(df1, (3,), 2, 0, relTol=1e-3, absTol=1e-3, minTol=1e-14)

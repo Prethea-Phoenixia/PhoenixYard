@@ -170,7 +170,7 @@ class Highlow:
             tau_2 * eta / (l_bar + self.V_bar - self.alpha * self.Delta * eta)
         )
 
-    def _ode_t(self, t_bar, Z, l_bar, v_bar, eta, tau_1, tau_2):
+    def _ode_t(self, t_bar, Z, l_bar, v_bar, eta, tau_1, tau_2, _):
         # VALUES FOR HIGH PRESSURE CHAMBER
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
@@ -222,17 +222,14 @@ class Highlow:
 
         # CHANGE IN LOW PRESSURE CHAMBER
 
-        if eta == 0:
-            dtau_2 = 0
-        else:
-            # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
-            dtau_2 = (
-                ((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar
-            ) / eta
+        # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
+        dtau_2 = (
+            ((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar
+        ) / eta
 
         return (dZ, dl_bar, dv_bar, deta, dtau_1, dtau_2)
 
-    def _ode_ts(self, t_bar, Z, eta, tau_1, tau_2):
+    def _ode_ts(self, t_bar, Z, eta, tau_1, tau_2, Delta):
         # VALUES FOR HIGH PRESSURE CHAMBER
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
@@ -271,15 +268,14 @@ class Highlow:
 
         # CHANGE IN LOW PRESSURE CHAMBER
 
-        if eta == 0:
-            dtau_2 = 0
-        else:
-            # dtau_2 = (self.theta * tau_1 * deta) / eta
-            dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
+        eta += deta * Delta
+        # else:
+        # dtau_2 = (self.theta * tau_1 * deta) / eta
+        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
 
         return (dZ, deta, dtau_1, dtau_2)
 
-    def _ode_l(self, l_bar, t_bar, Z, v_bar, eta, tau_1, tau_2):
+    def _ode_l(self, l_bar, t_bar, Z, v_bar, eta, tau_1, tau_2, _):
         # VALUES FOR HIGH PRESSURE CHAMBER
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
@@ -334,18 +330,14 @@ class Highlow:
         )  # dv_bar/dl_bar
 
         # CHANGE IN LOW PRESSURE CHAMBER
-
-        if eta == 0:
-            dtau_2 = 0
-        else:
-            # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
-            dtau_2 = (
-                ((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar
-            ) / eta  # dtau_2/dl_bar
+        # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
+        dtau_2 = (
+            ((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar
+        ) / eta  # dtau_2/dl_bar
 
         return (dt_bar, dZ, dv_bar, deta, dtau_1, dtau_2)
 
-    def _ode_Z(self, Z, t_bar, l_bar, v_bar, eta, tau_1, tau_2):
+    def _ode_Z(self, Z, t_bar, l_bar, v_bar, eta, tau_1, tau_2, _):
         # VALUES FOR HIGH PRESSURE CHAMBER
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
@@ -396,17 +388,14 @@ class Highlow:
 
         # CHANGE IN LOW PRESSURE CHAMBER
 
-        if eta == 0:
-            dtau_2 = 0
-        else:
-            # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
-            dtau_2 = (
-                ((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar
-            ) / eta  # dtau_2/dZ
+        # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
+        dtau_2 = (
+            ((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar
+        ) / eta  # dtau_2/dZ
 
         return (dt_bar, dl_bar, dv_bar, deta, dtau_1, dtau_2)
 
-    def _ode_Zs(self, Z, t_bar, eta, tau_1, tau_2):
+    def _ode_Zs(self, Z, t_bar, eta, tau_1, tau_2, Delta):
         # VALUES FOR HIGH PRESSURE CHAMBER
         # print("in", Z, t_bar, eta, tau_1, tau_2)
         psi = self.f_psi_Z(Z)
@@ -442,13 +431,10 @@ class Highlow:
 
         # CHANGE IN LOW PRESSURE CHAMBER
 
-        if eta == 0:
-            dtau_2 = 0
-        else:
-            # dtau_2 = (self.theta * tau_1 * deta) / eta
-            dtau_2 = (
-                ((1 + self.theta) * tau_1 - tau_2) * deta
-            ) / eta  # dtau_2/dZ
+        eta += deta * Delta
+
+        # dtau_2 = (self.theta * tau_1 * deta) / eta
+        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta  # dtau_2/dZ
 
         return (dt_bar, deta, dtau_1, dtau_2)
 
@@ -487,6 +473,9 @@ class Highlow:
         tScale = self.l_0 / self.v_j
         pScale = self.f * self.Delta
 
+        p_max = 1e9  # 1GPa
+        p_bar_max = p_max / pScale
+
         self.p_0_e_bar = self.p_0_e / pScale
         self.p_0_s_bar = self.p_0_s / pScale
 
@@ -504,6 +493,10 @@ class Highlow:
 
         l_g_bar = self.l_g / self.l_0
         p_bar_0 = self.p_0_e / pScale
+
+        if p_bar_0 > p_bar_max:
+            raise ValueError("Starting Pressure is Unreasonably High.")
+
         Z_b = self.Z_b
         Z_0 = self.Z_0
 
@@ -539,9 +532,9 @@ class Highlow:
             l_bar=0,
             Z=Z_0,
             v_bar=0,
-            eta=tol,
+            eta=0,
             tau_1=1,
-            tau_2=0,
+            tau_2=1,
             t_bar_err=0,
             l_bar_err=0,
             Z_err=0,
@@ -552,36 +545,54 @@ class Highlow:
         )
 
         def abort(x, ys, o_x, o_ys):
-            _, eta, _, tau_2 = ys
+            Z = x
+            t_bar, eta, tau_1, tau_2 = ys
             p_2_bar = self._f_p_2_bar(0, eta, tau_2)
 
             _, o_eta, _, o_tau_2 = o_ys
             o_p_2_bar = self._f_p_2_bar(0, o_eta, o_tau_2)
 
-            return p_2_bar > 2 * self.p_0_s_bar or p_2_bar < o_p_2_bar
+            p_1_bar = self._f_p_1_bar(Z, eta, tau_1)
+
+            return (
+                p_2_bar > 2 * self.p_0_s_bar
+                or p_2_bar < o_p_2_bar
+                or p_1_bar > p_bar_max
+            )
+
+        fr = [[Z_0, [0, 0, 1, 1]]]  # record for the function f
 
         def f(Z):
+            i = fr.index([v for v in fr if v[0] <= Z][-1])
+
+            x = fr[i][0]
+            ys = fr[i][1]
             r = []
             try:
                 t_bar, eta, tau_1, tau_2 = RKF78(
                     self._ode_Zs,
-                    (0, tol, 1, 0),
-                    Z_0,
+                    ys,
+                    x,
                     Z,
                     relTol=tol,
                     absTol=tol**2,
                     minTol=minTol,
                     abortFunc=abort,
                     record=r,
+                    debug=True,
                 )[1]
 
             except ValueError:
                 t_bar, eta, tau_1, tau_2 = r[-1][1]
 
+            fr.extend(v for v in r if v[0] > fr[-1][0])
+
             p_2_bar = self._f_p_2_bar(0, eta, tau_2)
             return p_2_bar
 
         p_bar_m = f(Z_b)
+
+        # print(p_bar_m * pScale)
         if p_bar_m < self.p_0_s_bar:
             raise ValueError(
                 "Maximum pressure developed in low-chamber ({:.6f} MPa) ".format(
@@ -601,7 +612,7 @@ class Highlow:
 
         t_bar_1, eta_1, tau_1_1, tau_2_1 = RKF78(
             self._ode_Zs,
-            (0, tol, 1, 0),
+            (0, 0, 1, 1),
             Z_0,
             Z_1,
             relTol=tol,
@@ -649,8 +660,6 @@ class Highlow:
         burning or right on the burnout point..
         """
         ztlvett_record = [(Z_1, (t_bar_1, 0, 0, eta_1, tau_1_1, tau_2_1))]
-        p_max = 1e9  # 1GPa
-        p_bar_max = p_max / pScale
 
         def abort(x, ys, o_x, o_ys):
             Z, t_bar, l_bar, v_bar, eta, tau_1, tau_2 = x, *ys
@@ -999,7 +1008,7 @@ class Highlow:
                             (Z_err, eta_err, tau_1_err, tau_2_err),
                         ) = RKF78(
                             self._ode_ts,
-                            (Z_0, tol, 1, 0),
+                            (Z_0, 0, 1, 1),
                             0,
                             t_bar_j,
                             relTol=tol,
@@ -1244,7 +1253,7 @@ if __name__ == "__main__":
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(0, 1e-4, dom=DOMAIN_LENG)[0],
+            test.integrate(0, 1e-3, dom=DOMAIN_LENG)[0],
             headers=(
                 "tag",
                 "t",

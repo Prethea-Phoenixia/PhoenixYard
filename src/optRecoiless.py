@@ -215,6 +215,14 @@ class ConstrainedRecoiless:
         p_bar_d = p_d / (f * Delta)  # convert to unitless
         l_bar_d = maxLength / l_0
 
+        def abort_Z(x, ys, o_x, o_ys):
+            Z, t_bar, l_bar, v_bar, eta, tau = x, *ys
+            p_bar = _f_p_bar(Z, l_bar, eta, tau)
+            oZ, ot_bar, ol_bar, ov_bar, oeta, otau = o_x, *o_ys
+            op_bar = _f_p_bar(oZ, ol_bar, oeta, otau)
+
+            return (p_bar < op_bar) or (p_bar > 2 * p_bar_d)
+
         def _f_p_e_1(e_1, tol=KAPPA * tol):
             """
             calculate either the peak pressure, given the arc thickness,
@@ -229,7 +237,7 @@ class ConstrainedRecoiless:
 
             # integrate this to end of burn
 
-            def _ode_Z(Z, t_bar, l_bar, v_bar, eta, tau):
+            def _ode_Z(Z, t_bar, l_bar, v_bar, eta, tau, _):
                 """burnout domain ode of internal ballistics"""
                 psi = f_psi_Z(Z)
                 dpsi = f_sigma_Z(Z)  # dpsi/dZ
@@ -270,15 +278,7 @@ class ConstrainedRecoiless:
 
                 return (dt_bar, dl_bar, dv_bar, deta, dtau)
 
-            def abort(x, ys, o_x, o_ys):
-                Z, t_bar, l_bar, v_bar, eta, tau = x, *ys
-                p_bar = _f_p_bar(Z, l_bar, eta, tau)
-                oZ, ot_bar, ol_bar, ov_bar, oeta, otau = o_x, *o_ys
-                op_bar = _f_p_bar(oZ, ol_bar, oeta, otau)
-
-                return (p_bar < op_bar) or (p_bar > 2 * p_bar_d)
-
-            record = []
+            record = [[Z_0, [0, 0, 0, 0, 1]]]
 
             (
                 Z_j,
@@ -291,28 +291,31 @@ class ConstrainedRecoiless:
                 x_1=Z_b,
                 relTol=tol,
                 absTol=tol**2,
-                abortFunc=abort,
+                abortFunc=abort_Z,
                 record=record,
             )
 
             if len(record) > 1:
-                Z_i, (t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i) = record[-2]
+                Z_i = record[-2][0]
             else:
-                (Z_i, (t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i)) = (
-                    Z_0,
-                    (0, 0, 0, 0, 1),
-                )
+                Z_i = Z_0
 
             def _f_p_Z(Z):
+                i = record.index([v for v in record if v[0] <= Z][-1])
+                x = record[i][0]
+                ys = record[i][1]
+
+                r = []
                 _, (t_bar, l_bar, v_bar, eta, tau), _ = RKF78(
                     dFunc=_ode_Z,
-                    iniVal=(t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i),
-                    x_0=Z_i,
+                    iniVal=ys,
+                    x_0=x,
                     x_1=Z,
                     relTol=KAPPA * tol,
                     absTol=KAPPA * tol**2,
+                    record=r,
                 )
-
+                record.extend(v for v in r if v[0] > record[-1][0])
                 return _f_p_bar(Z, l_bar, eta, tau)
 
             """
@@ -330,15 +333,7 @@ class ConstrainedRecoiless:
 
             Z_p = 0.5 * (Z_1 + Z_2)
 
-            return (
-                _f_p_Z(Z_p) - p_bar_d,
-                Z_i,
-                t_bar_i,
-                l_bar_i,
-                v_bar_i,
-                eta_i,
-                tau_i,
-            )
+            return _f_p_Z(Z_p) - p_bar_d, record[-1][0], *record[-1][-1]
 
         """
         The two initial guesses are good enough for the majority of cases,
@@ -386,7 +381,7 @@ class ConstrainedRecoiless:
             * (f * Delta) ** (2 * (1 - n))
         )
 
-        def _ode_v(v_bar, t_bar, Z, l_bar, eta, tau):
+        def _ode_v(v_bar, t_bar, Z, l_bar, eta, tau, _):
             # p_bar = _f_p_bar(Z, l_bar, v_bar)
             psi = f_psi_Z(Z)
             dpsi = f_sigma_Z(Z)  # dpsi/dZ
@@ -425,25 +420,25 @@ class ConstrainedRecoiless:
 
             return (dt_bar, dZ, dl_bar, deta, dtau)
 
-        def abort(x, ys, o_x, o_ys):
+        def abort_v(x, ys, o_x, o_ys):
             v_bar = x
             t_bar, Z, l_bar, eta, tau = ys
             return l_bar > l_bar_d
 
         try:
-            vtzlet_record = []
+            vtzlet_record = [[v_bar_i, (t_bar_i, Z_i, l_bar_i, eta_i, tau_i)]]
             (
                 v_bar_g,
                 (t_bar_g, Z_g, l_bar_g, eta, tau),
                 _,
             ) = RKF78(
                 dFunc=_ode_v,
-                iniVal=(0, Z_0, 0, 0, 1),
-                x_0=0,
+                iniVal=(t_bar_i, Z_i, l_bar_i, eta_i, tau_i),
+                x_0=v_bar_i,
                 x_1=v_bar_d,
                 relTol=tol,
                 absTol=tol**2,
-                abortFunc=abort,
+                abortFunc=abort_v,
                 record=vtzlet_record,  # debug
             )
             # todo: something up here

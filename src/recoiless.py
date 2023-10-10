@@ -156,7 +156,7 @@ class Recoiless:
 
         return p_bar
 
-    def _ode_t(self, t_bar, Z, l_bar, v_bar, eta, tau):
+    def _ode_t(self, t_bar, Z, l_bar, v_bar, eta, tau, _):
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         p_bar = self._f_p_bar(Z, l_bar, eta, tau, psi)
@@ -190,7 +190,7 @@ class Recoiless:
 
         return (dZ, dl_bar, dv_bar, deta, dtau)
 
-    def _ode_l(self, l_bar, t_bar, Z, v_bar, eta, tau):
+    def _ode_l(self, l_bar, t_bar, Z, v_bar, eta, tau, _):
         """length domain ode of internal ballistics
         the 1/v_bar pose a starting problem that prevent us from using it from
         initial condition.
@@ -234,7 +234,7 @@ class Recoiless:
 
         return (dt_bar, dZ, dv_bar, deta, dtau)
 
-    def _ode_Z(self, Z, t_bar, l_bar, v_bar, eta, tau):
+    def _ode_Z(self, Z, t_bar, l_bar, v_bar, eta, tau, _):
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         p_bar = self._f_p_bar(Z, l_bar, eta, tau, psi)
@@ -452,7 +452,6 @@ class Recoiless:
                     minTol=minTol,
                     abortFunc=abort,
                     record=ztlvet_record_i,
-                    # adaptTo=(True, True, True, True, False),
                 )
 
                 p_bar_j = self._f_p_bar(Z_j, l_bar_j, eta_j, tau_j)

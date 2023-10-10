@@ -176,7 +176,7 @@ class Gun:
 
         return p_bar
 
-    def _ode_t(self, t_bar, Z, l_bar, v_bar):
+    def _ode_t(self, t_bar, Z, l_bar, v_bar, _):
         psi = self.f_psi_Z(Z)
 
         l_psi_bar = (
@@ -206,7 +206,7 @@ class Gun:
 
         return (dZ, dl_bar, dv_bar)
 
-    def _ode_l(self, l_bar, t_bar, Z, v_bar):
+    def _ode_l(self, l_bar, t_bar, Z, v_bar, _):
         """length domain ode of internal ballistics
         the 1/v_bar pose a starting problem that prevent us from using it from
         initial condition."""
@@ -240,7 +240,7 @@ class Gun:
 
         return (dt_bar, dZ, dv_bar)
 
-    def _ode_Z(self, Z, t_bar, l_bar, v_bar):
+    def _ode_Z(self, Z, t_bar, l_bar, v_bar, _):
         psi = self.f_psi_Z(Z)
 
         l_psi_bar = (
