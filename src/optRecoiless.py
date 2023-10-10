@@ -3,8 +3,7 @@ from prop import Propellant
 from random import uniform
 from math import pi
 from recoiless import Recoiless
-
-KAPPA = 1
+from opt import KAPPA, N
 
 
 class ConstrainedRecoiless:
@@ -508,7 +507,7 @@ class ConstrainedRecoiless:
             return e_1, (l_g + l_0), l_g
 
         records = []
-        N = 33
+
         for i in range(N):
             startProbe = uniform(tol, 1 - tol)
             try:

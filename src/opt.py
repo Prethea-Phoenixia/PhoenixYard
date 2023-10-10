@@ -1,4 +1,4 @@
-from num import gss, RKF78, secant
+from num import gss, RKF78, cubic, secant
 from prop import Propellant
 from random import uniform
 from math import pi, log
@@ -13,6 +13,7 @@ inner method be called as compared to the outter. A small value
 is necessary to prevent numerical instability form causing sporadic
 appearance of outlier, at the cost of increased computation times.
 """
+N = 10
 
 
 class Constrained:
@@ -510,7 +511,7 @@ class Constrained:
             return e_1, (l_g + l_0), l_g
 
         records = []
-        N = 33
+
         for i in range(N):
             startProbe = uniform(tol, 1 - tol)
             try:
