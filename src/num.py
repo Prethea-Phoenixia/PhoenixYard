@@ -684,8 +684,12 @@ def secant(
     y_rel_tol=0,
     y_abs_tol=1e-16,
     it=1000,
+    debug=True,
 ):
     """secant method that solves f(x) = y subjected to x in [x_min,x_max]"""
+
+    if debug:
+        print("secant from ({}) to ({})".format(x_0, x_1))
 
     fx_0 = f(x_0) - y
     fx_1 = f(x_1) - y
@@ -706,21 +710,26 @@ def secant(
 
         if fx_2 == fx_1:
             raise ValueError(
-                "Secant search stalled at f({})={}".format(x_2, fx_2)
+                "Numerical plateau found at f({})=f({})={}".format(
+                    x_1, x_2, fx_2
+                )
             )
 
-        if (
-            (abs(x_2 - x_1) < x_tol)
-            or (abs(fx_2) < y_abs_tol)
-            or (abs(fx_2) < (abs(y) * y_rel_tol))
+        if any(
+            (
+                abs(x_2 - x_1) < x_tol,
+                abs(fx_2) < y_abs_tol,
+                abs(fx_2) < (abs(y) * y_rel_tol),
+            ),
         ):
             return x_2, fx_2
         else:
             x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, fx_2
 
     raise ValueError(
-        "Maximum iteration exceeded at (f({})={})->(f({})={})".format(
-            x_1, fx_1, x_2, fx_2
+        "Maximum iteration exceeded at it = {}/{}".format(i, it)
+        + ",\n[0] f({})={}->\n[1] f({})={}->\n[2] f({})={}".format(
+            x_0, fx_0, x_1, fx_1, x_2, fx_2
         )
     )
 

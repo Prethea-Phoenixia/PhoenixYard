@@ -463,7 +463,7 @@ class Recoiless:
                     *ztlvet_record[-1][1],
                 )
                 dt_bar, dl_bar, dv_bar, deta, dtau = self._ode_Z(
-                    Z, t_bar, l_bar, v_bar, eta, tau
+                    Z, t_bar, l_bar, v_bar, eta, tau, _
                 )
                 p_bar = self._f_p_bar(Z, l_bar, eta, tau)
 

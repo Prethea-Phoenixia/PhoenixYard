@@ -13,7 +13,7 @@ inner method be called as compared to the outter. A small value
 is necessary to prevent numerical instability form causing sporadic
 appearance of outlier, at the cost of increased computation times.
 """
-N = 10
+N = 100
 
 
 class Constrained:
@@ -296,9 +296,6 @@ class Constrained:
             Z_1, Z_2 = gss(_f_p_Z, Z_i, Z_j, y_rel_tol=tol, findMin=False)
             Z_p = 0.5 * (Z_1 + Z_2)
 
-            if abs(Z_p - Z_b) < tol:
-                Z_p = Z_b
-
             return _f_p_Z(Z_p) - p_bar_d, record[-1][0], *record[-1][-1]
 
         dp_bar_probe = _f_p_e_1(minWeb)[0]
@@ -318,9 +315,10 @@ class Constrained:
             lambda web: _f_p_e_1(web)[0],
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
-            # x_tol=0.75 * probeWeb * tol,
+            x_tol=1e-14,
             y_abs_tol=p_bar_d * tol,
             x_min=0.5 * probeWeb,  # <=0
+            x_max=probeWeb,
         )  # this is the e_1 that satisifies the pressure specification.
 
         (p_bar_dev, Z_i, t_bar_i, l_bar_i, v_bar_i) = _f_p_e_1(e_1)
@@ -455,6 +453,7 @@ class Constrained:
         ambientRho=1.204,
         ambientP=101.325e3,
         ambientGamma=1.4,
+        loadFraction=None,  # if a load fraction value is passed, it is used as a hint
         **_,
     ):
         """
@@ -509,7 +508,11 @@ class Constrained:
         records = []
 
         for i in range(N):
-            startProbe = uniform(tol, 1 - tol)
+            startProbe = (
+                loadFraction
+                if (i == 1 and loadFraction is not None)
+                else uniform(tol, 1 - tol)
+            )
             try:
                 _, lt_i, lg_i = f(startProbe)
                 records.append((startProbe, lt_i))

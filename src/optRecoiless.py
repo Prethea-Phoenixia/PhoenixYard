@@ -292,6 +292,7 @@ class ConstrainedRecoiless:
                 absTol=tol**2,
                 abortFunc=abort_Z,
                 record=record,
+                # debug=True,
             )
 
             if len(record) > 1:
@@ -329,11 +330,7 @@ class ConstrainedRecoiless:
                 y_rel_tol=tol,
                 findMin=False,
             )
-
             Z_p = 0.5 * (Z_1 + Z_2)
-
-            if abs(Z_p - Z_b) < tol:  # heuristic based guessing
-                Z_p = Z_b
 
             return _f_p_Z(Z_p) - p_bar_d, record[-1][0], *record[-1][-1]
 
@@ -353,14 +350,20 @@ class ConstrainedRecoiless:
             lambda web: _f_p_e_1(web)[0],
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
-            # x_tol=0.75 * probeWeb * tol,
+            x_tol=1e-14,
             y_abs_tol=p_bar_d * tol,
             x_min=0.5 * probeWeb,  # <=0
+            x_max=probeWeb,
+            debug=True,
         )  # this is the e_1 that satisifies the pressure specification.
 
         p_bar_dev, Z_i, t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i = _f_p_e_1(e_1)
 
         if abs(Z_i - Z_b) < tol:
+            """
+            fudging the starting Z value for velocity integration to prevent
+            driving integrator to 0 at the transition point.
+            """
             Z_i = Z_b + tol
 
         if abs(p_bar_dev) > tol * p_bar_d:
@@ -473,6 +476,7 @@ class ConstrainedRecoiless:
         ambientRho=1.204,
         ambientP=101.325e3,
         ambientGamma=1.4,
+        loadFraction=None,  # hint
         **_,
     ):
         """
@@ -511,7 +515,11 @@ class ConstrainedRecoiless:
         records = []
 
         for i in range(N):
-            startProbe = uniform(tol, 1 - tol)
+            startProbe = (
+                loadFraction
+                if (i == 1 and loadFraction is not None)
+                else uniform(tol, 1 - tol)
+            )
             try:
                 _, lt_i, lg_i = f(startProbe)
                 records.append((startProbe, lt_i))
