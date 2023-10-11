@@ -5,7 +5,6 @@ from math import pi, log
 from gun import pidduck
 from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
 
-KAPPA = 1
 """
 Machine-accuracy factor, determines that, if a numerical method
 is used within another, then how much more accurate should the
@@ -205,7 +204,7 @@ class Constrained:
 
             return (p_bar < op_bar) or (p_bar > 2 * p_bar_d)
 
-        def _f_p_e_1(e_1, tol=KAPPA * tol):
+        def _f_p_e_1(e_1, tol=tol):
             """
             calculate either the peak pressure, given the arc thickness,
             or until the system develops 2x design pressure.
@@ -279,8 +278,8 @@ class Constrained:
                     iniVal=ys,
                     x_0=x,
                     x_1=Z,
-                    relTol=KAPPA * tol,
-                    absTol=KAPPA * tol**2,
+                    relTol=tol,
+                    absTol=tol**2,
                     record=r,
                 )
 
@@ -316,9 +315,8 @@ class Constrained:
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
             x_tol=1e-14,
+            x_min=0,
             y_abs_tol=p_bar_d * tol,
-            x_min=0.5 * probeWeb,  # <=0
-            x_max=probeWeb,
         )  # this is the e_1 that satisifies the pressure specification.
 
         (p_bar_dev, Z_i, t_bar_i, l_bar_i, v_bar_i) = _f_p_e_1(e_1)
@@ -492,7 +490,7 @@ class Constrained:
             e_1, l_g = solve(
                 loadFraction=lf,
                 chargeMassRatio=chargeMassRatio,
-                tol=KAPPA * tol,
+                tol=tol,
                 minWeb=minWeb,
                 containBurnout=False,
                 maxLength=maxLength,

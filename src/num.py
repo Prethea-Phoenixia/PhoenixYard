@@ -684,15 +684,15 @@ def secant(
     y_rel_tol=0,
     y_abs_tol=1e-16,
     it=1000,
-    debug=True,
+    debug=False,
 ):
     """secant method that solves f(x) = y subjected to x in [x_min,x_max]"""
 
-    if debug:
-        print("secant from ({}) to ({})".format(x_0, x_1))
-
     fx_0 = f(x_0) - y
     fx_1 = f(x_1) - y
+
+    if debug:
+        record = []
 
     if x_0 == x_1 or fx_0 == fx_1:
         errStr = "Impossible to calculate initial slope for secant search."
@@ -700,7 +700,7 @@ def secant(
         raise ValueError(errStr)
 
     for i in range(it):
-        x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
+        x_2 = x_1 - 0.9 * fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
         if x_min is not None and x_2 < x_min:
             x_2 = 0.9 * x_min + 0.1 * x_1
         if x_max is not None and x_2 > x_max:
@@ -708,12 +708,8 @@ def secant(
 
         fx_2 = f(x_2) - y
 
-        if fx_2 == fx_1:
-            raise ValueError(
-                "Numerical plateau found at f({})=f({})={}".format(
-                    x_1, x_2, fx_2
-                )
-            )
+        if debug:
+            record.append((x_2, fx_2 - y))
 
         if any(
             (
@@ -724,10 +720,24 @@ def secant(
         ):
             return x_2, fx_2
         else:
+            if fx_2 == fx_1:
+                raise ValueError(
+                    "Numerical plateau found at f({})=f({})={}".format(
+                        x_1, x_2, fx_2
+                    )
+                )
+
             x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, fx_2
 
+    if debug:
+        print("{:>24}{:>24}".format("X", "FX"))
+        record.sort()
+        for line in record:
+            print("{:>24}{:>24}".format(*line))
+
     raise ValueError(
-        "Maximum iteration exceeded at it = {}/{}".format(i, it)
+        "Secant method called from {} to {}\n".format(x_min, x_max)
+        + "Maximum iteration exceeded at it = {}/{}".format(i, it)
         + ",\n[0] f({})={}->\n[1] f({})={}->\n[2] f({})={}".format(
             x_0, fx_0, x_1, fx_1, x_2, fx_2
         )

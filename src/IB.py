@@ -491,21 +491,6 @@ class IB(Frame):
         except Exception as e:
             messagebox.showinfo(self.getLocStr("excTitle"), str(e))
 
-    def ambCallback(self, *args):
-        self.ambP.enable() if self.inAtmos.get() else self.ambP.disable()
-        self.ambRho.enable() if self.inAtmos.get() else self.ambRho.disable()
-        self.ambGam.enable() if self.inAtmos.get() else self.ambGam.disable()
-
-    def cvlfCallback(self, *args):
-        useCv = self.useCv.getObj()
-
-        self.ldf.disable() if useCv else self.ldf.enable()
-        self.cvL.enable() if useCv else self.cvL.disable()
-
-    def insetCallback(self, *args):
-        isCartridge = self.ammoOptn.getObj() == CARTRIDGE
-        self.insetmm.remove() if isCartridge else self.insetmm.restore()
-
     def changeLang(self):
         self.menubar.entryconfig(0, label=self.getLocStr("fileLabel"))
         self.menubar.entryconfig(1, label=self.getLocStr("themeLabel"))
@@ -2281,6 +2266,9 @@ class IB(Frame):
         Double calling is due to value validation, no workaround has been
         found at this time!
         """
+        if self.process is not None:
+            return
+
         geom = self.dropGeom.getObj()
         compo = self.dropProp.getObj()
 
@@ -2310,6 +2298,9 @@ class IB(Frame):
         self.updateError()
 
     def typeCallback(self, *args):
+        if self.process is not None:
+            return
+
         gunType = self.typeOptn.getObj()
 
         if gunType == CONVENTIONAL:
@@ -2329,6 +2320,9 @@ class IB(Frame):
                 widget.enable()
 
     def ctrlCallback(self, *args):
+        if self.process is not None:
+            return
+
         if self.solve_W_Lg.get() == 0:
             self.opt_lf.disable()
             self.minWeb.disable()
@@ -2339,6 +2333,9 @@ class IB(Frame):
             self.lgmax.enable()
 
     def cvlfConsisCallback(self, *args):
+        if self.process is not None:
+            return
+
         try:
             sigfig = int(self.accExp.get()) + 1
             if self.useCv.getObj():  # use Cv
@@ -2355,6 +2352,30 @@ class IB(Frame):
 
         except (ZeroDivisionError, ValueError):
             return
+
+    def ambCallback(self, *args):
+        if self.process is not None:
+            return
+
+        self.ambP.enable() if self.inAtmos.get() else self.ambP.disable()
+        self.ambRho.enable() if self.inAtmos.get() else self.ambRho.disable()
+        self.ambGam.enable() if self.inAtmos.get() else self.ambGam.disable()
+
+    def cvlfCallback(self, *args):
+        if self.process is not None:
+            return
+
+        useCv = self.useCv.getObj()
+
+        self.ldf.disable() if useCv else self.ldf.enable()
+        self.cvL.enable() if useCv else self.cvL.disable()
+
+    def insetCallback(self, *args):
+        if self.process is not None:
+            return
+
+        isCartridge = self.ammoOptn.getObj() == CARTRIDGE
+        self.insetmm.remove() if isCartridge else self.insetmm.restore()
 
     def useTheme(self):
         style = ttk.Style(self)

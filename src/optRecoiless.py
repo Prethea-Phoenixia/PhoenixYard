@@ -3,7 +3,7 @@ from prop import Propellant
 from random import uniform
 from math import pi
 from recoiless import Recoiless
-from opt import KAPPA, N
+from opt import N
 
 
 class ConstrainedRecoiless:
@@ -222,7 +222,7 @@ class ConstrainedRecoiless:
 
             return (p_bar < op_bar) or (p_bar > 2 * p_bar_d)
 
-        def _f_p_e_1(e_1, tol=KAPPA * tol):
+        def _f_p_e_1(e_1, tol=tol):
             """
             calculate either the peak pressure, given the arc thickness,
             or until the system develops 2x design pressure.
@@ -311,8 +311,8 @@ class ConstrainedRecoiless:
                     iniVal=ys,
                     x_0=x,
                     x_1=Z,
-                    relTol=KAPPA * tol,
-                    absTol=KAPPA * tol**2,
+                    relTol=tol,
+                    absTol=tol**2,
                     record=r,
                 )
                 record.extend(v for v in r if v[0] > record[-1][0])
@@ -352,8 +352,7 @@ class ConstrainedRecoiless:
             0.5 * probeWeb,  # ?0
             x_tol=1e-14,
             y_abs_tol=p_bar_d * tol,
-            x_min=0.5 * probeWeb,  # <=0
-            x_max=probeWeb,
+            x_min=0,
             debug=True,
         )  # this is the e_1 that satisifies the pressure specification.
 
@@ -502,7 +501,7 @@ class ConstrainedRecoiless:
             e_1, l_g = solve(
                 loadFraction=lf,
                 chargeMassRatio=chargeMassRatio,
-                tol=KAPPA * tol,  # this is to ensure unimodality up to ~tol
+                tol=tol,  # this is to ensure unimodality up to ~tol
                 minWeb=minWeb,
                 containBurnout=False,
                 maxLength=maxLength,
