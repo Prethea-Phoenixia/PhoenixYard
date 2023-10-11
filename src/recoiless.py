@@ -617,8 +617,6 @@ class Recoiless:
                 (t_bar, Z, v_bar, eta, tau),
             ) in ltzvet_record
         )
-        # print(*record, sep="\n")
-        # record.sort(key=lambda line: line[0])
 
         updBarData(
             tag=POINT_EXIT,
@@ -1165,4 +1163,3 @@ if __name__ == "__main__":
             ),
         )
     )
-    # print(test.getEff(942))

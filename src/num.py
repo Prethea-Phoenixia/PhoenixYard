@@ -501,8 +501,7 @@ def RKF78(
         ) as e:  # complex value has been encountered during calculation
             # or that through unfortuante chance we got a divide by zero
             # or that a step is too large that some operation overflowed
-            # if debug:
-            # print(e)
+
             h *= beta
             continue
 
@@ -698,7 +697,8 @@ def dekker(
         b_i = a_j = x_0
         fb_i = fa_j = fx_0
 
-    record = []
+    if debug:
+        record = []
 
     y_abs_tol = max(y_abs_tol, abs(y) * y_rel_tol)
 
@@ -719,7 +719,8 @@ def dekker(
 
         fb_k = f(b_k)  # calcualte new value of estimate
 
-        record.append((b_k, fb_k))
+        if debug:
+            record.append((b_k, fb_k))
 
         if any(
             (abs(b_k - b_j) < x_tol, abs(fb_k) < y_abs_tol),
@@ -784,9 +785,6 @@ def bisect(f, x_0, x_1, x_tol=1e-16, y_abs_tol=1e-16, y=0, debug=False):
 
         c = 0.5 * (a + b)
         fc = f(c)
-
-        # print("a", a, "b", b)
-        # print("fa", fa, "fb", fb)
 
         if f(c) * f(a) > 0:
             a = c
@@ -900,19 +898,6 @@ def solveMat(A, B):
                 A[i][j] *= f
             for j in range(0, dim):
                 I[i][j] *= f
-
-    """
-
-    print(
-        *[
-            " ".join("{:^8.4g}".format(v) for v in a)
-            + "|"
-            + " ".join("{:^8.4g}".format(v) for v in i)
-            for a, i in zip(A, I)
-        ],
-        sep="\n"
-    )
-    """
 
     # now the matrix I is converted into A^-1
     Ix = matMul(I, [[b] for b in B])

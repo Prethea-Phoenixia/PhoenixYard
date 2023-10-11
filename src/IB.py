@@ -15,6 +15,7 @@ import traceback
 
 from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
 from gun import (
+    POINT_START,
     POINT_PEAK,
     POINT_BURNOUT,
     POINT_FRACTURE,
@@ -973,7 +974,7 @@ class IB(Frame):
             row=j,
             col=0,
             labelLocKey="stepLabel",
-            default="33",
+            default="100",
             validation=validationNN,
             formatter=formatIntInput,
             reverse=True,
@@ -2091,16 +2092,22 @@ class IB(Frame):
     def updateGeom(self, *args):
         geom = self.dropGeom.getObj()
         if geom == SimpleGeometry.SPHERE:
-            self.grlR.disable()
-            self.grdR.disable()
+            # self.grlR.disable()
+            # self.grdR.disable()
+            self.grlR.remove()
+            self.grdR.remove()
 
         elif geom == SimpleGeometry.CYLINDER:
-            self.grlR.enable()
-            self.grdR.disable()
+            # self.grlR.enable()
+            # self.grdR.disable()
+            self.grlR.restore()
+            self.grdR.remove()
 
         else:
-            self.grlR.enable()
-            self.grdR.enable()
+            # self.grlR.enable()
+            # self.grdR.enable()
+            self.grlR.restore()
+            self.grdR.restore()
 
         if geom == SimpleGeometry.SPHERE:
             self.arcmm.reLocalize("diamLabel", "diaText")
@@ -2224,11 +2231,14 @@ class IB(Frame):
         self.tv.tag_configure(POINT_PEAK_SHOT, foreground="yellow green")
         self.tv.tag_configure(POINT_BURNOUT, foreground="red")
         self.tv.tag_configure(POINT_FRACTURE, foreground="brown")
+        self.tv.tag_configure(POINT_EXIT, foreground="steel blue")
+        self.tv.tag_configure(POINT_START, foreground="steel blue")
+        self.tv.tag_configure("*", foreground="grey")
 
         t_Font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
 
         self.tv.tag_configure("monospace", font=t_Font)
-        self.tv.tag_configure("error", font=t_Font, foreground="grey")
+        self.tv.tag_configure("error", font=t_Font, foreground="dim gray")
 
         # we use a fixed width font so any char will do
         fontWidth, _ = t_Font.measure("m"), t_Font.metrics("linespace")

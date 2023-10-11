@@ -336,9 +336,6 @@ class Constrained:
 
         if v_j * v_bar_i > v_d and containBurnout:
             raise ValueError("Design velocity exceeded before peak pressure")
-
-        # webtime = time.time()
-        # print("determine web used", webtime - start)
         """
         step 2, find the requisite muzzle length to achieve design velocity
         """
@@ -420,7 +417,6 @@ class Constrained:
         cc_n = 1 - (1 - 1 / chi_k) * log(l_bar_g + 1) / l_bar_g
 
         # lengtime = time.time()
-        # print("determine barrel length took", lengtime - webtime)
 
         if abs(cc_n - cc) > tol:
             # successive better approximations will eventually
@@ -622,7 +618,6 @@ if __name__ == "__main__":
         chambrage=1.5,
     )
 
-    # print(test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-4))
     datas = []
     pr = cProfile.Profile()
     pr.enable()
