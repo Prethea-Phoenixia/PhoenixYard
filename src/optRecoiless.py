@@ -332,12 +332,11 @@ class ConstrainedRecoiless:
 
             Z_p = 0.5 * (Z_1 + Z_2)
 
+            if abs(Z_p - Z_b) < tol:  # heuristic based guessing
+                Z_p = Z_b
+
             return _f_p_Z(Z_p) - p_bar_d, record[-1][0], *record[-1][-1]
 
-        """
-        The two initial guesses are good enough for the majority of cases,
-        guess one: 0.1mm, guess two: 1mm
-        """
         dp_bar_probe = _f_p_e_1(minWeb)[0]
         probeWeb = minWeb
 
@@ -360,6 +359,9 @@ class ConstrainedRecoiless:
         )  # this is the e_1 that satisifies the pressure specification.
 
         p_bar_dev, Z_i, t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i = _f_p_e_1(e_1)
+
+        if abs(Z_i - Z_b) < tol:
+            Z_i = Z_b + tol
 
         if abs(p_bar_dev) > tol * p_bar_d:
             raise ValueError("Design pressure is not met")
@@ -595,28 +597,27 @@ if __name__ == "__main__":
 
     compositions = GrainComp.readFile("data/propellants.csv")
     S22 = compositions["ATK PRD(S)22"]
-    S22S = Propellant(S22, SimpleGeometry.SPHERE, 1, 2.5)
+    S22S = Propellant(S22, SimpleGeometry.TUBE, 1, 2.5)
 
     test = ConstrainedRecoiless(
-        caliber=50e-3,
-        shotMass=1,
+        caliber=93e-3,
+        shotMass=4,
         propellant=S22S,
-        startPressure=10e6,
+        startPressure=1e6,
         dragCoefficient=5e-2,
-        designPressure=350e6,
-        designVelocity=800,
+        designPressure=15e6,
+        designVelocity=125,
         nozzleExpansion=2,
         nozzleEfficiency=0.92,
         chambrage=1,
     )
 
-    # print(test.solve(loadFraction=0.3, chargeMassRatio=1, tol=1e-4))
-
+    # print(test.solve(loadFraction=, chargeMassRatio=1.5, tol=1e-4))
     datas = []
     for i in range(5):
         datas.append(
             test.findMinV(
-                chargeMassRatio=1, tol=1e-5, minWeb=1e-6, maxLength=100
+                chargeMassRatio=0.309 / 4, tol=1e-5, minWeb=1e-6, maxLength=100
             )
         )
 
