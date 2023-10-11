@@ -17,6 +17,8 @@ SOL_LAGRANGE = "SOL_LAGRANGE"
 SOL_PIDDUCK = "SOL_PIDDUCK"
 SOL_MAMONTOV = "SOL_MAMONTOV"
 
+minTol = 1e-14  # based on experience
+
 
 def pidduck(wpm, k, tol):
     """
@@ -345,7 +347,6 @@ class Gun:
 
         """
         record = []
-        minTol = 1e-16  # based on experience
 
         if any((step < 0, tol < 0)):
             raise ValueError("Invalid integration specification")

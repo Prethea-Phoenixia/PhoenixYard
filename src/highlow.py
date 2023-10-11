@@ -13,6 +13,8 @@ from gun import (
     POINT_EXIT,
 )
 
+from gun import minTol
+
 
 class Highlow:
     def __init__(
@@ -462,7 +464,6 @@ class Highlow:
         errors.
         """
         record = []
-        minTol = 1e-16  # based on experience
 
         if any((step < 0, tol < 0)):
             raise ValueError("Invalid integration specification")

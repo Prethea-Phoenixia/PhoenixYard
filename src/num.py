@@ -2,15 +2,6 @@ import math
 import inspect
 
 
-def sign(x):
-    if x > 0:
-        return 1
-    elif x == 0:
-        return 0
-    elif x < 0:
-        return -1
-
-
 invphi = (math.sqrt(5) - 1) / 2  # 1 / phi
 invphi2 = (3 - math.sqrt(5)) / 2  # 1 / phi^2
 
@@ -673,13 +664,11 @@ def quadratic(a, b, c):
         return x_1, x_2
 
 
-def secant(
+def dekker(
     f,
     x_0,
     x_1,
     y=0,
-    x_min=None,
-    x_max=None,
     x_tol=1e-16,
     y_rel_tol=0,
     y_abs_tol=1e-16,
@@ -687,51 +676,78 @@ def secant(
     debug=False,
 ):
     """secant method that solves f(x) = y subjected to x in [x_min,x_max]"""
-
     fx_0 = f(x_0) - y
     fx_1 = f(x_1) - y
 
-    if debug:
-        record = []
+    if fx_0 * fx_1 >= 0:
+        raise ValueError(
+            "Dekker method must be initiated by guesses bracketing root:\n"
+            + "f({})={}, f({})={}".format(x_0, fx_0, x_1, fx_1)
+        )
 
-    if x_0 == x_1 or fx_0 == fx_1:
-        errStr = "Impossible to calculate initial slope for secant search."
-        errStr += "\nf({:})={:}\nf({:})={:}".format(x_0, fx_0, x_1, fx_1)
-        raise ValueError(errStr)
+    if abs(fx_0) < abs(fx_1):
+        b_j = x_0  # assign the better of the two initial guesses to b_j
+        fb_j = fx_0
+
+        b_i = a_j = x_1  # and the worse, the last guess of root b_i
+        fb_i = fa_j = fx_1
+    else:
+        b_j = x_1
+        fb_j = fx_1
+
+        b_i = a_j = x_0
+        fb_i = fa_j = fx_0
+
+    record = []
+
+    y_abs_tol = max(y_abs_tol, abs(y) * y_rel_tol)
 
     for i in range(it):
-        x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
-        if x_min is not None and x_2 < x_min:
-            x_2 = 0.9 * x_min + 0.1 * x_1
-        if x_max is not None and x_2 > x_max:
-            x_2 = 0.9 * x_max + 0.1 * x_1
+        m = 0.5 * (a_j + b_j)
+        if fb_i != fb_j:
+            s = b_j - fb_j * (b_j - b_i) / (fb_j - fb_i)  # secant estimate
+        else:
+            s = m
 
-        fx_2 = f(x_2) - y
+        if (
+            min(b_j, m) < s < max(b_j, m)
+        ):  # if secant estimate strictly between current estimate
+            # and bisection estimate
+            b_k = s  # assign the secant estimation to be the next estimate
+        else:
+            b_k = m
 
-        if debug:
-            record.append((x_2, fx_2 - y))
+        fb_k = f(b_k)  # calcualte new value of estimate
+
+        record.append((b_k, fb_k))
 
         if any(
-            (
-                abs(x_2 - x_1) < x_tol,
-                abs(fx_2) < y_abs_tol,
-                abs(fx_2) < (abs(y) * y_rel_tol),
-            ),
+            (abs(b_k - b_j) < x_tol, abs(fb_k) < y_abs_tol),
         ):
-            return x_2, fx_2
-        else:
-            if fx_2 == fx_1:
-                raise ValueError(
-                    "Numerical plateau found at f({})=f({})={}".format(
-                        x_1, x_2, fx_2
-                    )
-                )
+            return b_k, fb_k
 
-            x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, fx_2
+        if (
+            fa_j * fb_k < 0
+        ):  # if the contrapoint is of different sign than current estimate
+            a_k = a_j  # new contrapoint is still the same
+            fa_k = fa_j
+        else:
+            a_k = b_j  # other wise, new contrapoint should use the the current est.
+            fa_k = fb_j
+
+        if abs(fa_k) < abs(fb_k):  # ensure b is still the best guess
+            a_k, b_k = b_k, a_k
+            fa_k, fb_k = fb_k, fa_k
+
+        a_j = a_k
+        fa_j = fa_k
+
+        b_i, b_j = b_j, b_k
+        fb_i, fb_j = fb_j, fb_k
 
     if debug:
         print("{:>24}{:>24}".format("X", "FX"))
-        record.sort()
+
         for line in record:
             if len(line) == 2:
                 print("{:>24}{:>24}".format(*line))
@@ -739,11 +755,9 @@ def secant(
                 print(line)
 
     raise ValueError(
-        "Secant method called from {} to {}\n".format(x_min, x_max)
+        "Secant method called from {} to {}\n".format(x_0, x_1)
         + "Maximum iteration exceeded at it = {}/{}".format(i, it)
-        + ",\n[0] f({})={}->\n[1] f({})={}->\n[2] f({})={}".format(
-            x_0, fx_0, x_1, fx_1, x_2, fx_2
-        )
+        + ",\nf({})={}->\nf({})={}".format(b_i, fb_i, b_j, fb_j)
     )
 
 
@@ -774,7 +788,7 @@ def bisect(f, x_0, x_1, x_tol=1e-16, y_abs_tol=1e-16, y=0, debug=False):
         # print("a", a, "b", b)
         # print("fa", fa, "fb", fb)
 
-        if sign(f(c)) == sign(f(a)):
+        if f(c) * f(a) > 0:
             a = c
             fa = fc
         else:
@@ -1012,3 +1026,8 @@ if __name__ == "__main__":
 
     A = [[2, 1, -1], [-3, -1, 2], [-2, 1, 2]]
     print(solveMat(A, [8, -11, -3]))
+
+    def f(x):
+        return (x - 5) ** 2 - 10
+
+    print(dekker(f, 5, 10, debug=True))

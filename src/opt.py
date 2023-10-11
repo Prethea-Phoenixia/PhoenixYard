@@ -1,4 +1,4 @@
-from num import gss, RKF78, cubic, secant
+from num import gss, RKF78, cubic, dekker
 from prop import Propellant
 from random import uniform
 from math import pi, log
@@ -282,8 +282,9 @@ class Constrained:
                     absTol=tol**2,
                     record=r,
                 )
-
-                record.extend(v for v in r if v[0] > record[-1][0])
+                xs = [v[0] for v in record]
+                record.extend(v for v in r if v[0] not in xs)
+                record.sort()
                 return _f_p_bar(Z, l_bar, v_bar)
 
             """
@@ -313,12 +314,11 @@ class Constrained:
             probeWeb *= 2
             dp_bar_probe = _f_p_e_1(probeWeb)[0]
 
-        e_1, _ = secant(
+        e_1, _ = dekker(
             lambda web: _f_p_e_1(web)[0],
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
             x_tol=1e-14,
-            x_min=0,
             y_abs_tol=p_bar_d * tol,
         )  # this is the e_1 that satisifies the pressure specification.
 

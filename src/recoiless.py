@@ -13,6 +13,8 @@ from gun import (
     POINT_EXIT,
 )
 
+from gun import minTol
+
 
 class Recoiless:
     def __init__(
@@ -295,7 +297,6 @@ class Recoiless:
         usually on the order of 1e-16 - 1e-14 as compared to much larger for component
         errors.
         """
-        minTol = 1e-16  # based on experience
         record = []
         if any((step < 0, tol < 0)):
             raise ValueError("Invalid integration specification")
