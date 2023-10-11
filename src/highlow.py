@@ -1,5 +1,5 @@
-from math import pi, inf
-from num import gss, RKF78, cubic, secant, bisect
+from math import pi
+from num import gss, RKF78, cubic, bisect
 from prop import GrainComp, Propellant
 
 from gun import DOMAIN_TIME, DOMAIN_LENG

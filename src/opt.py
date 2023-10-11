@@ -295,6 +295,9 @@ class Constrained:
             Z_1, Z_2 = gss(_f_p_Z, Z_i, Z_j, y_rel_tol=tol, findMin=False)
             Z_p = 0.5 * (Z_1 + Z_2)
 
+            if abs(Z_p - Z_b) < tol:
+                Z_p = Z_b
+
             return _f_p_Z(Z_p) - p_bar_d, record[-1][0], *record[-1][-1]
 
         dp_bar_probe = _f_p_e_1(minWeb)[0]

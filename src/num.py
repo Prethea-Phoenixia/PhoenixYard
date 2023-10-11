@@ -683,7 +683,7 @@ def secant(
     x_tol=1e-16,
     y_rel_tol=0,
     y_abs_tol=1e-16,
-    it=1000,
+    it=100,
     debug=False,
 ):
     """secant method that solves f(x) = y subjected to x in [x_min,x_max]"""
@@ -700,7 +700,7 @@ def secant(
         raise ValueError(errStr)
 
     for i in range(it):
-        x_2 = x_1 - 0.9 * fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
+        x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
         if x_min is not None and x_2 < x_min:
             x_2 = 0.9 * x_min + 0.1 * x_1
         if x_max is not None and x_2 > x_max:
@@ -733,7 +733,10 @@ def secant(
         print("{:>24}{:>24}".format("X", "FX"))
         record.sort()
         for line in record:
-            print("{:>24}{:>24}".format(*line))
+            if len(line) == 2:
+                print("{:>24}{:>24}".format(*line))
+            else:
+                print(line)
 
     raise ValueError(
         "Secant method called from {} to {}\n".format(x_min, x_max)

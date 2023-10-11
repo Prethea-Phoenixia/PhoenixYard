@@ -332,6 +332,9 @@ class ConstrainedRecoiless:
             )
             Z_p = 0.5 * (Z_1 + Z_2)
 
+            if abs(Z_p - Z_b) < tol:
+                Z_p = Z_b
+
             return _f_p_Z(Z_p) - p_bar_d, record[-1][0], *record[-1][-1]
 
         dp_bar_probe = _f_p_e_1(minWeb)[0]
@@ -541,6 +544,7 @@ class ConstrainedRecoiless:
         while abs(2 * delta_low) > tol:
             try:
                 _, lt_i, lg_i = f(new_low)
+                print("valid_low:", new_low)
                 records.append((new_low, lt_i))
                 probe = new_low
             except ValueError:
@@ -558,6 +562,7 @@ class ConstrainedRecoiless:
         while abs(2 * delta_high) > tol and new_high < 1:
             try:
                 _, lt_i, lg_i = f(new_high)
+                print("valid_high", new_high)
                 records.append((new_high, lt_i))
                 probe = new_high
             except ValueError:
@@ -589,6 +594,8 @@ class ConstrainedRecoiless:
         """
         Step 2, gss to min.
         """
+
+        print(low, high)
         lf_low, lf_high = gss(
             lambda lf: f(lf)[1], low, high, x_tol=tol, findMin=True
         )
