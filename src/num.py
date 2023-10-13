@@ -720,7 +720,7 @@ def dekker(
         fb_k = f(b_k) - y  # calcualte new value of estimate
 
         if debug:
-            record.append((b_k, fb_k))
+            record.append((b_k, fb_k, i))
 
         if any(
             (abs(b_k - b_j) < x_tol, abs(fb_k) < y_abs_tol),
@@ -750,13 +750,13 @@ def dekker(
         print("{:>24}{:>24}".format("X", "FX"))
 
         for line in record:
-            if len(line) == 2:
-                print("{:>24}{:>24}".format(*line))
+            if len(line) == 3:
+                print("{:>24}{:>24} @{:}".format(*line))
             else:
                 print(line)
 
     raise ValueError(
-        "Secant method called from {} to {}\n".format(x_0, x_1)
+        "Dekker method called from {} to {}\n".format(x_0, x_1)
         + "Maximum iteration exceeded at it = {}/{}".format(i, it)
         + ",\nf({})={}->\nf({})={}".format(b_i, fb_i, b_j, fb_j)
     )

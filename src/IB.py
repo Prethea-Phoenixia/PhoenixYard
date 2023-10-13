@@ -1127,7 +1127,7 @@ class IB(Frame):
                     "maxInset": maxInset,
                 }
             )
-
+            # print(self.kwargs) # debug
             self.process = Process(
                 target=calculate,
                 args=(

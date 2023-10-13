@@ -317,6 +317,7 @@ class ConstrainedRecoiless:
                 )
                 xs = [v[0] for v in record]
                 record.extend(v for v in r if v[0] not in xs)
+                record.sort()
                 return _f_p_bar(Z, l_bar, eta, tau)
 
             """
@@ -336,7 +337,12 @@ class ConstrainedRecoiless:
             if abs(Z_p - Z_b) < tol:
                 Z_p = Z_b
 
-            return _f_p_Z(Z_p) - p_bar_d, record[-1][0], *record[-1][-1]
+            return (
+                _f_p_Z(Z_p) - p_bar_d,
+                record[-1][0],
+                *record[-1][-1],
+                record,
+            )  # debug
 
         dp_bar_probe = _f_p_e_1(minWeb)[0]
         probeWeb = minWeb
@@ -356,9 +362,19 @@ class ConstrainedRecoiless:
             0.5 * probeWeb,  # ?0
             # x_tol=1e-14,
             y_abs_tol=p_bar_d * tol,
+            debug=True,
         )  # this is the e_1 that satisifies the pressure specification.
 
-        p_bar_dev, Z_i, t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i = _f_p_e_1(e_1)
+        (
+            p_bar_dev,
+            Z_i,
+            t_bar_i,
+            l_bar_i,
+            v_bar_i,
+            eta_i,
+            tau_i,
+            record,
+        ) = _f_p_e_1(e_1)
 
         if abs(Z_i - Z_b) < tol:
             """
@@ -368,13 +384,6 @@ class ConstrainedRecoiless:
             Z_i = Z_b + tol
 
         if abs(p_bar_dev) > tol * p_bar_d:
-            print(e_1, e_0)
-            print(p_bar_dev)
-            print(p_bar_d * tol)
-
-            # this is usually caused by the dekker method running into numerical
-            # spikes that pierced the 0 line. TODO: find some better way of handling it.
-
             raise ValueError(
                 "Design pressure is not met, delta = {:.3g} Pa".format(
                     p_bar_dev * (f * Delta)
@@ -617,17 +626,19 @@ if __name__ == "__main__":
 
     compositions = GrainComp.readFile("data/propellants.csv")
     S22 = compositions["ATK PRD(S)22"]
+    M8 = compositions["M8"]
     S22S = Propellant(S22, SimpleGeometry.TUBE, 1, 2.5)
-
+    M8S = Propellant(M8, SimpleGeometry.TUBE, 1, 2.5)
+    M87P = Propellant(M8, MultPerfGeometry.SEVEN_PERF_CYLINDER, 1, 2.5)
     test = ConstrainedRecoiless(
         caliber=93e-3,
         shotMass=4,
-        propellant=S22S,
-        startPressure=1e6,
+        propellant=M87P,
+        startPressure=10e6,
         dragCoefficient=5e-2,
         designPressure=15e6,
-        designVelocity=125,
-        nozzleExpansion=2,
+        designVelocity=150,
+        nozzleExpansion=4,
         nozzleEfficiency=0.92,
         chambrage=1,
     )
@@ -636,7 +647,7 @@ if __name__ == "__main__":
     for i in range(5):
         datas.append(
             test.findMinV(
-                chargeMassRatio=0.309 / 4, tol=1e-5, minWeb=1e-6, maxLength=100
+                chargeMassRatio=0.309 / 4, tol=1e-4, minWeb=1e-6, maxLength=100
             )
         )
 
