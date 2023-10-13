@@ -597,3 +597,6 @@ if __name__ == "__main__":
         RHS={ammonia: 1},
         LHS={hydrogen: 1.5, nitrogen: 0.5},
     )  # this is k8
+
+    for T in [2000, 2500, 3000, 3500, 4000]:
+        print(T, nitrogen.Cp(T) / nitrogen.Cv(T))

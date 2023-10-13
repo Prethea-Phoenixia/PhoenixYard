@@ -318,7 +318,7 @@ class Constrained:
             lambda web: _f_p_e_1(web)[0],
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
-            x_tol=1e-14,
+            # x_tol=1e-14,
             y_abs_tol=p_bar_d * tol,
         )  # this is the e_1 that satisifies the pressure specification.
 
@@ -332,7 +332,11 @@ class Constrained:
             Z_i = Z_b + tol
 
         if abs(p_bar_dev) > tol * p_bar_d:
-            raise ValueError("Design pressure is not met")
+            raise ValueError(
+                "Design pressure is not met, delta = {:.3g} Pa".format(
+                    p_bar_dev * (f * Delta)
+                )
+            )
 
         if v_j * v_bar_i > v_d and containBurnout:
             raise ValueError("Design velocity exceeded before peak pressure")

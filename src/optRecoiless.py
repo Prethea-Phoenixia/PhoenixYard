@@ -350,11 +350,11 @@ class ConstrainedRecoiless:
             probeWeb *= 2
             dp_bar_probe = _f_p_e_1(probeWeb)[0]
 
-        e_1, _ = dekker(
+        e_1, e_0 = dekker(
             lambda web: _f_p_e_1(web)[0],
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
-            x_tol=1e-14,
+            # x_tol=1e-14,
             y_abs_tol=p_bar_d * tol,
         )  # this is the e_1 that satisifies the pressure specification.
 
@@ -368,7 +368,18 @@ class ConstrainedRecoiless:
             Z_i = Z_b + tol
 
         if abs(p_bar_dev) > tol * p_bar_d:
-            raise ValueError("Design pressure is not met")
+            print(e_1, e_0)
+            print(p_bar_dev)
+            print(p_bar_d * tol)
+
+            # this is usually caused by the dekker method running into numerical
+            # spikes that pierced the 0 line. TODO: find some better way of handling it.
+
+            raise ValueError(
+                "Design pressure is not met, delta = {:.3g} Pa".format(
+                    p_bar_dev * (f * Delta)
+                )
+            )
 
         """
         step 2, find the requisite muzzle length to achieve design velocity

@@ -717,7 +717,7 @@ def dekker(
         else:
             b_k = m
 
-        fb_k = f(b_k)  # calcualte new value of estimate
+        fb_k = f(b_k) - y  # calcualte new value of estimate
 
         if debug:
             record.append((b_k, fb_k))
@@ -725,7 +725,7 @@ def dekker(
         if any(
             (abs(b_k - b_j) < x_tol, abs(fb_k) < y_abs_tol),
         ):
-            return b_k, fb_k
+            return b_k, b_j
 
         if (
             fa_j * fb_k < 0
@@ -759,6 +759,80 @@ def dekker(
         "Secant method called from {} to {}\n".format(x_0, x_1)
         + "Maximum iteration exceeded at it = {}/{}".format(i, it)
         + ",\nf({})={}->\nf({})={}".format(b_i, fb_i, b_j, fb_j)
+    )
+
+
+def secant(
+    f,
+    x_0,
+    x_1,
+    y=0,
+    x_min=None,
+    x_max=None,
+    x_tol=1e-16,
+    y_rel_tol=0,
+    y_abs_tol=1e-16,
+    it=100,
+    debug=False,
+):
+    """secant method that solves f(x) = y subjected to x in [x_min,x_max]"""
+
+    fx_0 = f(x_0) - y
+    fx_1 = f(x_1) - y
+
+    if debug:
+        record = []
+
+    if x_0 == x_1 or fx_0 == fx_1:
+        errStr = "Impossible to calculate initial slope for secant search."
+        errStr += "\nf({:})={:}\nf({:})={:}".format(x_0, fx_0, x_1, fx_1)
+        raise ValueError(errStr)
+
+    for i in range(it):
+        x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
+        if x_min is not None and x_2 < x_min:
+            x_2 = 0.9 * x_min + 0.1 * x_1
+        if x_max is not None and x_2 > x_max:
+            x_2 = 0.9 * x_max + 0.1 * x_1
+
+        fx_2 = f(x_2) - y
+
+        if debug:
+            record.append((x_2, fx_2 - y))
+
+        if any(
+            (
+                abs(x_2 - x_1) < x_tol,
+                abs(fx_2) < y_abs_tol,
+                abs(fx_2) < (abs(y) * y_rel_tol),
+            ),
+        ):
+            return x_2, fx_2
+        else:
+            if fx_2 == fx_1:
+                raise ValueError(
+                    "Numerical plateau found at f({})=f({})={}".format(
+                        x_1, x_2, fx_2
+                    )
+                )
+
+            x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, fx_2
+
+    if debug:
+        print("{:>24}{:>24}".format("X", "FX"))
+        record.sort()
+        for line in record:
+            if len(line) == 2:
+                print("{:>24}{:>24}".format(*line))
+            else:
+                print(line)
+
+    raise ValueError(
+        "Secant method called from {} to {}\n".format(x_min, x_max)
+        + "Maximum iteration exceeded at it = {}/{}".format(i, it)
+        + ",\n[0] f({})={}->\n[1] f({})={}->\n[2] f({})={}".format(
+            x_0, fx_0, x_1, fx_1, x_2, fx_2
+        )
     )
 
 

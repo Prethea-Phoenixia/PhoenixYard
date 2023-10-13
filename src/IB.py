@@ -1762,7 +1762,6 @@ class IB(Frame):
             self.pltCanvas.draw_idle()
 
     def timedLoop(self):
-        # if self.pos >= 0:  # and not self.process.is_alive():
         if self.process is not None:
             self.getValue()
 
@@ -1775,9 +1774,6 @@ class IB(Frame):
         root.quit()
 
     def updateFigPlot(self, *args):
-        if self.process is not None:
-            return
-
         gun = self.gun
         if gun is None:
             return
@@ -2092,20 +2088,14 @@ class IB(Frame):
     def updateGeom(self, *args):
         geom = self.dropGeom.getObj()
         if geom == SimpleGeometry.SPHERE:
-            # self.grlR.disable()
-            # self.grdR.disable()
             self.grlR.remove()
             self.grdR.remove()
 
         elif geom == SimpleGeometry.CYLINDER:
-            # self.grlR.enable()
-            # self.grdR.disable()
             self.grlR.restore()
             self.grdR.remove()
 
         else:
-            # self.grlR.enable()
-            # self.grdR.enable()
             self.grlR.restore()
             self.grdR.restore()
 
@@ -2134,8 +2124,6 @@ class IB(Frame):
         return True
 
     def updateGeomPlot(self):
-        if self.process is not None:
-            return
         with mpl.rc_context(GEOM_CONTEXT):
             N = 10
             prop = self.prop
@@ -2173,18 +2161,12 @@ class IB(Frame):
             self.geomCanvas.draw_idle()
 
     def updateError(self):
-        if self.process is not None:
-            return
-
         self.errorText.delete("1.0", "end")
         for line in self.errorLst:
             self.errorText.insert("end", line + "\n")
         self.errorLst = []
 
     def updateTable(self):
-        if self.process is not None:
-            return
-
         self.tv.delete(*self.tv.get_children())
 
         try:
@@ -2276,8 +2258,6 @@ class IB(Frame):
         Double calling is due to value validation, no workaround has been
         found at this time!
         """
-        if self.process is not None:
-            return
 
         geom = self.dropGeom.getObj()
         compo = self.dropProp.getObj()
@@ -2343,9 +2323,6 @@ class IB(Frame):
             self.lgmax.enable()
 
     def cvlfConsisCallback(self, *args):
-        if self.process is not None:
-            return
-
         try:
             sigfig = int(self.accExp.get()) + 1
             if self.useCv.getObj():  # use Cv
@@ -2381,9 +2358,6 @@ class IB(Frame):
         self.cvL.enable() if useCv else self.cvL.disable()
 
     def insetCallback(self, *args):
-        if self.process is not None:
-            return
-
         isCartridge = self.ammoOptn.getObj() == CARTRIDGE
         self.insetmm.remove() if isCartridge else self.insetmm.restore()
 
@@ -2586,7 +2560,7 @@ if __name__ == "__main__":
     root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
 
     root.option_add("*tearOff", False)
-    root.title("PIBS v0.4.7")
+    root.title("PIBS v0.4.8α")
     menubar = Menu(root)
     root.config(menu=menubar)
     """
