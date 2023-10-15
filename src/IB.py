@@ -2225,18 +2225,20 @@ class IB(Frame):
         # we use a fixed width font so any char will do
         fontWidth, _ = t_Font.measure("m"), t_Font.metrics("linespace")
 
+        winWidth = self.tv.winfo_width()
+        width = int(winWidth / len(self.tv["columns"]))
+
         for i, column in enumerate(columnList):  # foreach column
             self.tv.heading(
                 i, text=column, anchor="e"
             )  # let the column heading = column name
             self.tv.column(
                 column,
-                stretch="YES",  # will adjust to window resizing
-                width=fontWidth * 14,
+                stretch=True,  # will adjust to window resizing
+                width=width,
                 minwidth=fontWidth * 14,
                 anchor="e",
             )
-
         for i, (row, erow) in enumerate(zip(tableData, errorData)):
             self.tv.insert(
                 "", "end", str(i + 1), values=row, tags=(row[0], "monospace")
