@@ -766,18 +766,6 @@ class IB(Frame):
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
 
-        self.useCv = LocDropdown(
-            parent=solFrm,
-            strObjDict=USE,
-            locFunc=self.getLocStr,
-            dropdowns=self.locs,
-        )
-        self.useCv.grid(
-            row=1, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
-        )
-
-        self.useCv.trace_add("write", self.cvlfCallback)
-
         envFrm = LocLabelFrame(
             rightFrm,
             locKey="envFrmLabel",
@@ -797,6 +785,7 @@ class IB(Frame):
             allLC=self.locs,
             columnspan=3,
         )
+        self.inAtmos.trace_add("write", self.ambCallback)
 
         i += 1
         self.ambP = Loc3Input(
@@ -842,8 +831,6 @@ class IB(Frame):
         )
         opFrm.grid(row=3, column=0, sticky="nsew")
         opFrm.columnconfigure(0, weight=1)
-        # opFrm.columnconfigure(1, weight=1)
-
         i = 0
 
         consFrm = LocLabelFrame(
@@ -989,7 +976,7 @@ class IB(Frame):
             row=i,
             col=0,
             labelLocKey="-log10(ε)",
-            default="4",
+            default="3",
             validation=validationPI,
             formatter=formatIntInput,
             color="red",
@@ -1528,6 +1515,17 @@ class IB(Frame):
         )
 
         i += 1
+        self.useCv = LocDropdown(
+            parent=parFrm,
+            strObjDict=USE,
+            locFunc=self.getLocStr,
+            dropdowns=self.locs,
+        )
+        self.useCv.grid(
+            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+        )
+
+        i += 1
         self.ldf = Loc3Input(
             parent=parFrm,
             row=i,
@@ -1551,6 +1549,7 @@ class IB(Frame):
             allInputs=self.locs,
         )
 
+        self.useCv.trace_add("write", self.cvlfCallback)
         self.cvL.trace_add("write", self.cvlfConsisCallback)
         self.ldf.trace_add("write", self.cvlfConsisCallback)
         self.chgkg.trace_add("write", self.cvlfConsisCallback)
@@ -2316,10 +2315,14 @@ class IB(Frame):
             return
 
         if self.solve_W_Lg.get() == 0:
+            self.vTgt.disable()
+            self.pTgt.disable()
             self.opt_lf.disable()
             self.minWeb.disable()
             self.lgmax.disable()
         else:
+            self.vTgt.enable()
+            self.pTgt.enable()
             self.opt_lf.enable()
             self.minWeb.enable()
             self.lgmax.enable()
