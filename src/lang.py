@@ -26,7 +26,7 @@ ENGLISH = {
     "plotFrmLabel": "Plot",
     "errFrmLabel": "Exceptions",
     "parFrmLabel": "Parameters",
-    "specFrmLabel": "Design",
+    "specFrmLabel": "Specification",
     "solFrmLabel": "IB Solution",
     "opFrmLabel": "Operations",
     "consFrmLabel": "Constraints",
@@ -35,7 +35,7 @@ ENGLISH = {
     "sampleFrmLabel": "Sampling",
     "pltOptnFrm": "Plot Option",
     "lxLabel": "Length Ratio",
-    "vaLabel": "Asymptotic Vel.",
+    "vaLabel": "Asymptotic Velocity",
     "pPLabel": "Peak Pressure",
     "teffLabel": "Thermal Efficiency",
     "beffLabel": "Ballistic Efficiency",
@@ -512,6 +512,7 @@ ENGLISH = {
     "CARTRIDGE": "Conventional Cartridge",
     "TELESCOPED": "Telescoped Cartridge",
     "insetLabel": "Maximum Inset",
+    "nameFrm": "Design Overview",
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -540,8 +541,8 @@ CHINESE = {
     "tblFrmLabel": "计算结果打表",
     "plotFrmLabel": "计算结果作图",
     "errFrmLabel": "程序运行例外",
-    "parFrmLabel": "内弹道参量",
-    "specFrmLabel": "系统性能指标",
+    "parFrmLabel": "系统性能参数",
+    "specFrmLabel": "内弹道参量",
     "opFrmLabel": "程序运算控制",
     "solFrmLabel": "内弹道气动力模型",
     "consFrmLabel": "反算设置",
@@ -882,5 +883,6 @@ CHINESE = {
     "CARTRIDGE": "常规弹药",
     "TELESCOPED": "（半）埋头弹药",
     "insetLabel": "最大弹头缩进量",
+    "nameFrm": "系统概览",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}

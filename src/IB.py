@@ -233,14 +233,16 @@ class IB(Frame):
         self.errorLst = []
 
         self.columnconfigure(1, weight=1)
-        self.rowconfigure(1, weight=1)
+        self.rowconfigure(2, weight=1)
+
+        self.addNamePlate()
         self.addTopFrm()
         self.addLeftFrm()
         self.addRightFrm()
         self.addErrFrm()
 
         self.addPlotFrm()
-        self.addParFrm()
+        self.addspecFrm()
         self.addTblFrm()
         self.update_idletasks()
         self.addGeomPlot()
@@ -530,9 +532,31 @@ class IB(Frame):
             except KeyError:
                 return name
 
+    def addNamePlate(self):
+        nameFrm = LocLabelFrame(
+            self, locKey="nameFrm", locFunc=self.getLocStr, allLLF=self.locs
+        )
+        nameFrm.grid(row=0, column=0, sticky="nsew", columnspan=2)
+
+        nameFrm.columnconfigure(0, weight=1)
+        nameFrm.rowconfigure(0, weight=1)
+
+        name = StringVar(self)
+
+        namePlate = ttk.Entry(
+            nameFrm,
+            textvariable=name,
+            state="disabled",
+            justify="left",
+            font=(FONTNAME, FONTSIZE + 2),
+        )
+        namePlate.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
+
+        self.name = name
+
     def addTopFrm(self):
         topFrm = ttk.Frame(self)
-        topFrm.grid(row=0, column=1, sticky="nsew")
+        topFrm.grid(row=1, column=1, sticky="nsew")
 
         topFrm.columnconfigure(0, weight=1)
         topFrm.rowconfigure(0, weight=1)
@@ -644,23 +668,23 @@ class IB(Frame):
 
     def addLeftFrm(self):
         leftFrm = ttk.Frame(self)
-        leftFrm.grid(row=0, column=0, rowspan=4, sticky="nsew")
+        leftFrm.grid(row=1, column=0, rowspan=4, sticky="nsew")
         leftFrm.columnconfigure(0, weight=1)
         leftFrm.rowconfigure(0, weight=1)
 
-        specFrm = LocLabelFrame(
+        parFrm = LocLabelFrame(
             leftFrm,
-            locKey="specFrmLabel",
+            locKey="parFrmLabel",
             locFunc=self.getLocStr,
             allLLF=self.locs,
         )
-        specFrm.grid(row=0, column=0, sticky="nsew")
-        specFrm.columnconfigure(0, weight=1)
+        parFrm.grid(row=0, column=0, sticky="nsew")
+        parFrm.columnconfigure(0, weight=1)
 
         i = 0
 
         self.lx = Loc122Disp(
-            parent=specFrm,
+            parent=parFrm,
             row=i,
             labelLocKey="lxLabel",
             tooltipLocKey="calLxText",
@@ -669,7 +693,7 @@ class IB(Frame):
         )
         i += 3
         self.ammo = Loc12Disp(
-            parent=specFrm,
+            parent=parFrm,
             row=i,
             labelLocKey="ammoLabel",
             unitText="",
@@ -678,7 +702,7 @@ class IB(Frame):
         )
         i += 2
         self.va = Loc12Disp(
-            parent=specFrm,
+            parent=parFrm,
             row=i,
             labelLocKey="vaLabel",
             tooltipLocKey="vinfText",
@@ -687,7 +711,7 @@ class IB(Frame):
         )
         i += 2
         self.te = Loc12Disp(
-            parent=specFrm,
+            parent=parFrm,
             row=i,
             labelLocKey="teffLabel",
             tooltipLocKey="teffText",
@@ -696,7 +720,7 @@ class IB(Frame):
         )
         i += 2
         self.be = Loc12Disp(
-            parent=specFrm,
+            parent=parFrm,
             row=i,
             labelLocKey="beffLabel",
             tooltipLocKey="beffText",
@@ -705,7 +729,7 @@ class IB(Frame):
         )
         i += 2
         self.ld = Loc12Disp(
-            parent=specFrm,
+            parent=parFrm,
             row=i,
             labelLocKey="ldLabel",
             locFunc=self.getLocStr,
@@ -714,7 +738,7 @@ class IB(Frame):
         i += 2
 
         self.pa = Loc12Disp(
-            parent=specFrm,
+            parent=parFrm,
             row=i,
             labelLocKey="paLabel",
             # unitText="m/s²",
@@ -725,7 +749,6 @@ class IB(Frame):
     def addRightFrm(self):
         """
         rightFrm
-        |-specFrm
         |-solFrm
         |-envFrm
         |-opFrm
@@ -734,7 +757,7 @@ class IB(Frame):
 
         """
         rightFrm = ttk.Frame(self)
-        rightFrm.grid(row=0, column=3, rowspan=4, sticky="nsew")
+        rightFrm.grid(row=0, column=3, rowspan=5, sticky="nsew")
         rightFrm.columnconfigure(0, weight=1)
         rightFrm.rowconfigure(0, weight=1)
 
@@ -1247,6 +1270,8 @@ class IB(Frame):
 
             self.pa.set(toSI(ps * gun.S / gun.m, unit="m/s²"))
 
+            self.name.set(self.getDescriptive())
+
         self.updateTable()
         self.updateError()
         self.updateFigPlot()
@@ -1264,7 +1289,7 @@ class IB(Frame):
         errorFrm = LocLabelFrame(
             self, locKey="errFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
         )
-        errorFrm.grid(row=3, column=1, sticky="nsew")
+        errorFrm.grid(row=4, column=1, sticky="nsew")
         errorFrm.columnconfigure(0, weight=1)
         errorFrm.rowconfigure(0, weight=1)
 
@@ -1274,19 +1299,22 @@ class IB(Frame):
             errorFrm,
             yscrollcommand=errScroll.set,
             wrap="word",
-            height=5,
+            height=6,
             width=0,
             font=(FONTNAME, FONTSIZE),
         )
 
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
-    def addParFrm(self):
-        parFrm = LocLabelFrame(
-            self, locKey="parFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
+    def addspecFrm(self):
+        specFrm = LocLabelFrame(
+            self,
+            locKey="specFrmLabel",
+            locFunc=self.getLocStr,
+            allLLF=self.locs,
         )
-        parFrm.grid(row=0, column=2, rowspan=4, sticky="nsew")
-        parFrm.columnconfigure(0, weight=1)
+        specFrm.grid(row=0, column=2, rowspan=5, sticky="nsew")
+        specFrm.columnconfigure(0, weight=1)
 
         # validation
         validationNN = self.register(validateNN)
@@ -1294,7 +1322,7 @@ class IB(Frame):
         i = 0
 
         self.typeOptn = LocDropdown(
-            parent=parFrm,
+            parent=specFrm,
             strObjDict=TYPES,
             locFunc=self.getLocStr,
             dropdowns=self.locs,
@@ -1306,7 +1334,7 @@ class IB(Frame):
         i += 1
 
         self.calmm = Loc3Input(
-            parent=parFrm,
+            parent=specFrm,
             row=i,
             labelLocKey="calLabel",
             unitText="mm",
@@ -1317,7 +1345,7 @@ class IB(Frame):
         )
         i += 1
         self.tblmm = Loc3Input(
-            parent=parFrm,
+            parent=specFrm,
             row=i,
             labelLocKey="tblLabel",
             unitText="mm",
@@ -1328,7 +1356,7 @@ class IB(Frame):
         )
         i += 1
         self.shtkg = Loc3Input(
-            parent=parFrm,
+            parent=specFrm,
             row=i,
             labelLocKey="shtLabel",
             unitText="kg",
@@ -1340,7 +1368,7 @@ class IB(Frame):
         i += 1
 
         self.ammoOptn = LocDropdown(
-            parent=parFrm,
+            parent=specFrm,
             strObjDict=AMMUNITIONS,
             locFunc=self.getLocStr,
             dropdowns=self.locs,
@@ -1352,7 +1380,7 @@ class IB(Frame):
         i += 1
 
         self.insetmm = Loc3Input(
-            parent=parFrm,
+            parent=specFrm,
             row=i,
             labelLocKey="insetLabel",
             unitText="mm",
@@ -1364,7 +1392,7 @@ class IB(Frame):
         i += 1
 
         self.chgkg = Loc3Input(
-            parent=parFrm,
+            parent=specFrm,
             row=i,
             labelLocKey="chgLabel",
             unitText="kg",
@@ -1377,7 +1405,7 @@ class IB(Frame):
         i += 1
 
         propFrm = LocLabelFrame(
-            parFrm,
+            specFrm,
             locKey="propFrmLabel",
             style="SubLabelFrame.TLabelframe",
             locFunc=self.getLocStr,
@@ -1387,7 +1415,7 @@ class IB(Frame):
         propFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
-        parFrm.rowconfigure(i, weight=4)
+        specFrm.rowconfigure(i, weight=4)
 
         propFrm.rowconfigure(1, weight=1)
         propFrm.columnconfigure(0, weight=1)
@@ -1431,10 +1459,10 @@ class IB(Frame):
         specHScroll.config(command=self.specs.xview)
 
         i += 1
-        parFrm.rowconfigure(i, weight=1)
+        specFrm.rowconfigure(i, weight=1)
 
         grainFrm = LocLabelFrame(
-            parFrm,
+            specFrm,
             locKey="grainFrmLabel",
             style="SubLabelFrame.TLabelframe",
             locFunc=self.getLocStr,
@@ -1512,7 +1540,7 @@ class IB(Frame):
 
         i += 1
         self.useCv = LocDropdown(
-            parent=parFrm,
+            parent=specFrm,
             strObjDict=USE,
             locFunc=self.getLocStr,
             dropdowns=self.locs,
@@ -1523,7 +1551,7 @@ class IB(Frame):
 
         i += 1
         self.ldf = Loc3Input(
-            parent=parFrm,
+            parent=specFrm,
             row=i,
             labelLocKey="ldfLabel",
             unitText="%",
@@ -1535,7 +1563,7 @@ class IB(Frame):
         )
         i += 1
         self.cvL = Loc3Input(
-            parent=parFrm,
+            parent=specFrm,
             row=i,
             labelLocKey="cvLabel",
             unitText="L",
@@ -1553,7 +1581,7 @@ class IB(Frame):
 
         i += 1
         self.clr = Loc3Input(
-            parent=parFrm,
+            parent=specFrm,
             row=i,
             labelLocKey="clrLabel",
             unitText="x",
@@ -1565,7 +1593,7 @@ class IB(Frame):
         )
         i += 1
         self.dgc = Loc3Input(
-            parent=parFrm,
+            parent=specFrm,
             row=i,
             labelLocKey="dgcLabel",
             unitText="%",
@@ -1577,7 +1605,7 @@ class IB(Frame):
         )
         i += 1
         self.stpMPa = Loc3Input(
-            parent=parFrm,
+            parent=specFrm,
             row=i,
             labelLocKey="stpLabel",
             unitText="MPa",
@@ -1589,7 +1617,7 @@ class IB(Frame):
         )
         i += 1
         self.nozzExp = Loc3Input(
-            parent=parFrm,
+            parent=specFrm,
             row=i,
             labelLocKey="nozzExpLabel",
             unitText="x",
@@ -1601,7 +1629,7 @@ class IB(Frame):
         )
         i += 1
         self.nozzEff = Loc3Input(
-            parent=parFrm,
+            parent=specFrm,
             row=i,
             labelLocKey="nozzEffLabel",
             unitText="%",
@@ -1675,7 +1703,7 @@ class IB(Frame):
             tooltipLocKey="plotText",
             allLLF=self.locs,
         )
-        plotFrm.grid(row=1, column=1, sticky="nsew")
+        plotFrm.grid(row=2, column=1, sticky="nsew")
         plotFrm.columnconfigure(0, weight=1)
         plotFrm.rowconfigure(0, weight=1)
 
@@ -1997,7 +2025,7 @@ class IB(Frame):
         tblFrm = LocLabelFrame(
             self, locKey="tblFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
         )
-        tblFrm.grid(row=2, column=1, sticky="nsew")
+        tblFrm.grid(row=3, column=1, sticky="nsew")
 
         tblFrm.columnconfigure(0, weight=1)
         tblFrm.rowconfigure(0, weight=1)
