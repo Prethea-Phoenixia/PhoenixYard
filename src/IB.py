@@ -232,7 +232,7 @@ class IB(Frame):
         self.gun = None
         self.errorLst = []
 
-        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
         self.rowconfigure(1, weight=1)
         self.addTopFrm()
         self.addLeftFrm()
@@ -532,7 +532,7 @@ class IB(Frame):
 
     def addTopFrm(self):
         topFrm = ttk.Frame(self)
-        topFrm.grid(row=0, column=0, sticky="nsew")
+        topFrm.grid(row=0, column=1, sticky="nsew")
 
         topFrm.columnconfigure(0, weight=1)
         topFrm.rowconfigure(0, weight=1)
@@ -644,28 +644,12 @@ class IB(Frame):
 
     def addLeftFrm(self):
         leftFrm = ttk.Frame(self)
-        leftFrm.grid(row=0, column=1, rowspan=4, sticky="nsew")
+        leftFrm.grid(row=0, column=0, rowspan=4, sticky="nsew")
         leftFrm.columnconfigure(0, weight=1)
         leftFrm.rowconfigure(0, weight=1)
 
-    def addRightFrm(self):
-        """
-        rightFrm
-        |-specFrm
-        |-solFrm
-        |-envFrm
-        |-opFrm
-          |-consFrm
-          |-sampleFrm
-
-        """
-        rightFrm = ttk.Frame(self)
-        rightFrm.grid(row=0, column=3, rowspan=4, sticky="nsew")
-        rightFrm.columnconfigure(0, weight=1)
-        rightFrm.rowconfigure(0, weight=1)
-
         specFrm = LocLabelFrame(
-            rightFrm,
+            leftFrm,
             locKey="specFrmLabel",
             locFunc=self.getLocStr,
             allLLF=self.locs,
@@ -679,8 +663,6 @@ class IB(Frame):
             parent=specFrm,
             row=i,
             labelLocKey="lxLabel",
-            unitText_up="Cal",
-            unitText_dn="Cal",
             tooltipLocKey="calLxText",
             locFunc=self.getLocStr,
             allDisps=self.locs,
@@ -691,7 +673,6 @@ class IB(Frame):
             row=i,
             labelLocKey="ammoLabel",
             unitText="",
-            default="0.00 x 0.000 mm",
             locFunc=self.getLocStr,
             allDisps=self.locs,
         )
@@ -709,7 +690,6 @@ class IB(Frame):
             parent=specFrm,
             row=i,
             labelLocKey="teffLabel",
-            unitText="%",
             tooltipLocKey="teffText",
             locFunc=self.getLocStr,
             allDisps=self.locs,
@@ -719,7 +699,6 @@ class IB(Frame):
             parent=specFrm,
             row=i,
             labelLocKey="beffLabel",
-            unitText="%",
             tooltipLocKey="beffText",
             locFunc=self.getLocStr,
             allDisps=self.locs,
@@ -729,7 +708,6 @@ class IB(Frame):
             parent=specFrm,
             row=i,
             labelLocKey="ldLabel",
-            unitText="kg/m³",
             locFunc=self.getLocStr,
             allDisps=self.locs,
         )
@@ -743,6 +721,22 @@ class IB(Frame):
             locFunc=self.getLocStr,
             allDisps=self.locs,
         )
+
+    def addRightFrm(self):
+        """
+        rightFrm
+        |-specFrm
+        |-solFrm
+        |-envFrm
+        |-opFrm
+          |-consFrm
+          |-sampleFrm
+
+        """
+        rightFrm = ttk.Frame(self)
+        rightFrm.grid(row=0, column=3, rowspan=4, sticky="nsew")
+        rightFrm.columnconfigure(0, weight=1)
+        rightFrm.rowconfigure(0, weight=1)
 
         validationNN = self.register(validateNN)
         validationPI = self.register(validatePI)
@@ -1216,15 +1210,16 @@ class IB(Frame):
                         )  # corrected "bulk" load fraction
 
             self.ld.set(
-                toSI(trueLF * self.prop.rho_p, useSN=True)
-            )  # true load density
+                toSI(trueLF * self.prop.rho_p, useSN=False).strip() + " kg/m³"
+            )
+            # true load density
 
             _, _, _, _, vg, *_ = self.readTable(POINT_EXIT)
 
             eta_t, eta_b = gun.getEff(vg)
 
-            self.te.set(round(eta_t * 100, 1))
-            self.be.set(round(eta_b * 100, 1))
+            self.te.set(str(round(eta_t * 100, 2)) + " %")
+            self.be.set(str(round(eta_b * 100, 2)) + " %")
 
             self.va.set(toSI(gun.v_j, unit="m/s"))
 
@@ -1233,10 +1228,11 @@ class IB(Frame):
             )  # is equivalent to chamber length
 
             self.lx.set(
-                toSI(kwargs["lengthGun"] / caliber),
+                toSI(kwargs["lengthGun"] / caliber, unit="Cal"),
                 toSI(
                     (kwargs["lengthGun"] + cartridge_len / kwargs["chambrage"])
-                    / kwargs["caliber"]
+                    / kwargs["caliber"],
+                    unit="Cal",
                 ),
             )
 
@@ -1268,7 +1264,7 @@ class IB(Frame):
         errorFrm = LocLabelFrame(
             self, locKey="errFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
         )
-        errorFrm.grid(row=3, column=0, sticky="nsew")
+        errorFrm.grid(row=3, column=1, sticky="nsew")
         errorFrm.columnconfigure(0, weight=1)
         errorFrm.rowconfigure(0, weight=1)
 
@@ -1679,7 +1675,7 @@ class IB(Frame):
             tooltipLocKey="plotText",
             allLLF=self.locs,
         )
-        plotFrm.grid(row=1, column=0, sticky="nsew")
+        plotFrm.grid(row=1, column=1, sticky="nsew")
         plotFrm.columnconfigure(0, weight=1)
         plotFrm.rowconfigure(0, weight=1)
 
@@ -2001,7 +1997,7 @@ class IB(Frame):
         tblFrm = LocLabelFrame(
             self, locKey="tblFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
         )
-        tblFrm.grid(row=2, column=0, sticky="nsew")
+        tblFrm.grid(row=2, column=1, sticky="nsew")
 
         tblFrm.columnconfigure(0, weight=1)
         tblFrm.rowconfigure(0, weight=1)
@@ -2041,7 +2037,7 @@ class IB(Frame):
 
         self.specs.insert(
             "end",
-            "{:}: {:>4.0f} kg/m^3\n".format(
+            "{:}: {:>4.0f} kg/m³\n".format(
                 self.getLocStr("densityDesc"), compo.rho_p
             ),
         )
@@ -2541,7 +2537,7 @@ if __name__ == "__main__":
 
     # this allows us to set our own taskbar icon
     # "mycompany.myproduct.subproduct.version"
-    myappid = "Phoenix.Internal Ballistics.Solver.046"  # arbitrary string
+    myappid = "Phoenix.Internal Ballistics.Solver"  # arbitrary string
     windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     root = Tk()

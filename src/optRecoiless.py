@@ -246,7 +246,7 @@ class ConstrainedRecoiless:
                 )
                 p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
-                if c_a_bar != 0:
+                if c_a_bar != 0 and v_bar > 0:
                     v_r = v_bar / c_a_bar
                     p_d_bar = (
                         +0.25 * gamma_1 * (gamma_1 + 1) * v_r**2
@@ -414,7 +414,7 @@ class ConstrainedRecoiless:
             l_psi_bar = 1 - Delta * ((1 - psi) / rho_p + alpha * (psi - eta))
             p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
-            if c_a_bar != 0:
+            if c_a_bar != 0 and v_bar > 0:
                 v_r = v_bar / c_a_bar
                 p_d_bar = (
                     +0.25 * gamma_1 * (gamma_1 + 1) * v_r**2

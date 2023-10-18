@@ -208,7 +208,7 @@ class Highlow:
         )  # dtau/dt_bar
 
         # ATMOSPHERIC DRAG
-        if self.c_a_bar != 0:
+        if self.c_a_bar != 0 and v_bar > 0:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_a_bar
             p_d_bar = (
@@ -315,7 +315,7 @@ class Highlow:
         )  # dtau/dl_bar
 
         # ATMOSPHERIC DRAG
-        if self.c_a_bar != 0:
+        if self.c_a_bar != 0 and v_bar > 0:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_a_bar
             p_d_bar = (
@@ -373,7 +373,7 @@ class Highlow:
         )  # dtau_1 / dZ
 
         # ATMOSPHERIC DRAG
-        if self.c_a_bar != 0:
+        if self.c_a_bar != 0 and v_bar > 0:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_a_bar
             p_d_bar = (

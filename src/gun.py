@@ -188,7 +188,7 @@ class Gun:
         )
         p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
-        if self.c_a_bar != 0:
+        if self.c_a_bar != 0 and v_bar > 0:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_a_bar
             p_d_bar = (
@@ -222,7 +222,7 @@ class Gun:
         )
         p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
-        if self.c_a_bar != 0:
+        if self.c_a_bar != 0 and v_bar > 0:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_a_bar
             p_d_bar = (
@@ -252,7 +252,7 @@ class Gun:
         )
         p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
-        if self.c_a_bar != 0:
+        if self.c_a_bar != 0 and v_bar > 0:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_a_bar
             p_d_bar = (

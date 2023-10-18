@@ -163,7 +163,7 @@ class Recoiless:
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         p_bar = self._f_p_bar(Z, l_bar, eta, tau, psi)
 
-        if self.c_a_bar != 0:
+        if self.c_a_bar != 0 and v_bar > 0:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_a_bar
             p_d_bar = (
@@ -205,7 +205,7 @@ class Recoiless:
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         p_bar = self._f_p_bar(Z, l_bar, eta, tau, psi)
 
-        if self.c_a_bar != 0:
+        if self.c_a_bar != 0 and v_bar > 0:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_a_bar
             p_d_bar = (
@@ -241,7 +241,7 @@ class Recoiless:
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         p_bar = self._f_p_bar(Z, l_bar, eta, tau, psi)
 
-        if self.c_a_bar != 0:
+        if self.c_a_bar != 0 and v_bar > 0:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_a_bar
             p_d_bar = (

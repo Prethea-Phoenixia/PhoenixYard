@@ -225,7 +225,7 @@ class Constrained:
                 )
 
                 p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
-                if c_a_bar != 0:
+                if c_a_bar != 0 and v_bar > 0:
                     v_r = v_bar / c_a_bar
                     p_d_bar = (
                         +0.25 * gamma_1 * (gamma_1 + 1) * v_r**2
@@ -357,7 +357,7 @@ class Constrained:
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
             p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
-            if c_a_bar != 0:
+            if c_a_bar != 0 and v_bar > 0:
                 v_r = v_bar / c_a_bar
                 p_d_bar = (
                     0.25 * gamma_1 * (gamma_1 + 1) * v_r**2
