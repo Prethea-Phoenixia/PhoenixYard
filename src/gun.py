@@ -6,7 +6,7 @@ DOMAIN_TIME = "DOMAIN_TIME"
 DOMAIN_LENG = "DOMAIN_LENG"
 
 POINT_START = "SHOT START"
-POINT_PEAK = "PEAK AVG P"
+POINT_PEAK_AVG = "PEAK AVG P"
 POINT_PEAK_BREECH = "PEAK BREECH P"
 POINT_PEAK_SHOT = "PEAK SHOT P"
 POINT_FRACTURE = "FRACTURE"
@@ -783,7 +783,7 @@ class Gun:
             elif m == "b":
                 return Pb / pScale
 
-        findPeak(lambda x: f(x, "a"), POINT_PEAK)
+        findPeak(lambda x: f(x, "a"), POINT_PEAK_AVG)
         findPeak(lambda x: f(x, "s"), POINT_PEAK_SHOT)
         findPeak(lambda x: f(x, "b"), POINT_PEAK_BREECH)
 

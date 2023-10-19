@@ -5,7 +5,7 @@ from prop import GrainComp, Propellant
 from gun import DOMAIN_TIME, DOMAIN_LENG
 from gun import (
     POINT_START,
-    POINT_PEAK,
+    POINT_PEAK_AVG,
     POINT_PEAK_SHOT,
     POINT_PEAK_BREECH,
     POINT_FRACTURE,
@@ -992,7 +992,7 @@ class Highlow:
                 tau_2_err=tau_2_err,
             )
 
-        findPeak(lambda x: f(x, "a"), POINT_PEAK)
+        findPeak(lambda x: f(x, "a"), POINT_PEAK_AVG)
 
         """
         populate data for output purposes

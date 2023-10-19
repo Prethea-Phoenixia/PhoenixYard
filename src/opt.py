@@ -4,6 +4,7 @@ from random import uniform
 from math import pi, log
 from gun import pidduck
 from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
+from gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
 
 """
 Machine-accuracy factor, determines that, if a numerical method
@@ -76,12 +77,14 @@ class Constrained:
         minWeb=1e-6,
         containBurnout=True,
         maxLength=1e3,
+        labda_1=None,
         labda_2=None,
         cc=None,
         sol=SOL_LAGRANGE,
         ambientRho=1.204,
         ambientP=101.325e3,
         ambientGamma=1.4,
+        control=POINT_PEAK_AVG,
         **_,
     ):
         # start = time.time()
@@ -138,13 +141,13 @@ class Constrained:
         l_0 = V_0 / S
         gamma = theta + 1
 
-        if labda_2 is None:
+        if any((labda_1 is None, labda_2 is None)):
             if sol == SOL_LAGRANGE:
-                labda_2 = 1 / 3
+                labda_1, labda_2 = 1 / 2, 1 / 3
             elif sol == SOL_PIDDUCK:
-                _, labda_2 = pidduck(omega / (phi_1 * m), gamma, tol)
+                labda_1, labda_2 = pidduck(omega / (phi_1 * m), gamma, tol)
             elif sol == SOL_MAMONTOV:
-                _, labda_2 = pidduck(omega / (phi_1 * m), 1, tol)
+                labda_1, labda_2 = pidduck(omega / (phi_1 * m), 1, tol)
             else:
                 raise ValueError("Unknown Solution")
 
@@ -185,7 +188,24 @@ class Constrained:
             psi = f_psi_Z(Z)
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
             p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
-            return p_bar
+
+            if control == POINT_PEAK_AVG:
+                return p_bar
+
+            else:
+                prime = (1 / chi_k + l_bar) / (1 + l_bar)
+                labda_1_prime = labda_1 * prime
+                labda_2_prime = labda_2 * prime
+
+                factor_s = 1 + labda_2_prime * (omega / (phi_1 * m))
+                factor_b = (phi_1 * m + labda_2_prime * omega) / (
+                    phi_1 * m + labda_1_prime * omega
+                )
+
+                if control == POINT_PEAK_SHOT:
+                    return p_bar / factor_s
+                elif control == POINT_PEAK_BREECH:
+                    return p_bar / factor_b
 
         """
         step 1, find grain size that satisifies design pressure
@@ -432,12 +452,14 @@ class Constrained:
                 minWeb=minWeb,
                 containBurnout=containBurnout,
                 maxLength=maxLength,
+                labda_1=labda_1,
                 labda_2=labda_2,
                 sol=sol,
                 cc=cc_n,
                 ambientRho=ambientRho,
                 ambientP=ambientP,
                 ambientGamma=ambientGamma,
+                control=control,
             )
             # TODO: Maximum recursion depth exceeded in comparison is
             # occasionally thrown here. Investigate why.
@@ -455,6 +477,7 @@ class Constrained:
         ambientP=101.325e3,
         ambientGamma=1.4,
         loadFraction=None,  # if a load fraction value is passed, it is used as a hint
+        control=POINT_PEAK_AVG,
         **_,
     ):
         """
@@ -478,11 +501,11 @@ class Constrained:
         gamma = theta + 1
 
         if sol == SOL_LAGRANGE:
-            labda_2 = 1 / 3
+            labda_1, labda_2 = 1 / 2, 1 / 3
         elif sol == SOL_PIDDUCK:
-            _, labda_2 = pidduck(omega / (phi_1 * m), gamma, tol)
+            labda_1, labda_2 = pidduck(omega / (phi_1 * m), gamma, tol)
         elif sol == SOL_MAMONTOV:
-            _, labda_2 = pidduck(omega / (phi_1 * m), 1, tol)
+            labda_1, labda_2 = pidduck(omega / (phi_1 * m), 1, tol)
         else:
             raise ValueError("Unknown Solution")
 
@@ -497,11 +520,13 @@ class Constrained:
                 minWeb=minWeb,
                 containBurnout=False,
                 maxLength=maxLength,
+                labda_1=labda_1,
                 labda_2=labda_2,
                 sol=sol,
                 ambientRho=ambientRho,
                 ambientP=ambientP,
                 ambientGamma=ambientGamma,
+                control=control,
             )
 
             return e_1, (l_g + l_0), l_g
@@ -625,10 +650,34 @@ if __name__ == "__main__":
     datas = []
     pr = cProfile.Profile()
     pr.enable()
-    for i in range(10):
+    for i in range(1):
         datas.append(
             test.findMinV(
-                chargeMassRatio=1, tol=1e-3, minWeb=1e-6, maxLength=1000
+                chargeMassRatio=1,
+                tol=1e-3,
+                minWeb=1e-6,
+                maxLength=1000,
+                control=POINT_PEAK_SHOT,
+            )
+        )
+    for i in range(1):
+        datas.append(
+            test.findMinV(
+                chargeMassRatio=1,
+                tol=1e-3,
+                minWeb=1e-6,
+                maxLength=1000,
+                control=POINT_PEAK_AVG,
+            )
+        )
+    for i in range(1):
+        datas.append(
+            test.findMinV(
+                chargeMassRatio=1,
+                tol=1e-3,
+                minWeb=1e-6,
+                maxLength=1000,
+                control=POINT_PEAK_BREECH,
             )
         )
     pr.disable()

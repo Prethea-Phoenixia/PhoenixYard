@@ -16,7 +16,7 @@ import traceback
 from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
 from gun import (
     POINT_START,
-    POINT_PEAK,
+    POINT_PEAK_AVG,
     POINT_BURNOUT,
     POINT_FRACTURE,
     POINT_EXIT,
@@ -91,6 +91,11 @@ DOMAINS = {
     DOMAIN_LENG: DOMAIN_LENG,
 }
 
+CONTROLS = {
+    "ctrlAvgLabel": POINT_PEAK_AVG,
+    "ctrlBreechLabel": POINT_PEAK_BREECH,
+    "ctrlShotLabel": POINT_PEAK_SHOT,
+}
 USE = {"useLFLabel": 0, "useCVLabel": 1}
 
 FONTNAME = "Sarasa Fixed SC"
@@ -919,6 +924,18 @@ class IB(Frame):
         )
 
         j += 1
+        self.pControl = LocDropdown(
+            parent=consFrm,
+            strObjDict=CONTROLS,
+            locFunc=self.getLocStr,
+            dropdowns=self.locs,
+        )
+
+        self.pControl.grid(
+            row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+        )
+
+        j += 1
         self.minWeb = Loc3Input(
             parent=consFrm,
             row=j,
@@ -1041,6 +1058,7 @@ class IB(Frame):
             "typ": gunType,
             "dom": self.dropDomain.getObj(),
             "sol": self.dropSoln.getObj(),
+            "control": self.pControl.getObj(),
         }
 
         if atmosphere:
@@ -1828,7 +1846,7 @@ class IB(Frame):
 
             if gunType == CONVENTIONAL:
                 for tag, t, l, psi, v, Pb, P, Ps, T in self.tableData:
-                    if tag == POINT_PEAK:
+                    if tag == POINT_PEAK_AVG:
                         if dom == DOMAIN_TIME:
                             xPeak = t * 1e3
                         elif dom == DOMAIN_LENG:
@@ -1862,7 +1880,7 @@ class IB(Frame):
                     T,
                     eta,
                 ) in self.tableData:
-                    if tag == POINT_PEAK:
+                    if tag == POINT_PEAK_AVG:
                         if dom == DOMAIN_TIME:
                             xPeak = t * 1e3
                         elif dom == DOMAIN_LENG:
@@ -2231,7 +2249,7 @@ class IB(Frame):
         columnList = self.getLocStr("columnList")[gunType]
         self.tv["columns"] = columnList
         self.tv["show"] = "headings"
-        self.tv.tag_configure(POINT_PEAK, foreground="#2ca02c")
+        self.tv.tag_configure(POINT_PEAK_AVG, foreground="#2ca02c")
         self.tv.tag_configure(POINT_PEAK_BREECH, foreground="orange")
         self.tv.tag_configure(POINT_PEAK_SHOT, foreground="yellow green")
         self.tv.tag_configure(POINT_BURNOUT, foreground="red")

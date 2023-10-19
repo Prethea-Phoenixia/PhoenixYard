@@ -5,7 +5,7 @@ from prop import GrainComp, Propellant
 from gun import DOMAIN_TIME, DOMAIN_LENG
 from gun import (
     POINT_START,
-    POINT_PEAK,
+    POINT_PEAK_AVG,
     POINT_PEAK_SHOT,
     POINT_PEAK_BREECH,
     POINT_FRACTURE,
@@ -817,7 +817,7 @@ class Recoiless:
                 tau_err=tau_err,
             )
 
-        findPeak(lambda x: f(x, "a"), POINT_PEAK)
+        findPeak(lambda x: f(x, "a"), POINT_PEAK_AVG)
         findPeak(lambda x: f(x, "s"), POINT_PEAK_SHOT)
         findPeak(lambda x: f(x, "b"), POINT_PEAK_BREECH)
 

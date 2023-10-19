@@ -513,6 +513,9 @@ ENGLISH = {
     "TELESCOPED": "Telescoped Cartridge",
     "insetLabel": "Maximum Inset",
     "nameFrm": "Design Overview",
+    "ctrlAvgLabel": "Target Average",
+    "ctrlBreechLabel": "Target Breech",
+    "ctrlShotLabel": "Target Shot Base",
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -884,5 +887,8 @@ CHINESE = {
     "TELESCOPED": "（半）埋头弹药",
     "insetLabel": "最大弹头缩进量",
     "nameFrm": "系统概览",
+    "ctrlAvgLabel": "控制平均压强",
+    "ctrlBreechLabel": "控制膛底压强",
+    "ctrlShotLabel": "控制弹底压强",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}

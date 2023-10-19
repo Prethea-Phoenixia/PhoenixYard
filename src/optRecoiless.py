@@ -5,6 +5,8 @@ from math import pi
 from recoiless import Recoiless
 from opt import N
 
+from gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
+
 
 class ConstrainedRecoiless:
     def __init__(
@@ -80,6 +82,7 @@ class ConstrainedRecoiless:
         ambientRho=1.204,
         ambientP=101.325e3,
         ambientGamma=1.4,
+        control=POINT_PEAK_AVG,
         **_,
     ):
         if any(
@@ -127,6 +130,8 @@ class ConstrainedRecoiless:
         chi_0 = self.chi_0
         A_bar = self.A_bar
 
+        Sx = S * chi_k
+
         if loadFraction > maxLF:
             raise ValueError(
                 "Specified Load Fraction Violates Geometrical Constraint"
@@ -135,7 +140,6 @@ class ConstrainedRecoiless:
         omega = m * chargeMassRatio
         V_0 = omega / (rho_p * loadFraction)
         Delta = omega / V_0
-        # p_bar_0 = p_0 / (Delta * f)
         l_0 = V_0 / S
 
         gamma = theta + 1
@@ -149,7 +153,7 @@ class ConstrainedRecoiless:
                 + " a larger throat area than could be fit into"
                 + " breech face."
             )
-        # S_j = S_j_bar * S
+        S_j = S_j_bar * S
 
         K_0 = (2 / (gamma + 1)) ** (
             (gamma + 1) / (2 * (gamma - 1))
@@ -201,12 +205,39 @@ class ConstrainedRecoiless:
             )
         Z_0 = Zs[0]
 
-        def _f_p_bar(Z, l_bar, eta, tau):
+        def _f_p_bar(Z, l_bar, v_bar, eta, tau):
             psi = f_psi_Z(Z)
             l_psi_bar = 1 - Delta * ((1 - psi) / rho_p + alpha * (psi - eta))
             p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
-            return p_bar
+            if control == POINT_PEAK_AVG:
+                return p_bar
+
+            else:
+                y = omega * eta
+                m_dot = C_A * v_j * S_j * p_bar * f * Delta / (f * tau**0.5)
+                vx = m_dot * (V_0 + S * l_bar * l_0) / (Sx * (omega - y))
+
+                if v_bar == 0:
+                    if control == POINT_PEAK_SHOT:
+                        return p_0 / (f * Delta)
+                    elif control == POINT_PEAK_BREECH:
+                        return 0
+
+                else:
+                    H = min(
+                        vx / (v_j * v_bar),
+                        2 * phi_1 * m / (omega - y) + 1,
+                    )
+                    p_s_bar = p_bar / (
+                        1 + (omega - y) / (3 * phi_1 * m) * (1 - 0.5 * H)
+                    )
+                    if control == POINT_PEAK_SHOT:
+                        return p_s_bar
+                    elif control == POINT_PEAK_BREECH:
+                        return p_s_bar * (
+                            1 + (omega - y) / (2 * phi_1 * m) * (1 - H)
+                        )
 
         """
         step 1, find grain size that satisifies design pressure
@@ -216,11 +247,11 @@ class ConstrainedRecoiless:
 
         def abort_Z(x, ys, o_x, o_ys):
             Z, t_bar, l_bar, v_bar, eta, tau = x, *ys
-            p_bar = _f_p_bar(Z, l_bar, eta, tau)
+            p_bar = _f_p_bar(Z, l_bar, v_bar, eta, tau)
             oZ, ot_bar, ol_bar, ov_bar, oeta, otau = o_x, *o_ys
-            op_bar = _f_p_bar(oZ, ol_bar, oeta, otau)
+            op_bar = _f_p_bar(oZ, ol_bar, ov_bar, oeta, otau)
 
-            return (p_bar < op_bar) or (p_bar > 2 * p_bar_d)
+            return (p_bar - op_bar < -p_bar_d * tol) or (p_bar > 2 * p_bar_d)
 
         def _f_p_e_1(e_1, tol=tol):
             """
@@ -292,7 +323,6 @@ class ConstrainedRecoiless:
                 absTol=tol**2,
                 abortFunc=abort_Z,
                 record=record,
-                # debug=True,
             )
 
             if len(record) > 1:
@@ -318,7 +348,7 @@ class ConstrainedRecoiless:
                 xs = [v[0] for v in record]
                 record.extend(v for v in r if v[0] not in xs)
                 record.sort()
-                return _f_p_bar(Z, l_bar, eta, tau)
+                return _f_p_bar(Z, l_bar, v_bar, eta, tau)
 
             """
             find the peak pressure point.
@@ -341,7 +371,6 @@ class ConstrainedRecoiless:
                 _f_p_Z(Z_p) - p_bar_d,
                 record[-1][0],
                 *record[-1][-1],
-                record,
             )  # debug
 
         dp_bar_probe = _f_p_e_1(minWeb)[0]
@@ -352,17 +381,16 @@ class ConstrainedRecoiless:
                 "Design pressure cannot be achieved by varying web down to minimum"
             )
 
-        while dp_bar_probe > 0:
+        while dp_bar_probe >= 0:
             probeWeb *= 2
             dp_bar_probe = _f_p_e_1(probeWeb)[0]
 
-        e_1, e_0 = dekker(
+        e_1, _ = dekker(
             lambda web: _f_p_e_1(web)[0],
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
             # x_tol=1e-14,
             y_abs_tol=p_bar_d * tol,
-            debug=True,
         )  # this is the e_1 that satisifies the pressure specification.
 
         (
@@ -373,7 +401,6 @@ class ConstrainedRecoiless:
             v_bar_i,
             eta_i,
             tau_i,
-            record,
         ) = _f_p_e_1(e_1)
 
         if abs(Z_i - Z_b) < tol:
@@ -407,7 +434,6 @@ class ConstrainedRecoiless:
         )
 
         def _ode_v(v_bar, t_bar, Z, l_bar, eta, tau, _):
-            # p_bar = _f_p_bar(Z, l_bar, v_bar)
             psi = f_psi_Z(Z)
             dpsi = f_sigma_Z(Z)  # dpsi/dZ
 
@@ -498,6 +524,7 @@ class ConstrainedRecoiless:
         ambientP=101.325e3,
         ambientGamma=1.4,
         loadFraction=None,  # hint
+        control=POINT_PEAK_AVG,
         **_,
     ):
         """
@@ -530,6 +557,7 @@ class ConstrainedRecoiless:
                 ambientP=ambientP,
                 ambientRho=ambientRho,
                 ambientGamma=ambientGamma,
+                control=control,
             )
             return e_1, (l_g + l_0), l_g
 
