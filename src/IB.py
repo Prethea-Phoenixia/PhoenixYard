@@ -2341,6 +2341,8 @@ class IB(Frame):
             self.nozzEff.remove()
             self.plotBreechNozzleP.reLocalize("plotBreechP")
 
+            self.dropSoln.enable()
+
             for widget in (self.plotEta, self.plotNozzleV):
                 widget.disable()
 
@@ -2348,6 +2350,8 @@ class IB(Frame):
             self.nozzExp.restore()
             self.nozzEff.restore()
             self.plotBreechNozzleP.reLocalize("plotNozzleP")
+            self.dropSoln.setByObj(SOL_LAGRANGE)
+            self.dropSoln.disable()
 
             for widget in (self.plotEta, self.plotNozzleV):
                 widget.enable()
@@ -2362,12 +2366,16 @@ class IB(Frame):
             self.opt_lf.disable()
             self.minWeb.disable()
             self.lgmax.disable()
+
+            self.pControl.disable()
         else:
             self.vTgt.enable()
             self.pTgt.enable()
             self.opt_lf.enable()
             self.minWeb.enable()
             self.lgmax.enable()
+
+            self.pControl.enable()
 
     def cvlfConsisCallback(self, *args):
         try:

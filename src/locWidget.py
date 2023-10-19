@@ -256,7 +256,6 @@ class Loc2Input:
         self.inputWidget.config(state="disabled")
 
     def disinhibit(self):
-        # print(self.labelLocKey, self.nominalState)
         self.inputWidget.config(state=self.nominalState)
 
 
@@ -315,6 +314,7 @@ class LocDropdown:
         """
         localized key of string type: underlying object
         """
+        self.nominalState = "readonly"
         self.textVar = StringVar(parent)
         self.strObjDict = strObjDict
         self.locFunc = locFunc
@@ -344,12 +344,16 @@ class LocDropdown:
 
     def setByStr(self, string):
         """
-        Given an unlocalized string, set the drop down menu
+        Given an unlocalized string / localization key, set the drop down menu
         to the correct position.
         """
         self.widget.set(
             self.widget["values"][list(self.strObjDict.keys()).index(string)]
         )
+
+    def setByObj(self, obj):
+        index = list(self.strObjDict.values()).index(obj)
+        self.widget.current(index)
 
     def grid(self, **kwargs):
         self.widget.grid(**kwargs)
@@ -364,10 +368,11 @@ class LocDropdown:
         self.widget.configure(state="readonly")
 
     def inhibit(self):
-        self.disable()
+        self.nominalState = self.widget.cget("state")
+        self.widget.config(state="disabled")
 
     def disinhibit(self):
-        self.enable()
+        self.widget.config(state=self.nominalState)
 
 
 class LocLabelFrame(ttk.LabelFrame):
