@@ -466,7 +466,7 @@ class Gun:
         p_max = 1e9  # 1GPa
         p_bar_max = p_max / pScale
 
-        def abort(x, ys, o_x, o_ys):
+        def abort(x, ys, record):
             Z = x
             t_bar, l_bar, v_bar = ys
 

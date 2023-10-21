@@ -955,7 +955,7 @@ class IB(Frame):
             col=0,
             labelLocKey="maxLgLabel",
             unitText="m",
-            default="1000.0",
+            default="100.0",
             validation=validationNN,
             color="red",
             locFunc=self.getLocStr,
@@ -1149,7 +1149,7 @@ class IB(Frame):
                     "maxInset": maxInset,
                 }
             )
-            # print(self.kwargs) # debug
+            # print(self.kwargs)  # debug
             self.process = Process(
                 target=calculate,
                 args=(

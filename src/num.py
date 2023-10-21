@@ -212,7 +212,8 @@ def RKF78(
     minTol=1e-16,
     adaptTo=True,
     abortFunc=None,
-    record=None,
+    record=[],
+    rasieError=True,
     debug=False,
 ):
     """
@@ -224,6 +225,9 @@ def RKF78(
         x_0, x_1: integration limits
         relTol  : relative tolerance, per component
         absTol  : absolute tolerance, per component
+        minTol  : minimum tolerance, per component. This is added to the error
+                estimation, to encourage conservatism in the integrator, and to
+                guard against division by 0 if functional value tends to 0
 
         abortFunc
                 : optional, accepts following arguments:
@@ -535,19 +539,16 @@ def RKF78(
             delta = beta * abs(1 / R) ** (1 / 8)
 
         else:  # error is acceptable
-            y_last = y_this
             y_this = y_next
-            ox = x
             x += h
             Rm = [max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs)]
 
             if abortFunc is not None and abortFunc(
-                x=x, ys=y_this, o_x=ox, o_ys=y_last
+                x=x, ys=y_this, record=record
             ):  # premature terminating cond. is met
                 return x, y_this, Rm
 
-            if record is not None:
-                record.append([x, [*y_this]])
+            record.append([x, [*y_this]])
 
             if R != 0:  # sometimes the error can be estimated to be 0
                 delta = beta * abs(1 / R) ** (1 / 7)
@@ -555,7 +556,7 @@ def RKF78(
             else:
                 """
                 if this continues to be true, we are integrating a polynomial,
-                in which case the error should be independent of the step size
+                in which case the error should be independent of the step size.
                 Therefore we aggressively increase the step size to seek forward.
                 """
                 delta = 2
@@ -574,8 +575,7 @@ def RKF78(
             print("x", x, "y", *y_this)
             print("dy/dx", *dFunc(x, *y_this, h))
 
-            if record is not None:
-                print(*record, sep="\n")
+            print(*record, sep="\n")
 
         raise ValueError(
             "Premature Termination of Integration due to vanishing step size,"

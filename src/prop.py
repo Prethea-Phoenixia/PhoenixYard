@@ -141,6 +141,9 @@ class GrainComp:
         self.T_v = flameTemp  # isochoric (const volume) adiabatic temperature
         self.R = self.f / self.T_v
 
+    def __str__(self):
+        return self.name
+
     @classmethod
     def readFile(cls, fileName):
         composition = []

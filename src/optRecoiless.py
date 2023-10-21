@@ -4,7 +4,7 @@ from random import uniform
 from math import pi
 from recoiless import Recoiless
 from opt import N
-
+from bisect import bisect
 from gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
 
 
@@ -32,8 +32,6 @@ class ConstrainedRecoiless:
                 startPressure <= 0,
                 dragCoefficient < 0,
                 dragCoefficient >= 1,
-                designPressure <= 0,
-                designVelocity <= 0,
                 nozzleExpansion < 1,
                 nozzleEfficiency > 1,
                 nozzleEfficiency <= 0,
@@ -41,6 +39,15 @@ class ConstrainedRecoiless:
             )
         ):
             raise ValueError("Invalid parameters for constrained design")
+
+        if any(
+            (
+                designPressure <= 0,
+                designPressure <= startPressure,
+                designVelocity <= 0,
+            )
+        ):
+            raise ValueError("Invalid design constraint")
 
         self.S = (0.5 * caliber) ** 2 * pi
         self.m = shotMass
@@ -242,18 +249,35 @@ class ConstrainedRecoiless:
         """
         step 1, find grain size that satisifies design pressure
         """
+        p_bar_0 = p_0 / (f * Delta)
         p_bar_d = p_d / (f * Delta)  # convert to unitless
         l_bar_d = maxLength / l_0
 
-        def abort_Z(x, ys, o_x, o_ys):
+        def abort_Z(x, ys, record):
             Z, t_bar, l_bar, v_bar, eta, tau = x, *ys
             p_bar = _f_p_bar(Z, l_bar, v_bar, eta, tau)
-            oZ, ot_bar, ol_bar, ov_bar, oeta, otau = o_x, *o_ys
-            op_bar = _f_p_bar(oZ, ol_bar, ov_bar, oeta, otau)
 
-            return (p_bar - op_bar < -p_bar_d * tol) or (p_bar > 2 * p_bar_d)
+            crested = False
+            if len(record) > 1:
+                # generalized peak finding.
+                # this is necessary as on some designs the initial pressure
+                # tends to drop before rising again, therefore a more rigorous
+                # method is necessary.
+                o_x, o_ys = record[-1]
+                oZ, _, ol_bar, ov_bar, oeta, otau = o_x, *o_ys
+                op_bar = _f_p_bar(oZ, ol_bar, ov_bar, oeta, otau)
+
+                oo_x, oo_ys = record[-2]
+                ooZ, _, ool_bar, oov_bar, ooeta, ootau = oo_x, *oo_ys
+                oop_bar = _f_p_bar(ooZ, ool_bar, oov_bar, ooeta, ootau)
+
+                if (oop_bar < op_bar) and (op_bar > p_bar):
+                    crested = True
+
+            return crested or (p_bar > 2 * p_bar_d) or l_bar > l_bar_d
 
         def _f_p_e_1(e_1, tol=tol):
+            print("e_1", e_1)
             """
             calculate either the peak pressure, given the arc thickness,
             or until the system develops 2x design pressure.
@@ -308,28 +332,63 @@ class ConstrainedRecoiless:
 
                 return (dt_bar, dl_bar, dv_bar, deta, dtau)
 
+            stepVanished = False
             record = [[Z_0, [0, 0, 0, 0, 1]]]
+            try:
+                (
+                    Z_j,
+                    (t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j),
+                    _,
+                ) = RKF78(
+                    dFunc=_ode_Z,
+                    iniVal=(0, 0, 0, 0, 1),
+                    x_0=Z_0,
+                    x_1=Z_b,
+                    relTol=tol,
+                    absTol=tol**2,
+                    abortFunc=abort_Z,
+                    record=record,
+                    # debug=True,
+                )
+            except ValueError:
+                Z_j, (t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j) = record[-1]
+                stepVanished = True
 
-            (
-                Z_j,
-                (t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j),
-                _,
-            ) = RKF78(
-                dFunc=_ode_Z,
-                iniVal=(0, 0, 0, 0, 1),
-                x_0=Z_0,
-                x_1=Z_b,
-                relTol=tol,
-                absTol=tol**2,
-                abortFunc=abort_Z,
-                record=record,
-            )
+            p_bar_j = _f_p_bar(Z_j, l_bar_j, v_bar_j, eta_j, tau_j)
 
-            if len(record) > 1:
-                Z_i = record[-2][0]
-            else:
-                Z_i = Z_0
+            if (
+                p_bar_j >= 2 * p_bar_d or l_bar_j > l_bar_d or stepVanished
+            ):  # case for abort due to excessive pressure
+                print("pressure/length/stepsize abort branch")
+                print(
+                    *[
+                        (Z, _f_p_bar(Z, l_bar, v_bar, eta, tau) * f * Delta)
+                        for (Z, (t_bar, l_bar, v_bar, eta, tau)) in record
+                    ],
+                    sep="\n",
+                )
 
+                return (
+                    p_bar_j - p_bar_d,
+                    Z_j,
+                    t_bar_j,
+                    l_bar_j,
+                    v_bar_j,
+                    eta_j,
+                    tau_j,
+                )
+
+            print("peak finding branch")
+            """
+            print(
+                *[
+                    (Z, _f_p_bar(Z, l_bar, v_bar, eta, tau) * f * Delta)
+                    for (Z, (t_bar, l_bar, v_bar, eta, tau)) in record
+                ],
+                sep="\n",
+            )"""
+
+            # case for abort due to decreasing pressure
             def _f_p_Z(Z):
                 i = record.index([v for v in record if v[0] <= Z][-1])
                 x = record[i][0]
@@ -352,9 +411,16 @@ class ConstrainedRecoiless:
 
             """
             find the peak pressure point.
-            The tolerance on Z must be guarded such that floating point
-            error does not become rampant
             """
+            Z_i = Z_0
+            if len(record) > 1:
+                Z_i = record[-2][0]
+
+            """
+            print("Z_0", Z_0)
+            print("Z_i", Z_i, "Z_j", Z_j)
+            """
+
             Z_1, Z_2 = gss(
                 _f_p_Z,
                 Z_i,
@@ -367,25 +433,42 @@ class ConstrainedRecoiless:
             if abs(Z_p - Z_b) < tol:
                 Z_p = Z_b
 
+            p_bar_p = _f_p_Z(Z_p)
+
+            print("Z_p", Z_p)
+            print("p_d", p_bar_d * f * Delta)
+            print("p_p", p_bar_p * f * Delta)
+
+            print(
+                *[
+                    (Z, _f_p_bar(Z, l_bar, v_bar, eta, tau) * f * Delta)
+                    for (Z, (t_bar, l_bar, v_bar, eta, tau)) in record
+                ],
+                sep="\n",
+            )
+
             return (
-                _f_p_Z(Z_p) - p_bar_d,
+                p_bar_p - p_bar_d,
                 record[-1][0],
                 *record[-1][-1],
-            )  # debug
+            )
 
-        dp_bar_probe = _f_p_e_1(minWeb)[0]
+        dp_bar_probe, Z, *_ = _f_p_e_1(minWeb)
         probeWeb = minWeb
 
         if dp_bar_probe < 0:
             raise ValueError(
-                "Design pressure cannot be achieved by varying web down to minimum"
+                "Design pressure cannot be achieved by varying web down to minimum. "
+                + "Peak pressure found at phi = {:.4g} at {:.4g} MPa".format(
+                    f_psi_Z(Z), (dp_bar_probe + p_bar_d) * 1e-6 * f * Delta
+                )
             )
 
         while dp_bar_probe >= 0:
             probeWeb *= 2
             dp_bar_probe = _f_p_e_1(probeWeb)[0]
 
-        e_1, _ = dekker(
+        e_1, e_1_2 = dekker(
             lambda web: _f_p_e_1(web)[0],
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
@@ -393,8 +476,10 @@ class ConstrainedRecoiless:
             y_abs_tol=p_bar_d * tol,
         )  # this is the e_1 that satisifies the pressure specification.
 
+        print("dekkered", e_1, e_1_2)
+
         (
-            p_bar_dev,
+            dp_bar_i,
             Z_i,
             t_bar_i,
             l_bar_i,
@@ -403,19 +488,32 @@ class ConstrainedRecoiless:
             tau_i,
         ) = _f_p_e_1(e_1)
 
+        print(dp_bar_i * f * Delta)
+
+        if abs(dp_bar_i) > tol * p_bar_d:
+            dp_bar_j, *_ = _f_p_e_1(e_1_2)
+
+            raise ValueError(
+                "Design pressure is not met, current best solution peaked at "
+                + "P = {:.4g}MPa ({:+.3g}%) ".format(
+                    (dp_bar_i + p_bar_d) * (f * Delta * 1e-6),
+                    dp_bar_i / p_bar_d * 100,
+                )
+                + "and the second best solution at "
+                + "P = {:.4g}MPa ({:+.3g}%).".format(
+                    (dp_bar_j + p_bar_d) * (f * Delta * 1e-6),
+                    dp_bar_j / p_bar_d * 100,
+                )
+                + " If these are too disparate this may indicate increased "
+                + "numerical accuracy is required to solve this case."
+            )
+
         if abs(Z_i - Z_b) < tol:
             """
             fudging the starting Z value for velocity integration to prevent
             driving integrator to 0 at the transition point.
             """
             Z_i = Z_b + tol
-
-        if abs(p_bar_dev) > tol * p_bar_d:
-            raise ValueError(
-                "Design pressure is not met, delta = {:.3g} Pa".format(
-                    p_bar_dev * (f * Delta)
-                )
-            )
 
         """
         step 2, find the requisite muzzle length to achieve design velocity
@@ -471,9 +569,9 @@ class ConstrainedRecoiless:
 
             return (dt_bar, dZ, dl_bar, deta, dtau)
 
-        def abort_v(x, ys, o_x, o_ys):
-            v_bar = x
-            t_bar, Z, l_bar, eta, tau = ys
+        def abort_v(x, ys, record):
+            # v_bar = x
+            _, _, l_bar, _, _ = ys
             return l_bar > l_bar_d
 
         try:
@@ -492,7 +590,7 @@ class ConstrainedRecoiless:
                 abortFunc=abort_v,
                 record=vtzlet_record,  # debug
             )
-            # todo: something up here
+
         except ValueError:
             vmax = vtzlet_record[-1][0] * v_j
             lmax = vtzlet_record[-1][-1][2] * l_0
@@ -655,27 +753,40 @@ if __name__ == "__main__":
     compositions = GrainComp.readFile("data/propellants.csv")
     S22 = compositions["ATK PRD(S)22"]
     M8 = compositions["M8"]
+    M1 = compositions["M1"]
+
     S22S = Propellant(S22, SimpleGeometry.TUBE, 1, 2.5)
     M8S = Propellant(M8, SimpleGeometry.TUBE, 1, 2.5)
-    M87P = Propellant(M8, MultPerfGeometry.SEVEN_PERF_CYLINDER, 1, 2.5)
+    M17P = Propellant(M1, MultPerfGeometry.SEVEN_PERF_CYLINDER, 1.0, 2.50)
     test = ConstrainedRecoiless(
         caliber=93e-3,
         shotMass=4,
-        propellant=M87P,
+        propellant=M17P,
         startPressure=10e6,
         dragCoefficient=5e-2,
         designPressure=15e6,
-        designVelocity=150,
+        designVelocity=100,
         nozzleExpansion=4,
         nozzleEfficiency=0.92,
-        chambrage=1,
+        chambrage=1.5,
     )
-
+    """
+    test.solve(
+        loadFraction=0.5,
+        chargeMassRatio=0.309 / 4,
+        tol=1e-3,
+        minWeb=150e-6,
+        maxLength=100,
+    )
+    """
     datas = []
-    for i in range(5):
+    for i in range(1):
         datas.append(
             test.findMinV(
-                chargeMassRatio=0.309 / 4, tol=1e-4, minWeb=1e-6, maxLength=100
+                chargeMassRatio=0.309 / 4,
+                tol=1e-4,
+                minWeb=100e-6,
+                maxLength=100,
             )
         )
 

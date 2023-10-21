@@ -424,9 +424,8 @@ class Recoiless:
         p_max = 1e9  # 1GPa
         p_bar_max = p_max / pScale
 
-        def abort(x, ys, o_x, o_ys):
-            Z, t_bar, l_bar, v_bar, eta, tau = x, *ys
-
+        def abort(x, ys, record):
+            Z, _, l_bar, v_bar, eta, tau = x, *ys
             p_bar = self._f_p_bar(Z, l_bar, eta, tau)
 
             return any(

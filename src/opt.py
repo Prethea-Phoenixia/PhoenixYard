@@ -38,11 +38,18 @@ class Constrained:
                 startPressure <= 0,
                 dragCoefficient < 0,
                 dragCoefficient >= 1,
-                designPressure <= 0,
-                designVelocity <= 0,
             )
         ):
             raise ValueError("Invalid parameters for constrained design")
+
+        if any(
+            (
+                designPressure <= 0,
+                designPressure <= startPressure,
+                designVelocity <= 0,
+            )
+        ):
+            raise ValueError("Invalid design constraint")
 
         self.S = (caliber / 2) ** 2 * pi
         self.m = shotMass
@@ -213,10 +220,12 @@ class Constrained:
         p_bar_d = p_d / (f * Delta)  # convert to unitless
         l_bar_d = maxLength / l_0
 
-        def abort_Z(x, ys, o_x, o_ys):
+        def abort_Z(x, ys, record):
             Z = x
             t_bar, l_bar, v_bar = ys
             p_bar = _f_p_bar(Z, l_bar, v_bar)
+
+            o_x, o_ys = record[-1]
 
             oZ = o_x
             ot_bar, ol_bar, ov_bar = o_ys
@@ -282,10 +291,14 @@ class Constrained:
                 record=record,
             )
 
-            if len(record) > 1:
-                Z_i = record[-2][0]
-            else:
-                Z_i = Z_0
+            p_bar_j = _f_p_bar(Z_j, l_bar_j, v_bar_j)
+
+            if (
+                p_bar_j >= 2 * p_bar_d
+            ):  # case for abort due to excessive pressure
+                return p_bar_j - p_bar_d, Z_j, t_bar_j, l_bar_j, v_bar_j
+
+            # case for abort due to decreasing pressure
 
             def _f_p_Z(Z):
                 i = record.index([v for v in record if v[0] <= Z][-1])
@@ -309,9 +322,12 @@ class Constrained:
 
             """
             find the peak pressure point.
-            The tolerance on Z must be guarded such that floating point
-            error does not become rampant
             """
+
+            if len(record) > 1:
+                Z_i = record[-2][0]
+            else:
+                Z_i = Z_0
 
             Z_1, Z_2 = gss(_f_p_Z, Z_i, Z_j, y_rel_tol=tol, findMin=False)
             Z_p = 0.5 * (Z_1 + Z_2)
@@ -400,8 +416,8 @@ class Constrained:
 
             return [dt_bar, dZ, dl_bar]
 
-        def abort_v(x, ys, o_x, o_ys):
-            t_bar, Z, l_bar = ys
+        def abort_v(x, ys, record):
+            _, _, l_bar = ys
             return l_bar > l_bar_d
 
         try:
