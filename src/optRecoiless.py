@@ -188,7 +188,10 @@ class ConstrainedRecoiless:
 
         if v_j < v_d:
             raise ValueError(
-                "Propellant load too low to achieve design velocity."
+                "Propellant load too low to achieve design velocity. "
+                + " The 2nd ballistic limit for this loading conditions is"
+                + " {:.4g} m/s,".format(v_j)
+                + " and recoiless guns only achieve a part of that as well."
             )
 
         psi_0 = (1 / Delta - 1 / rho_p) / (f / p_0 + alpha - 1 / rho_p)

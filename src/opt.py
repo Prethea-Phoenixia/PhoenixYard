@@ -173,7 +173,9 @@ class Constrained:
 
         if v_j < v_d:
             raise ValueError(
-                "Propellant load too low to achieve design velocity."
+                "Propellant load too low to achieve design velocity. "
+                + " The 2nd ballistic limit for this loading conditions is"
+                + " {:.4g} m/s.".format(v_j)
             )
 
         psi_0 = (1 / Delta - 1 / rho_p) / (f / p_0 + alpha - 1 / rho_p)
@@ -217,7 +219,14 @@ class Constrained:
         """
         step 1, find grain size that satisifies design pressure
         """
+        p_bar_s = _f_p_bar(Z_0, 0, 0)
         p_bar_d = p_d / (f * Delta)  # convert to unitless
+
+        if p_bar_d < p_bar_s:
+            raise ValueError(
+                "Interior ballistics of conventional gun precludes"
+                + " a pressure lower than that at shot start."
+            )
         l_bar_d = maxLength / l_0
 
         def abort_Z(x, ys, record):
