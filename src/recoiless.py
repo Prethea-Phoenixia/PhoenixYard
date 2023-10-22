@@ -1,4 +1,4 @@
-from math import pi
+from math import pi, inf
 from num import gss, RKF78, cubic
 from prop import GrainComp, Propellant
 
@@ -1050,21 +1050,22 @@ class Recoiless:
         vx = m_dot * (self.V_0 + self.S * l) / (Sx * (self.omega - y))
         # velocity impinging upon the rear of the breech before nozzle constriction
 
-        if l == 0:
-            return self.p_0, self.p_0, 0, 0
-        else:
-            H = min(vx / v, 2 * self.phi_1 * self.m / (self.omega - y) + 1)
+        H_1 = vx / v if v != 0 else inf
+        H_2 = 2 * self.phi_1 * self.m / (self.omega - y) + 1
+        H = min(H_1, H_2)
 
-            ps = p / (
-                1 + (self.omega - y) / (3 * self.phi_1 * self.m) * (1 - 0.5 * H)
-            )  # shot base pressure
-            p0 = ps * (
-                1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 + H) ** -1
-            )  # stagnation point pressure
-            px = ps * (
-                1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 - H)
-            )  # breech pressure
-            return ps, p0, px, vx
+        ps = p / (
+            1 + (self.omega - y) / (3 * self.phi_1 * self.m) * (1 - 0.5 * H)
+        )  # shot base pressure
+        p0 = ps * (
+            1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 + H) ** -1
+        )  # stagnation point pressure
+        px = (
+            ps * (1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 - H))
+            if H == H_1
+            else 0
+        )  # breech pressure
+        return ps, p0, px, vx
 
     @staticmethod
     def getCf(gamma, Sr, tol=1e-5):

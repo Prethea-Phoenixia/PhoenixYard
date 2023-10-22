@@ -2527,7 +2527,7 @@ def calculate(
     optimize = kwargs["opt"]
     debug = kwargs["deb"]
 
-    sigfig = int(-log10(kwargs["tol"])) + 1
+    # sigfig = int(-log10(kwargs["tol"])) + 1
 
     try:
         if constrain:
@@ -2538,12 +2538,15 @@ def calculate(
 
             if optimize:
                 l_f, e_1, l_g = constrained.findMinV(**kwargs)
-                kwargs.update({"loadFraction": roundSig(l_f, n=sigfig)})
+                # kwargs.update({"loadFraction": roundSig(l_f, n=sigfig)})
+                kwargs.update({"loadFraction": l_f})
             else:
                 e_1, l_g = constrained.solve(**kwargs)
 
-            kwargs.update({"grainSize": roundSig(2 * e_1, n=sigfig)})
-            kwargs.update({"lengthGun": roundSig(l_g, n=sigfig)})
+            # kwargs.update({"grainSize": roundSig(2 * e_1, n=sigfig)})
+            kwargs.update({"grainSize": 2 * e_1})
+            # kwargs.update({"lengthGun": roundSig(l_g, n=sigfig)})
+            kwargs.update({"lengthGun": l_g})
 
             chamberVolume = (
                 kwargs["chargeMass"]

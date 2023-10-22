@@ -280,14 +280,25 @@ def RKF78(
         ]
     )
     if debug:
-        print(
-            *[
-                param
-                for param in sig.parameters.values()
-                if param.kind == param.POSITIONAL_OR_KEYWORD
-            ],
-            sep=", "
-        )
+        paramstr = [
+            str(param)
+            for param in sig.parameters.values()
+            if param.kind == param.POSITIONAL_OR_KEYWORD
+        ]
+        print("f:")
+
+        for i, param in enumerate(paramstr):
+            print("{:_^12}|".format(param), end="")
+
+        print("\n{:^12.8g}|".format(x_0), end="")
+        for i, yval in enumerate(y_this):
+            print("{:^12.8g}|".format(yval), end="")
+        print("{:^12}|".format("d " + paramstr[0]), end="")
+
+        print("\n{:^12.8g}|".format(x_1), end="")
+        for i, yval in enumerate(y_this):
+            print("{:^12}|".format("?"), end="")
+        print("{:^12}|".format("d " + paramstr[0]))
 
     if adaptTo is False or ((params - 2) == len(adaptTo) == len(iniVal)):
         pass
@@ -539,6 +550,9 @@ def RKF78(
             delta = beta * abs(1 / R) ** (1 / 8)
 
         else:  # error is acceptable
+            if debug:
+                print(x, y_this)
+                input()
             y_this = y_next
             x += h
             Rm = [max(Rmi, Rsi) for Rmi, Rsi in zip(Rm, Rs)]
@@ -719,14 +733,6 @@ def dekker(
 
         fb_k = f(b_k) - y  # calcualte new value of estimate
 
-        if debug:
-            record.append((b_k, fb_k, i))
-
-        if any(
-            (abs(b_k - b_j) < x_tol, abs(fb_k) < y_abs_tol),
-        ):
-            return b_k, b_j
-
         if (
             fa_j * fb_k < 0
         ):  # if the contrapoint is of different sign than current estimate
@@ -739,6 +745,14 @@ def dekker(
         if abs(fa_k) < abs(fb_k):  # ensure b is still the best guess
             a_k, b_k = b_k, a_k
             fa_k, fb_k = fb_k, fa_k
+
+        if debug:
+            record.append((b_k, fb_k, i))
+        if any(
+            (abs(b_k - a_k) < x_tol, abs(fb_k) < y_abs_tol),
+        ):
+            return b_k, a_k
+            # return the best, and the bracketing solution
 
         a_j = a_k
         fa_j = fa_k

@@ -45,7 +45,7 @@ class Constrained:
         if any(
             (
                 designPressure <= 0,
-                designPressure <= startPressure,
+                # designPressure <= startPressure,
                 designVelocity <= 0,
             )
         ):
@@ -607,7 +607,7 @@ class Constrained:
         if abs(high - low) < tol:
             raise ValueError("No range of values satisfying constraint.")
 
-        if len(records) > 3:
+        if len(records) > 2:
             records.sort(key=lambda x: x[0])
             for l, m, h in zip(records[:-2], records[1:-1], records[2:]):
                 if l[1] > m[1] and h[1] > m[1]:

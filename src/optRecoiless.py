@@ -1,7 +1,7 @@
 from num import gss, RKF78, cubic, dekker
 from prop import Propellant
 from random import uniform
-from math import pi
+from math import pi, inf
 from recoiless import Recoiless
 from opt import N
 from bisect import bisect
@@ -43,7 +43,7 @@ class ConstrainedRecoiless:
         if any(
             (
                 designPressure <= 0,
-                designPressure <= startPressure,
+                # designPressure <= startPressure,
                 designVelocity <= 0,
             )
         ):
@@ -212,6 +212,8 @@ class ConstrainedRecoiless:
             )
         Z_0 = Zs[0]
 
+        # p_bar_0 = p_0 / (f * Delta)
+
         def _f_p_bar(Z, l_bar, v_bar, eta, tau):
             psi = f_psi_Z(Z)
             l_psi_bar = 1 - Delta * ((1 - psi) / rho_p + alpha * (psi - eta))
@@ -222,66 +224,51 @@ class ConstrainedRecoiless:
 
             else:
                 y = omega * eta
-                m_dot = C_A * v_j * S_j * p_bar * f * Delta / (f * tau**0.5)
+                m_dot = C_A * v_j * S_j * p_bar * Delta / (tau**0.5)
                 vx = m_dot * (V_0 + S * l_bar * l_0) / (Sx * (omega - y))
 
-                if v_bar == 0:
-                    if control == POINT_PEAK_SHOT:
-                        return p_0 / (f * Delta)
-                    elif control == POINT_PEAK_BREECH:
-                        return 0
+                H_1, H_2 = (
+                    vx / (v_j * v_bar) if v_bar != 0 else inf,
+                    2 * phi_1 * m / (omega - y) + 1,
+                )
 
-                else:
-                    H = min(
-                        vx / (v_j * v_bar),
-                        2 * phi_1 * m / (omega - y) + 1,
-                    )
-                    p_s_bar = p_bar / (
-                        1 + (omega - y) / (3 * phi_1 * m) * (1 - 0.5 * H)
-                    )
-                    if control == POINT_PEAK_SHOT:
-                        return p_s_bar
-                    elif control == POINT_PEAK_BREECH:
-                        return p_s_bar * (
-                            1 + (omega - y) / (2 * phi_1 * m) * (1 - H)
-                        )
+                H = min(H_1, H_2)
 
+                p_s_bar = p_bar / (
+                    1 + (omega - y) / (3 * phi_1 * m) * (1 - 0.5 * H)
+                )
+                if control == POINT_PEAK_SHOT:
+                    return p_s_bar
+                elif control == POINT_PEAK_BREECH:
+                    return (
+                        p_s_bar * (1 + (omega - y) / (2 * phi_1 * m) * (1 - H))
+                        if H == H_1
+                        else 0
+                    )
+
+        p_bar_d = p_d / (f * Delta)  # convert to unitless
+        l_bar_d = maxLength / l_0
+        """
+        if p_bar_d < p_bar_s:
+            raise ValueError("Pressure constraint lower than starting value.")
+        """
         """
         step 1, find grain size that satisifies design pressure
         """
-        p_bar_0 = p_0 / (f * Delta)
-        p_bar_d = p_d / (f * Delta)  # convert to unitless
-        l_bar_d = maxLength / l_0
 
         def abort_Z(x, ys, record):
             Z, t_bar, l_bar, v_bar, eta, tau = x, *ys
             p_bar = _f_p_bar(Z, l_bar, v_bar, eta, tau)
-
-            crested = False
-            if len(record) > 1:
-                # generalized peak finding.
-                # this is necessary as on some designs the initial pressure
-                # tends to drop before rising again, therefore a more rigorous
-                # method is necessary.
-                o_x, o_ys = record[-1]
-                oZ, _, ol_bar, ov_bar, oeta, otau = o_x, *o_ys
-                op_bar = _f_p_bar(oZ, ol_bar, ov_bar, oeta, otau)
-
-                oo_x, oo_ys = record[-2]
-                ooZ, _, ool_bar, oov_bar, ooeta, ootau = oo_x, *oo_ys
-                oop_bar = _f_p_bar(ooZ, ool_bar, oov_bar, ooeta, ootau)
-
-                if (oop_bar < op_bar) and (op_bar > p_bar):
-                    crested = True
-
-            return crested or (p_bar > 2 * p_bar_d) or l_bar > l_bar_d
+            return (p_bar > 2 * p_bar_d) or l_bar > l_bar_d
 
         def _f_p_e_1(e_1, tol=tol):
-            print("e_1", e_1)
             """
-            calculate either the peak pressure, given the arc thickness,
-            or until the system develops 2x design pressure.
+            Find pressure maximum bracketed by the range of
+            Z_0 < Z < Z_d
+            l_bar < l_bar_d,
+            p_bar < 2 * p_bar_d.
             """
+            # print("e_1", e_1)
             B = (
                 S**2
                 * e_1**2
@@ -332,7 +319,7 @@ class ConstrainedRecoiless:
 
                 return (dt_bar, dl_bar, dv_bar, deta, dtau)
 
-            stepVanished = False
+            # stepVanished = False
             record = [[Z_0, [0, 0, 0, 0, 1]]]
             try:
                 (
@@ -350,37 +337,18 @@ class ConstrainedRecoiless:
                     record=record,
                     # debug=True,
                 )
+
+                if Z_j not in [line[0] for line in record]:
+                    record.append(
+                        [Z_j, [t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j]]
+                    )
             except ValueError:
                 Z_j, (t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j) = record[-1]
-                stepVanished = True
+                # stepVanished = True
 
             p_bar_j = _f_p_bar(Z_j, l_bar_j, v_bar_j, eta_j, tau_j)
 
-            if (
-                p_bar_j >= 2 * p_bar_d or l_bar_j > l_bar_d or stepVanished
-            ):  # case for abort due to excessive pressure
-                print("pressure/length/stepsize abort branch")
-                print(
-                    *[
-                        (Z, _f_p_bar(Z, l_bar, v_bar, eta, tau) * f * Delta)
-                        for (Z, (t_bar, l_bar, v_bar, eta, tau)) in record
-                    ],
-                    sep="\n",
-                )
-
-                return (
-                    p_bar_j - p_bar_d,
-                    Z_j,
-                    t_bar_j,
-                    l_bar_j,
-                    v_bar_j,
-                    eta_j,
-                    tau_j,
-                )
-
-            print("peak finding branch")
-            """
-            print(
+            """print(
                 *[
                     (Z, _f_p_bar(Z, l_bar, v_bar, eta, tau) * f * Delta)
                     for (Z, (t_bar, l_bar, v_bar, eta, tau)) in record
@@ -388,70 +356,75 @@ class ConstrainedRecoiless:
                 sep="\n",
             )"""
 
-            # case for abort due to decreasing pressure
-            def _f_p_Z(Z):
-                i = record.index([v for v in record if v[0] <= Z][-1])
-                x = record[i][0]
-                ys = record[i][1]
-
-                r = []
-                _, (t_bar, l_bar, v_bar, eta, tau), _ = RKF78(
-                    dFunc=_ode_Z,
-                    iniVal=ys,
-                    x_0=x,
-                    x_1=Z,
-                    relTol=tol,
-                    absTol=tol**2,
-                    record=r,
-                )
-                xs = [v[0] for v in record]
-                record.extend(v for v in r if v[0] not in xs)
-                record.sort()
-                return _f_p_bar(Z, l_bar, v_bar, eta, tau)
+            # print(*record, sep="\n")
 
             """
             find the peak pressure point.
             """
             Z_i = Z_0
-            if len(record) > 1:
-                Z_i = record[-2][0]
-
-            """
-            print("Z_0", Z_0)
-            print("Z_i", Z_i, "Z_j", Z_j)
-            """
-
-            Z_1, Z_2 = gss(
-                _f_p_Z,
-                Z_i,
-                Z_j,
-                y_rel_tol=tol,
-                findMin=False,
-            )
-            Z_p = 0.5 * (Z_1 + Z_2)
-
-            if abs(Z_p - Z_b) < tol:
-                Z_p = Z_b
-
-            p_bar_p = _f_p_Z(Z_p)
-
-            print("Z_p", Z_p)
-            print("p_d", p_bar_d * f * Delta)
-            print("p_p", p_bar_p * f * Delta)
-
-            print(
-                *[
-                    (Z, _f_p_bar(Z, l_bar, v_bar, eta, tau) * f * Delta)
+            peak = None
+            if len(record) > 2:
+                p_bars = [
+                    _f_p_bar(Z, l_bar, v_bar, eta, tau)
                     for (Z, (t_bar, l_bar, v_bar, eta, tau)) in record
-                ],
-                sep="\n",
-            )
+                ]
 
-            return (
-                p_bar_p - p_bar_d,
-                record[-1][0],
-                *record[-1][-1],
-            )
+                for i, (l, c, r) in enumerate(
+                    zip(p_bars[:-2], p_bars[1:-1], p_bars[2:])
+                ):
+                    if l < c and c > r:
+                        peak = i + 1
+
+            if peak is None:
+                # no peak, so it suffice to compare the end points.
+                if p_bar_j == 0:
+                    p_bar_j = inf
+                return (p_bar_j - p_bar_d, record[-1][0], *record[-1][-1])
+            else:  # peak exist, must compare the peak and the two end points.
+                Z_i = record[peak - 1][0]
+                Z_j = record[peak + 1][0]
+
+                def _f_p_Z(Z):
+                    i = record.index([v for v in record if v[0] <= Z][-1])
+                    x = record[i][0]
+                    ys = record[i][1]
+
+                    r = []
+                    _, (t_bar, l_bar, v_bar, eta, tau), _ = RKF78(
+                        dFunc=_ode_Z,
+                        iniVal=ys,
+                        x_0=x,
+                        x_1=Z,
+                        relTol=tol,
+                        absTol=tol**2,
+                        record=r,
+                    )
+
+                    xs = [v[0] for v in record]
+                    record.extend(v for v in r if v[0] not in xs)
+                    record.sort()
+                    return _f_p_bar(Z, l_bar, v_bar, eta, tau)
+
+                Z_1, Z_2 = gss(
+                    _f_p_Z,
+                    Z_i,
+                    Z_j,
+                    y_rel_tol=tol,
+                    findMin=False,
+                )
+                Z_p = 0.5 * (Z_1 + Z_2)
+
+                if abs(Z_p - Z_b) < tol:
+                    Z_p = Z_b
+
+                p_bar_p = _f_p_Z(Z_p)
+                i = [line[0] for line in record].index(Z_p)
+
+                p_bar_max = max((p_bar_p, p_bar_j))
+                if p_bar_p == p_bar_max:
+                    return (p_bar_p - p_bar_d, record[i][0], *record[i][-1])
+                else:
+                    return (p_bar_j - p_bar_d, record[-1][0], *record[-1][-1])
 
         dp_bar_probe, Z, *_ = _f_p_e_1(minWeb)
         probeWeb = minWeb
@@ -464,7 +437,7 @@ class ConstrainedRecoiless:
                 )
             )
 
-        while dp_bar_probe >= 0:
+        while dp_bar_probe > 0:
             probeWeb *= 2
             dp_bar_probe = _f_p_e_1(probeWeb)[0]
 
@@ -474,38 +447,35 @@ class ConstrainedRecoiless:
             0.5 * probeWeb,  # ?0
             # x_tol=1e-14,
             y_abs_tol=p_bar_d * tol,
+            # debug=True,
         )  # this is the e_1 that satisifies the pressure specification.
 
-        print("dekkered", e_1, e_1_2)
+        """
+        e_1 and e_2 brackets the true solution
+        """
 
-        (
-            dp_bar_i,
-            Z_i,
-            t_bar_i,
-            l_bar_i,
-            v_bar_i,
-            eta_i,
-            tau_i,
-        ) = _f_p_e_1(e_1)
+        dp_bar_i, *vals_1 = _f_p_e_1(e_1)
+        dp_bar_j, *vals_2 = _f_p_e_1(e_1_2)
 
-        print(dp_bar_i * f * Delta)
+        (Z_i, t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i) = vals_1
 
         if abs(dp_bar_i) > tol * p_bar_d:
-            dp_bar_j, *_ = _f_p_e_1(e_1_2)
-
             raise ValueError(
                 "Design pressure is not met, current best solution peaked at "
                 + "P = {:.4g}MPa ({:+.3g}%) ".format(
                     (dp_bar_i + p_bar_d) * (f * Delta * 1e-6),
                     dp_bar_i / p_bar_d * 100,
                 )
-                + "and the second best solution at "
-                + "P = {:.4g}MPa ({:+.3g}%).".format(
+                + "and the bracketing solution at "
+                + "P = {:.4g}MPa ({:+.3g}%),".format(
                     (dp_bar_j + p_bar_d) * (f * Delta * 1e-6),
                     dp_bar_j / p_bar_d * 100,
                 )
-                + " If these are too disparate this may indicate increased "
-                + "numerical accuracy is required to solve this case."
+                + " with a web difference of {:.4g} mm.".format(
+                    (e_1 - e_1_2) * 1e3
+                )
+                + " If the pressures are too disparate this may indicate desired"
+                + " solution lies at the edge or outside of solution space."
             )
 
         if abs(Z_i - Z_b) < tol:
@@ -521,7 +491,11 @@ class ConstrainedRecoiless:
         v_bar_d = v_d / v_j
 
         if v_bar_i > v_bar_d and containBurnout:
-            raise ValueError("Design velocity exceeded before peak pressure")
+            raise ValueError(
+                "Design velocity exceeded ({:.4g} m/s > {:.4g} m/s) before peak pressure.".format(
+                    v_bar_i * v_j, v_bar_d * v_j
+                )
+            )
 
         # TODO: find some way of making this cross constraint less troublesome.
         B = (
@@ -571,8 +545,10 @@ class ConstrainedRecoiless:
 
         def abort_v(x, ys, record):
             # v_bar = x
-            _, _, l_bar, _, _ = ys
-            return l_bar > l_bar_d
+            t_bar, _, l_bar, _, _ = ys
+
+            ot_bar, *_ = record[-1][-1]
+            return l_bar > l_bar_d or t_bar < ot_bar
 
         try:
             vtzlet_record = [[v_bar_i, (t_bar_i, Z_i, l_bar_i, eta_i, tau_i)]]
@@ -589,26 +565,40 @@ class ConstrainedRecoiless:
                 absTol=tol**2,
                 abortFunc=abort_v,
                 record=vtzlet_record,  # debug
+                # debug=True,
             )
 
         except ValueError:
             vmax = vtzlet_record[-1][0] * v_j
             lmax = vtzlet_record[-1][-1][2] * l_0
             raise ValueError(
-                "Velocity asymptotically approaching {:.4g} m/s and {:.4g} m.".format(
+                "Velocity asymptotically approaching {:.4g} m/s at {:.4g} m.".format(
                     vmax, lmax
                 )
-                + " This indicates an excessive velocity target."
+                + " This indicates an excessive velocity target relative to pressure developed."
             )
 
         if l_bar_g > l_bar_d:
             raise ValueError(
-                "Solution requires excessive tube length ({:.3e} m)".format(
-                    maxLength
+                "Solution requires excessive tube length. Last calculated at {:.4g} m/s at {:.4g}.".format(
+                    v_bar_g * v_j, l_bar_g * l_0, maxLength
                 )
             )
+
+        elif t_bar_g < t_bar_i:
+            raise ValueError(
+                "Projectile is already decelerating at peak pressure point ({:.4g} m/s at {:.4g} m).".format(
+                    v_bar_i * v_j, l_bar_i * l_0
+                )
+                + " This indicate excessively low propulsive effort compared to drag"
+                + " in bore. Reduce the caliber, or specify more energetic propellant charge."
+            )
         if abs(v_bar_g - v_bar_d) > (v_bar_d * tol):
-            raise ValueError("Velocity specification is not met")
+            raise ValueError(
+                "Velocity specification is not met: {:.4g} m/s ({:+.3g} %)".format(
+                    v_bar_g * v_j, (v_bar_g - v_bar_d) / v_bar_d * 1e2
+                )
+            )
 
         return e_1, l_bar_g * l_0
 
@@ -718,7 +708,7 @@ class ConstrainedRecoiless:
         if abs(high - low) < tol:
             raise ValueError("No range of values satisfying constraint.")
 
-        if len(records) > 3:
+        if len(records) > 2:
             records.sort(key=lambda x: x[0])
             for l, m, h in zip(records[:-2], records[1:-1], records[2:]):
                 if l[1] > m[1] and h[1] > m[1]:
@@ -764,19 +754,21 @@ if __name__ == "__main__":
         propellant=M17P,
         startPressure=10e6,
         dragCoefficient=5e-2,
-        designPressure=15e6,
+        designPressure=5e6,
         designVelocity=100,
         nozzleExpansion=4,
         nozzleEfficiency=0.92,
         chambrage=1.5,
     )
-    """
-    test.solve(
-        loadFraction=0.5,
-        chargeMassRatio=0.309 / 4,
-        tol=1e-3,
-        minWeb=150e-6,
-        maxLength=100,
+    print(
+        test.solve(
+            loadFraction=0.5,
+            chargeMassRatio=0.309 / 4,
+            tol=1e-3,
+            minWeb=1e-6,
+            maxLength=100,
+            control=POINT_PEAK_BREECH,
+        )
     )
     """
     datas = []
@@ -805,3 +797,4 @@ if __name__ == "__main__":
             delta, headers=("load fract.", "web", "length"), floatfmt=".3e"
         )
     )
+    """
