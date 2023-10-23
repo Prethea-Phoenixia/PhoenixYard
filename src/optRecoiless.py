@@ -557,7 +557,7 @@ class ConstrainedRecoiless:
             vtzlet_record = [[v_bar_i, (t_bar_i, Z_i, l_bar_i, eta_i, tau_i)]]
             (
                 v_bar_g,
-                (t_bar_g, Z_g, l_bar_g, eta, tau),
+                (t_bar_g, Z_g, l_bar_g, eta_g, tau_g),
                 _,
             ) = RKF78(
                 dFunc=_ode_v,
@@ -572,34 +572,43 @@ class ConstrainedRecoiless:
             )
 
         except ValueError:
-            vmax = vtzlet_record[-1][0] * v_j
-            lmax = vtzlet_record[-1][-1][2] * l_0
+            v_bar_m, (t_bar_m, Z_m, l_bar_m, eta_m, tau_m) = vtzlet_record[-1]
+            pmax = _f_p_bar(Z_m, l_bar_m, v_bar_m, eta_m, tau_m) * f * Delta
+            vmax = v_bar_m * v_j
+            lmax = l_bar_m * l_0
             raise ValueError(
-                "Velocity asymptotically approaching {:.4g} m/s at {:.4g} m.".format(
-                    vmax, lmax
-                )
-                + " This indicates an excessive velocity target relative to pressure developed."
+                "Integration appears to be approaching asymptote, "
+                + "last calculated to v = {:.4g} m/s, ".format(vmax)
+                + "x = {:.4g} m, p = {:.4g} MPa. ".format(lmax, pmax * 1e-6)
+                + "This indicates an excessive velocity target relative to pressure developed."
             )
+
+        p_bar_g = _f_p_bar(Z_g, l_bar_g, v_bar_g, eta_g, tau_g)
+
+        v_g = v_bar_g * v_j
+        l_g = l_bar_g * l_0
+        p_g = p_bar_g * f * Delta
 
         if l_bar_g > l_bar_d:
             raise ValueError(
-                "Solution requires excessive tube length. Last calculated at {:.4g} m/s at {:.4g}.".format(
-                    v_bar_g * v_j, l_bar_g * l_0, maxLength
-                )
+                "Solution requires excessive tube length, last calculated to "
+                + "v = {:.4g} m/s, x = {:.4g} m, ".format(v_g, l_g)
+                + "p = {:.4g} MPa.".format(p_g * 1e-6)
             )
 
         elif t_bar_g < t_bar_i:
             raise ValueError(
-                "Projectile is already decelerating at peak pressure point ({:.4g} m/s at {:.4g} m).".format(
-                    v_bar_i * v_j, l_bar_i * l_0
-                )
-                + " This indicate excessively low propulsive effort compared to drag"
-                + " in bore. Reduce the caliber, or specify more energetic propellant charge."
+                "Projectile is already decelerating at peak pressure point, "
+                + "last calculated at v = {:.4g} m/s,".format(v_g)
+                + "x = {:.4g} m, p = {:.4g} MPa. ".format(l_g, p_g * 1e-6)
+                + "This indicate excessively low propulsive effort compared to drag "
+                + "in bore. Reduce the caliber, or specify more energetic propellant charge."
             )
-        if abs(v_bar_g - v_bar_d) > (v_bar_d * tol):
+        if abs(v_bar_g - v_bar_d) > (tol * v_bar_d):
             raise ValueError(
-                "Velocity specification is not met: {:.4g} m/s ({:+.3g} %)".format(
-                    v_bar_g * v_j, (v_bar_g - v_bar_d) / v_bar_d * 1e2
+                "Velocity specification is not met, last calculated to "
+                + "v = {:.4g} m/s ({:+.3g} %), x = {:.4g} m, p = {:.4g} MPa".format(
+                    v_g, (v_bar_g - v_bar_d) / v_bar_d * 1e2, l_g, p_g * 1e-6
                 )
             )
 

@@ -384,7 +384,12 @@ class Constrained:
             )
 
         if v_j * v_bar_i > v_d and containBurnout:
-            raise ValueError("Design velocity exceeded before peak pressure")
+            raise ValueError(
+                "Design velocity exceeded ({:.4g} m/s > {:.4g} m/s) before peak pressure.".format(
+                    v_bar_i * v_j, v_bar_d * v_j
+                )
+            )
+
         """
         step 2, find the requisite muzzle length to achieve design velocity
         """
@@ -443,23 +448,36 @@ class Constrained:
             )
 
         except ValueError:
-            vmax = vtzl_record[-1][0] * v_j
-            lmax = vtzl_record[-1][-1][-1] * l_0
+            v_bar_m, (t_bar_m, Z_m, l_bar_m) = vtzl_record[-1]
+            pmax = _f_p_bar(Z_m, l_bar_m, v_bar_m) * f * Delta
+            vmax = v_bar_m * v_j
+            lmax = l_bar_m * l_0
             raise ValueError(
-                "Velocity plateaued below specification at {:.4g} m/s and {:.4g} m.".format(
-                    vmax, lmax
-                )
+                "Integration appears to be approaching asymptote, "
+                + "last calculated to v = {:.4g} m/s, ".format(vmax)
+                + "x = {:.4g} m, p = {:.4g} MPa. ".format(lmax, pmax * 1e-6)
+                + "This indicates an excessive velocity target relative to pressure developed."
             )
+
+        p_bar_g = _f_p_bar(Z_g, l_bar_g, v_bar_g)
+
+        v_g = v_bar_g * v_j
+        l_g = l_bar_g * l_0
+        p_g = p_bar_g * f * Delta
         if l_bar_g > l_bar_d:
             raise ValueError(
-                "Solution requires excessive tube length "
-                + "({:.3e} m)".format(maxLength)
+                "Solution requires excessive tube length, last calculated to "
+                + "v = {:.4g} m/s, x = {:.4g} m, ".format(v_g, l_g)
+                + "p = {:.4g} MPa.".format(p_g * 1e-6)
             )
 
-        v = v_bar_g * v_j
-
-        if abs(v - v_d) > tol * v_d:
-            raise ValueError("Velocity specification is not met")
+        if abs(v_bar_g - v_bar_d) > (tol * v_bar_d):
+            raise ValueError(
+                "Velocity specification is not met, last calculated to "
+                + "v = {:.4g} m/s ({:+.3g} %), x = {:.4g} m, p = {:.4g} MPa".format(
+                    v_g, (v_bar_g - v_bar_d) / v_bar_d * 1e2, l_g, p_g * 1e-6
+                )
+            )
 
         # calculate the averaged chambrage correction factor
         # implied by this solution
