@@ -461,15 +461,6 @@ if __name__ == "__main__":
 
     ATKPRDS22.prettyPrint()
 
-    PURE = Mixture(
-        name="Pure Nitramine",
-        compoDict={
-            RDX: 34.08,
-        },
-        Delta=0.2,
-    )
-    PURE.prettyPrint()
-    """
     import matplotlib.pyplot as plt
     from labellines import labelLines
 
@@ -498,4 +489,3 @@ if __name__ == "__main__":
     labelLines(ax.get_lines())
 
     plt.show()
-    """

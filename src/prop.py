@@ -21,6 +21,9 @@ class MultPerfGeometry(Enum):
         self.nHole = nHole
         self.useAR = False
 
+    def __str__(self):
+        return self.desc
+
     SEVEN_PERF_CYLINDER = (
         "SEVEN_PERF_CYLINDER",
         1,
@@ -84,6 +87,9 @@ class SimpleGeometry(Enum):
 
     def __init__(self, desc):
         self.desc = desc
+
+    def __str__(self):
+        return self.desc
 
     SPHERE = "SPHERE"
     ROD = "ROD"  # "Strip / Flake (Rect. Prism)"
@@ -256,19 +262,19 @@ class Propellant:
         """
         given e_1 as the maximum burn depth.
         R1: ratio w.r.t arc thickness
-            interpreted as:
+            interpreted as 1/alpha:
                 Perf diameter to arc thickness ratio
                 for perforated cylinders, d_0/(2*e_1)
 
                 Single perf cylinder, d_0/(2*e_1)
 
                 Secondary length to primary length ratio
-                for rectangular rod shape (2*b)/(2*e_1) = 1/alpha
+                for rectangular rod shape (2*b)/(2*e_1)
 
         R2: ratio w.r.t arc thickness
-            interpreted as:
+            interpreted as 1/beta:
                 Length to "effective diameter" ratio
-                for perforated cylinders, 2*c/(2*e_1) =  1/beta
+                for perforated cylinders, 2*c/(2*e_1)
 
                 teritary length to primary length ratio
                 for rectangular rod shapes, 2*c/(2*e_1)

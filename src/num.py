@@ -1083,24 +1083,42 @@ def intg(f, l, u, tol=1e-3):
 
 
 if __name__ == "__main__":
-    print(cubic(1, 1, 2, 3))
 
-    def df1(x, y, _):
-        return (7 * y**2 * x**3,)
+    def main():
+        print(cubic(1, 1, 2, 3))
 
-    _, v, e = RKF78(df1, (3,), 2, 0, relTol=1e-3, absTol=1e-3, minTol=1e-14)
+        def df1(x, y, _):
+            return (7 * y**2 * x**3,)
 
-    print(v)
-    print(e)
+        _, v, e = RKF78(df1, (3,), 2, 0, relTol=1e-3, absTol=1e-3, minTol=1e-14)
 
-    print(e[0] / v[0])
-    print("expected value")
-    print(-1 / (7 / 4 * 0**4 - 85 / 3))
+        print(v)
+        print(e)
 
-    A = [[2, 1, -1], [-3, -1, 2], [-2, 1, 2]]
-    print(solveMat(A, [8, -11, -3]))
+        print(e[0] / v[0])
+        print("expected value")
+        print(-1 / (7 / 4 * 0**4 - 85 / 3))
 
-    def f(x):
-        return (x - 5) ** 2 - 10
+        A = [[2, 1, -1], [-3, -1, 2], [-2, 1, 2]]
+        print(solveMat(A, [8, -11, -3]))
 
-    print(dekker(f, 5, 10, debug=True))
+        # def f(x):
+        #    return (x - 5) ** 2 - 10
+
+        # print(dekker(f, 5, 10, debug=True))
+
+    import sys
+    import trace
+
+    # create a Trace object, telling it what to ignore, and whether to
+    # do tracing or line-counting or both.
+    tracer = trace.Trace(
+        ignoredirs=[sys.prefix, sys.exec_prefix], trace=0, count=1
+    )
+
+    # run the new command using the given tracer
+    tracer.run("main()")
+
+    # make a report, placing output in the current directory
+    r = tracer.results()
+    r.write_results(show_missing=True, coverdir=".")

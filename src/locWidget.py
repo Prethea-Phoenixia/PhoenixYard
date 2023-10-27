@@ -159,6 +159,7 @@ class Loc2Input:
         row=0,
         col=0,
         labelLocKey="",
+        descLabelKey=None,
         default="",
         validation=None,
         entryWidth=10,
@@ -213,6 +214,7 @@ class Loc2Input:
 
         self.row = row
         self.labelLocKey = labelLocKey
+        self.descLabelKey = descLabelKey
         self.tooltipLocKey = tooltipLocKey
         self.locFunc = locFunc
         self.nominalState = "normal"
@@ -258,6 +260,14 @@ class Loc2Input:
     def disinhibit(self):
         self.inputWidget.config(state=self.nominalState)
 
+    def getDescriptive(self):
+        return self.locFunc(
+            self.labelLocKey
+            if self.descLabelKey is None
+            else self.descLabelKey,
+            forceDefault=True,
+        )
+
 
 class Loc3Input(Loc2Input):
     def __init__(
@@ -266,6 +276,7 @@ class Loc3Input(Loc2Input):
         row=0,
         col=0,
         labelLocKey="",
+        descLabelKey=None,
         unitText="",
         default="",
         validation=None,
@@ -283,6 +294,7 @@ class Loc3Input(Loc2Input):
             row=row,
             col=col,
             labelLocKey=labelLocKey,
+            descLabelKey=descLabelKey,
             default=default,
             validation=validation,
             entryWidth=entryWidth,
@@ -310,7 +322,9 @@ class Loc3Input(Loc2Input):
 
 
 class LocDropdown:
-    def __init__(self, parent, strObjDict, locFunc, dropdowns=[]):
+    def __init__(
+        self, parent, strObjDict, locFunc, dropdowns=[], descLabelKey=""
+    ):
         """
         localized key of string type: underlying object
         """
@@ -318,6 +332,7 @@ class LocDropdown:
         self.textVar = StringVar(parent)
         self.strObjDict = strObjDict
         self.locFunc = locFunc
+        self.descLabelKey = descLabelKey
         self.locStrObjDict = {self.locFunc(k): v for k, v in strObjDict.items()}
         self.widget = ttk.Combobox(
             parent,
@@ -339,6 +354,9 @@ class LocDropdown:
         self.widget.config(values=tuple(self.locStrObjDict.keys()))
         self.widget.current(index)
 
+    def get(self):
+        return self.getObj()
+
     def getObj(self):
         return self.locStrObjDict[self.textVar.get()]
 
@@ -354,6 +372,9 @@ class LocDropdown:
     def setByObj(self, obj):
         index = list(self.strObjDict.values()).index(obj)
         self.widget.current(index)
+
+    def set(self, str):
+        self.setByStr(str)
 
     def grid(self, **kwargs):
         self.widget.grid(**kwargs)
@@ -373,6 +394,9 @@ class LocDropdown:
 
     def disinhibit(self):
         self.widget.config(state=self.nominalState)
+
+    def getDescriptive(self):
+        return self.locFunc(self.descLabelKey, forceDefault=True)
 
 
 class LocLabelFrame(ttk.LabelFrame):
@@ -414,6 +438,7 @@ class LocLabelCheck:
         col=0,
         columnspan=None,
         labelLocKey="",
+        descLabelKey=None,
         tooltipLocKey=None,
         locFunc=None,
         allLC=[],
@@ -440,6 +465,7 @@ class LocLabelCheck:
             self.locTooltipVar = None
 
         self.labelLocKey = labelLocKey
+        self.descLabelKey = descLabelKey
         self.tooltipLocKey = tooltipLocKey
         allLC.append(self)
 
@@ -459,6 +485,9 @@ class LocLabelCheck:
     def get(self):
         return self.checkVar.get()
 
+    def set(self, value):
+        self.checkVar.set(value)
+
     def trace_add(self, *args):
         self.checkVar.trace_add(*args)
 
@@ -468,3 +497,11 @@ class LocLabelCheck:
 
     def disinhibit(self):
         self.checkWidget.config(state=self.nominalState)
+
+    def getDescriptive(self):
+        return self.locFunc(
+            self.labelLocKey
+            if self.descLabelKey is None
+            else self.descLabelKey,
+            forceDefault=True,
+        )

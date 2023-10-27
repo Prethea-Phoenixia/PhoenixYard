@@ -54,7 +54,9 @@ from queue import Empty
 
 import sys
 import csv
-import datetime
+import os
+
+import json
 
 from ctypes import windll
 import platform
@@ -69,6 +71,8 @@ from locWidget import (
     LocLabelFrame,
     LocLabelCheck,
 )
+
+import xml.etree.ElementTree as ET
 
 RECOILESS = "RECOILESS"
 CONVENTIONAL = "CONVENTIONAL"
@@ -92,11 +96,14 @@ DOMAINS = {
 }
 
 CONTROLS = {
-    "ctrlAvgLabel": POINT_PEAK_AVG,
-    "ctrlBreechLabel": POINT_PEAK_BREECH,
-    "ctrlShotLabel": POINT_PEAK_SHOT,
+    POINT_PEAK_AVG: POINT_PEAK_AVG,
+    POINT_PEAK_BREECH: POINT_PEAK_BREECH,
+    POINT_PEAK_SHOT: POINT_PEAK_SHOT,
 }
-USE = {"useLFLabel": 0, "useCVLabel": 1}
+
+USE_LF = "USE_LF"
+USE_CV = "USE_CV"
+USE = {USE_LF: USE_LF, USE_CV: USE_CV}
 
 FONTNAME = "Sarasa Fixed SC"
 FONTSIZE = 9
@@ -176,14 +183,11 @@ class IB(Frame):
         self.fileMenu = fileMenu
         self.themeMenu = themeMenu
         self.debugMenu = debugMenu
-        # self.solMenu = solMenu
 
         self.themeRadio = IntVar(value=0)
         self.useTheme()
 
         self.DEBUG = IntVar(value=0)
-
-        self.useCv = IntVar(value=0)
 
         fileMenu.add_command(
             label=self.getLocStr("saveLabel"), command=self.save, underline=0
@@ -306,92 +310,42 @@ class IB(Frame):
 
         fileName = filedialog.asksaveasfilename(
             title=self.getLocStr("saveLabel"),
-            filetypes=(("Gun Design File", "*.gun"),),
-            defaultextension=".gun",
+            filetypes=(("JSON file", "*.json"),),
+            defaultextension=".json",
             initialfile=self.getDescriptive(),
         )
+
         if fileName == "":
             messagebox.showinfo(
                 self.getLocStr("excTitle"), self.getLocStr("cancelMsg")
             )
             return
 
-        commentLines = []
         try:
-            with open(fileName, "r", encoding="utf-8", newline="\n") as file:
-                lines = file.readlines()
-
-            isComment = False
-            for line in lines:
-                if line[:11] == "COMMENT END":
-                    isComment = False
-                if isComment:
-                    commentLines.append(line)
-                if line[:11] == "COMMENT BEG":
-                    isComment = True
-
+            with open(fileName, "r", encoding="utf-8") as file:
+                comment = json.load(file)["Comment"]
         except Exception:
-            pass  # either file DNE or some exception occured during reading.
+            comment = None  # either file DNE or some exception occured during reading.
 
         try:
-            kwargs = self.kwargs
-            sigfig = int(-log10(kwargs["tol"]))
+            locValDict = {
+                loc.getDescriptive(): str(loc.get())
+                for loc in self.locs
+                if hasattr(loc, "getDescriptive")
+            }
 
-            with open(fileName, "w", encoding="utf-8", newline="\n") as file:
-                file.write("{:>45}\n".format(self.getDescriptive()))
-                file.write(
-                    "LAST MODIFIED  {:>30}\n".format(
-                        datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-                    )
+            if comment is None:
+                locValDict.update(
+                    {
+                        "Comment": "Comment written here will be preserved even if file is overwritten!"
+                    }
                 )
-                file.write("COMMENT BEG\n")
-                for line in commentLines:
-                    file.write(line)
-                file.write("COMMENT END\n")
-                file.write("DESIGN BEG\n")
-                # fmt:off
-                for desc, value, unit in zip(
-                    (
-                        "SIGNIFICANT FIGURE", "TYPE", "CALIBER", "TUBE LENGTH",
-                        "SHOT MASS", "CHAMBER VOLUME", "CHAMBRAGE",
-                        "ENGRAVING PRESSURE", "NOZZLE EFFICIENCY",
-                        "NOZZLE EXPANSION R.", "CHARGE MASS",
-                        "PROPELLANT", "GEOMETRY", "2xWEB", "1/ALPHA",
-                        "1/BETA", "DRAG COEFFICIENT",
-                    ),
-                    (
-                        sigfig,
-                        kwargs["typ"],
-                        kwargs["caliber"] * 1e3,
-                        kwargs["lengthGun"] * 1e3,
-                        kwargs["shotMass"],
-                        kwargs["chamberVolume"] * 1e3,
-                        kwargs["chambrage"],
-                        kwargs["startPressure"] * 1e-6,
-                        kwargs["nozzleEfficiency"] * 1e2,
-                        kwargs["nozzleExpansion"],
-                        kwargs["chargeMass"],
-                        kwargs["propellant"].composition.name,
-                        kwargs["propellant"].geometry.name,
-                        kwargs["grainSize"] * 1e3,
-                        kwargs["propellant"].R1,
-                        kwargs["propellant"].R2,
-                        kwargs["dragCoefficient"] * 1e2,
-                    ),
-                    ("", "", "mm", "mm", "kg", "L", "", "MPa", "%", "", "kg",
-                        "", "", "mm", "", "", "%",),
-                    # fmt: on
-                ):
-                    file.write(
-                        "{:<20}{:>20} {:<4}\n".format(
-                            desc,
-                            roundSig(value, sigfig)
-                            if isinstance(value, float)
-                            else value,
-                            unit,
-                        )
-                    )
-                file.write("DESIGN END\n")
+
+            else:
+                locValDict.update({"Comment": comment})
+
+            with open(fileName, "w", encoding="utf-8") as file:
+                json.dump(locValDict, file, indent="\t", ensure_ascii=False)
 
             messagebox.showinfo(
                 self.getLocStr("sucTitle"),
@@ -404,8 +358,8 @@ class IB(Frame):
     def load(self):
         fileName = filedialog.askopenfilename(
             title=self.getLocStr("loadLabel"),
-            filetypes=(("Gun Design File", "*.gun"),),
-            defaultextension=".gun",
+            filetypes=(("JSON File", "*.json"),),
+            defaultextension=".json",
             initialfile=self.getDescriptive(),
         )
         if fileName == "":
@@ -413,47 +367,20 @@ class IB(Frame):
             return
 
         try:
-            fileKwargs = {}
-            with open(fileName, "r", encoding="utf-8", newline="\n") as file:
-                lines = file.readlines()
-            isDesign = False
-            for line in lines:
-                if line[:10] == "DESIGN END":
-                    isDesign = False
-                if isDesign:
-                    desc = line[:20].strip()
-                    try:
-                        if desc == "SIGNIFICANT FIGURE":
-                            val = int(line[20:40].strip())
-                        else:
-                            val = float(line[20:40].strip())
-                    except ValueError:
-                        val = line[20:40].strip()
-                    fileKwargs.update({desc: val})
-                if line[:10] == "DESIGN BEG":
-                    isDesign = True
+            locDict = {
+                loc.getDescriptive(): loc
+                for loc in self.locs
+                if hasattr(loc, "getDescriptive")
+            }
 
-            self.typeOptn.setByStr(fileKwargs["TYPE"])
-            self.calmm.set(fileKwargs["CALIBER"])
-            self.tblmm.set(fileKwargs["TUBE LENGTH"])
+            with open(fileName, "r", encoding="utf-8") as file:
+                fileDict = json.load(file)
 
-            self.shtkg.set(fileKwargs["SHOT MASS"])
-            self.chgkg.set(fileKwargs["CHARGE MASS"])
-            self.useCv.setByStr("useCVLabel")
-            self.cvL.set(fileKwargs["CHAMBER VOLUME"])
-            self.clr.set(fileKwargs["CHAMBRAGE"])
-            self.stpMPa.set(fileKwargs["ENGRAVING PRESSURE"])
-            self.nozzEff.set(fileKwargs["NOZZLE EFFICIENCY"])
-            self.nozzExp.set(fileKwargs["NOZZLE EXPANSION R."])
-
-            self.dropGeom.setByStr(fileKwargs["GEOMETRY"])
-            self.dropProp.setByStr(fileKwargs["PROPELLANT"])
-            self.arcmm.set(fileKwargs["2xWEB"])
-            self.grdR.set(fileKwargs["1/ALPHA"])
-            self.grlR.set(fileKwargs["1/BETA"])
-
-            self.dgc.set(fileKwargs["DRAG COEFFICIENT"])
-            self.accExp.set(fileKwargs["SIGNIFICANT FIGURE"])
+            for key, value in fileDict.items():
+                try:
+                    locDict[key].set(value)
+                except KeyError:
+                    pass
 
         except Exception as e:
             messagebox.showinfo(self.getLocStr("excTitle"), str(e))
@@ -528,8 +455,10 @@ class IB(Frame):
         i = [line[0] for line in self.tableData].index(tag)
         return self.tableData[i]
 
-    def getLocStr(self, name):
+    def getLocStr(self, name, forceDefault=None):
         try:
+            if forceDefault:
+                raise KeyError
             return STRING[self.LANG.get()][name]
         except KeyError:
             try:
@@ -604,7 +533,7 @@ class IB(Frame):
             parent=pltOptnFrm,
             row=j,
             col=k,
-            # labelLocKey="plotBreechNozzleP",
+            descLabelKey="Breech/Nozzle Pressure",
             locFunc=self.getLocStr,
             allLC=checks,
         )
@@ -783,6 +712,7 @@ class IB(Frame):
             strObjDict=SOLUTIONS,
             locFunc=self.getLocStr,
             dropdowns=self.locs,
+            descLabelKey="solFrmLabel",
         )
         self.dropSoln.grid(
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
@@ -929,6 +859,7 @@ class IB(Frame):
             strObjDict=CONTROLS,
             locFunc=self.getLocStr,
             dropdowns=self.locs,
+            descLabelKey="pTgtLabel",
         )
 
         self.pControl.grid(
@@ -982,6 +913,7 @@ class IB(Frame):
             strObjDict=DOMAINS,
             locFunc=self.getLocStr,
             dropdowns=self.locs,
+            descLabelKey="sampleFrmLabel",
         )
 
         j = 0
@@ -1080,7 +1012,7 @@ class IB(Frame):
             if self.prop is None:
                 raise ValueError("Invalid propellant.")
 
-            if self.useCv.getObj():
+            if self.useCv.getObj() == USE_CV:
                 chamberVolume = float(self.cvL.get()) * 1e-3
             else:
                 chamberVolume = (
@@ -1241,7 +1173,7 @@ class IB(Frame):
                 self.tblmm.set(lgmm)
 
                 if optimize:
-                    if self.useCv.getObj():
+                    if self.useCv.getObj() == USE_CV:
                         self.cvL.set(
                             roundSig(kwargs["chamberVolume"] * 1e3, n=sigfig)
                         )
@@ -1344,6 +1276,7 @@ class IB(Frame):
             strObjDict=TYPES,
             locFunc=self.getLocStr,
             dropdowns=self.locs,
+            descLabelKey="typeLabel",
         )
 
         self.typeOptn.grid(
@@ -1390,6 +1323,7 @@ class IB(Frame):
             strObjDict=AMMUNITIONS,
             locFunc=self.getLocStr,
             dropdowns=self.locs,
+            descLabelKey="ammoLabel",
         )
 
         self.ammoOptn.grid(
@@ -1443,6 +1377,7 @@ class IB(Frame):
             strObjDict=self.COMPOSITIONS,
             locFunc=self.getLocStr,
             dropdowns=self.locs,
+            descLabelKey="propFrmLabel",
         )
         self.dropProp.grid(
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
@@ -1513,6 +1448,7 @@ class IB(Frame):
             strObjDict=GEOMETRIES,
             locFunc=self.getLocStr,
             dropdowns=self.locs,
+            descLabelKey="grainFrmLabel",
         )
 
         j += 1
@@ -1524,6 +1460,7 @@ class IB(Frame):
             parent=grainFrm,
             row=j,
             labelLocKey="",
+            descLabelKey="Web",
             unitText="mm",
             default="1.0",
             validation=validationNN,
@@ -1536,6 +1473,7 @@ class IB(Frame):
             parent=grainFrm,
             row=j,
             labelLocKey="",
+            descLabelKey="1/α",
             unitText="x",
             default="1.0",
             validation=validationNN,
@@ -1548,6 +1486,7 @@ class IB(Frame):
             parent=grainFrm,
             row=j,
             labelLocKey="",
+            descLabelKey="1/β",
             unitText="x",
             default="2.5",
             validation=validationNN,
@@ -1562,6 +1501,7 @@ class IB(Frame):
             strObjDict=USE,
             locFunc=self.getLocStr,
             dropdowns=self.locs,
+            descLabelKey="cvlfLabel",
         )
         self.useCv.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
@@ -2380,7 +2320,7 @@ class IB(Frame):
     def cvlfConsisCallback(self, *args):
         try:
             sigfig = int(self.accExp.get()) + 1
-            if self.useCv.getObj():  # use Cv
+            if self.useCv.getObj() == USE_CV:  # use Cv
                 cv = float(self.cvL.get()) / 1e3
                 w = float(self.chgkg.get())
                 rho = self.prop.rho_p
@@ -2407,7 +2347,7 @@ class IB(Frame):
         if self.process is not None:
             return
 
-        useCv = self.useCv.getObj()
+        useCv = self.useCv.getObj() == USE_CV
 
         self.ldf.disable() if useCv else self.ldf.enable()
         self.cvL.enable() if useCv else self.cvL.disable()
