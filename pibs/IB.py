@@ -139,7 +139,7 @@ FIG_CONTEXT = {
 }
 
 
-class IB(Frame):
+class InteriorBallisticsFrame(Frame):
     def __init__(self, parent, menubar, dpi):
         ttk.Frame.__init__(self, parent)
         self.pack(expand=1, fill="both")
@@ -272,7 +272,7 @@ class IB(Frame):
         self.forceUpdOnThemeWidget.append(self.specs)
 
         self.bind("<Configure>", self.resizePlot)
-        root.protocol("WM_DELETE_WINDOW", self.quit)
+        parent.protocol("WM_DELETE_WINDOW", self.quit)
         self.tLid = None
         self.timedLoop()
 
@@ -2387,7 +2387,7 @@ class IB(Frame):
             font=(FONTNAME, FONTSIZE + 2),
         )
         style.configure("TCheckbutton", font=(FONTNAME, FONTSIZE))
-        # style.configure("TNotebook", tabmargins=[2, 5, 2, 0])
+
         style.configure(
             "TNotebook.Tab",
             padding=[10, 2],
@@ -2520,8 +2520,22 @@ def calculate(
     queue.put((kwargs, gun, tableData, errorData, errorReport))
 
 
-if __name__ == "__main__":
+def main():
     freeze_support()
+
+    # if check avoids hackery when not profiling
+    # Optional; hackery *seems* to work fine even when not profiling, it's just wasteful
+    import cProfile
+
+    if sys.modules["__main__"].__file__ == cProfile.__file__:
+        import IB  # Imports you again (does *not* use cache or execute as __main__)
+
+        globals().update(
+            vars(IB)
+        )  # Replaces current contents with newly imported stuff
+        sys.modules[
+            "__main__"
+        ] = IB  # Ensures pickle lookups on __main__ find matching version
 
     # this tells windows that our program will handle scaling ourselves
     winRelease = platform.release()
@@ -2567,8 +2581,7 @@ if __name__ == "__main__":
     ibFrame = IB(tabControl, menubar, dpi, scale)
     tabControl.add(ibFrame, text="INTERIOR")
     """
-
-    ibFrame = IB(root, menubar, dpi)
+    ibFrame = InteriorBallisticsFrame(root, menubar, dpi)
     ibFrame.pack(expand=1, fill="both", side="left")
     # center(root)
 
@@ -2576,3 +2589,7 @@ if __name__ == "__main__":
     root.state("zoomed")  # maximize window
 
     root.mainloop()
+
+
+if __name__ == "__main__":
+    main()

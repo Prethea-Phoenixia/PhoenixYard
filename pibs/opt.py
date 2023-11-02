@@ -691,9 +691,11 @@ if __name__ == "__main__":
     )
 
     datas = []
+    """
     pr = cProfile.Profile()
     pr.enable()
-    for i in range(1):
+    """
+    for i in range(5):
         datas.append(
             test.findMinV(
                 chargeMassRatio=1,
@@ -703,7 +705,7 @@ if __name__ == "__main__":
                 control=POINT_PEAK_SHOT,
             )
         )
-    for i in range(1):
+    for i in range(5):
         datas.append(
             test.findMinV(
                 chargeMassRatio=1,
@@ -713,7 +715,7 @@ if __name__ == "__main__":
                 control=POINT_PEAK_AVG,
             )
         )
-    for i in range(1):
+    for i in range(5):
         datas.append(
             test.findMinV(
                 chargeMassRatio=1,
@@ -723,9 +725,10 @@ if __name__ == "__main__":
                 control=POINT_PEAK_BREECH,
             )
         )
+    """
     pr.disable()
     pr.print_stats(sort="time")
-
+    """
     from tabulate import tabulate
 
     means = [sum(x) / len(datas) for x in zip(*datas)]
