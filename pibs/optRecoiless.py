@@ -766,12 +766,13 @@ if __name__ == "__main__":
         propellant=M17P,
         startPressure=10e6,
         dragCoefficient=5e-2,
-        designPressure=5e6,
-        designVelocity=100,
+        designPressure=50e6,
+        designVelocity=120,
         nozzleExpansion=4,
         nozzleEfficiency=0.92,
         chambrage=1.5,
     )
+    """
     print(
         test.solve(
             loadFraction=0.5,
@@ -784,12 +785,12 @@ if __name__ == "__main__":
     )
     """
     datas = []
-    for i in range(1):
+    for i in range(10):
         datas.append(
             test.findMinV(
                 chargeMassRatio=0.309 / 4,
-                tol=1e-4,
-                minWeb=100e-6,
+                tol=1e-3,
+                minWeb=1e-6,
                 maxLength=100,
             )
         )
@@ -809,4 +810,3 @@ if __name__ == "__main__":
             delta, headers=("load fract.", "web", "length"), floatfmt=".3e"
         )
     )
-    """
