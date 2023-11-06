@@ -1,7 +1,7 @@
 from atmos import atmosphere, R_e
 from drag import KdCurve
 from math import pi, sin, cos, atan2, acos
-from num import RKF78, gss, bisect
+from num import RKF78, gss, dekker
 from random import uniform
 from multiprocessing import Pool
 
@@ -379,7 +379,7 @@ class Bullet:
 
             for R in tgtR:
                 if r_max_a < R < r_min_a:
-                    elev_i, elev_j = bisect(
+                    elev_i, elev_j = dekker(
                         lambda ang: f_r(ang, R, DESCEND=False)[0],
                         elev_min,
                         elev_max,
@@ -392,7 +392,7 @@ class Bullet:
                     lTrajs.append((l_elev, *rec))
 
                 elif r_min_d < R < r_opt_d:
-                    elev_i, elev_j = bisect(
+                    elev_i, elev_j = dekker(
                         lambda ang: f_r(ang, R)[0],
                         elev_min,
                         elev_opt,
@@ -408,7 +408,7 @@ class Bullet:
                     lTrajs.append(None)
 
                 if r_max_d < R < r_opt_d:
-                    elev_i, elev_j = bisect(
+                    elev_i, elev_j = dekker(
                         lambda ang: f_r(ang, R)[0],
                         elev_opt,
                         elev_max,
@@ -568,12 +568,12 @@ class Bullet:
                 if DESCEND:
                     # the new peak barely crest the target plane.
                     t_t = 0.5 * sum(
-                        bisect(f_tgt, t_prime, t_2, x_tol=max(t_2, 1) * tol)
+                        dekker(f_tgt, t_prime, t_2, x_tol=max(t_2, 1) * tol)
                     )
 
                 else:
                     t_t = 0.5 * sum(
-                        bisect(f_tgt, t_1, t_prime, x_tol=max(t_2, 1) * tol)
+                        dekker(f_tgt, t_1, t_prime, x_tol=max(t_2, 1) * tol)
                     )
 
             else:
@@ -585,7 +585,7 @@ class Bullet:
                 )
 
         else:
-            t_t = 0.5 * sum(bisect(f_tgt, t_1, t_2, x_tol=max(t_2, 1) * tol))
+            t_t = 0.5 * sum(dekker(f_tgt, t_1, t_2, x_tol=max(t_2, 1) * tol))
 
         _, _, _ = RKF78(
             self._ode_t,
@@ -632,7 +632,7 @@ def calc_for_R(
         return gr - r, record[-1]
 
     if r_max_a < R < r_min_a:
-        elev_i, elev_j = bisect(
+        elev_i, elev_j = dekker(
             lambda ang: f_r(ang, R, DESCEND=False)[0],
             elev_min,
             elev_max,
@@ -645,7 +645,7 @@ def calc_for_R(
         lTraj = (l_elev, *rec)
 
     elif r_min_d < R < r_opt_d:
-        elev_i, elev_j = bisect(
+        elev_i, elev_j = dekker(
             lambda ang: f_r(ang, R)[0],
             elev_min,
             elev_opt,
@@ -661,7 +661,7 @@ def calc_for_R(
         lTraj = None
 
     if r_max_d < R < r_opt_d:
-        elev_i, elev_j = bisect(
+        elev_i, elev_j = dekker(
             lambda ang: f_r(ang, R)[0],
             elev_opt,
             elev_max,

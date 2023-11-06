@@ -748,11 +748,11 @@ def dekker(
 
         if debug:
             record.append((b_k, fb_k, i))
+
         if any(
             (abs(b_k - a_k) < x_tol, abs(fb_k) < y_abs_tol),
         ):
-            return b_k, a_k
-            # return the best, and the bracketing solution
+            return b_k, a_k  # return the best, and the bracketing solution
 
         a_j = a_k
         fa_j = fa_k
