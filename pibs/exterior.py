@@ -31,7 +31,7 @@ class Bullet:
 
         self.C = self.W / (self.i * self.D**2)  # ballistic coefficient
 
-    def _ode_t(self, t, x, y, vx, vy):
+    def _ode_t(self, t, x, y, vx, vy, _):
         """
         t: time of flight
         x, y: cooridnate in 2-d geocentric coordinate system:
@@ -461,7 +461,7 @@ class Bullet:
         x_0, y_0 = 0, R_e + gunH
         theta = elev * pi / 180
 
-        def abortTgt(x, ys, o_x, o_ys):
+        def abortTgt(x, ys, record):
             x, y, vx, vy = ys
             h = (x**2 + y**2) ** 0.5 - (R_e + tgtH)
 
@@ -683,17 +683,17 @@ if __name__ == "__main__":
         "test", mass=9.0990629, diam=88e-3, Kd_curve=KdCurve["G8"], form=0.925
     )
     # print(dec_to_dms(1 / 3600))
-
+    """
     test.record_to_data(
         test.forward(
             tol=1e-3,
             vel=1819.92,
-            elev=90,
+            elev=30,
             DESCEND=True,
         )
-    )
+    )"""
 
-    input()
+    # input()
     """
     print(
         *test.inverse(
@@ -706,7 +706,7 @@ if __name__ == "__main__":
     )
     """
     test.rangeTable(
-        tol=1e-3, vel=819.92, minR=0, maxR=15000, deltaR=100, tgtH=10000
+        tol=1e-3, vel=819.92, minR=0, maxR=12000, deltaR=1000, tgtH=2000
     )
 
     """

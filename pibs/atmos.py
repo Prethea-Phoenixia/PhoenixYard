@@ -60,19 +60,21 @@ M0 = 28.9644e-3  # kg/mol
 
 
 def atmosphere(h):
-    # ICAO standard atmosphere
-    #    h   : Geometrical altitude
-    # #   lat : Latitiude (in degrees)
-    #    p0  : pressure ASL
-    # Standard acceleration due to gravtiy, it conforms with latitude phi =
-    # 42deg 32min 33sec using Lambert's equation of the acceleration due to
-    # gravity as a function of latitude
-    # 45 deg 32 min 33 sec is approximated by 45.5425 deg
+    """
+    ICAO standard atmosphere
+       h   : Geometrical altitude
+       lat : Latitiude (in degrees)
+       p0  : pressure ASL
+    Standard acceleration due to gravtiy, it conforms with latitude phi =
+    42deg 32min 33sec using Lambert's equation of the acceleration due to
+    gravity as a function of latitude
+    45 deg 32 min 33 sec is approximated by 45.5425 deg
 
-    # phi = lat * pi / 180
+    phi = lat * pi / 180
 
-    # gphi = 9.80616 * (1 - 2.6373e-3 * cos(2 * phi) + 5.9e-6 * cos(2 * phi) ** 2)
-    # g0 = gphi
+    gphi = 9.80616 * (1 - 2.6373e-3 * cos(2 * phi) + 5.9e-6 * cos(2 * phi) ** 2)
+    g0 = gphi
+    """
 
     g0 = 9.80665  # nominal earth's gravitational acceleartion
     r = R_e
@@ -95,13 +97,14 @@ def atmosphere(h):
     kappa = 1.4
     a = (kappa * R * T) ** 0.5
     rho = P / (R * T)
-
+    """
     # Return values:
-    #    T : Temperature in K
-    #    P : Pressure in Pa
-    #    a : Speed of sound in m/s
-    #  rho : Density in kg m^-3
-    #    g : Acceleration due gravity.
+        T : Temperature in K
+        P : Pressure in Pa
+        a : Speed of sound in m/s
+      rho : Density in kg m^-3
+        g : Acceleration due gravity.
+    """
     return T, P, a, rho, g
 
 

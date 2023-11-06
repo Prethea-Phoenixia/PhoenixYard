@@ -320,7 +320,7 @@ class Specie:
                 last coefficient is optional enthalpy of formation divided
                 by gas constant, which is technically redundant.
                 """
-                Hf__R = coes[-1]
+                Hf__R = float(coes[-1])
 
                 # coefficinets for the higher tempreature range
                 coes_h = coes[:7]
@@ -357,6 +357,34 @@ class Specie:
             R = 1.987
 
         return R
+
+    @classmethod
+    def dumpJSON(cls):
+        import json
+
+        allSpecies = {}
+
+        for specie in cls.allFits.values():
+            allSpecies.update(
+                {
+                    specie.specieName: {
+                        "formula": specie.formula,
+                        "phase": specie.phase,
+                        "T_low": specie.fitTlow,
+                        "T_mid": specie.fitTmid,
+                        "T_high": specie.fitThigh,
+                        "molWt": specie.molWt,
+                        "Hf__R": specie.Hf__R,
+                        "coes_l": specie._coe_l,
+                        "coes_h": specie._coe_h,
+                    }
+                }
+            )
+
+        with open("nasa7.json", "w") as file:
+            json.dump(allSpecies, file, indent="\t", ensure_ascii=False)
+
+        # print(json.dumps(allSpecies, indent="\t", ensure_ascii=False))
 
     def __str__(self):
         return (
@@ -600,6 +628,8 @@ def main():
 
     for T in [2000, 2500, 3000, 3500, 4000]:
         print(T, nitrogen.Cp(T) / nitrogen.Cv(T))
+
+    Specie.dumpJSON()
 
 
 if __name__ == "__main__":
