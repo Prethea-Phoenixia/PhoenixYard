@@ -3,8 +3,6 @@ import sys
 from ctypes import windll, byref, create_unicode_buffer, create_string_buffer
 from math import log, floor, log10
 
-from win32api import GetMonitorInfo, MonitorFromPoint
-
 
 _prefix = {
     "y": 1e-24,  # yocto
@@ -204,6 +202,7 @@ def center(win):
     centers a tkinter window
     :param win: the main window or Toplevel window to center
     """
+    from win32api import GetMonitorInfo, MonitorFromPoint
 
     monitor_info = GetMonitorInfo(MonitorFromPoint((0, 0)))
     monitor_area = monitor_info.get("Monitor")
