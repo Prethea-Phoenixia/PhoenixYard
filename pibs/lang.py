@@ -523,6 +523,7 @@ ENGLISH = {
     "PEAK_SHOT_P": "Peak Shot Base Pressure",
     "auxFrmLabel": "Pressure Trace",
     "auxText": "",
+    "figAuxDomain": "Displacement from Breech - m",
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -899,5 +900,6 @@ CHINESE = {
     "PEAK_SHOT_P": "最大弹底压强",
     "auxFrmLabel": "膛内压强分布",
     "auxText": "",
+    "figAuxDomain": "膛底距 - m",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}

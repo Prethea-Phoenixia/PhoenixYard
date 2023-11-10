@@ -1737,7 +1737,7 @@ class InteriorBallisticsFrame(Frame):
             self,
             locKey="auxFrmLabel",
             width=640,
-            height=480,
+            height=240,
             locFunc=self.getLocStr,
             tooltipLocKey="auxText",
             allLLF=self.locs,
@@ -1768,7 +1768,7 @@ class InteriorBallisticsFrame(Frame):
 
             self.auxAx = ax  # auxiliary axes
             self.auxFig = fig
-
+            self.auxAx.yaxis.tick_right()
             self.auxCanvas = FigureCanvasTkAgg(fig, master=auxFrm)
             self.auxCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=2, pady=2, sticky="nsew"
@@ -2050,15 +2050,24 @@ class InteriorBallisticsFrame(Frame):
             cmap = mpl.colormaps["plasma"]
 
             x_max = 0
+            y_max = 0
             for i, trace in enumerate(pTrace[::-1]):
                 color = cmap(i / (len(pTrace) - 1))
                 x, y = zip(*trace)
+                y = [v * 1e-6 for v in y]
                 x_max = max(x_max, max(x))
+                y_max = max(y_max, max(y))
                 self.auxAx.plot(x, y, c=color)
 
             self.auxAx.set_xlim(left=0, right=x_max)
+            self.auxAx.set_ylim(bottom=0, top=y_max * 1.15)
 
-            # todo: add stuff!
+            tkw = dict(size=4, width=1.5)
+            # self.auxAx.yaxis.tick_right()
+            self.auxAx.tick_params(axis="y", colors="tab:green", **tkw)
+            self.auxAx.tick_params(axis="x", **tkw)
+
+            self.auxAx.set_xlabel(self.getLocStr("figAuxDomain"))
             self.auxFig.set_layout_engine("constrained")
             self.auxCanvas.draw_idle()
 
