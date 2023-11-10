@@ -242,7 +242,8 @@ class InteriorBallisticsFrame(Frame):
         self.errorLst = []
 
         self.columnconfigure(1, weight=1)
-        self.rowconfigure(2, weight=1)
+        self.rowconfigure(2, weight=2)
+        self.rowconfigure(3, weight=1)
 
         self.addNamePlate()
         self.addTopFrm()
@@ -251,12 +252,15 @@ class InteriorBallisticsFrame(Frame):
         self.addErrFrm()
 
         self.addPlotFrm()
+        self.addAuxFrm()
         self.addspecFrm()
         self.addTblFrm()
         self.update_idletasks()
         self.addGeomPlot()
         self.update_idletasks()
         self.addFigPlot()
+        self.update_idletasks()
+        self.addAuxPlot()
 
         self.ambCallback()
         self.cvlfCallback()
@@ -450,6 +454,7 @@ class InteriorBallisticsFrame(Frame):
         self.updateGeom()
         self.updateSpec()
         self.updateFigPlot()
+        self.updateAuxPlot()
 
     def readTable(self, tag):
         i = [line[0] for line in self.tableData].index(tag)
@@ -602,7 +607,7 @@ class InteriorBallisticsFrame(Frame):
 
     def addLeftFrm(self):
         leftFrm = ttk.Frame(self)
-        leftFrm.grid(row=1, column=0, rowspan=4, sticky="nsew")
+        leftFrm.grid(row=1, column=0, rowspan=5, sticky="nsew")
         leftFrm.columnconfigure(0, weight=1)
         leftFrm.rowconfigure(0, weight=1)
 
@@ -691,7 +696,7 @@ class InteriorBallisticsFrame(Frame):
 
         """
         rightFrm = ttk.Frame(self)
-        rightFrm.grid(row=0, column=3, rowspan=5, sticky="nsew")
+        rightFrm.grid(row=0, column=3, rowspan=6, sticky="nsew")
         rightFrm.columnconfigure(0, weight=1)
         rightFrm.rowconfigure(0, weight=1)
 
@@ -1083,11 +1088,7 @@ class InteriorBallisticsFrame(Frame):
             )
             # print(self.kwargs)  # debug
             self.process = Process(
-                target=calculate,
-                args=(
-                    self.queue,
-                    self.kwargs,
-                ),
+                target=calculate, args=(self.queue, self.kwargs)
             )
             # self.pos = 0
             self.calButton.config(state="disabled")
@@ -1112,6 +1113,7 @@ class InteriorBallisticsFrame(Frame):
             self.updateTable()
             self.updateError()
             self.updateFigPlot()
+            self.updateAuxPlot()
 
     def getValue(self):
         queue = self.queue
@@ -1122,6 +1124,8 @@ class InteriorBallisticsFrame(Frame):
                 self.gun,
                 self.tableData,
                 self.errorData,
+                self.pressureTrace,
+                self.flowTrace,
                 errorLst,
             ) = queue.get_nowait()
 
@@ -1225,6 +1229,7 @@ class InteriorBallisticsFrame(Frame):
         self.updateTable()
         self.updateError()
         self.updateFigPlot()
+        self.updateAuxPlot()
 
         self.pbar.stop()
         self.calButton.config(state="normal")
@@ -1239,7 +1244,7 @@ class InteriorBallisticsFrame(Frame):
         errorFrm = LocLabelFrame(
             self, locKey="errFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
         )
-        errorFrm.grid(row=4, column=1, sticky="nsew")
+        errorFrm.grid(row=5, column=1, sticky="nsew")
         errorFrm.columnconfigure(0, weight=1)
         errorFrm.rowconfigure(0, weight=1)
 
@@ -1263,7 +1268,7 @@ class InteriorBallisticsFrame(Frame):
             locFunc=self.getLocStr,
             allLLF=self.locs,
         )
-        specFrm.grid(row=0, column=2, rowspan=5, sticky="nsew")
+        specFrm.grid(row=0, column=2, rowspan=6, sticky="nsew")
         specFrm.columnconfigure(0, weight=1)
 
         # validation
@@ -1727,6 +1732,55 @@ class InteriorBallisticsFrame(Frame):
         """
         plotFrm.grid_propagate(False)
 
+    def addAuxFrm(self):
+        auxFrm = LocLabelFrame(
+            self,
+            locKey="auxFrmLabel",
+            width=640,
+            height=480,
+            locFunc=self.getLocStr,
+            tooltipLocKey="auxText",
+            allLLF=self.locs,
+        )
+        auxFrm.grid(row=3, column=1, sticky="nsew")
+        auxFrm.columnconfigure(0, weight=1)
+        auxFrm.rowconfigure(0, weight=1)
+
+        self.auxFrm = auxFrm
+
+    def addAuxPlot(self):
+        auxFrm = self.auxFrm
+        width = auxFrm.winfo_width() - 6
+        height = auxFrm.winfo_height() - 6
+
+        dpi = self.dpi
+        with mpl.rc_context(FIG_CONTEXT):
+            fig = Figure(
+                figsize=(width / dpi, height / dpi),
+                dpi=96,
+                layout="constrained",
+            )
+            # fig.subplots_adjust(bottom=0.1)
+
+            axes = fig.add_subplot(111)
+
+            ax = axes
+
+            self.auxAx = ax  # auxiliary axes
+            self.auxFig = fig
+
+            self.auxCanvas = FigureCanvasTkAgg(fig, master=auxFrm)
+            self.auxCanvas.get_tk_widget().grid(
+                row=0, column=0, padx=2, pady=2, sticky="nsew"
+            )
+            self.auxCanvas.draw_idle()
+
+        """
+        For some reason the above specification is not strictly adhered to
+        in practice, this might be a bug on tkAgg or matplotlib backend.
+        """
+        auxFrm.grid_propagate(False)
+
     def resizePlot(self, event):
         # we use the bbox method here as it has already accounted for padding
         # so no adjustment here is necessary
@@ -1757,7 +1811,9 @@ class InteriorBallisticsFrame(Frame):
     def updateFigPlot(self, *args):
         gun = self.gun
         if gun is None:
+            self.pltCanvas.draw_idle()
             return
+
         with mpl.rc_context(FIG_CONTEXT):
             self.ax.cla()
             self.axP.cla()
@@ -1977,19 +2033,46 @@ class InteriorBallisticsFrame(Frame):
             self.axP.yaxis.set_ticks(self.axP.get_yticks()[1:-1:])
 
             self.fig.set_layout_engine("constrained")
+
             self.pltCanvas.draw_idle()
+
+    def updateAuxPlot(self, *args):
+        gun = self.gun
+        if gun is None:
+            self.auxCanvas.draw_idle()
+            return
+
+        with mpl.rc_context(FIG_CONTEXT):
+            self.auxAx.cla()
+
+            pTrace = self.pressureTrace
+
+            cmap = mpl.colormaps["plasma"]
+
+            x_max = 0
+            for i, trace in enumerate(pTrace[::-1]):
+                color = cmap(i / (len(pTrace) - 1))
+                x, y = zip(*trace)
+                x_max = max(x_max, max(x))
+                self.auxAx.plot(x, y, c=color)
+
+            self.auxAx.set_xlim(left=0, right=x_max)
+
+            # todo: add stuff!
+            self.auxFig.set_layout_engine("constrained")
+            self.auxCanvas.draw_idle()
 
     def addTblFrm(self):
         tblFrm = LocLabelFrame(
             self, locKey="tblFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
         )
-        tblFrm.grid(row=3, column=1, sticky="nsew")
+        tblFrm.grid(row=4, column=1, sticky="nsew")
 
         tblFrm.columnconfigure(0, weight=1)
         tblFrm.rowconfigure(0, weight=1)
         # configure the numerical
         self.tv = ttk.Treeview(
-            tblFrm, selectmode="browse", height=10
+            tblFrm, selectmode="browse", height=5
         )  # this set the nbr. of values
         self.tv.grid(row=0, column=0, sticky="nsew")
 
@@ -2429,10 +2512,18 @@ class InteriorBallisticsFrame(Frame):
         try:
             self.fig.set_facecolor(bgc)
             self.geomFig.set_facecolor(bgc)
+            self.auxFig.set_facecolor(bgc)
 
             # this is necessary because twinned axis does not necessarily
             # follow the rcParams
-            for ax in (self.ax, self.axv, self.axP, self.geomAx, self.axF):
+            for ax in (
+                self.ax,
+                self.axv,
+                self.axP,
+                self.geomAx,
+                self.axF,
+                self.auxAx,
+            ):
                 ax.set_facecolor(ebgc)
                 ax.spines["top"].set_color(fgc)
                 ax.spines["bottom"].set_color(fgc)
@@ -2441,10 +2532,10 @@ class InteriorBallisticsFrame(Frame):
 
             self.updateGeomPlot()
             self.updateFigPlot()
+            self.updateAuxPlot()
 
-        except AttributeError:
+        except AttributeError as e:
             pass
-
         try:
             self.tv.tag_configure("oddrow", background=bgc)
             self.tv.tag_configure("evenrow", background=ebgc)
@@ -2460,6 +2551,8 @@ def calculate(
 ):
     tableData = []
     errorData = []
+    pressureTrace = []
+    flowTrace = []
     errorReport = []
 
     gunType = kwargs["typ"]
@@ -2500,7 +2593,7 @@ def calculate(
         elif gunType == RECOILESS:
             gun = Recoiless(**kwargs)
 
-        tableData, errorData = gun.integrate(**kwargs)
+        tableData, errorData, pressureTrace, flowTrace = gun.integrate(**kwargs)
 
     except Exception as e:
         gun = None
@@ -2517,7 +2610,17 @@ def calculate(
         else:
             errorReport.append(str(e))
 
-    queue.put((kwargs, gun, tableData, errorData, errorReport))
+    queue.put(
+        (
+            kwargs,
+            gun,
+            tableData,
+            errorData,
+            pressureTrace,
+            flowTrace,
+            errorReport,
+        )
+    )
 
 
 def main():

@@ -961,7 +961,29 @@ class Gun:
             )
         )
 
-        return data, error
+        # calculate a pressure and flow velcoity tracing.
+
+        p_trace = []
+        u_trace = []
+
+        for line in data:
+            _, t, l, psi, v, p_b, p, p_s, _ = line
+
+            l_c = self.l_0 / self.chi_k
+
+            p_line = []
+            u_line = []
+            for i in range(step):
+                x = i / step * (l + l_c)
+                p_x, u = self.toPxU(l, p_s, p_b, v, x)
+
+                p_line.append((x, p_x))
+                u_line.append((x, u))
+
+            p_trace.append(p_line)
+            u_trace.append(u_line)
+
+        return data, error, p_trace, u_trace
 
     def getEff(self, vg):
         """
@@ -976,6 +998,9 @@ class Gun:
         """
         Convert average chamber pressure at a certain travel to
         shot base pressure, and breech face pressure
+
+        l: travel of the projectile
+        p: average pressure
 
         Ps: pressure at shot
         Pb: pressure at breech
@@ -997,6 +1022,52 @@ class Gun:
         )
 
         return p / factor_s, p / factor_b
+
+    def toPxU(self, l, p_s, p_b, v, x):
+        """
+        Convert the average chamber to pressure and gas flow speed
+        at arbitrary point x for a projectile travel of l and average pressure
+        of p, **assuming the Lagrangian distribution**.
+
+        Note that with the current state of research, only characteristic point
+        values are available for other distributions, use toPsPb() instead for that.
+
+        l: projectile travel
+        p_s: pressure of shot
+        p_b: pressure of breech
+        x: probe point, start from the breech bottom.
+        """
+        L_1 = l
+
+        A_1 = self.S
+        A_0 = A_1 * self.chi_k
+
+        """
+        p_0 = p_b / (
+            1
+            + self.labda_1  # 0.5
+            * (self.omega / (self.phi_1 * self.m)) # epsilon_0
+            * (self.l_0 / ((self.l_0 + l) * self.chi_k)) ** 2
+        )  # note: this is approximate but in line with deriviation
+        """
+        p_0 = p_s * (
+            1
+            + self.labda_1  # 0.5
+            * (self.omega / (self.phi_1 * self.m))  # epsilon_0
+            * (1 - (self.l_0 / (self.l_0 + l)) ** 2)  # (1- theta_0**2)
+        )
+        L_0 = self.l_0 / self.chi_k  # physical length of the chamber.
+
+        if x < L_0:
+            u = A_1 * x * v / (self.V_0 + A_1 * L_1)
+            z = x / L_0
+            p_x = p_b * (1 - z**2) + p_0 * z**2
+        else:
+            u = (A_1 * x + (A_0 - A_1) * L_0) * v / (self.V_0 + A_1 * L_1)
+            z = (x - L_0) / L_1
+            p_x = p_0 * (1 - z**2) + p_s * z**2
+
+        return p_x, u
 
 
 if __name__ == "__main__":
@@ -1026,7 +1097,7 @@ if __name__ == "__main__":
         startPressure=30e6,
         lengthGun=3.5,
         chambrage=1.5,
-        dragCoefficient=0.3,
+        dragCoefficient=0.05,
     )
     """
 
@@ -1052,12 +1123,7 @@ if __name__ == "__main__":
             headers=("tag", "t", "l", "phi", "v", "pb", "p", "ps", "T", "eta"),
         )
     )
-
-    exitLine = result[0][[v[0] for v in result[0]].index(POINT_EXIT)]
-
-    Le, Ve, Pe, Te = exitLine[2], exitLine[4], exitLine[5], exitLine[6]
-    Ps, Pb = test.toPsPb(Le, Pe)
-
+    print(result[2])
     """
     # density:  lbs/in^3 -> kg/m^3, multiply by 27680
     # covolume: in^3/lbs -> m^3/kg, divide by 27680

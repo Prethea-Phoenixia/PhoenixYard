@@ -521,6 +521,8 @@ ENGLISH = {
     "PEAK_AVG_P": "Peak Average Pressure",
     "PEAK_BREECH_P": "Peak Breech Pressure",
     "PEAK_SHOT_P": "Peak Shot Base Pressure",
+    "auxFrmLabel": "Pressure Trace",
+    "auxText": "",
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -895,5 +897,7 @@ CHINESE = {
     "PEAK_AVG_P": "最大平均压强",
     "PEAK_BREECH_P": "最大膛底压强",
     "PEAK_SHOT_P": "最大弹底压强",
+    "auxFrmLabel": "膛内压强分布",
+    "auxText": "",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}
