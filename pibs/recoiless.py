@@ -1015,8 +1015,6 @@ class Recoiless:
 
         for line in data:
             tag, t, l, psi, v, vb, pb, p0, p, ps, T, eta = line
-            if tag != "":
-                continue
 
             p_line = []
             for i in range(step):  # 0....step -1
@@ -1026,8 +1024,7 @@ class Recoiless:
                 p_line.append((x, px))
 
             p_line.append((l + l_c, ps))
-
-            p_trace.append(p_line)
+            p_trace.append((tag, psi, T, p_line))
 
         return data, error, p_trace
 

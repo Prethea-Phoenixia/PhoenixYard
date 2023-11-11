@@ -967,9 +967,7 @@ class Gun:
         l_c = self.l_0 / self.chi_k
 
         for line in data:
-            tag, t, l, psi, v, p_b, p, p_s, _ = line
-            if tag != "":
-                continue
+            tag, t, l, psi, v, p_b, p, p_s, T = line
             p_line = []
             for i in range(step):
                 x = i / step * (l + l_c)
@@ -978,7 +976,7 @@ class Gun:
 
             p_line.append((l + l_c, p_s))
 
-            p_trace.append(p_line)
+            p_trace.append((tag, psi, T, p_line))
 
         return data, error, p_trace
 

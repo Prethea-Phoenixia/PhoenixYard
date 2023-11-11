@@ -2046,17 +2046,25 @@ class InteriorBallisticsFrame(Frame):
 
             pTrace = self.pressureTrace
 
-            cmap = mpl.colormaps["plasma"]
+            cmap = mpl.colormaps["afmhot"]
 
             x_max = 0
             y_max = 0
-            for i, trace in enumerate(pTrace[::-1]):
-                color = cmap(i / (len(pTrace) - 1))
+            T_max = max(trace[2] for trace in pTrace)
+            T_min = min(trace[2] for trace in pTrace)
+
+            for i, (tag, psi, T, trace) in enumerate(pTrace[::-1]):
+                if tag != "":
+                    continue
+                color = cmap((T - T_min) / (T_max - T_min))
+                alpha = None
+                linestyle = None
+
                 x, y = zip(*trace)
                 y = [v * 1e-6 for v in y]
                 x_max = max(x_max, max(x))
                 y_max = max(y_max, max(y))
-                self.auxAx.plot(x, y, c=color)
+                self.auxAx.plot(x, y, c=color, alpha=alpha, ls=linestyle)
 
             self.auxAx.set_xlim(left=0, right=x_max)
             self.auxAx.set_ylim(bottom=0, top=y_max * 1.15)
