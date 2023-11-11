@@ -2056,7 +2056,11 @@ class InteriorBallisticsFrame(Frame):
             for i, (tag, psi, T, trace) in enumerate(pTrace[::-1]):
                 if tag != "":
                     continue
-                color = cmap((T - T_min) / (T_max - T_min))
+                if self.themeRadio.get():
+                    color = cmap(1 - (T - T_min) / (T_max - T_min))
+                else:
+                    color = cmap((T - T_min) / (T_max - T_min))
+
                 alpha = None
                 linestyle = None
 
@@ -2068,6 +2072,11 @@ class InteriorBallisticsFrame(Frame):
 
             self.auxAx.set_xlim(left=0, right=x_max)
             self.auxAx.set_ylim(bottom=0, top=y_max * 1.15)
+
+            l_c = gun.l_0 / gun.chi_k
+            self.auxAx.plot(
+                (l_c, l_c), (0, y_max * 1.15), c="grey", ls="dotted", zorder=1.5
+            )
 
             tkw = dict(size=4, width=1.5)
             self.auxAx.yaxis.set_label_position("right")
