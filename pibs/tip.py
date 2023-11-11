@@ -91,7 +91,7 @@ class ToolTip(object):
         tw = self.tipwindow
         self.tipwindow = None
         if tw:
-            tw.after(25, lambda: tw.destroy())
+            tw.after(100, lambda: tw.destroy())
 
 
 def CreateToolTip(widget, text):
