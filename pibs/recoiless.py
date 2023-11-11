@@ -744,7 +744,7 @@ class Recoiless:
             if m == "a":
                 return p_bar
 
-            Ps, P0, Px, Vx = self.toPsP0PxVx(
+            Ps, P0, Pb, Vb = self.toPsP0PbVb(
                 l_bar * self.l_0,
                 v_bar * self.v_j,
                 p_bar * pScale,
@@ -753,7 +753,7 @@ class Recoiless:
             )
 
             if m == "b":
-                return Px / pScale
+                return Pb / pScale
             elif m == "s":
                 return Ps / pScale
 
@@ -968,8 +968,8 @@ class Recoiless:
             T = tau * self.T_v
             T_err = tau_err * self.T_v
 
-            ps, p0, px, vx = self.toPsP0PxVx(l, v, p, T, eta)
-            data.append((dtag, t, l, psi, v, vx, px, p0, p, ps, T, eta))
+            ps, p0, pb, vb = self.toPsP0PbVb(l, v, p, T, eta)
+            data.append((dtag, t, l, psi, v, vb, pb, p0, p, ps, T, eta))
             error.append(
                 (
                     etag,
@@ -998,8 +998,8 @@ class Recoiless:
                 tau * self.T_v,
             )
 
-            ps, p0, px, vx = self.toPsP0PxVx(l, v, p, T, eta)
-            data.append(("*", t, l, psi, v, vx, px, p0, p, ps, T, eta))
+            ps, p0, pb, vb = self.toPsP0PbVb(l, v, p, T, eta)
+            data.append(("*", t, l, psi, v, vb, pb, p0, p, ps, T, eta))
             errLine = ("L", *("--" for _ in range(11)))
             error.append(errLine)
 
@@ -1010,7 +1010,26 @@ class Recoiless:
             )
         )
 
-        return data, error
+        p_trace = []
+        l_c = self.l_0 / self.chi_k
+
+        for line in data:
+            tag, t, l, psi, v, vb, pb, p0, p, ps, T, eta = line
+            if tag != "":
+                continue
+
+            p_line = []
+            for i in range(step):  # 0....step -1
+                x = i / step * (l + l_c)
+                px = self.toPx(l, v, vb, ps, T, eta, x)
+
+                p_line.append((x, px))
+
+            p_line.append((l + l_c, ps))
+
+            p_trace.append(p_line)
+
+        return data, error, p_trace
 
     def getEff(self, vg):
         """
@@ -1021,7 +1040,7 @@ class Recoiless:
         be = te / self.phi
         return te, be
 
-    def toPsP0PxVx(self, l, v, p, T, eta):
+    def toPsP0PbVb(self, l, v, p, T, eta):
         """
         Diagramatic explanation of the calculated values:
             ----\___     __________________
@@ -1038,19 +1057,19 @@ class Recoiless:
          *-_-*
 
         Ps  : Shot base pressure
-        Px  : Breech pressure, chamber pressure at rearward of chamber
+        Pb  : Breech pressure, chamber pressure at rearward of chamber
         P0  : Stagnation point pressure
-        vx  : Rearward flow velocity at the rear of chamber
+        vb  : Rearward flow velocity at the rear of chamber
         """
         tau = T / self.T_v
         y = self.omega * eta
         m_dot = self.C_A * self.v_j * self.S_j * p / (self.f * tau**0.5)
         # mass flow rate, rearward
-        Sx = self.S * self.chi_k
-        vx = m_dot * (self.V_0 + self.S * l) / (Sx * (self.omega - y))
+        Sb = self.S * self.chi_k
+        vb = m_dot * (self.V_0 + self.S * l) / (Sb * (self.omega - y))
         # velocity impinging upon the rear of the breech before nozzle constriction
 
-        H_1 = vx / v if v != 0 else inf
+        H_1 = vb / v if v != 0 else inf
         H_2 = 2 * self.phi_1 * self.m / (self.omega - y) + 1
         H = min(H_1, H_2)
 
@@ -1060,12 +1079,46 @@ class Recoiless:
         p0 = ps * (
             1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 + H) ** -1
         )  # stagnation point pressure
-        px = (
+        pb = (
             ps * (1 + (self.omega - y) / (2 * self.phi_1 * self.m) * (1 - H))
             if H == H_1
             else 0
         )  # breech pressure
-        return ps, p0, px, vx
+        l0 = H / (1 + H) * l  # location of the stagnation point
+        return ps, p0, pb, vb
+
+    def toPx(self, l, v, vb, ps, T, eta, x):
+        m = self.m
+        omega = self.omega
+        phi_1 = self.phi_1
+        y = self.omega * eta
+
+        """
+        convert x, the physical displacement from breech bottom, to
+        effective length in the equivalent gun.
+        """
+
+        L_1 = l
+        L_0 = self.l_0 / self.chi_k  # physical length of the chamber.
+
+        A_1 = self.S
+        A_0 = A_1 * self.chi_k
+
+        if x < L_0:
+            z = x * A_0 / (L_0 * A_0 + L_1 * A_1)
+        else:
+            z = (L_0 * A_0 + (x - L_0) * A_1) / (L_0 * A_0 + L_1 * A_1)
+
+        H_1 = vb / v if v != 0 else inf
+        H_2 = 2 * phi_1 * self.m / (self.omega - y) + 1
+        H = min(H_1, H_2)
+
+        px = ps * (
+            1
+            + (omega - y) / (2 * phi_1 * m) * (1 + H) * (1 - z**2)
+            - (omega - y) / (phi_1 * m) * H * (1 - z)
+        )
+        return px
 
     @staticmethod
     def getCf(gamma, Sr, tol=1e-5):
@@ -1133,8 +1186,8 @@ if __name__ == "__main__":
                 "l",
                 "psi",
                 "v",
-                "vx",
-                "px",
+                "vb",
+                "pb",
                 "p0",
                 "p",
                 "ps",
@@ -1153,8 +1206,8 @@ if __name__ == "__main__":
                 "l",
                 "psi",
                 "v",
-                "vx",
-                "px",
+                "vb",
+                "pb",
                 "p0",
                 "p",
                 "ps",

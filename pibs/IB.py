@@ -1125,7 +1125,6 @@ class InteriorBallisticsFrame(Frame):
                 self.tableData,
                 self.errorData,
                 self.pressureTrace,
-                self.flowTrace,
                 errorLst,
             ) = queue.get_nowait()
 
@@ -2063,11 +2062,13 @@ class InteriorBallisticsFrame(Frame):
             self.auxAx.set_ylim(bottom=0, top=y_max * 1.15)
 
             tkw = dict(size=4, width=1.5)
-            # self.auxAx.yaxis.tick_right()
+            self.auxAx.yaxis.set_label_position("right")
+            self.auxAx.yaxis.tick_right()
             self.auxAx.tick_params(axis="y", colors="tab:green", **tkw)
             self.auxAx.tick_params(axis="x", **tkw)
 
             self.auxAx.set_xlabel(self.getLocStr("figAuxDomain"))
+            self.auxAx.set_ylabel(self.getLocStr("figPres"))
             self.auxFig.set_layout_engine("constrained")
             self.auxCanvas.draw_idle()
 
@@ -2561,7 +2562,7 @@ def calculate(
     tableData = []
     errorData = []
     pressureTrace = []
-    flowTrace = []
+
     errorReport = []
 
     gunType = kwargs["typ"]
@@ -2602,7 +2603,7 @@ def calculate(
         elif gunType == RECOILESS:
             gun = Recoiless(**kwargs)
 
-        tableData, errorData, pressureTrace, flowTrace = gun.integrate(**kwargs)
+        tableData, errorData, pressureTrace = gun.integrate(**kwargs)
 
     except Exception as e:
         gun = None
@@ -2626,7 +2627,6 @@ def calculate(
             tableData,
             errorData,
             pressureTrace,
-            flowTrace,
             errorReport,
         )
     )

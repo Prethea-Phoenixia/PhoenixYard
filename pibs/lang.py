@@ -524,6 +524,7 @@ ENGLISH = {
     "auxFrmLabel": "Pressure Trace",
     "auxText": "",
     "figAuxDomain": "Displacement from Breech - m",
+    "figPres": "Press - MPa",
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -901,5 +902,6 @@ CHINESE = {
     "auxFrmLabel": "膛内压强分布",
     "auxText": "",
     "figAuxDomain": "膛底距 - m",
+    "figPres": "压强 - MPa",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}

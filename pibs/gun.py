@@ -964,26 +964,23 @@ class Gun:
         # calculate a pressure and flow velcoity tracing.
 
         p_trace = []
-        u_trace = []
+        l_c = self.l_0 / self.chi_k
 
         for line in data:
-            _, t, l, psi, v, p_b, p, p_s, _ = line
-
-            l_c = self.l_0 / self.chi_k
-
+            tag, t, l, psi, v, p_b, p, p_s, _ = line
+            if tag != "":
+                continue
             p_line = []
-            u_line = []
             for i in range(step):
                 x = i / step * (l + l_c)
-                p_x, u = self.toPxU(l, p_s, p_b, v, x)
-
+                p_x, _ = self.toPxU(l, p_s, p_b, v, x)
                 p_line.append((x, p_x))
-                u_line.append((x, u))
+
+            p_line.append((l + l_c, p_s))
 
             p_trace.append(p_line)
-            u_trace.append(u_line)
 
-        return data, error, p_trace, u_trace
+        return data, error, p_trace
 
     def getEff(self, vg):
         """
@@ -1038,6 +1035,7 @@ class Gun:
         x: probe point, start from the breech bottom.
         """
         L_1 = l
+        L_0 = self.l_0 / self.chi_k  # physical length of the chamber.
 
         A_1 = self.S
         A_0 = A_1 * self.chi_k
@@ -1056,16 +1054,15 @@ class Gun:
             * (self.omega / (self.phi_1 * self.m))  # epsilon_0
             * (1 - (self.l_0 / (self.l_0 + l)) ** 2)  # (1- theta_0**2)
         )
-        L_0 = self.l_0 / self.chi_k  # physical length of the chamber.
 
         if x < L_0:
             u = A_1 * x * v / (self.V_0 + A_1 * L_1)
-            z = x / L_0
-            p_x = p_b * (1 - z**2) + p_0 * z**2
+            y = x / L_0
+            p_x = p_b * (1 - y**2) + p_0 * y**2
         else:
             u = (A_1 * x + (A_0 - A_1) * L_0) * v / (self.V_0 + A_1 * L_1)
-            z = (x - L_0) / L_1
-            p_x = p_0 * (1 - z**2) + p_s * z**2
+            y = (x - L_0) / L_1
+            p_x = p_0 * (1 - y**2) + p_s * y**2
 
         return p_x, u
 

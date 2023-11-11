@@ -137,7 +137,7 @@ class ConstrainedRecoiless:
         chi_0 = self.chi_0
         A_bar = self.A_bar
 
-        Sx = S * chi_k
+        Sb = S * chi_k
 
         if loadFraction > maxLF:
             raise ValueError(
@@ -228,10 +228,10 @@ class ConstrainedRecoiless:
             else:
                 y = omega * eta
                 m_dot = C_A * v_j * S_j * p_bar * Delta / (tau**0.5)
-                vx = m_dot * (V_0 + S * l_bar * l_0) / (Sx * (omega - y))
+                vb = m_dot * (V_0 + S * l_bar * l_0) / (Sb * (omega - y))
 
                 H_1, H_2 = (
-                    vx / (v_j * v_bar) if v_bar != 0 else inf,
+                    vb / (v_j * v_bar) if v_bar != 0 else inf,
                     2 * phi_1 * m / (omega - y) + 1,
                 )
 
