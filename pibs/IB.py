@@ -54,7 +54,6 @@ from queue import Empty
 
 import sys
 import csv
-import os
 
 import json
 
@@ -72,7 +71,6 @@ from locWidget import (
     LocLabelCheck,
 )
 
-import xml.etree.ElementTree as ET
 
 RECOILESS = "RECOILESS"
 CONVENTIONAL = "CONVENTIONAL"
@@ -242,8 +240,8 @@ class InteriorBallisticsFrame(Frame):
         self.errorLst = []
 
         self.columnconfigure(1, weight=1)
-        self.rowconfigure(2, weight=2)
-        self.rowconfigure(3, weight=1)
+        self.rowconfigure(2, weight=3)
+        self.rowconfigure(3, weight=2)
 
         self.addNamePlate()
         self.addTopFrm()
@@ -1660,7 +1658,7 @@ class InteriorBallisticsFrame(Frame):
             self,
             locKey="plotFrmLabel",
             width=640,
-            height=480,
+            height=300,
             locFunc=self.getLocStr,
             tooltipLocKey="plotText",
             allLLF=self.locs,
@@ -1736,7 +1734,7 @@ class InteriorBallisticsFrame(Frame):
             self,
             locKey="auxFrmLabel",
             width=640,
-            height=240,
+            height=200,
             locFunc=self.getLocStr,
             tooltipLocKey="auxText",
             allLLF=self.locs,
@@ -1767,7 +1765,7 @@ class InteriorBallisticsFrame(Frame):
 
             self.auxAx = ax  # auxiliary axes
             self.auxFig = fig
-            self.auxAx.yaxis.tick_right()
+            # self.auxAx.yaxis.tick_right()
             self.auxCanvas = FigureCanvasTkAgg(fig, master=auxFrm)
             self.auxCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=2, pady=2, sticky="nsew"
@@ -1904,20 +1902,6 @@ class InteriorBallisticsFrame(Frame):
 
             self.axP.spines.right.set_position(("data", xPeak))
 
-            if self.plotVel.get():
-                self.axv.plot(
-                    xs,
-                    vs,
-                    "tab:blue",
-                    label=self.getLocStr("figShotVel"),
-                )
-            self.axv.axhline(
-                vTgt,
-                c="tab:blue",
-                linestyle=":",
-                label=self.getLocStr("figTgtV"),
-            )
-
             if self.plotBreechNozzleP.get():
                 self.axP.plot(
                     xs,
@@ -1967,6 +1951,20 @@ class InteriorBallisticsFrame(Frame):
                 label=self.getLocStr("figTgtP"),
             )
 
+            if self.plotVel.get():
+                self.axv.plot(
+                    xs,
+                    vs,
+                    "tab:blue",
+                    label=self.getLocStr("figShotVel"),
+                )
+            self.axv.axhline(
+                vTgt,
+                c="tab:blue",
+                linestyle=":",
+                label=self.getLocStr("figTgtV"),
+            )
+
             if self.plotBurnup.get():
                 self.ax.plot(
                     xs, psis, c="tab:red", label=self.getLocStr("figPsi")
@@ -2009,13 +2007,15 @@ class InteriorBallisticsFrame(Frame):
                 linesLabeled.append(lines)
 
             self.ax.set_xlim(left=0, right=xs[-1])
-
             pmax = max(Pas + Pbs + Pss + P0s)
-            self.axP.set(ylim=(0, pmax * 1.05))
-            self.axF.set(ylim=(0, pmax * gun.S * 1.05))
+            self.axP.set(ylim=(0, pmax * 1.1))
+            self.axF.set(ylim=(0, pmax * gun.S * 1.1))
+            self.axv.set(ylim=(0, max(vs + vxs) * 1.15))
+            self.ax.set_ylim(bottom=0, top=1.05)
 
-            self.axv.set(ylim=(0, max(vs + vxs) * 1.1))
-            self.ax.set_ylim(bottom=0, top=1.15)
+            self.axP.yaxis.set_ticks(
+                [v for v in self.axP.get_yticks() if v <= pmax][1:]
+            )
 
             tkw = dict(size=4, width=1.5)
             self.ax.yaxis.tick_right()
@@ -2030,8 +2030,6 @@ class InteriorBallisticsFrame(Frame):
                 self.ax.set_xlabel(self.getLocStr("figTimeDomain"))
             elif dom == DOMAIN_LENG:
                 self.ax.set_xlabel(self.getLocStr("figLengDomain"))
-
-            self.axP.yaxis.set_ticks(self.axP.get_yticks()[1:-1:])
 
             self.fig.set_layout_engine("constrained")
 
@@ -2081,13 +2079,12 @@ class InteriorBallisticsFrame(Frame):
             )
 
             tkw = dict(size=4, width=1.5)
-            self.auxAx.yaxis.set_label_position("right")
-            self.auxAx.yaxis.tick_right()
             self.auxAx.tick_params(axis="y", colors="tab:green", **tkw)
             self.auxAx.tick_params(axis="x", **tkw)
 
+            self.auxAx.set_ylabel("MPa")
             self.auxAx.set_xlabel(self.getLocStr("figAuxDomain"))
-            self.auxAx.set_ylabel(self.getLocStr("figPres"))
+
             self.auxFig.set_layout_engine("constrained")
             self.auxCanvas.draw_idle()
 
