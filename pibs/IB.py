@@ -2009,11 +2009,13 @@ class InteriorBallisticsFrame(Frame):
                 linesLabeled.append(lines)
 
             self.ax.set_xlim(left=0, right=xs[-1])
-            self.ax.set_ylim(bottom=0, top=1.05)
+
             pmax = max(Pas + Pbs + Pss + P0s)
             self.axP.set(ylim=(0, pmax * 1.05))
-            self.axv.set(ylim=(0, max(vs + vxs) * 1.05))
             self.axF.set(ylim=(0, pmax * gun.S * 1.05))
+
+            self.axv.set(ylim=(0, max(vs + vxs) * 1.1))
+            self.ax.set_ylim(bottom=0, top=1.15)
 
             tkw = dict(size=4, width=1.5)
             self.ax.yaxis.tick_right()
