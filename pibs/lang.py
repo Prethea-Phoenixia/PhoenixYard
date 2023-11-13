@@ -522,7 +522,14 @@ ENGLISH = {
     "PEAK_BREECH_P": "Peak Breech Pressure",
     "PEAK_SHOT_P": "Peak Shot Base Pressure",
     "auxFrmLabel": "Pressure Trace",
-    "auxText": "",
+    "auxText": " ".join(
+        (
+            "Pressure distribution throughout the chamber and bore, traces",
+            "colored to the average gas temperature. The distribution",
+            "shown is a piecewise Lagrangian regardless of the one selected",
+            "for the calculation of characteristc points.",
+        )
+    ),
     "figAuxDomain": "Dist. to Breech - m",
 }
 CHINESE = {
@@ -899,7 +906,12 @@ CHINESE = {
     "PEAK_BREECH_P": "最大膛底压强",
     "PEAK_SHOT_P": "最大弹底压强",
     "auxFrmLabel": "膛内压强分布",
-    "auxText": "",
+    "auxText": "".join(
+        (
+            "膛内压强示意图，各条压强曲线对应采样点，按平均气体温度着色。",
+            "应注意，压强分布按分段拉格朗日计算，无视特征点计算所选择的具体分布。",
+        )
+    ),
     "figAuxDomain": "膛底距离 - m",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}
