@@ -1082,6 +1082,64 @@ def intg(f, l, u, tol=1e-3):
     return I, d
 
 
+def jarvis(points):  # TODO: write doc, fucking test this shit
+    def cosine(start, vertex, end):
+        if (start[0] == vertex[0]) and (start[1] == vertex[1]):
+            start = (vertex[0], vertex[1] - 1)
+
+        x_0, y_0 = start
+        x_1, y_1 = vertex
+        x_2, y_2 = end
+
+        v_x_0, v_y_0 = x_1 - x_0, y_1 - y_0
+        v_x_1, v_y_1 = x_2 - x_1, y_2 - y_1
+
+        l_0 = (v_x_0**2 + v_y_0**2) ** 0.5
+        l_1 = (v_x_1**2 + v_y_1**2) ** 0.5
+
+        v = max(min((v_x_0 * v_x_1 + v_y_0 * v_y_1) / (l_0 * l_1), 1), -1)
+
+        theta = math.acos(v)
+
+        mod = (l_0**2 + l_1**2 - 2 * l_0 * l_1 * math.cos(theta)) ** 0.5
+
+        return theta, mod
+
+    first = min(points)
+
+    start = first
+    prev = first
+    hull = [first]
+
+    for _ in range(len(points)):  # prevent infinite execution
+        theta_min, mod_max = math.inf, 0
+
+        for candidate in points:
+            if (candidate[0] == start[0]) and (candidate[1] == start[1]):
+                continue
+
+            theta, mod = cosine(prev, start, candidate)
+            if theta < theta_min:
+                end = candidate
+                theta_min, mod_max = theta, mod
+
+            elif (theta == theta_min) and (mod > mod_max):
+                end = candidate
+                theta_min, mod_max = theta, mod
+
+        if (end[0] == first[0]) and (end[1] == first[1]):
+            return hull
+        else:
+            hull.append(end)
+            prev = start
+            start = end
+
+    raise ValueError(
+        "Something went wrong while finding the convex hull of the supplied "
+        + "points, current hull being {:}".format(hull),
+    )
+
+
 if __name__ == "__main__":
 
     def main():
@@ -1122,3 +1180,18 @@ if __name__ == "__main__":
     # make a report, placing output in the current directory
     r = tracer.results()
     r.write_results(show_missing=True, coverdir=".")
+
+    # points = [[0, 0], [0, 1], [1, 1], [1, 0]]
+    points = []
+
+    import random
+
+    for _ in range(1000):
+        points.append((random.random(), random.random()))
+
+    import matplotlib.pyplot as plt
+
+    plt.scatter(*zip(*points))
+    plt.plot(*zip(*jarvis(points)))
+
+    plt.show()

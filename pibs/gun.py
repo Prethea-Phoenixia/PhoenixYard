@@ -1,5 +1,5 @@
 from math import pi, log, inf, exp
-from num import gss, RKF78, cubic, intg, bisect
+from num import gss, RKF78, cubic, intg, bisect, jarvis
 from prop import GrainComp, Propellant
 
 DOMAIN_TIME = "DOMAIN_TIME"
@@ -965,6 +965,7 @@ class Gun:
 
         p_trace = []
         l_c = self.l_0 / self.chi_k
+        l_g = self.l_g
 
         for line in data:
             tag, t, l, psi, v, p_b, p, p_s, T = line
@@ -975,8 +976,27 @@ class Gun:
                 p_line.append((x, p_x))
 
             p_line.append((l + l_c, p_s))
-
             p_trace.append((tag, psi, T, p_line))
+
+        x_probes = (
+            [i / step * l_c for i in range(step)]
+            + [i / step * l_g + l_c for i in range(step)]
+            + [l_g + l_c]
+        )
+        p_probes = [0] * len(x_probes)
+
+        for line in data:
+            tag, t, l, psi, v, p_b, p, p_s, T = line
+            for i, x in enumerate(x_probes):
+                if (x - l_c) <= l:
+                    p_x, _ = self.toPxU(l, p_s, p_b, v, x)
+                    p_probes[i] = max(p_probes[i], p_x)
+                else:
+                    break
+
+        # import matplotlib.pyplot as plt
+        # plt.plot(x_probes, p_probes)
+        # plt.show()
 
         return data, error, p_trace
 
@@ -1053,7 +1073,7 @@ class Gun:
             * (1 - (self.l_0 / (self.l_0 + l)) ** 2)  # (1- theta_0**2)
         )
 
-        if x < L_0:
+        if x <= L_0:
             u = A_1 * x * v / (self.V_0 + A_1 * L_1)
             y = x / L_0
             p_x = p_b * (1 - y**2) + p_0 * y**2
@@ -1063,6 +1083,31 @@ class Gun:
             p_x = p_0 * (1 - y**2) + p_s * y**2
 
         return p_x, u
+
+    """
+    def getGunWt(self, trace):
+        points = []
+        for _, _, _, p_points in trace:
+            points.extend(p_points)
+
+        scale_x = max([p[0] for p in points])
+        scale_y = max([p[1] for p in points])
+
+        scaled_points = []  # this is the inverse problem
+        for point in points:
+            scaled_points.append((point[0] / scale_x, point[1] / scale_y))
+
+        # first, calculate the convex hull
+
+        # print(*points, sep="\n")
+
+        import matplotlib.pyplot as plt
+
+        plt.scatter(*zip(*scaled_points), s=1)
+        hull = jarvis(scaled_points)
+        plt.plot(*zip(*hull), c="red")
+        plt.show()
+    """
 
 
 if __name__ == "__main__":
@@ -1111,14 +1156,15 @@ if __name__ == "__main__":
         )
     )
     """
-    result = test.integrate(10, 1e-3, dom=DOMAIN_TIME, sol=SOL_LAGRANGE)
+    result = test.integrate(100, 1e-3, dom=DOMAIN_TIME, sol=SOL_LAGRANGE)
     print(
         tabulate(
             result[0],
             headers=("tag", "t", "l", "phi", "v", "pb", "p", "ps", "T", "eta"),
         )
     )
-    print(result[2])
+
+    # print(result[2])
     """
     # density:  lbs/in^3 -> kg/m^3, multiply by 27680
     # covolume: in^3/lbs -> m^3/kg, divide by 27680

@@ -1012,6 +1012,7 @@ class Recoiless:
 
         p_trace = []
         l_c = self.l_0 / self.chi_k
+        l_g = self.l_g
 
         for line in data:
             tag, t, l, psi, v, vb, pb, p0, p, ps, T, eta = line
@@ -1025,6 +1026,22 @@ class Recoiless:
 
             p_line.append((l + l_c, ps))
             p_trace.append((tag, psi, T, p_line))
+
+        x_probes = (
+            [i / step * l_c for i in range(step)]
+            + [i / step * l_g + l_c for i in range(step)]
+            + [l_g + l_c]
+        )
+        p_probes = [0] * len(x_probes)
+
+        for line in data:
+            tag, t, l, psi, v, vb, pb, p0, p, ps, T, eta = line
+            for i, x in enumerate(x_probes):
+                if (x - l_c) <= l:
+                    p_x = self.toPx(l, v, vb, ps, T, eta, x)
+                    p_probes[i] = max(p_probes[i], p_x)
+                else:
+                    break
 
         return data, error, p_trace
 
@@ -1101,7 +1118,7 @@ class Recoiless:
         A_1 = self.S
         A_0 = A_1 * self.chi_k
 
-        if x < L_0:
+        if x <= L_0:
             z = x * A_0 / (L_0 * A_0 + L_1 * A_1)
         else:
             z = (L_0 * A_0 + (x - L_0) * A_1) / (L_0 * A_0 + L_1 * A_1)
@@ -1176,7 +1193,7 @@ if __name__ == "__main__":
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(0, 1e-3, dom=DOMAIN_TIME)[0],
+            test.integrate(10, 1e-3, dom=DOMAIN_TIME)[0],
             headers=(
                 "tag",
                 "t",
@@ -1196,7 +1213,7 @@ if __name__ == "__main__":
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(0, 1e-3, dom=DOMAIN_LENG)[0],
+            test.integrate(10, 1e-3, dom=DOMAIN_LENG)[0],
             headers=(
                 "tag",
                 "t",
