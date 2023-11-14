@@ -677,6 +677,80 @@ def quadratic(a, b, c):
         return x_1, x_2
 
 
+def secant(
+    f,
+    x_0,
+    x_1,
+    y=0,
+    x_min=None,
+    x_max=None,
+    x_tol=1e-16,
+    y_rel_tol=0,
+    y_abs_tol=1e-16,
+    it=100,
+    debug=False,
+):
+    """secant method that solves f(x) = y subjected to x in [x_min,x_max]"""
+
+    fx_0 = f(x_0) - y
+    fx_1 = f(x_1) - y
+
+    if debug:
+        record = []
+
+    if x_0 == x_1 or fx_0 == fx_1:
+        errStr = "Impossible to calculate initial slope for secant search."
+        errStr += "\nf({:})={:}\nf({:})={:}".format(x_0, fx_0, x_1, fx_1)
+        raise ValueError(errStr)
+
+    for i in range(it):
+        x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
+        if x_min is not None and x_2 < x_min:
+            x_2 = 0.9 * x_min + 0.1 * x_1
+        if x_max is not None and x_2 > x_max:
+            x_2 = 0.9 * x_max + 0.1 * x_1
+
+        fx_2 = f(x_2) - y
+
+        if debug:
+            record.append((x_2, fx_2 - y))
+
+        if any(
+            (
+                abs(x_2 - x_1) < x_tol,
+                abs(fx_2) < y_abs_tol,
+                abs(fx_2) < (abs(y) * y_rel_tol),
+            ),
+        ):
+            return x_2, fx_2
+        else:
+            if fx_2 == fx_1:
+                raise ValueError(
+                    "Numerical plateau found at f({})=f({})={}".format(
+                        x_1, x_2, fx_2
+                    )
+                )
+
+            x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, fx_2
+
+    if debug:
+        print("{:>24}{:>24}".format("X", "FX"))
+        record.sort()
+        for line in record:
+            if len(line) == 2:
+                print("{:>24}{:>24}".format(*line))
+            else:
+                print(line)
+
+    raise ValueError(
+        "Secant method called from {} to {}\n".format(x_min, x_max)
+        + "Maximum iteration exceeded at it = {}/{}".format(i, it)
+        + ",\n[0] f({})={}->\n[1] f({})={}->\n[2] f({})={}".format(
+            x_0, fx_0, x_1, fx_1, x_2, fx_2
+        )
+    )
+
+
 def dekker(
     f,
     x_0,
@@ -776,88 +850,16 @@ def dekker(
     )
 
 
-def secant(
-    f,
-    x_0,
-    x_1,
-    y=0,
-    x_min=None,
-    x_max=None,
-    x_tol=1e-16,
-    y_rel_tol=0,
-    y_abs_tol=1e-16,
-    it=100,
-    debug=False,
+def bisect(
+    f, x_0, x_1, y=0, x_tol=1e-16, y_abs_tol=1e-16, y_rel_tol=0, debug=False
 ):
-    """secant method that solves f(x) = y subjected to x in [x_min,x_max]"""
-
-    fx_0 = f(x_0) - y
-    fx_1 = f(x_1) - y
-
-    if debug:
-        record = []
-
-    if x_0 == x_1 or fx_0 == fx_1:
-        errStr = "Impossible to calculate initial slope for secant search."
-        errStr += "\nf({:})={:}\nf({:})={:}".format(x_0, fx_0, x_1, fx_1)
-        raise ValueError(errStr)
-
-    for i in range(it):
-        x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
-        if x_min is not None and x_2 < x_min:
-            x_2 = 0.9 * x_min + 0.1 * x_1
-        if x_max is not None and x_2 > x_max:
-            x_2 = 0.9 * x_max + 0.1 * x_1
-
-        fx_2 = f(x_2) - y
-
-        if debug:
-            record.append((x_2, fx_2 - y))
-
-        if any(
-            (
-                abs(x_2 - x_1) < x_tol,
-                abs(fx_2) < y_abs_tol,
-                abs(fx_2) < (abs(y) * y_rel_tol),
-            ),
-        ):
-            return x_2, fx_2
-        else:
-            if fx_2 == fx_1:
-                raise ValueError(
-                    "Numerical plateau found at f({})=f({})={}".format(
-                        x_1, x_2, fx_2
-                    )
-                )
-
-            x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, fx_2
-
-    if debug:
-        print("{:>24}{:>24}".format("X", "FX"))
-        record.sort()
-        for line in record:
-            if len(line) == 2:
-                print("{:>24}{:>24}".format(*line))
-            else:
-                print(line)
-
-    raise ValueError(
-        "Secant method called from {} to {}\n".format(x_min, x_max)
-        + "Maximum iteration exceeded at it = {}/{}".format(i, it)
-        + ",\n[0] f({})={}->\n[1] f({})={}->\n[2] f({})={}".format(
-            x_0, fx_0, x_1, fx_1, x_2, fx_2
-        )
-    )
-
-
-def bisect(f, x_0, x_1, x_tol=1e-16, y_abs_tol=1e-16, y=0, debug=False):
     """bisection method to numerically solve for zero
     two initial guesses must be of opposite sign.
     The root found is guaranteed to be within the range specified.
     """
     a, b = min(x_0, x_1), max(x_0, x_1)
-    fa = f(a)
-    fb = f(b)
+    fa = f(a) - y
+    fb = f(b) - y
 
     if x_tol > 0:
         n = math.ceil(math.log((b - a) / x_tol, 2))
@@ -868,13 +870,13 @@ def bisect(f, x_0, x_1, x_tol=1e-16, y_abs_tol=1e-16, y=0, debug=False):
         raise ValueError("Initial Guesses Must Be Of Opposite Sign")
 
     for i in range(n):
-        if abs(fa - fb) < y_abs_tol:
+        if abs(fa - fb) < max(y_abs_tol, y * y_rel_tol):
             break
 
         c = 0.5 * (a + b)
-        fc = f(c)
+        fc = f(c) - y
 
-        if f(c) * f(a) > 0:
+        if fc * fa > 0:
             a = c
             fa = fc
         else:

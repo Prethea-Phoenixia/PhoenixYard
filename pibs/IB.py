@@ -71,6 +71,8 @@ from locWidget import (
     LocLabelCheck,
 )
 
+from material import MATERIALS
+
 
 RECOILESS = "RECOILESS"
 CONVENTIONAL = "CONVENTIONAL"
@@ -230,10 +232,6 @@ class InteriorBallisticsFrame(Frame):
                 command=self.changeLang,
                 underline=0,
             )
-
-        self.COMPOSITIONS = GrainComp.readFile(
-            resolvepath("data/propellants.csv")
-        )  # dict of composition.name (string) -> composition (object)
 
         self.prop = None
         self.gun = None
@@ -686,6 +684,7 @@ class InteriorBallisticsFrame(Frame):
     def addRightFrm(self):
         """
         rightFrm
+        |-mecFrm
         |-solFrm
         |-envFrm
         |-opFrm
@@ -701,13 +700,45 @@ class InteriorBallisticsFrame(Frame):
         validationNN = self.register(validateNN)
         validationPI = self.register(validatePI)
 
+        mecFrm = LocLabelFrame(
+            rightFrm,
+            locKey="Mechanical",
+            locFunc=self.getLocStr,
+            allLLF=self.locs,
+        )
+        mecFrm.grid(row=1, column=0, sticky="nsew")
+        mecFrm.columnconfigure(0, weight=1)
+
+        self.dropMat = LocDropdown(
+            parent=mecFrm,
+            strObjDict=MATERIALS,
+            locFunc=self.getLocStr,
+            dropdowns=self.locs,
+            descLabelKey="Material",
+        )
+        self.dropMat.grid(
+            row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
+        )
+
+        self.ssf = Loc2Input(
+            parent=mecFrm,
+            row=1,
+            col=0,
+            labelLocKey="Safety Factor",
+            default="1.35",
+            validation=validationNN,
+            anchor="center",
+            locFunc=self.getLocStr,
+            allInputs=self.locs,
+        )
+
         solFrm = LocLabelFrame(
             rightFrm,
             locKey="solFrmLabel",
             locFunc=self.getLocStr,
             allLLF=self.locs,
         )
-        solFrm.grid(row=1, column=0, sticky="nsew")
+        solFrm.grid(row=2, column=0, sticky="nsew")
         solFrm.columnconfigure(0, weight=1)
 
         self.dropSoln = LocDropdown(
@@ -727,7 +758,7 @@ class InteriorBallisticsFrame(Frame):
             locFunc=self.getLocStr,
             allLLF=self.locs,
         )
-        envFrm.grid(row=2, column=0, sticky="nsew")
+        envFrm.grid(row=3, column=0, sticky="nsew")
         envFrm.columnconfigure(0, weight=1)
 
         i = 0
@@ -784,7 +815,7 @@ class InteriorBallisticsFrame(Frame):
             locFunc=self.getLocStr,
             allLLF=self.locs,
         )
-        opFrm.grid(row=3, column=0, sticky="nsew")
+        opFrm.grid(row=4, column=0, sticky="nsew")
         opFrm.columnconfigure(0, weight=1)
         i = 0
 
@@ -979,39 +1010,17 @@ class InteriorBallisticsFrame(Frame):
             except AttributeError:
                 pass
 
-        constrain = self.solve_W_Lg.get() == 1
-        optimize = self.opt_lf.get() == 1
-        debug = self.DEBUG.get() == 1
-        atmosphere = self.inAtmos.get() == 1
-
-        gunType = self.typeOptn.getObj()
-        telescoped = self.ammoOptn.getObj() == TELESCOPED
-        self.kwargs = {
-            "opt": optimize,
-            "con": constrain,
-            "deb": debug,
-            "typ": gunType,
-            "dom": self.dropDomain.getObj(),
-            "sol": self.dropSoln.getObj(),
-            "control": self.pControl.getObj(),
-        }
-
-        if atmosphere:
-            self.kwargs.update(
-                {
-                    "ambientP": float(self.ambP.get()) * 1e3,
-                    "ambientRho": float(self.ambRho.get()),
-                    "ambientGamma": float(self.ambGam.get()),
-                }
-            )
-        else:
-            self.kwargs.update(
-                {"ambientP": 0, "ambientRho": 0, "ambientGamma": 1}
-            )
-
         self.process = None
 
         try:
+            constrain = self.solve_W_Lg.get() == 1
+            optimize = self.opt_lf.get() == 1
+            debug = self.DEBUG.get() == 1
+            atmosphere = self.inAtmos.get() == 1
+
+            gunType = self.typeOptn.getObj()
+            telescoped = self.ammoOptn.getObj() == TELESCOPED
+
             if self.prop is None:
                 raise ValueError("Invalid propellant.")
 
@@ -1052,39 +1061,59 @@ class InteriorBallisticsFrame(Frame):
             else:
                 maxInset = 0
 
-            self.kwargs.update(
-                {
-                    "caliber": caliber,
-                    "shotMass": float(self.shtkg.get()),
-                    "propellant": self.prop,
-                    "grainSize": float(self.arcmm.get()) * 1e-3,
-                    "chargeMass": chargeMass,
-                    "chargeMassRatio": (
-                        float(self.chgkg.get()) / float(self.shtkg.get())
-                    ),
-                    "chamberVolume": chamberVolume,
-                    "startPressure": float(self.stpMPa.get()) * 1e6,
-                    "lengthGun": gunLength,
-                    "chambrage": chambrage,  # chamber expansion
-                    "nozzleExpansion": float(
-                        self.nozzExp.get()
-                    ),  # nozzle expansion
-                    "nozzleEfficiency": float(self.nozzEff.get())
-                    * 1e-2,  # nozzle efficiency
-                    "dragCoefficient": float(self.dgc.get())
-                    * 1e-2,  # drag coefficient
-                    "designPressure": float(self.pTgt.get())
-                    * 1e6,  # design pressure
-                    "designVelocity": float(self.vTgt.get()),  # design velocity
-                    "tol": 10 ** -int(self.accExp.get()),
-                    "minWeb": 1e-6 * float(self.minWeb.get()),
-                    "maxLength": float(self.lgmax.get()),
-                    "loadFraction": loadFraction,
-                    "step": int(self.step.get()),
-                    "maxInset": maxInset,
-                }
-            )
-            # print(self.kwargs)  # debug
+            self.kwargs = {
+                "opt": optimize,
+                "con": constrain,
+                "deb": debug,
+                "typ": gunType,
+                "dom": self.dropDomain.getObj(),
+                "sol": self.dropSoln.getObj(),
+                "control": self.pControl.getObj(),
+                "structuralMaterial": self.dropMat.getObj(),
+                "structuralSafetyFactor": float(self.ssf.get()),
+                "caliber": caliber,
+                "shotMass": float(self.shtkg.get()),
+                "propellant": self.prop,
+                "grainSize": float(self.arcmm.get()) * 1e-3,
+                "chargeMass": chargeMass,
+                "chargeMassRatio": (
+                    float(self.chgkg.get()) / float(self.shtkg.get())
+                ),
+                "chamberVolume": chamberVolume,
+                "startPressure": float(self.stpMPa.get()) * 1e6,
+                "lengthGun": gunLength,
+                "chambrage": chambrage,  # chamber expansion
+                "nozzleExpansion": float(
+                    self.nozzExp.get()
+                ),  # nozzle expansion
+                "nozzleEfficiency": float(self.nozzEff.get())
+                * 1e-2,  # nozzle efficiency
+                "dragCoefficient": float(self.dgc.get())
+                * 1e-2,  # drag coefficient
+                "designPressure": float(self.pTgt.get())
+                * 1e6,  # design pressure
+                "designVelocity": float(self.vTgt.get()),  # design velocity
+                "tol": 10 ** -int(self.accExp.get()),
+                "minWeb": 1e-6 * float(self.minWeb.get()),
+                "maxLength": float(self.lgmax.get()),
+                "loadFraction": loadFraction,
+                "step": int(self.step.get()),
+                "maxInset": maxInset,
+            }
+
+            if atmosphere:
+                self.kwargs.update(
+                    {
+                        "ambientP": float(self.ambP.get()) * 1e3,
+                        "ambientRho": float(self.ambRho.get()),
+                        "ambientGamma": float(self.ambGam.get()),
+                    }
+                )
+            else:
+                self.kwargs.update(
+                    {"ambientP": 0, "ambientRho": 0, "ambientGamma": 1}
+                )
+
             self.process = Process(
                 target=calculate, args=(self.queue, self.kwargs)
             )
@@ -1123,6 +1152,7 @@ class InteriorBallisticsFrame(Frame):
                 self.tableData,
                 self.errorData,
                 self.pressureTrace,
+                self.mass,
                 errorLst,
             ) = queue.get_nowait()
 
@@ -1376,7 +1406,9 @@ class InteriorBallisticsFrame(Frame):
 
         self.dropProp = LocDropdown(
             parent=propFrm,
-            strObjDict=self.COMPOSITIONS,
+            strObjDict=GrainComp.readFile(
+                resolvepath("data/propellants.csv")
+            ),  # dict of composition.name (string) -> composition (object),
             locFunc=self.getLocStr,
             dropdowns=self.locs,
             descLabelKey="propFrmLabel",
@@ -2082,7 +2114,7 @@ class InteriorBallisticsFrame(Frame):
             self.auxAx.tick_params(axis="y", colors="tab:green", **tkw)
             self.auxAx.tick_params(axis="x", **tkw)
 
-            self.auxAx.set_ylabel("MPa")
+            # self.auxAx.set_ylabel("MPa")
             self.auxAx.set_xlabel(self.getLocStr("figAuxDomain"))
 
             self.auxFig.set_layout_engine("constrained")
@@ -2619,7 +2651,7 @@ def calculate(
         elif gunType == RECOILESS:
             gun = Recoiless(**kwargs)
 
-        tableData, errorData, pressureTrace = gun.integrate(**kwargs)
+        tableData, errorData, pressureTrace, mass = gun.integrate(**kwargs)
 
     except Exception as e:
         gun = None
@@ -2643,6 +2675,7 @@ def calculate(
             tableData,
             errorData,
             pressureTrace,
+            mass,
             errorReport,
         )
     )

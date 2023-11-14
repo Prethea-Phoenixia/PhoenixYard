@@ -1,6 +1,7 @@
 from math import pi, log, inf, exp
-from num import gss, RKF78, cubic, intg, bisect, jarvis
+from num import gss, RKF78, cubic, intg, bisect
 from prop import GrainComp, Propellant
+
 
 DOMAIN_TIME = "DOMAIN_TIME"
 DOMAIN_LENG = "DOMAIN_LENG"
@@ -83,6 +84,8 @@ class Gun:
         startPressure,
         lengthGun,
         chambrage,
+        structuralMaterial,
+        structuralSafetyFactor,
         dragCoefficient=0,
         **_,
     ):
@@ -97,6 +100,7 @@ class Gun:
                 chambrage < 1,
                 dragCoefficient < 0,
                 dragCoefficient >= 1,
+                structuralSafetyFactor <= 1,
             )
         ):
             raise ValueError("Invalid gun parameters")
@@ -119,6 +123,8 @@ class Gun:
         self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
         self.phi_1 = 1 / (1 - dragCoefficient)  # drag work coefficient
+        self.material = structuralMaterial
+        self.ssf = structuralSafetyFactor
 
         if self.p_0 == 0:
             raise NotImplementedError(
@@ -994,11 +1000,70 @@ class Gun:
                 else:
                     break
 
-        # import matplotlib.pyplot as plt
-        # plt.plot(x_probes, p_probes)
-        # plt.show()
+        try:
+            # import matplotlib.pyplot as plt
+            # plt.plot(x_probes, p_probes)
 
-        return data, error, p_trace
+            for i, p in enumerate(p_probes):
+                x = x_probes[i]
+                p_probes[i] = p * self.ssf
+
+            """
+            fourth strength theory:
+            P_4 = sigma_e * (rho^2-1)/ (3*rho**4 + 1) ** 0.5
+            lim (x->inf) (x^2-1)/sqrt(3*x**4+1) = 1/sqrt(3)
+
+            the inverse of (x^2-1)/sqrt(3*x**4+1) is:
+            sqrt(
+                [-sqrt(-x**2*(3*x**2-4)) - 1]/(3 * x**2 - 1)
+            )
+            (x < -1 or x > 1)
+            and
+            sqrt(
+                [sqrt(-x**2*(3*x**2-4)) - 1]/(3 * x**2 - 1)
+            )
+            (x from -1 to 1)
+            """
+
+            def st(rho):
+                return (rho**2 - 1) / (3 * rho**4 + 1) ** 0.5
+
+            rho_probes = []
+            for p in p_probes:
+                # rho, v = bisect(st, 1, 2, y=p / self.material.Y(293))
+                y = p / self.material.Y(293)
+
+                if y > 3**-0.5:
+                    raise ValueError()
+                rho = (
+                    (-((-(y**2) * (3 * y**2 - 4)) ** 0.5) - 1)
+                    / (3 * y**2 - 1)
+                ) ** 0.5
+                print(y, "->", rho)
+                rho_probes.append(rho)
+
+            S = self.S
+            V = 0
+            for i in range(len(x_probes) - 1):
+                x_0 = x_probes[i]
+                x_1 = x_probes[i + 1]
+
+                rho_0 = rho_probes[i]
+                rho_1 = rho_probes[i + 1]
+
+                V += (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
+
+            mass = V * self.material.rho
+            print(mass)
+
+            # plt.plot(x_probes, p_probes, c="red")
+            # plt.plot(x_probes, rho_probes)
+            # plt.show()
+        except Exception as e:
+            print(e)
+            mass = None
+
+        return data, error, p_trace, mass
 
     def getEff(self, vg):
         """
@@ -1084,31 +1149,6 @@ class Gun:
 
         return p_x, u
 
-    """
-    def getGunWt(self, trace):
-        points = []
-        for _, _, _, p_points in trace:
-            points.extend(p_points)
-
-        scale_x = max([p[0] for p in points])
-        scale_y = max([p[1] for p in points])
-
-        scaled_points = []  # this is the inverse problem
-        for point in points:
-            scaled_points.append((point[0] / scale_x, point[1] / scale_y))
-
-        # first, calculate the convex hull
-
-        # print(*points, sep="\n")
-
-        import matplotlib.pyplot as plt
-
-        plt.scatter(*zip(*scaled_points), s=1)
-        hull = jarvis(scaled_points)
-        plt.plot(*zip(*hull), c="red")
-        plt.show()
-    """
-
 
 if __name__ == "__main__":
     """standard 7 hole cylinder has d_0=e_1, hole dia = 0.5 * arc width
@@ -1121,12 +1161,13 @@ if __name__ == "__main__":
     M17 = compositions["M17"]
 
     from prop import SimpleGeometry, MultPerfGeometry
+    from material import Material
 
     M17SHC = Propellant(M17, MultPerfGeometry.SEVEN_PERF_CYLINDER, 2, 2.5)
 
     lf = 0.5
     print("DELTA/rho:", lf)
-    cm = 1
+    cm = 0.1
     test = Gun(
         caliber=0.05,
         shotMass=1.0,
@@ -1138,6 +1179,8 @@ if __name__ == "__main__":
         lengthGun=3.5,
         chambrage=1.5,
         dragCoefficient=0.05,
+        structuralMaterial=Material._30SIMN2MOVA,
+        structuralSafetyFactor=1.1,
     )
     """
 
