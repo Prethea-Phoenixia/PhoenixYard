@@ -984,23 +984,22 @@ class Gun:
             p_line.append((l + l_c, p_s))
             p_trace.append((tag, psi, T, p_line))
 
-        x_probes = (
-            [i / step * l_c for i in range(step)]
-            + [i / step * l_g + l_c for i in range(step)]
-            + [l_g + l_c]
-        )
-        p_probes = [0] * len(x_probes)
-
-        for line in data:
-            tag, t, l, psi, v, p_b, p, p_s, T = line
-            for i, x in enumerate(x_probes):
-                if (x - l_c) <= l:
-                    p_x, _ = self.toPxU(l, p_s, p_b, v, x)
-                    p_probes[i] = max(p_probes[i], p_x)
-                else:
-                    break
-
         try:
+            x_probes = (
+                [i / step * l_c for i in range(step)]
+                + [i / step * l_g + l_c for i in range(step)]
+                + [l_g + l_c]
+            )
+            p_probes = [0] * len(x_probes)
+
+            for line in data:
+                tag, t, l, psi, v, p_b, p, p_s, T = line
+                for i, x in enumerate(x_probes):
+                    if (x - l_c) <= l:
+                        p_x, _ = self.toPxU(l, p_s, p_b, v, x)
+                        p_probes[i] = max(p_probes[i], p_x)
+                    else:
+                        break
             # import matplotlib.pyplot as plt
             # plt.plot(x_probes, p_probes)
 
@@ -1024,10 +1023,6 @@ class Gun:
             )
             (x from -1 to 1)
             """
-
-            def st(rho):
-                return (rho**2 - 1) / (3 * rho**4 + 1) ** 0.5
-
             rho_probes = []
             for p in p_probes:
                 # rho, v = bisect(st, 1, 2, y=p / self.material.Y(293))
@@ -1054,7 +1049,6 @@ class Gun:
                 V += (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
 
             mass = V * self.material.rho
-            print(mass)
 
             # plt.plot(x_probes, p_probes, c="red")
             # plt.plot(x_probes, rho_probes)

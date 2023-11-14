@@ -681,6 +681,15 @@ class InteriorBallisticsFrame(Frame):
             allDisps=self.locs,
         )
 
+        i += 2
+        self.gm = Loc12Disp(
+            parent=parFrm,
+            row=i,
+            labelLocKey="Gun Mass",
+            locFunc=self.getLocStr,
+            allDisps=self.locs,
+        )
+
     def addRightFrm(self):
         """
         rightFrm
@@ -1252,6 +1261,12 @@ class InteriorBallisticsFrame(Frame):
             self.pa.set(toSI(ps * gun.S / gun.m, unit="m/s²"))
 
             self.name.set(self.getDescriptive())
+
+            self.gm.set(
+                toSI(self.mass * 1e3, unit="g")
+                if self.mass is not None
+                else "N/A"
+            )
 
         self.updateTable()
         self.updateError()
@@ -2607,12 +2622,6 @@ def calculate(
     queue,
     kwargs,
 ):
-    tableData = []
-    errorData = []
-    pressureTrace = []
-
-    errorReport = []
-
     gunType = kwargs["typ"]
     constrain = kwargs["con"]
     optimize = kwargs["opt"]
@@ -2652,9 +2661,15 @@ def calculate(
             gun = Recoiless(**kwargs)
 
         tableData, errorData, pressureTrace, mass = gun.integrate(**kwargs)
+        errorReport = []
 
     except Exception as e:
         gun = None
+        tableData = []
+        errorData = []
+        pressureTrace = []
+        mass = []
+
         errorReport = ["Exception while calculating:"]
         exc_type, exc_value, exc_traceback = sys.exc_info()
         if debug:

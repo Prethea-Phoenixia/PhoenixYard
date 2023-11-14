@@ -29,6 +29,8 @@ class Recoiless:
         lengthGun,
         chambrage,
         nozzleExpansion,
+        structuralMaterial,
+        structuralSafetyFactor,
         dragCoefficient=0,
         nozzleEfficiency=0.92,
         **_,
@@ -47,6 +49,7 @@ class Recoiless:
                 dragCoefficient < 0,
                 dragCoefficient >= 1,
                 startPressure < 0,
+                structuralSafetyFactor <= 1,
             )
         ):
             raise ValueError("Invalid gun parameters")
@@ -70,9 +73,11 @@ class Recoiless:
         self.chi_k = chambrage
         self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
-
         self.phi_1 = 1 / (1 - dragCoefficient)  # drag work coefficient
         self.phi = self.phi_1 + self.omega / (3 * self.m)
+
+        self.material = structuralMaterial
+        self.ssf = structuralSafetyFactor
 
         self.v_j = (
             2 * self.f * self.omega / (self.theta * self.phi * self.m)
@@ -1043,7 +1048,80 @@ class Recoiless:
                 else:
                     break
 
-        return data, error, p_trace
+        try:
+            x_probes = (
+                [i / step * l_c for i in range(step)]
+                + [i / step * l_g + l_c for i in range(step)]
+                + [l_g + l_c]
+            )
+            p_probes = [0] * len(x_probes)
+
+            for line in data:
+                tag, t, l, psi, v, vb, pb, p0, p, ps, T, eta = line
+                for i, x in enumerate(x_probes):
+                    if (x - l_c) <= l:
+                        p_x = self.toPx(l, v, vb, ps, T, eta, x)
+                        p_probes[i] = max(p_probes[i], p_x)
+                    else:
+                        break
+            # import matplotlib.pyplot as plt
+            # plt.plot(x_probes, p_probes)
+
+            for i, p in enumerate(p_probes):
+                x = x_probes[i]
+                p_probes[i] = p * self.ssf
+
+            """
+            fourth strength theory:
+            P_4 = sigma_e * (rho^2-1)/ (3*rho**4 + 1) ** 0.5
+            lim (x->inf) (x^2-1)/sqrt(3*x**4+1) = 1/sqrt(3)
+
+            the inverse of (x^2-1)/sqrt(3*x**4+1) is:
+            sqrt(
+                [-sqrt(-x**2*(3*x**2-4)) - 1]/(3 * x**2 - 1)
+            )
+            (x < -1 or x > 1)
+            and
+            sqrt(
+                [sqrt(-x**2*(3*x**2-4)) - 1]/(3 * x**2 - 1)
+            )
+            (x from -1 to 1)
+            """
+            rho_probes = []
+            for p in p_probes:
+                # rho, v = bisect(st, 1, 2, y=p / self.material.Y(293))
+                y = p / self.material.Y(293)
+
+                if y > 3**-0.5:
+                    raise ValueError()
+                rho = (
+                    (-((-(y**2) * (3 * y**2 - 4)) ** 0.5) - 1)
+                    / (3 * y**2 - 1)
+                ) ** 0.5
+                print(y, "->", rho)
+                rho_probes.append(rho)
+
+            S = self.S
+            V = 0
+            for i in range(len(x_probes) - 1):
+                x_0 = x_probes[i]
+                x_1 = x_probes[i + 1]
+
+                rho_0 = rho_probes[i]
+                rho_1 = rho_probes[i + 1]
+
+                V += (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
+
+            mass = V * self.material.rho
+
+            # plt.plot(x_probes, p_probes, c="red")
+            # plt.plot(x_probes, rho_probes)
+            # plt.show()
+        except Exception as e:
+            print(e)
+            mass = None
+
+        return data, error, p_trace, mass
 
     def getEff(self, vg):
         """
