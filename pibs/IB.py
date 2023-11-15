@@ -711,7 +711,7 @@ class InteriorBallisticsFrame(Frame):
 
         mecFrm = LocLabelFrame(
             rightFrm,
-            locKey="Mechanical",
+            locKey="matFrmLabel",
             locFunc=self.getLocStr,
             allLLF=self.locs,
         )
@@ -723,7 +723,7 @@ class InteriorBallisticsFrame(Frame):
             strObjDict=MATERIALS,
             locFunc=self.getLocStr,
             dropdowns=self.locs,
-            descLabelKey="Material",
+            descLabelKey="matFrmLabel",
         )
         self.dropMat.grid(
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
@@ -733,12 +733,21 @@ class InteriorBallisticsFrame(Frame):
             parent=mecFrm,
             row=1,
             col=0,
-            labelLocKey="Safety Factor",
+            labelLocKey="sffLabel",
             default="1.35",
             validation=validationNN,
-            anchor="center",
+            # anchor="center",
             locFunc=self.getLocStr,
             allInputs=self.locs,
+        )
+        self.isAf = LocLabelCheck(
+            parent=mecFrm,
+            labelLocKey="afLabel",
+            row=2,
+            col=0,
+            locFunc=self.getLocStr,
+            allLC=self.locs,
+            columnspan=2,
         )
 
         solFrm = LocLabelFrame(
@@ -1026,6 +1035,7 @@ class InteriorBallisticsFrame(Frame):
             optimize = self.opt_lf.get() == 1
             debug = self.DEBUG.get() == 1
             atmosphere = self.inAtmos.get() == 1
+            autofrettage = self.isAf.get() == 1
 
             gunType = self.typeOptn.getObj()
             telescoped = self.ammoOptn.getObj() == TELESCOPED
@@ -1108,6 +1118,7 @@ class InteriorBallisticsFrame(Frame):
                 "loadFraction": loadFraction,
                 "step": int(self.step.get()),
                 "maxInset": maxInset,
+                "autofrettage": autofrettage,
             }
 
             if atmosphere:

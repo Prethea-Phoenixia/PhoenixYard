@@ -531,6 +531,9 @@ ENGLISH = {
         )
     ),
     "figAuxDomain": "Dist. to Breech - m",
+    "matFrmLabel": "Material",
+    "sffLabel": "Safety Fact.",
+    "afLabel": "Autofrettage",
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -913,5 +916,8 @@ CHINESE = {
         )
     ),
     "figAuxDomain": "膛底距离 - m",
+    "matFrmLabel": "材料",
+    "sffLabel": "安全系数",
+    "afLabel": "炮管自紧",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}

@@ -1,4 +1,4 @@
-from math import pi, inf
+from math import pi, inf, exp
 from num import gss, RKF78, cubic
 from prop import GrainComp, Propellant
 
@@ -33,6 +33,7 @@ class Recoiless:
         structuralSafetyFactor,
         dragCoefficient=0,
         nozzleEfficiency=0.92,
+        autofrettage=True,
         **_,
     ):
         if any(
@@ -78,6 +79,7 @@ class Recoiless:
 
         self.material = structuralMaterial
         self.ssf = structuralSafetyFactor
+        self.is_af = autofrettage
 
         self.v_j = (
             2 * self.f * self.omega / (self.theta * self.phi * self.m)
@@ -1064,59 +1066,56 @@ class Recoiless:
                         p_probes[i] = max(p_probes[i], p_x)
                     else:
                         break
-            # import matplotlib.pyplot as plt
-            # plt.plot(x_probes, p_probes)
 
             for i, p in enumerate(p_probes):
                 x = x_probes[i]
                 p_probes[i] = p * self.ssf
 
-            """
-            fourth strength theory:
-            P_4 = sigma_e * (rho^2-1)/ (3*rho**4 + 1) ** 0.5
-            lim (x->inf) (x^2-1)/sqrt(3*x**4+1) = 1/sqrt(3)
-
-            the inverse of (x^2-1)/sqrt(3*x**4+1) is:
-            sqrt(
-                [-sqrt(-x**2*(3*x**2-4)) - 1]/(3 * x**2 - 1)
-            )
-            (x < -1 or x > 1)
-            and
-            sqrt(
-                [sqrt(-x**2*(3*x**2-4)) - 1]/(3 * x**2 - 1)
-            )
-            (x from -1 to 1)
-            """
-            rho_probes = []
-            for p in p_probes:
-                # rho, v = bisect(st, 1, 2, y=p / self.material.Y(293))
-                y = p / self.material.Y(293)
-
-                if y > 3**-0.5:
-                    raise ValueError()
-                rho = (
-                    (-((-(y**2) * (3 * y**2 - 4)) ** 0.5) - 1)
-                    / (3 * y**2 - 1)
-                ) ** 0.5
-                print(y, "->", rho)
-                rho_probes.append(rho)
-
+            sigma = self.material.Y(293)
             S = self.S
+            rho_probes = []
             V = 0
-            for i in range(len(x_probes) - 1):
-                x_0 = x_probes[i]
-                x_1 = x_probes[i + 1]
 
-                rho_0 = rho_probes[i]
-                rho_1 = rho_probes[i + 1]
+            if self.is_af:
+                for p in p_probes:
+                    y = p / sigma
+                    rho = exp(3**0.5 * 0.5 * y)
+                    rho_probes.append(rho)
 
-                V += (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
+                for i in range(len(x_probes) - 1):
+                    x_0 = x_probes[i]
+                    x_1 = x_probes[i + 1]
+                    rho_0 = rho_probes[i]
+                    rho_1 = rho_probes[i + 1]
+                    dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
+                    if x_1 <= l_c:
+                        V += dV * self.chi_k
+                    else:
+                        V += dV
+
+            else:
+                for p in p_probes:
+                    y = p / sigma
+                    if y > 3**-0.5:
+                        raise ValueError()
+                    rho = (
+                        (-((-(y**2) * (3 * y**2 - 4)) ** 0.5) - 1)
+                        / (3 * y**2 - 1)
+                    ) ** 0.5
+                    rho_probes.append(rho)
+
+                for i in range(len(x_probes) - 1):
+                    x_0 = x_probes[i]
+                    x_1 = x_probes[i + 1]
+                    rho_0 = rho_probes[i]
+                    rho_1 = rho_probes[i + 1]
+                    dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
+                    if x_1 <= l_c:
+                        V += dV * self.chi_k
+                    else:
+                        V += dV
 
             mass = V * self.material.rho
-
-            # plt.plot(x_probes, p_probes, c="red")
-            # plt.plot(x_probes, rho_probes)
-            # plt.show()
         except Exception as e:
             print(e)
             mass = None
