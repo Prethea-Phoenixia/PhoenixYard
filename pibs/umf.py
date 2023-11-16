@@ -40,7 +40,11 @@ tolerance specifications:
         boolean flag to print values, useful in debugging code.
 
 
+The return signatures are:
 
+    x_0, x_1:
+        two best (first and second best) estimate of the true solution orn
+        numerical optimum
 """
 
 import math
@@ -169,7 +173,7 @@ def secant(
         fx_2 = f(x_2) - y
 
         if debug:
-            record.append((i, x_2, fx_2 - y))
+            record.append((i, x_2, fx_2))
 
         if any(
             (
@@ -188,6 +192,12 @@ def secant(
             return x_2, x_1
         else:
             if fx_2 == fx_1:
+                if debug:
+                    print("SECANT")
+                    print("{:>4}{:>24}{:>24}".format("I", "X", "FX"))
+                    record.sort(key=lambda line: line[1])
+                    for line in record:
+                        print("{:>4}{:>24}{:>24}".format(*line))
                 raise ValueError(
                     "Numerical plateau found at f({})=f({})={}".format(
                         x_1, x_2, fx_2

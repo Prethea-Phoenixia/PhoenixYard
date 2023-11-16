@@ -1132,7 +1132,13 @@ class Gun:
                 V = 0
                 for p in p_s:
                     sigma_max = sigma_vM(m, p, m)
+                    """
+                    the limit as k -> +inf for the stress is:
 
+                    lim sigma_tr =
+                     k-> +inf
+                      sigma * [1 - (1 + 2 ln(m))/m**2 ] + 2p/m**2
+                    """
                     if sigma > sigma_max:
                         rho = m
                     else:
@@ -1147,7 +1153,11 @@ class Gun:
                                 debug=True,
                             )
                         )
+
                     rho_s.append(rho)
+
+                print(m)
+                print(rho_s)
 
                 for i in range(len(x_s) - 1):
                     x_0 = x_s[i]
@@ -1158,10 +1168,46 @@ class Gun:
                     V += dV
                 return V
 
+            p_max = max(p_s)
+
+            def sigma_min(m):
+                return (
+                    (
+                        sigma * (1 - (1 + 2 * log(m)) / m**2)
+                        + 2 * p_max / m**2
+                    )
+                    * 3**0.5
+                    * 0.5
+                )
+
             m_opt = exp(max(p_s) / sigma * 3**0.5 * 0.5)
+
+            if sigma_min(1) > sigma:
+                m_min = 0.5 * sum(
+                    secant(
+                        sigma_min,
+                        1 + tol,
+                        m_opt,
+                        y=sigma,
+                        x_min=1,
+                        y_rel_tol=tol,
+                        debug=True,
+                    )
+                )
+
+                while sigma_min(m_min) > sigma:
+                    m_min *= 1.01
+            else:
+                m_min = 1 + tol
+
+            print("m_min", m_min, "m_opt", m_opt)
+            print(sigma_min(m_min), sigma)
+
             m_best = 0.5 * sum(
-                gss(f, 1 + tol, m_opt, y_rel_tol=tol, findMin=True, debug=True)
+                gss(f, m_min, m_opt, y_rel_tol=tol, findMin=True)
             )
+
+            print("m_best", m_best)
 
             return f(m_best)
 
