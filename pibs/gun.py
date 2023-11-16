@@ -1126,41 +1126,44 @@ class Gun:
                 sigma_tr * 3**0.5 * 0.5
             )  # convert Tresca to von Misses equivalent stress
 
-        def V_k(x_s, p_s, S, k):
-            """find the volume of a section of chamber as dictated by
-            the k used"""
+        def V_k(x_s, p_s, S):
+            def f(m):
+                rho_s = []
+                V = 0
+                for p in p_s:
+                    sigma_max = sigma_vM(m, p, m)
 
-            rho_s = []
-            V = 0
+                    if sigma > sigma_max:
+                        rho = m
+                    else:
+                        rho = 0.5 * sum(
+                            secant(
+                                lambda k: sigma_vM(k, p, m),
+                                m,
+                                m + tol,
+                                y=sigma,
+                                x_min=m,
+                                y_rel_tol=tol,
+                                debug=True,
+                            )
+                        )
+                    rho_s.append(rho)
 
-            m = 1.0001
+                for i in range(len(x_s) - 1):
+                    x_0 = x_s[i]
+                    x_1 = x_s[i + 1]
+                    rho_0 = rho_s[i]
+                    rho_1 = rho_s[i + 1]
+                    dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * (x_1 - x_0) * S
+                    V += dV
+                return V
 
-            for p in p_s:
-                sigma_max = sigma_vM(m, p, m)
-                if sigma > sigma_max:
-                    rho = m
-                else:
-                    rho, v = secant(
-                        lambda k: sigma_vM(k, p, m),
-                        m,
-                        m + tol,
-                        y=sigma,
-                        x_min=m,
-                        y_rel_tol=tol,
-                        x_tol=tol**2,
-                    )
-                rho_s.append(rho)
+            m_opt = exp(max(p_s) / sigma * 3**0.5 * 0.5)
+            m_best = 0.5 * sum(
+                gss(f, 1 + tol, m_opt, y_rel_tol=tol, findMin=True, debug=True)
+            )
 
-            print(rho_s)
-
-            for i in range(len(x_s) - 1):
-                x_0 = x_s[i]
-                x_1 = x_s[i + 1]
-                rho_0 = rho_s[i]
-                rho_1 = rho_s[i + 1]
-                dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * (x_1 - x_0) * S
-                V += dV
-            return V
+            return f(m_best)
 
         if self.is_af:
             """
@@ -1173,13 +1176,11 @@ class Gun:
             The point of optimum autofrettage, or the minimum autofrettage
             necessary to contain the working pressure, is
             """
-            k = 1.1
-
             i = x_probes.index(l_c)
             x_c, p_c = x_probes[:i], p_probes[:i]
             x_b, p_b = x_probes[i:], p_probes[i:]
 
-            V = V_k(x_c, p_c, S * self.chi_k, k) + V_k(x_b, p_b, S, k)
+            V = V_k(x_c, p_c, S * self.chi_k) + V_k(x_b, p_b, S)
 
         else:
             """

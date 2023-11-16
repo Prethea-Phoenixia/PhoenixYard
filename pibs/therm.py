@@ -238,7 +238,9 @@ class Mixture:
             return zeta
 
         # zeta on the order of 0.5 per degree
-        Tv, _ = secant(f, 2500, 3500, x_min=1600, x_max=4000, x_tol=tol_z)
+        Tv = 0.5 * sum(
+            secant(f, 2500, 3500, x_min=1600, x_max=4000, x_tol=tol_z)
+        )
 
         _, self.speciesList, n, E, self.b, self.p, self.f = balance(
             self.Hf, Tv, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b
