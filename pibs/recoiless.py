@@ -1195,7 +1195,7 @@ class Recoiless:
         A_1 = self.S
         A_0 = A_1 * self.chi_k
 
-        if x <= L_0:
+        if x < L_0:
             z = x * A_0 / (L_0 * A_0 + L_1 * A_1)
         else:
             z = (L_0 * A_0 + (x - L_0) * A_1) / (L_0 * A_0 + L_1 * A_1)

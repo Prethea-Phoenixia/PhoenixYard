@@ -1,5 +1,5 @@
 from math import pi, log, inf, exp
-from num import gss, RKF78, cubic, intg, bisect
+from num import gss, RKF78, cubic, intg, bisect, secant
 from prop import GrainComp, Propellant
 
 
@@ -987,106 +987,13 @@ class Gun:
             p_trace.append((tag, psi, T, p_line))
 
         try:
-            x_probes = (
-                [i / step * l_c for i in range(step)]
-                + [i / step * l_g + l_c for i in range(step)]
-                + [l_g + l_c]
-            )
-            p_probes = [0] * len(x_probes)
-
-            for line in data:
-                tag, t, l, psi, v, p_b, p, p_s, T = line
-                for i, x in enumerate(x_probes):
-                    if (x - l_c) <= l:
-                        p_x, _ = self.toPxU(l, p_s, p_b, v, x)
-                        p_probes[i] = max(p_probes[i], p_x)
-                    else:
-                        break
-
-            for i, p in enumerate(p_probes):
-                x = x_probes[i]
-                p_probes[i] = p * self.ssf
-
-            sigma = self.material.Y(293)
-            S = self.S
-            rho_probes = []
-            V = 0
-
-            if self.is_af:
-                """
-                m : r_a / r_i
-                k : r_o / r_i
-                n : p_vM_max / sigma
-
-                The point of optimum autofrettage, or the minimum autofrettage
-                necessary to contain the working pressure, is
-                """
-                for p in p_probes:
-                    y = p / sigma
-                    rho = exp(3**0.5 * 0.5 * y)
-                    rho_probes.append(rho)
-
-                for i in range(len(x_probes) - 1):
-                    x_0 = x_probes[i]
-                    x_1 = x_probes[i + 1]
-                    rho_0 = rho_probes[i]
-                    rho_1 = rho_probes[i + 1]
-                    dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
-                    if x_1 <= l_c:
-                        V += dV * self.chi_k
-                    else:
-                        V += dV
-
-            else:
-                """
-                The yield criterion chosen here is the fourth strength
-                theory (von Mises) as it is generally accepted to be the most
-                applicable for this application.
-
-                The limiting stress points circumferentially along the circum-
-                ference of the barrel.
-
-                P_4 = sigma_e * (rho^2-1)/ (3*rho**4 + 1) ** 0.5
-                lim (x->inf) (x^2-1)/sqrt(3*x**4+1) = 1/sqrt(3)
-
-                the inverse of (x^2-1)/sqrt(3*x**4+1) is:
-                sqrt(
-                    [-sqrt(-x**2*(3*x**2-4)) - 1]/(3 * x**2 - 1)
-                )
-                (x < -1 or x > 1)
-                and
-                sqrt(
-                    [sqrt(-x**2*(3*x**2-4)) - 1]/(3 * x**2 - 1)
-                )
-                (x from -1 to 1)
-                """
-
-                for p in p_probes:
-                    y = p / sigma
-                    if y > 3**-0.5:
-                        raise ValueError()
-                    rho = (
-                        (-((-(y**2) * (3 * y**2 - 4)) ** 0.5) - 1)
-                        / (3 * y**2 - 1)
-                    ) ** 0.5
-                    rho_probes.append(rho)
-
-                for i in range(len(x_probes) - 1):
-                    x_0 = x_probes[i]
-                    x_1 = x_probes[i + 1]
-                    rho_0 = rho_probes[i]
-                    rho_1 = rho_probes[i + 1]
-                    dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
-                    if x_1 <= l_c:
-                        V += dV * self.chi_k
-                    else:
-                        V += dV
-
-            mass = V * self.material.rho
+            mass = self.getGM(data, step, tol)
 
         except Exception as e:
             print(e)
             mass = None
+
+        print(mass)
 
         return data, error, p_trace, mass
 
@@ -1163,16 +1070,165 @@ class Gun:
             * (1 - (self.l_0 / (self.l_0 + l)) ** 2)  # (1- theta_0**2)
         )
 
-        if x <= L_0:
+        if x < L_0:
             u = A_1 * x * v / (self.V_0 + A_1 * L_1)
             y = x / L_0
             p_x = p_b * (1 - y**2) + p_0 * y**2
         else:
             u = (A_1 * x + (A_0 - A_1) * L_0) * v / (self.V_0 + A_1 * L_1)
-            y = (x - L_0) / L_1
+            y = (x - L_0) / L_1 if L_1 != 0 else 0
             p_x = p_0 * (1 - y**2) + p_s * y**2
 
         return p_x, u
+
+    def getGM(self, data, step, tol):
+        l_c = self.l_0 / self.chi_k
+        l_g = self.l_g
+        x_probes = (
+            [i / step * l_c for i in range(step)]
+            + [i / step * l_g + l_c for i in range(step)]
+            + [l_g + l_c]
+        )
+        p_probes = [0] * len(x_probes)
+
+        for line in data:
+            tag, t, l, psi, v, p_b, p, p_s, T = line
+            for i, x in enumerate(x_probes):
+                if (x - l_c) <= l:
+                    p_x, _ = self.toPxU(l, p_s, p_b, v, x)
+                    p_probes[i] = max(p_probes[i], p_x)
+                else:
+                    break
+
+        for i, p in enumerate(p_probes):
+            x = x_probes[i]
+            p_probes[i] = p * self.ssf
+
+        sigma = self.material.Y(293)
+        S = self.S
+
+        def sigma_vM(k, p, m):
+            """
+            Calculate the von Misses stress at the plastic-elastic
+            juncture. This is the limiting stress point for an auto-
+            frettaged gun barrel under internal pressure loading.
+            """
+            sigma_tr = (
+                sigma
+                * (k / m) ** 2
+                * (
+                    (m / k) ** 2
+                    - (1 - (m / k) ** 2 + 2 * log(m)) / (k**2 - 1)
+                )
+                + 2 * p / (k**2 - 1) * (k / m) ** 2
+            )
+            return (
+                sigma_tr * 3**0.5 * 0.5
+            )  # convert Tresca to von Misses equivalent stress
+
+        def V_k(x_s, p_s, S, k):
+            """find the volume of a section of chamber as dictated by
+            the k used"""
+
+            rho_s = []
+            V = 0
+
+            m = 1.0001
+
+            for p in p_s:
+                sigma_max = sigma_vM(m, p, m)
+                if sigma > sigma_max:
+                    rho = m
+                else:
+                    rho, v = secant(
+                        lambda k: sigma_vM(k, p, m),
+                        m,
+                        m + tol,
+                        y=sigma,
+                        x_min=m,
+                        y_rel_tol=tol,
+                        x_tol=tol**2,
+                    )
+                rho_s.append(rho)
+
+            print(rho_s)
+
+            for i in range(len(x_s) - 1):
+                x_0 = x_s[i]
+                x_1 = x_s[i + 1]
+                rho_0 = rho_s[i]
+                rho_1 = rho_s[i + 1]
+                dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * (x_1 - x_0) * S
+                V += dV
+            return V
+
+        if self.is_af:
+            """
+            m : r_a / r_i
+            k : r_o / r_i
+            n : p_vM_max / sigma
+
+            1 < m < k
+
+            The point of optimum autofrettage, or the minimum autofrettage
+            necessary to contain the working pressure, is
+            """
+            k = 1.1
+
+            i = x_probes.index(l_c)
+            x_c, p_c = x_probes[:i], p_probes[:i]
+            x_b, p_b = x_probes[i:], p_probes[i:]
+
+            V = V_k(x_c, p_c, S * self.chi_k, k) + V_k(x_b, p_b, S, k)
+
+        else:
+            """
+            The yield criterion chosen here is the fourth strength
+            theory (von Mises) as it is generally accepted to be the most
+            applicable for this application.
+
+            The limiting stress points circumferentially along the circum-
+            ference of the barrel.
+
+            P_4 = sigma_e * (rho^2-1)/ (3*rho**4 + 1) ** 0.5
+            lim (x->inf) (x^2-1)/sqrt(3*x**4+1) = 1/sqrt(3)
+
+            the inverse of (x^2-1)/sqrt(3*x**4+1) is:
+            sqrt(
+                [-sqrt(-x**2*(3*x**2-4)) - 1]/(3 * x**2 - 1)
+            )
+            (x < -1 or x > 1)
+            and
+            sqrt(
+                [sqrt(-x**2*(3*x**2-4)) - 1]/(3 * x**2 - 1)
+            )
+            (x from -1 to 1)
+            """
+            rho_probes = []
+            V = 0
+
+            for p in p_probes:
+                y = p / sigma
+                if y > 3**-0.5:
+                    raise ValueError()
+                rho = (
+                    (-((-(y**2) * (3 * y**2 - 4)) ** 0.5) - 1)
+                    / (3 * y**2 - 1)
+                ) ** 0.5
+                rho_probes.append(rho)
+
+            for i in range(len(x_probes) - 1):
+                x_0 = x_probes[i]
+                x_1 = x_probes[i + 1]
+                rho_0 = rho_probes[i]
+                rho_1 = rho_probes[i + 1]
+                dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
+                if x_1 <= l_c:
+                    V += dV * self.chi_k
+                else:
+                    V += dV
+
+        return V * self.material.rho
 
 
 if __name__ == "__main__":
@@ -1206,6 +1262,7 @@ if __name__ == "__main__":
         dragCoefficient=0.05,
         structuralMaterial=Material._30SIMN2MOVA,
         structuralSafetyFactor=1.1,
+        # autofrettage=False,
     )
     """
 
