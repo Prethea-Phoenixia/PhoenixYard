@@ -685,7 +685,7 @@ class InteriorBallisticsFrame(Frame):
         self.gm = Loc12Disp(
             parent=parFrm,
             row=i,
-            labelLocKey="Gun Mass",
+            labelLocKey="gmLabel",
             locFunc=self.getLocStr,
             allDisps=self.locs,
         )
@@ -1172,7 +1172,7 @@ class InteriorBallisticsFrame(Frame):
                 self.tableData,
                 self.errorData,
                 self.pressureTrace,
-                self.mass,
+                self.structure,
                 errorLst,
             ) = queue.get_nowait()
 
@@ -1273,10 +1273,10 @@ class InteriorBallisticsFrame(Frame):
 
             self.name.set(self.getDescriptive())
 
+            mass = self.structure[0]
+
             self.gm.set(
-                toSI(self.mass * 1e3, unit="g")
-                if self.mass is not None
-                else "N/A"
+                toSI(mass * 1e3, unit="g") if mass is not None else "N/A"
             )
 
         self.updateTable()
@@ -1820,10 +1820,12 @@ class InteriorBallisticsFrame(Frame):
             axes = fig.add_subplot(111)
 
             ax = axes
+            axH = ax.twinx()
 
             self.auxAx = ax  # auxiliary axes
+            self.auxAxH = axH
             self.auxFig = fig
-            # self.auxAx.yaxis.tick_right()
+            self.auxAxH.yaxis.tick_right()
             self.auxCanvas = FigureCanvasTkAgg(fig, master=auxFrm)
             self.auxCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=2, pady=2, sticky="nsew"
@@ -2101,6 +2103,7 @@ class InteriorBallisticsFrame(Frame):
 
         with mpl.rc_context(FIG_CONTEXT):
             self.auxAx.cla()
+            self.auxAxH.cla()
 
             pTrace = self.pressureTrace
 
@@ -2131,7 +2134,8 @@ class InteriorBallisticsFrame(Frame):
             self.auxAx.set_xlim(left=0, right=x_max)
             self.auxAx.set_ylim(bottom=0, top=y_max * 1.15)
 
-            l_c = gun.l_0 / gun.chi_k
+            l_c = gun.l_c
+            chi_k = gun.chi_k
             self.auxAx.plot(
                 (l_c, l_c), (0, y_max * 1.15), c="grey", ls="dotted", zorder=1.5
             )
@@ -2140,8 +2144,20 @@ class InteriorBallisticsFrame(Frame):
             self.auxAx.tick_params(axis="y", colors="tab:green", **tkw)
             self.auxAx.tick_params(axis="x", **tkw)
 
-            # self.auxAx.set_ylabel("MPa")
             self.auxAx.set_xlabel(self.getLocStr("figAuxDomain"))
+
+            HTrace = self.structure[1]
+            if HTrace is not None:
+                xs, rhos = zip(*HTrace)
+                rho_max = max(rhos)
+                outline = self.auxAxH.plot(xs, rhos, c="tab:blue")
+                inline = self.auxAxH.plot(
+                    xs, [chi_k if x < l_c else 1 for x in xs], c="tab:blue"
+                )
+                self.auxAxH.fill_between(
+                    xs, rhos, [chi_k if x < l_c else 1 for x in xs], alpha=0.5
+                )
+                self.auxAxH.set_ylim(bottom=0)
 
             self.auxFig.set_layout_engine("constrained")
             self.auxCanvas.draw_idle()
@@ -2607,6 +2623,7 @@ class InteriorBallisticsFrame(Frame):
                 self.geomAx,
                 self.axF,
                 self.auxAx,
+                self.auxAxH,
             ):
                 ax.set_facecolor(ebgc)
                 ax.spines["top"].set_color(fgc)
@@ -2671,7 +2688,7 @@ def calculate(
         elif gunType == RECOILESS:
             gun = Recoiless(**kwargs)
 
-        tableData, errorData, pressureTrace, mass = gun.integrate(**kwargs)
+        tableData, errorData, pressureTrace, structure = gun.integrate(**kwargs)
         errorReport = []
 
     except Exception as e:
@@ -2679,7 +2696,7 @@ def calculate(
         tableData = []
         errorData = []
         pressureTrace = []
-        mass = []
+        structure = []
 
         errorReport = ["Exception while calculating:"]
         exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -2701,7 +2718,7 @@ def calculate(
             tableData,
             errorData,
             pressureTrace,
-            mass,
+            structure,
             errorReport,
         )
     )

@@ -121,8 +121,10 @@ class Gun:
         self.p_0 = startPressure
         self.l_g = lengthGun
         self.chi_k = chambrage  # ration of l_0 / l_chamber
-        self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
+        self.l_c = self.l_0 / self.chi_k
+        self.Delta = self.omega / self.V_0
+
         self.phi_1 = 1 / (1 - dragCoefficient)  # drag work coefficient
         self.material = structuralMaterial
         self.ssf = structuralSafetyFactor
@@ -972,7 +974,7 @@ class Gun:
         # calculate a pressure and flow velcoity tracing.
 
         p_trace = []
-        l_c = self.l_0 / self.chi_k
+        l_c = self.l_c
         l_g = self.l_g
 
         for line in data:
@@ -987,15 +989,13 @@ class Gun:
             p_trace.append((tag, psi, T, p_line))
 
         try:
-            mass = self.getGM(data, step, tol)
+            structure = self.getStructural(data, step, tol)
 
         except Exception as e:
             print(e)
-            mass = None
+            structure = [None, None]
 
-        print(mass)
-
-        return data, error, p_trace, mass
+        return data, error, p_trace, structure
 
     def getEff(self, vg):
         """
@@ -1081,11 +1081,12 @@ class Gun:
 
         return p_x, u
 
-    def getGM(self, data, step, tol):
-        l_c = self.l_0 / self.chi_k
+    def getStructural(self, data, step, tol):
+        l_c = self.l_c
         l_g = self.l_g
         x_probes = (
             [i / step * l_c for i in range(step)]
+            + [l_c * (1 - tol)]
             + [i / step * l_g + l_c for i in range(step)]
             + [l_g + l_c]
         )
@@ -1126,7 +1127,7 @@ class Gun:
                 sigma_tr * 3**0.5 * 0.5
             )  # convert Tresca to von Misses equivalent stress
 
-        def V_k(x_s, p_s, S):
+        def Vrho_k(x_s, p_s, S):
             def f(m):
                 rho_s = []
                 V = 0
@@ -1150,14 +1151,10 @@ class Gun:
                                 y=sigma,
                                 x_min=m,
                                 y_rel_tol=tol,
-                                debug=True,
                             )
                         )
 
                     rho_s.append(rho)
-
-                print(m)
-                print(rho_s)
 
                 for i in range(len(x_s) - 1):
                     x_0 = x_s[i]
@@ -1166,7 +1163,7 @@ class Gun:
                     rho_1 = rho_s[i + 1]
                     dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * (x_1 - x_0) * S
                     V += dV
-                return V
+                return V, rho_s
 
             p_max = max(p_s)
 
@@ -1182,32 +1179,39 @@ class Gun:
 
             m_opt = exp(max(p_s) / sigma * 3**0.5 * 0.5)
 
-            if sigma_min(1) > sigma:
+            if sigma_min(m_opt) > sigma:
+                """if the minimum junction stress at the optimal autofrettage
+                fraction cannot be achieved down to material yield even as
+                the thickness goes to infinity, raise an error and abort
+                calculation"""
+                raise ValueError()
+
+            elif sigma_min(1) > sigma:
+                """if the minimum junction stress at an autofrettage fraction
+                of 1 exceeds material yield, implies a certain amount of
+                autofrettaging is required to contain the pressure"""
                 m_min = 0.5 * sum(
                     secant(
                         sigma_min,
                         1 + tol,
                         m_opt,
-                        y=sigma,
+                        y=sigma * (1 - tol),
                         x_min=1,
                         y_rel_tol=tol,
-                        debug=True,
                     )
                 )
-
+                """safety, fudge code to ensure a valid minimum autofrettage
+                fraction is found."""
                 while sigma_min(m_min) > sigma:
-                    m_min *= 1.01
+                    m_min *= 1 + tol
             else:
                 m_min = 1 + tol
 
-            print("m_min", m_min, "m_opt", m_opt)
-            print(sigma_min(m_min), sigma)
-
             m_best = 0.5 * sum(
-                gss(f, m_min, m_opt, y_rel_tol=tol, findMin=True)
+                gss(
+                    lambda m: f(m)[0], m_min, m_opt, y_rel_tol=tol, findMin=True
+                )
             )
-
-            print("m_best", m_best)
 
             return f(m_best)
 
@@ -1225,8 +1229,11 @@ class Gun:
             i = x_probes.index(l_c)
             x_c, p_c = x_probes[:i], p_probes[:i]
             x_b, p_b = x_probes[i:], p_probes[i:]
+            Vrho_c = Vrho_k(x_c, p_c, S * self.chi_k)
+            Vrho_b = Vrho_k(x_b, p_b, S)
 
-            V = V_k(x_c, p_c, S * self.chi_k) + V_k(x_b, p_b, S)
+            V = Vrho_c[0] + Vrho_b[0]
+            rho_probes = Vrho_c[1] + Vrho_b[1]
 
         else:
             """
@@ -1275,7 +1282,14 @@ class Gun:
                 else:
                     V += dV
 
-        return V * self.material.rho
+        hull = []
+        for x, rho in zip(x_probes, rho_probes):
+            if x < l_c:
+                hull.append((x, rho * self.chi_k))
+            else:
+                hull.append((x, rho))
+
+        return V * self.material.rho, hull
 
 
 if __name__ == "__main__":

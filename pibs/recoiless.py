@@ -1,5 +1,5 @@
-from math import pi, inf, exp
-from num import gss, RKF78, cubic
+from math import pi, inf, exp, log
+from num import gss, RKF78, cubic, secant
 from prop import GrainComp, Propellant
 
 from gun import DOMAIN_TIME, DOMAIN_LENG
@@ -71,9 +71,12 @@ class Recoiless:
         self.l_g = lengthGun
         self.chi_0 = nozzleEfficiency
         self.A_bar = nozzleExpansion
-        self.chi_k = chambrage
-        self.Delta = self.omega / self.V_0
+
+        self.chi_k = chambrage  # ration of l_0 / l_chamber
         self.l_0 = self.V_0 / self.S
+        self.l_c = self.l_0 / self.chi_k
+
+        self.Delta = self.omega / self.V_0
         self.phi_1 = 1 / (1 - dragCoefficient)  # drag work coefficient
         self.phi = self.phi_1 + self.omega / (3 * self.m)
 
@@ -1018,7 +1021,7 @@ class Recoiless:
         )
 
         p_trace = []
-        l_c = self.l_0 / self.chi_k
+        l_c = self.l_c
         l_g = self.l_g
 
         for line in data:
@@ -1051,76 +1054,13 @@ class Recoiless:
                     break
 
         try:
-            x_probes = (
-                [i / step * l_c for i in range(step)]
-                + [i / step * l_g + l_c for i in range(step)]
-                + [l_g + l_c]
-            )
-            p_probes = [0] * len(x_probes)
+            structure = self.getStructural(data, step, tol)
 
-            for line in data:
-                tag, t, l, psi, v, vb, pb, p0, p, ps, T, eta = line
-                for i, x in enumerate(x_probes):
-                    if (x - l_c) <= l:
-                        p_x = self.toPx(l, v, vb, ps, T, eta, x)
-                        p_probes[i] = max(p_probes[i], p_x)
-                    else:
-                        break
-
-            for i, p in enumerate(p_probes):
-                x = x_probes[i]
-                p_probes[i] = p * self.ssf
-
-            sigma = self.material.Y(293)
-            S = self.S
-            rho_probes = []
-            V = 0
-
-            if self.is_af:
-                for p in p_probes:
-                    y = p / sigma
-                    rho = exp(3**0.5 * 0.5 * y)
-                    rho_probes.append(rho)
-
-                for i in range(len(x_probes) - 1):
-                    x_0 = x_probes[i]
-                    x_1 = x_probes[i + 1]
-                    rho_0 = rho_probes[i]
-                    rho_1 = rho_probes[i + 1]
-                    dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
-                    if x_1 <= l_c:
-                        V += dV * self.chi_k
-                    else:
-                        V += dV
-
-            else:
-                for p in p_probes:
-                    y = p / sigma
-                    if y > 3**-0.5:
-                        raise ValueError()
-                    rho = (
-                        (-((-(y**2) * (3 * y**2 - 4)) ** 0.5) - 1)
-                        / (3 * y**2 - 1)
-                    ) ** 0.5
-                    rho_probes.append(rho)
-
-                for i in range(len(x_probes) - 1):
-                    x_0 = x_probes[i]
-                    x_1 = x_probes[i + 1]
-                    rho_0 = rho_probes[i]
-                    rho_1 = rho_probes[i + 1]
-                    dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
-                    if x_1 <= l_c:
-                        V += dV * self.chi_k
-                    else:
-                        V += dV
-
-            mass = V * self.material.rho
         except Exception as e:
             print(e)
-            mass = None
+            structure = [None, None]
 
-        return data, error, p_trace, mass
+        return data, error, p_trace, structure
 
     def getEff(self, vg):
         """
@@ -1235,6 +1175,216 @@ class Recoiless:
         )
 
         return Cf
+
+    def getStructural(self, data, step, tol):
+        l_c = self.l_c
+        l_g = self.l_g
+        x_probes = (
+            [i / step * l_c for i in range(step)]
+            + [l_c * (1 - tol)]
+            + [i / step * l_g + l_c for i in range(step)]
+            + [l_g + l_c]
+        )
+        p_probes = [0] * len(x_probes)
+
+        for line in data:
+            tag, t, l, psi, v, vb, pb, p0, p, ps, T, eta = line
+            for i, x in enumerate(x_probes):
+                if (x - l_c) <= l:
+                    p_x = self.toPx(l, v, vb, ps, T, eta, x)
+                    p_probes[i] = max(p_probes[i], p_x)
+                else:
+                    break
+
+        for i, p in enumerate(p_probes):
+            x = x_probes[i]
+            p_probes[i] = p * self.ssf
+
+        sigma = self.material.Y(293)
+        S = self.S
+
+        def sigma_vM(k, p, m):
+            """
+            Calculate the von Misses stress at the plastic-elastic
+            juncture. This is the limiting stress point for an auto-
+            frettaged gun barrel under internal pressure loading.
+            """
+            sigma_tr = (
+                sigma
+                * (k / m) ** 2
+                * (
+                    (m / k) ** 2
+                    - (1 - (m / k) ** 2 + 2 * log(m)) / (k**2 - 1)
+                )
+                + 2 * p / (k**2 - 1) * (k / m) ** 2
+            )
+            return (
+                sigma_tr * 3**0.5 * 0.5
+            )  # convert Tresca to von Misses equivalent stress
+
+        def Vrho_k(x_s, p_s, S):
+            def f(m):
+                rho_s = []
+                V = 0
+                for p in p_s:
+                    sigma_max = sigma_vM(m, p, m)
+                    """
+                    the limit as k -> +inf for the stress is:
+
+                    lim sigma_tr =
+                     k-> +inf
+                      sigma * [1 - (1 + 2 ln(m))/m**2 ] + 2p/m**2
+                    """
+                    if sigma > sigma_max:
+                        rho = m
+                    else:
+                        rho = 0.5 * sum(
+                            secant(
+                                lambda k: sigma_vM(k, p, m),
+                                m,
+                                m + tol,
+                                y=sigma,
+                                x_min=m,
+                                y_rel_tol=tol,
+                            )
+                        )
+
+                    rho_s.append(rho)
+
+                for i in range(len(x_s) - 1):
+                    x_0 = x_s[i]
+                    x_1 = x_s[i + 1]
+                    rho_0 = rho_s[i]
+                    rho_1 = rho_s[i + 1]
+                    dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * (x_1 - x_0) * S
+                    V += dV
+                return V, rho_s
+
+            p_max = max(p_s)
+
+            def sigma_min(m):
+                return (
+                    (
+                        sigma * (1 - (1 + 2 * log(m)) / m**2)
+                        + 2 * p_max / m**2
+                    )
+                    * 3**0.5
+                    * 0.5
+                )
+
+            m_opt = exp(max(p_s) / sigma * 3**0.5 * 0.5)
+
+            if sigma_min(m_opt) > sigma:
+                """if the minimum junction stress at the optimal autofrettage
+                fraction cannot be achieved down to material yield even as
+                the thickness goes to infinity, raise an error and abort
+                calculation"""
+                raise ValueError()
+
+            elif sigma_min(1) > sigma:
+                """if the minimum junction stress at an autofrettage fraction
+                of 1 exceeds material yield, implies a certain amount of
+                autofrettaging is required to contain the pressure"""
+                m_min = 0.5 * sum(
+                    secant(
+                        sigma_min,
+                        1 + tol,
+                        m_opt,
+                        y=sigma * (1 - tol),
+                        x_min=1,
+                        y_rel_tol=tol,
+                    )
+                )
+                """safety, fudge code to ensure a valid minimum autofrettage
+                fraction is found."""
+                while sigma_min(m_min) > sigma:
+                    m_min *= 1 + tol
+            else:
+                m_min = 1 + tol
+
+            m_best = 0.5 * sum(
+                gss(
+                    lambda m: f(m)[0], m_min, m_opt, y_rel_tol=tol, findMin=True
+                )
+            )
+
+            return f(m_best)
+
+        if self.is_af:
+            """
+            m : r_a / r_i
+            k : r_o / r_i
+            n : p_vM_max / sigma
+
+            1 < m < k
+
+            The point of optimum autofrettage, or the minimum autofrettage
+            necessary to contain the working pressure, is
+            """
+            i = x_probes.index(l_c)
+            x_c, p_c = x_probes[:i], p_probes[:i]
+            x_b, p_b = x_probes[i:], p_probes[i:]
+            Vrho_c = Vrho_k(x_c, p_c, S * self.chi_k)
+            Vrho_b = Vrho_k(x_b, p_b, S)
+
+            V = Vrho_c[0] + Vrho_b[0]
+            rho_probes = Vrho_c[1] + Vrho_b[1]
+
+        else:
+            """
+            The yield criterion chosen here is the fourth strength
+            theory (von Mises) as it is generally accepted to be the most
+            applicable for this application.
+
+            The limiting stress points circumferentially along the circum-
+            ference of the barrel.
+
+            P_4 = sigma_e * (rho^2-1)/ (3*rho**4 + 1) ** 0.5
+            lim (x->inf) (x^2-1)/sqrt(3*x**4+1) = 1/sqrt(3)
+
+            the inverse of (x^2-1)/sqrt(3*x**4+1) is:
+            sqrt(
+                [-sqrt(-x**2*(3*x**2-4)) - 1]/(3 * x**2 - 1)
+            )
+            (x < -1 or x > 1)
+            and
+            sqrt(
+                [sqrt(-x**2*(3*x**2-4)) - 1]/(3 * x**2 - 1)
+            )
+            (x from -1 to 1)
+            """
+            rho_probes = []
+            V = 0
+
+            for p in p_probes:
+                y = p / sigma
+                if y > 3**-0.5:
+                    raise ValueError()
+                rho = (
+                    (-((-(y**2) * (3 * y**2 - 4)) ** 0.5) - 1)
+                    / (3 * y**2 - 1)
+                ) ** 0.5
+                rho_probes.append(rho)
+
+            for i in range(len(x_probes) - 1):
+                x_0 = x_probes[i]
+                x_1 = x_probes[i + 1]
+                rho_0 = rho_probes[i]
+                rho_1 = rho_probes[i + 1]
+                dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
+                if x_1 <= l_c:
+                    V += dV * self.chi_k
+                else:
+                    V += dV
+
+        hull = []
+        for x, rho in zip(x_probes, rho_probes):
+            if x < l_c:
+                hull.append((x, rho * self.chi_k))
+            else:
+                hull.append((x, rho))
+
+        return V * self.material.rho, hull
 
 
 if __name__ == "__main__":

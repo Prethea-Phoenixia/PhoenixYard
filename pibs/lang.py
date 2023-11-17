@@ -521,7 +521,7 @@ ENGLISH = {
     "PEAK_AVG_P": "Peak Average Pressure",
     "PEAK_BREECH_P": "Peak Breech Pressure",
     "PEAK_SHOT_P": "Peak Shot Base Pressure",
-    "auxFrmLabel": "Pressure Trace",
+    "auxFrmLabel": "Trace",
     "auxText": " ".join(
         (
             "Pressure distribution throughout the chamber and bore, traces",
@@ -534,6 +534,7 @@ ENGLISH = {
     "matFrmLabel": "Material",
     "sffLabel": "Safety Fact.",
     "afLabel": "Autofrettage",
+    "gmLabel": "Gun Mass",
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -908,7 +909,7 @@ CHINESE = {
     "PEAK_AVG_P": "最大平均压强",
     "PEAK_BREECH_P": "最大膛底压强",
     "PEAK_SHOT_P": "最大弹底压强",
-    "auxFrmLabel": "膛内压强分布",
+    "auxFrmLabel": "膛内曲线",
     "auxText": "".join(
         (
             "膛内压强示意图，各条压强曲线对应采样点，按平均气体温度着色。",
@@ -919,5 +920,6 @@ CHINESE = {
     "matFrmLabel": "材料",
     "sffLabel": "安全系数",
     "afLabel": "炮管自紧",
+    "gmLabel": "炮管质量",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}
