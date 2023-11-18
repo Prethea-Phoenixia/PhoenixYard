@@ -1200,7 +1200,7 @@ class Recoiless:
             x = x_probes[i]
             p_probes[i] = p * self.ssf
 
-        sigma = self.material.Y(293)
+        sigma = self.material.Y
         S = self.S
 
         def sigma_vM(k, p, m):
@@ -1296,9 +1296,11 @@ class Recoiless:
                     )
                 )
                 """safety, fudge code to ensure a valid minimum autofrettage
-                fraction is found."""
+                fraction is found.
+                """
                 while sigma_min(m_min) > sigma:
                     m_min *= 1 + tol
+
             else:
                 m_min = 1 + tol
 

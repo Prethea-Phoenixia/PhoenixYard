@@ -330,10 +330,13 @@ class LocDropdown:
         """
         self.nominalState = "readonly"
         self.textVar = StringVar(parent)
-        self.strObjDict = strObjDict
+
         self.locFunc = locFunc
         self.descLabelKey = descLabelKey
+
+        self.strObjDict = strObjDict
         self.locStrObjDict = {self.locFunc(k): v for k, v in strObjDict.items()}
+
         self.widget = ttk.Combobox(
             parent,
             textvariable=self.textVar,
@@ -397,6 +400,13 @@ class LocDropdown:
 
     def getDescriptive(self):
         return self.locFunc(self.descLabelKey, forceDefault=True)
+
+    def reset(self, strObjDict):
+        self.strObjDict = strObjDict
+        self.locStrObjDict = {self.locFunc(k): v for k, v in strObjDict.items()}
+
+        self.widget["values"] = tuple(self.locStrObjDict.keys())
+        self.widget.current(0)
 
 
 class LocLabelFrame(ttk.LabelFrame):

@@ -310,8 +310,10 @@ ENGLISH = {
             "higher values x, ε*x. The underlying SoE is expressed in scaled",
             "unitless formulation, i.e. with scaled velocity from [0,1) and",
             "scaled length & time (0,+inf).\n",
-            "Defualt value corresponds to ε=1e-3, if value jumps are observed",
-            "on plot, adjust this value appropriately.",
+            "Defualt value corresponds to ε=1e-3, if value discontinuities",
+            "appear, or if constrained solving fail to match target, increase",
+            "this value conservatively, computation time greatly increase with",
+            "this.",
         )
     ),
     "stpText": " ".join(
@@ -531,7 +533,8 @@ ENGLISH = {
         )
     ),
     "figAuxDomain": "Dist. to Breech - m",
-    "matFrmLabel": "Material",
+    "matFrmLabel": "Structural Material",
+    "matFrmTempLabel": "Structural Temperature",
     "sffLabel": "Safety Fact.",
     "afLabel": "Autofrettage",
     "gmLabel": "Gun Mass",
@@ -751,7 +754,8 @@ CHINESE = {
             "直到该条件得到满足。重复以上直到积分器达到停止条件，或遇到数值奇点。\n",
             "   鉴于实际积分的常微分系统采用归一化无量纲形式，各项取值为：速度［0，1），行程、时间",
             "［0，正无穷）。\n",
-            "   默认取值为对应ε=1E-3，若由图可见采样点与特征点差距较大，提示需要提高精度计算。",
+            "   默认取值为对应ε=1E-3，若特征值与采样点间出现跳变现象，或反算优化出现无法达到指标，提示",
+            "需要提高精度计算。出于运算耗时的考虑，建议谨慎选取比默认值更高的精度限制。",
         )
     ),
     "stpText": "".join(
@@ -917,7 +921,8 @@ CHINESE = {
         )
     ),
     "figAuxDomain": "膛底距离 - m",
-    "matFrmLabel": "材料",
+    "matFrmLabel": "结构材料",
+    "matFrmTempLabel": "结构温度",
     "sffLabel": "安全系数",
     "afLabel": "炮管自紧",
     "gmLabel": "炮管质量",

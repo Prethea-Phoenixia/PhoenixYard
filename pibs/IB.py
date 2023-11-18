@@ -729,21 +729,38 @@ class InteriorBallisticsFrame(Frame):
             row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
         )
 
+        self.dropMatTemp = LocDropdown(
+            parent=mecFrm,
+            strObjDict=self.dropMat.getObj().getTdict(),
+            locFunc=self.getLocStr,
+            dropdowns=self.locs,
+            descLabelKey="matFrmTempLabel",
+        )
+        self.dropMatTemp.grid(
+            row=1, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
+        )
+
+        self.dropMat.trace_add(
+            "write",
+            lambda *args: self.dropMatTemp.reset(
+                self.dropMat.getObj().getTdict()
+            ),
+        )
+
         self.ssf = Loc2Input(
             parent=mecFrm,
-            row=1,
+            row=2,
             col=0,
             labelLocKey="sffLabel",
             default="1.35",
             validation=validationNN,
-            # anchor="center",
             locFunc=self.getLocStr,
             allInputs=self.locs,
         )
         self.isAf = LocLabelCheck(
             parent=mecFrm,
             labelLocKey="afLabel",
-            row=2,
+            row=3,
             col=0,
             locFunc=self.getLocStr,
             allLC=self.locs,
@@ -987,7 +1004,6 @@ class InteriorBallisticsFrame(Frame):
             locFunc=self.getLocStr,
             allInputs=self.locs,
         )
-
         i += 1
         self.accExp = Loc2Input(
             parent=opFrm,
@@ -1088,7 +1104,9 @@ class InteriorBallisticsFrame(Frame):
                 "dom": self.dropDomain.getObj(),
                 "sol": self.dropSoln.getObj(),
                 "control": self.pControl.getObj(),
-                "structuralMaterial": self.dropMat.getObj(),
+                "structuralMaterial": self.dropMat.getObj().createMaterialAtTemp(
+                    self.dropMatTemp.getObj()
+                ),
                 "structuralSafetyFactor": float(self.ssf.get()),
                 "caliber": caliber,
                 "shotMass": float(self.shtkg.get()),
@@ -2150,12 +2168,19 @@ class InteriorBallisticsFrame(Frame):
             if HTrace is not None:
                 xs, rhos = zip(*HTrace)
                 rho_max = max(rhos)
-                outline = self.auxAxH.plot(xs, rhos, c="tab:blue")
+                outline = self.auxAxH.plot(xs, rhos, c="tab:blue", zorder=2.1)
                 inline = self.auxAxH.plot(
-                    xs, [chi_k if x < l_c else 1 for x in xs], c="tab:blue"
+                    xs,
+                    [chi_k if x < l_c else 1 for x in xs],
+                    c="tab:blue",
+                    zorder=2.1,
                 )
                 self.auxAxH.fill_between(
-                    xs, rhos, [chi_k if x < l_c else 1 for x in xs], alpha=0.5
+                    xs,
+                    rhos,
+                    [chi_k if x < l_c else 1 for x in xs],
+                    alpha=0.5,
+                    zorder=2.1,
                 )
                 self.auxAxH.set_ylim(bottom=0)
 

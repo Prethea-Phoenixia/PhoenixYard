@@ -13,7 +13,10 @@ inner method be called as compared to the outter. A small value
 is necessary to prevent numerical instability form causing sporadic
 appearance of outlier, at the cost of increased computation times.
 """
-N = 100
+MAX_GUESSES = (
+    100  #  maximum number of guesses taken to find valid load fraction.
+)
+MAX_ITER = 100  # maximum iteration to correct for chamberage effects.
 
 
 class Constrained:
@@ -87,6 +90,7 @@ class Constrained:
         labda_1=None,
         labda_2=None,
         cc=None,
+        it=0,
         sol=SOL_LAGRANGE,
         ambientRho=1.204,
         ambientP=101.325e3,
@@ -485,9 +489,10 @@ class Constrained:
 
         # lengtime = time.time()
 
-        if abs(cc_n - cc) > tol:
+        if abs(cc_n - cc) > tol and it < MAX_ITER:
             # successive better approximations will eventually
             # result in value within tolerance.
+
             return self.solve(
                 loadFraction=loadFraction,
                 chargeMassRatio=chargeMassRatio,
@@ -498,7 +503,8 @@ class Constrained:
                 labda_1=labda_1,
                 labda_2=labda_2,
                 sol=sol,
-                cc=cc_n,
+                cc=cc_n * 0.5 + cc * 0.5,
+                it=it + 1,
                 ambientRho=ambientRho,
                 ambientP=ambientP,
                 ambientGamma=ambientGamma,
@@ -576,7 +582,7 @@ class Constrained:
 
         records = []
 
-        for i in range(N):
+        for i in range(MAX_GUESSES):
             startProbe = (
                 loadFraction
                 if (i == 1 and loadFraction is not None)
@@ -589,10 +595,10 @@ class Constrained:
             except ValueError:
                 pass
 
-        if i == N - 1:
+        if i == MAX_GUESSES - 1:
             raise ValueError(
                 "Unable to find any valid load fraction"
-                + " with {:d} random samples.".format(N)
+                + " with {:d} random samples.".format(MAX_GUESSES)
             )
 
         low = tol

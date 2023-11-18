@@ -3,7 +3,7 @@ from prop import Propellant
 from random import uniform
 from math import pi, inf
 from recoiless import Recoiless
-from opt import N
+from opt import MAX_GUESSES
 from bisect import bisect
 from gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
 
@@ -663,7 +663,7 @@ class ConstrainedRecoiless:
 
         records = []
 
-        for i in range(N):
+        for i in range(MAX_GUESSES):
             startProbe = (
                 loadFraction
                 if (i == 1 and loadFraction is not None)
@@ -676,10 +676,10 @@ class ConstrainedRecoiless:
             except ValueError:
                 pass
 
-        if i == N - 1:
+        if i == MAX_GUESSES - 1:
             raise ValueError(
                 "Unable to find any valid load"
-                + " fraction with {:d} random samples.".format(N)
+                + " fraction with {:d} random samples.".format(MAX_GUESSES)
             )
 
         low = tol
