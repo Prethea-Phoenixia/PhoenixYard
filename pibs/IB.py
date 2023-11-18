@@ -142,7 +142,6 @@ FIG_CONTEXT = {
 class InteriorBallisticsFrame(Frame):
     def __init__(self, parent, menubar, dpi):
         ttk.Frame.__init__(self, parent)
-        # self.pack(expand=1, fill="both")
         self.grid(row=0, column=0, sticky="nsew")
         self.LANG = StringVar(value=list(STRING.keys())[0])
 
@@ -1445,7 +1444,7 @@ class InteriorBallisticsFrame(Frame):
         propFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
-        specFrm.rowconfigure(i, weight=1)
+        specFrm.rowconfigure(i, weight=2)
 
         propFrm.rowconfigure(1, weight=1)
         propFrm.columnconfigure(0, weight=1)
@@ -2831,7 +2830,6 @@ def main():
     root.columnconfigure(0, weight=1)
     root.rowconfigure(0, weight=1)
     ibFrame = InteriorBallisticsFrame(root, menubar, dpi)
-    ibFrame.pack(expand=1, fill="both", side="left")
     # center(root)
 
     # root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
