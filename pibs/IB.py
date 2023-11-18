@@ -142,7 +142,8 @@ FIG_CONTEXT = {
 class InteriorBallisticsFrame(Frame):
     def __init__(self, parent, menubar, dpi):
         ttk.Frame.__init__(self, parent)
-        self.pack(expand=1, fill="both")
+        # self.pack(expand=1, fill="both")
+        self.grid(row=0, column=0, sticky="nsew")
         self.LANG = StringVar(value=list(STRING.keys())[0])
 
         self.locs = []
@@ -271,8 +272,7 @@ class InteriorBallisticsFrame(Frame):
         self.forceUpdOnThemeWidget.append(self.errorText)
         self.forceUpdOnThemeWidget.append(self.specs)
 
-        # self.resizePlot(None)
-        self.bind("<Configure>", self.resizePlot)
+        # self.bind("<Configure>", self.resizePlot)
         parent.protocol("WM_DELETE_WINDOW", self.quit)
 
         self.tLid = None
@@ -1726,10 +1726,6 @@ class InteriorBallisticsFrame(Frame):
             self.geomCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=0, pady=0, sticky="nsew"
             )
-            """
-            self.geomCanvas.get_tk_widget().pack(
-                side="left", fill="both", expand=True
-            )"""
             fig.set_layout_engine(None)
             self.geomCanvas.draw_idle()
 
@@ -1769,7 +1765,7 @@ class InteriorBallisticsFrame(Frame):
         For some reason the above specification is not strictly adhered to
         in practice, this might be a bug on tkAgg or matplotlib backend.
         """
-        plotFrm.grid_propagate(False)
+        # plotFrm.grid_propagate(False)
 
         dpi = self.dpi
         with mpl.rc_context(FIG_CONTEXT):
@@ -1789,12 +1785,17 @@ class InteriorBallisticsFrame(Frame):
 
             ax.yaxis.tick_right()
             axF.yaxis.tick_left()
+            axv.yaxis.tick_left()
+
             ax.set_xlabel(" ")
 
-            axv.spines.right.set_position(("axes", 1.0 + 45 * dpi / 96 / width))
+            # axv.spines.right.set_position(("axes", 1.0 + 45 * dpi / 96 / width))
+            # ax.spines.right.set_position("zero")
             axP.spines.right.set_position(("data", 0.5))
+            axF.spines.left.set_position(("data", 0.5))
 
             axP.yaxis.set_ticks(axP.get_yticks()[1:-1:])
+            axF.yaxis.set_ticks(axF.get_yticks()[1:-1:])
 
             self.ax = ax
             self.axP = axP
@@ -1806,10 +1807,6 @@ class InteriorBallisticsFrame(Frame):
             self.pltCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=2, pady=2, sticky="nsew"
             )
-            """
-            self.pltCanvas.get_tk_widget().pack(
-                side="top", fill="both", expand=True
-            )"""
 
             self.pltCanvas.draw_idle()
 
@@ -1838,7 +1835,7 @@ class InteriorBallisticsFrame(Frame):
         For some reason the above specification is not strictly adhered to
         in practice, this might be a bug on tkAgg or matplotlib backend.
         """
-        auxFrm.grid_propagate(False)
+        # auxFrm.grid_propagate(False)
 
         dpi = self.dpi
         with mpl.rc_context(FIG_CONTEXT):
@@ -1862,12 +1859,10 @@ class InteriorBallisticsFrame(Frame):
             self.auxCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=2, pady=2, sticky="nsew"
             )
-            """
-            self.auxCanvas.get_tk_widget().pack(
-                side="top", fill="both", expand=True
-            )"""
 
             self.auxCanvas.draw_idle()
+
+    """
 
     def resizePlot(self, event):
         # we use the bbox method here as it has already accounted for padding
@@ -1878,7 +1873,8 @@ class InteriorBallisticsFrame(Frame):
             self.axv.spines.right.set_position(
                 ("axes", 1 + 45 * dpi / 96 / width)
             )
-            self.pltCanvas.draw_idle()
+            # self.pltCanvas.draw_idle() # this does help but isn't guaranteed to work
+    """
 
     def timedLoop(self):
         if self.process is not None:
@@ -1906,10 +1902,11 @@ class InteriorBallisticsFrame(Frame):
 
             dpi = self.dpi
             size = self.fig.get_size_inches() * self.fig.dpi
-
-            self.axv.spines.right.set_position(
-                ("axes", 1 + 45 * dpi / 96 / size[0])
-            )
+            """
+            self.ax.spines.right.set_position(
+                ("axes", 1 - 45 * dpi / 96 / size[0])
+            )"""
+            # self.ax.spines.right.set_position("zero")
 
             vTgt = self.kwargs["designVelocity"]
             gunType = self.kwargs["typ"]
@@ -1988,6 +1985,7 @@ class InteriorBallisticsFrame(Frame):
                     etas.append(eta)
 
             self.axP.spines.right.set_position(("data", xPeak))
+            self.axF.spines.left.set_position(("data", xPeak))
 
             if self.plotBreechNozzleP.get():
                 self.axP.plot(
@@ -2100,13 +2098,21 @@ class InteriorBallisticsFrame(Frame):
             self.axv.set(ylim=(0, max(vs + vxs) * 1.15))
             self.ax.set_ylim(bottom=0, top=1.05)
 
+            fmax = pmax * gun.S
+
             self.axP.yaxis.set_ticks(
                 [v for v in self.axP.get_yticks() if v <= pmax][1:]
             )
+            self.axF.yaxis.set_ticks(
+                [v for v in self.axF.get_yticks() if v <= fmax][1:]
+            )
 
-            tkw = dict(size=4, width=1.5)
             self.ax.yaxis.tick_right()
             self.axF.yaxis.tick_left()
+            self.axv.yaxis.tick_left()
+
+            tkw = dict(size=4, width=1.5)
+
             self.ax.tick_params(axis="y", colors="tab:red", **tkw)
             self.axv.tick_params(axis="y", colors="tab:blue", **tkw)
             self.axP.tick_params(axis="y", colors="tab:green", **tkw)
@@ -2822,6 +2828,8 @@ def main():
     ibFrame = IB(tabControl, menubar, dpi, scale)
     tabControl.add(ibFrame, text="INTERIOR")
     """
+    root.columnconfigure(0, weight=1)
+    root.rowconfigure(0, weight=1)
     ibFrame = InteriorBallisticsFrame(root, menubar, dpi)
     ibFrame.pack(expand=1, fill="both", side="left")
     # center(root)

@@ -7,7 +7,7 @@
   },
   {
    "optionDest": "filenames",
-   "value": "C:/Users/Thinkpad/Documents/GitHub/PhoenixYard/src/IB.py"
+   "value": "C:/Users/Phoenix/Documents/Gits/Phoenix-s-Interior-Ballistic-Solver-PIBS/pibs/IB.py"
   },
   {
    "optionDest": "onefile",
@@ -19,19 +19,19 @@
   },
   {
    "optionDest": "icon_file",
-   "value": "C:/Users/Thinkpad/Documents/GitHub/PhoenixYard/src/ui/logo.ico"
+   "value": "C:/Users/Phoenix/Documents/Gits/Phoenix-s-Interior-Ballistic-Solver-PIBS/pibs/ui/logo.ico"
   },
   {
    "optionDest": "name",
    "value": "Phoenix Internal Ballistics Solver"
   },
   {
-   "optionDest": "ascii",
+   "optionDest": "clean_build",
    "value": false
   },
   {
-   "optionDest": "clean_build",
-   "value": false
+   "optionDest": "debug",
+   "value": "all"
   },
   {
    "optionDest": "strip",
@@ -46,10 +46,6 @@
    "value": false
   },
   {
-   "optionDest": "embed_manifest",
-   "value": false
-  },
-  {
    "optionDest": "uac_admin",
    "value": false
   },
@@ -58,11 +54,7 @@
    "value": false
   },
   {
-   "optionDest": "win_private_assemblies",
-   "value": false
-  },
-  {
-   "optionDest": "win_no_prefer_redirects",
+   "optionDest": "argv_emulation",
    "value": false
   },
   {
@@ -70,16 +62,12 @@
    "value": false
   },
   {
-   "optionDest": "argv_emulation",
-   "value": false
+   "optionDest": "datas",
+   "value": "C:/Users/Phoenix/Documents/Gits/Phoenix-s-Interior-Ballistic-Solver-PIBS/pibs/data;data/"
   },
   {
    "optionDest": "datas",
-   "value": "C:/Users/Thinkpad/Documents/GitHub/PhoenixYard/src/data;data/"
-  },
-  {
-   "optionDest": "datas",
-   "value": "C:/Users/Thinkpad/Documents/GitHub/PhoenixYard/src/ui;ui/"
+   "value": "C:/Users/Phoenix/Documents/Gits/Phoenix-s-Interior-Ballistic-Solver-PIBS/pibs/ui;ui/"
   }
  ],
  "nonPyinstallerOptions": {
