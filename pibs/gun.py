@@ -112,6 +112,7 @@ class Gun:
             )
 
         self.propellant = propellant
+        self.caliber = caliber
 
         self.e_1 = 0.5 * grainSize
         self.S = (0.5 * caliber) ** 2 * pi

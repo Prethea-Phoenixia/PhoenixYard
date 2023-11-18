@@ -271,8 +271,10 @@ class InteriorBallisticsFrame(Frame):
         self.forceUpdOnThemeWidget.append(self.errorText)
         self.forceUpdOnThemeWidget.append(self.specs)
 
+        # self.resizePlot(None)
         self.bind("<Configure>", self.resizePlot)
         parent.protocol("WM_DELETE_WINDOW", self.quit)
+
         self.tLid = None
         self.timedLoop()
 
@@ -1443,7 +1445,7 @@ class InteriorBallisticsFrame(Frame):
         propFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
-        specFrm.rowconfigure(i, weight=4)
+        specFrm.rowconfigure(i, weight=1)
 
         propFrm.rowconfigure(1, weight=1)
         propFrm.columnconfigure(0, weight=1)
@@ -1690,7 +1692,7 @@ class InteriorBallisticsFrame(Frame):
 
         # _, _, width, height = self.geomPlotFrm.bbox("insert")
 
-        geomPlotFrm.config(height=0.5 * geomPlotFrm.winfo_width())
+        # geomPlotFrm.config(height=0.5 * geomPlotFrm.winfo_width())
 
         width = geomPlotFrm.winfo_width() - 2
         height = geomPlotFrm.winfo_height() - 2
@@ -1708,13 +1710,14 @@ class InteriorBallisticsFrame(Frame):
         window, and everything would be fine, ironically.
         (in this case, dpi = dpi)
         """
+        # last ditch effort to prevent blowing up the frame
+        geomPlotFrm.grid_propagate(False)
 
         dpi = self.dpi
         with mpl.rc_context(GEOM_CONTEXT):
             fig = Figure(
-                figsize=(width / dpi, max(height / dpi, 0.5 * width / dpi)),
+                figsize=(width / dpi, height / dpi),
                 dpi=96,
-                layout="constrained",
             )
             self.geomFig = fig
             self.geomAx = fig.add_subplot(111)
@@ -1723,11 +1726,12 @@ class InteriorBallisticsFrame(Frame):
             self.geomCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=0, pady=0, sticky="nsew"
             )
+            """
+            self.geomCanvas.get_tk_widget().pack(
+                side="left", fill="both", expand=True
+            )"""
             fig.set_layout_engine(None)
             self.geomCanvas.draw_idle()
-
-        geomPlotFrm.grid_propagate(False)
-        # last ditch effort to prevent blowing up the frame
 
     def addPlotFrm(self):
         plotFrm = LocLabelFrame(
@@ -1793,8 +1797,12 @@ class InteriorBallisticsFrame(Frame):
             self.fig = fig
 
             self.pltCanvas = FigureCanvasTkAgg(fig, master=plotFrm)
-            self.pltCanvas.get_tk_widget().grid(
+            """self.pltCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=2, pady=2, sticky="nsew"
+            )"""
+
+            self.pltCanvas.get_tk_widget().pack(
+                side="top", fill="both", expand=True
             )
 
             self.pltCanvas.draw_idle()
@@ -1845,9 +1853,14 @@ class InteriorBallisticsFrame(Frame):
             self.auxFig = fig
             self.auxAxH.yaxis.tick_right()
             self.auxCanvas = FigureCanvasTkAgg(fig, master=auxFrm)
-            self.auxCanvas.get_tk_widget().grid(
+            """self.auxCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=2, pady=2, sticky="nsew"
+            )"""
+
+            self.auxCanvas.get_tk_widget().pack(
+                side="top", fill="both", expand=True
             )
+
             self.auxCanvas.draw_idle()
 
         """
@@ -1859,17 +1872,12 @@ class InteriorBallisticsFrame(Frame):
     def resizePlot(self, event):
         # we use the bbox method here as it has already accounted for padding
         # so no adjustment here is necessary
-
-        self.update_idletasks()
-        _, _, width, height = self.plotFrm.bbox("insert")
-
+        width, height = self.fig.get_size_inches() * self.fig.dpi
         dpi = self.dpi
         with mpl.rc_context(FIG_CONTEXT):
             self.axv.spines.right.set_position(
                 ("axes", 1 + 45 * dpi / 96 / width)
             )
-
-            self.pltCanvas.draw_idle()
 
     def timedLoop(self):
         if self.process is not None:
@@ -2154,6 +2162,7 @@ class InteriorBallisticsFrame(Frame):
 
             l_c = gun.l_c
             chi_k = gun.chi_k
+            r = 0.5 * gun.caliber * 1e3
             self.auxAx.plot(
                 (l_c, l_c), (0, y_max * 1.15), c="grey", ls="dotted", zorder=1.5
             )
@@ -2167,18 +2176,19 @@ class InteriorBallisticsFrame(Frame):
             HTrace = self.structure[1]
             if HTrace is not None:
                 xs, rhos = zip(*HTrace)
-                rho_max = max(rhos)
-                outline = self.auxAxH.plot(xs, rhos, c="tab:blue", zorder=2.1)
-                inline = self.auxAxH.plot(
+                rhos = [r * rho for rho in rhos]
+                # rho_max = max(rhos)
+                self.auxAxH.plot(xs, rhos, c="tab:blue", zorder=2.1)
+                self.auxAxH.plot(
                     xs,
-                    [chi_k if x < l_c else 1 for x in xs],
+                    [chi_k * r if x < l_c else r for x in xs],
                     c="tab:blue",
                     zorder=2.1,
                 )
                 self.auxAxH.fill_between(
                     xs,
                     rhos,
-                    [chi_k if x < l_c else 1 for x in xs],
+                    [chi_k * r if x < l_c else r for x in xs],
                     alpha=0.5,
                     zorder=2.1,
                 )
@@ -2781,6 +2791,7 @@ def main():
     windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     root = Tk()
+    root.state("zoomed")  # maximize window
     root.iconbitmap(resolvepath("ui/logo.ico"))
 
     loadfont(resolvepath("ui/sarasa-fixed-sc-regular.ttf"), False, True)
@@ -2814,8 +2825,7 @@ def main():
     ibFrame.pack(expand=1, fill="both", side="left")
     # center(root)
 
-    root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
-    root.state("zoomed")  # maximize window
+    # root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
 
     root.mainloop()
 

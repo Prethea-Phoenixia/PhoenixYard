@@ -61,6 +61,7 @@ class Recoiless:
             )
 
         self.propellant = propellant
+        self.caliber = caliber
 
         e_1 = 0.5 * grainSize
         self.S = (caliber / 2) ** 2 * pi
