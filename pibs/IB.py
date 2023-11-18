@@ -271,7 +271,7 @@ class InteriorBallisticsFrame(Frame):
         self.forceUpdOnThemeWidget.append(self.errorText)
         self.forceUpdOnThemeWidget.append(self.specs)
 
-        # self.bind("<Configure>", self.resizePlot)
+        self.bind("<Configure>", self.resizePlot)
         parent.protocol("WM_DELETE_WINDOW", self.quit)
 
         self.tLid = None
@@ -1861,9 +1861,9 @@ class InteriorBallisticsFrame(Frame):
 
             self.auxCanvas.draw_idle()
 
-    """
-
     def resizePlot(self, event):
+        self.updateTable()
+        """
         # we use the bbox method here as it has already accounted for padding
         # so no adjustment here is necessary
         width, height = self.fig.get_size_inches() * self.fig.dpi
@@ -1873,7 +1873,7 @@ class InteriorBallisticsFrame(Frame):
                 ("axes", 1 + 45 * dpi / 96 / width)
             )
             # self.pltCanvas.draw_idle() # this does help but isn't guaranteed to work
-    """
+        """
 
     def timedLoop(self):
         if self.process is not None:
@@ -2372,6 +2372,7 @@ class InteriorBallisticsFrame(Frame):
         self.errorLst = []
 
     def updateTable(self):
+        self.update_idletasks()
         self.tv.delete(*self.tv.get_children())
 
         try:
@@ -2827,14 +2828,13 @@ def main():
     ibFrame = IB(tabControl, menubar, dpi, scale)
     tabControl.add(ibFrame, text="INTERIOR")
     """
+    root.state("zoomed")  # maximize window
     root.columnconfigure(0, weight=1)
     root.rowconfigure(0, weight=1)
-    ibFrame = InteriorBallisticsFrame(root, menubar, dpi)
+    InteriorBallisticsFrame(root, menubar, dpi)
     # center(root)
-
     # root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
 
-    root.state("zoomed")  # maximize window
     root.mainloop()
 
 
