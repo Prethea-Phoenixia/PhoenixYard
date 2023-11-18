@@ -1765,6 +1765,12 @@ class InteriorBallisticsFrame(Frame):
         # label frame text, but since its screen dependent its not
         # really possible.
 
+        """
+        For some reason the above specification is not strictly adhered to
+        in practice, this might be a bug on tkAgg or matplotlib backend.
+        """
+        plotFrm.grid_propagate(False)
+
         dpi = self.dpi
         with mpl.rc_context(FIG_CONTEXT):
             fig = Figure(
@@ -1797,21 +1803,15 @@ class InteriorBallisticsFrame(Frame):
             self.fig = fig
 
             self.pltCanvas = FigureCanvasTkAgg(fig, master=plotFrm)
-            """self.pltCanvas.get_tk_widget().grid(
+            self.pltCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=2, pady=2, sticky="nsew"
-            )"""
-
+            )
+            """
             self.pltCanvas.get_tk_widget().pack(
                 side="top", fill="both", expand=True
-            )
+            )"""
 
             self.pltCanvas.draw_idle()
-
-        """
-        For some reason the above specification is not strictly adhered to
-        in practice, this might be a bug on tkAgg or matplotlib backend.
-        """
-        plotFrm.grid_propagate(False)
 
     def addAuxFrm(self):
         auxFrm = LocLabelFrame(
@@ -1834,6 +1834,12 @@ class InteriorBallisticsFrame(Frame):
         width = auxFrm.winfo_width() - 6
         height = auxFrm.winfo_height() - 6
 
+        """
+        For some reason the above specification is not strictly adhered to
+        in practice, this might be a bug on tkAgg or matplotlib backend.
+        """
+        auxFrm.grid_propagate(False)
+
         dpi = self.dpi
         with mpl.rc_context(FIG_CONTEXT):
             fig = Figure(
@@ -1853,21 +1859,15 @@ class InteriorBallisticsFrame(Frame):
             self.auxFig = fig
             self.auxAxH.yaxis.tick_right()
             self.auxCanvas = FigureCanvasTkAgg(fig, master=auxFrm)
-            """self.auxCanvas.get_tk_widget().grid(
+            self.auxCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=2, pady=2, sticky="nsew"
-            )"""
-
+            )
+            """
             self.auxCanvas.get_tk_widget().pack(
                 side="top", fill="both", expand=True
-            )
+            )"""
 
             self.auxCanvas.draw_idle()
-
-        """
-        For some reason the above specification is not strictly adhered to
-        in practice, this might be a bug on tkAgg or matplotlib backend.
-        """
-        auxFrm.grid_propagate(False)
 
     def resizePlot(self, event):
         # we use the bbox method here as it has already accounted for padding
@@ -1878,6 +1878,7 @@ class InteriorBallisticsFrame(Frame):
             self.axv.spines.right.set_position(
                 ("axes", 1 + 45 * dpi / 96 / width)
             )
+            self.pltCanvas.draw_idle()
 
     def timedLoop(self):
         if self.process is not None:
@@ -2791,7 +2792,7 @@ def main():
     windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     root = Tk()
-    root.state("zoomed")  # maximize window
+
     root.iconbitmap(resolvepath("ui/logo.ico"))
 
     loadfont(resolvepath("ui/sarasa-fixed-sc-regular.ttf"), False, True)
@@ -2827,6 +2828,7 @@ def main():
 
     # root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
 
+    root.state("zoomed")  # maximize window
     root.mainloop()
 
 
