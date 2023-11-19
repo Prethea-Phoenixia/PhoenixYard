@@ -1456,7 +1456,7 @@ class InteriorBallisticsFrame(Frame):
         propFrm.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
-        specFrm.rowconfigure(i, weight=2)
+        specFrm.rowconfigure(i, weight=1)
 
         propFrm.rowconfigure(1, weight=1)
         propFrm.columnconfigure(0, weight=1)

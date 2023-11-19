@@ -197,11 +197,11 @@ def dot_aligned(matrix, units, useSN, stripWS=True):
     return tuple(zip(*transposed))
 
 
+"""
 def center(win):
-    """
-    centers a tkinter window
-    :param win: the main window or Toplevel window to center
-    """
+    #centers a tkinter window
+    #:param win: the main window or Toplevel window to center
+
     from win32api import GetMonitorInfo, MonitorFromPoint
 
     monitor_info = GetMonitorInfo(MonitorFromPoint((0, 0)))
@@ -220,6 +220,7 @@ def center(win):
     y = (win.winfo_screenheight() - taskbar_height) // 2 - win_height // 2
     win.geometry("{}x{}+{}+{}".format(width, height, x, y))
     win.deiconify()
+"""
 
 
 def roundSig(x, n=4):
