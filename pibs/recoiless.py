@@ -1383,7 +1383,7 @@ class Recoiless:
         hull = []
         for x, rho in zip(x_probes, rho_probes):
             if x < l_c:
-                hull.append((x, rho * self.chi_k))
+                hull.append((x, rho * self.chi_k**0.5))
             else:
                 hull.append((x, rho))
 

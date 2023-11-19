@@ -271,7 +271,9 @@ class InteriorBallisticsFrame(Frame):
         self.forceUpdOnThemeWidget.append(self.errorText)
         self.forceUpdOnThemeWidget.append(self.specs)
 
-        self.bind("<Configure>", self.resizePlot)
+        # self.bind("<Configure>", self.resizePlot)
+
+        parent.bind("<Return>", lambda *_: self.onCalculate())
         parent.protocol("WM_DELETE_WINDOW", self.quit)
 
         self.tLid = None
@@ -1024,7 +1026,35 @@ class InteriorBallisticsFrame(Frame):
         self.pbar.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
+
         i += 1
+        errorFrm = LocLabelFrame(
+            opFrm,
+            locKey="errFrmLabel",
+            locFunc=self.getLocStr,
+            allLLF=self.locs,
+        )
+        errorFrm.grid(
+            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+        )
+        errorFrm.columnconfigure(0, weight=1)
+        errorFrm.rowconfigure(0, weight=1)
+
+        errScroll = ttk.Scrollbar(errorFrm, orient="vertical")
+        errScroll.grid(row=0, column=1, sticky="nsew")
+        self.errorText = Text(
+            errorFrm,
+            yscrollcommand=errScroll.set,
+            wrap="word",
+            height=6,
+            width=0,
+            font=(FONTNAME, FONTSIZE),
+        )
+
+        self.errorText.grid(row=0, column=0, sticky="nsew")
+
+        i += 1
+
         self.calButton = ttk.Button(
             opFrm,
             text=self.getLocStr("calcLabel"),
@@ -1313,25 +1343,7 @@ class InteriorBallisticsFrame(Frame):
                 pass
 
     def addErrFrm(self):
-        errorFrm = LocLabelFrame(
-            self, locKey="errFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
-        )
-        errorFrm.grid(row=5, column=1, sticky="nsew")
-        errorFrm.columnconfigure(0, weight=1)
-        errorFrm.rowconfigure(0, weight=1)
-
-        errScroll = ttk.Scrollbar(errorFrm, orient="vertical")
-        errScroll.grid(row=0, column=1, sticky="nsew")
-        self.errorText = Text(
-            errorFrm,
-            yscrollcommand=errScroll.set,
-            wrap="word",
-            height=6,
-            width=0,
-            font=(FONTNAME, FONTSIZE),
-        )
-
-        self.errorText.grid(row=0, column=0, sticky="nsew")
+        pass
 
     def addspecFrm(self):
         specFrm = LocLabelFrame(
@@ -1861,9 +1873,8 @@ class InteriorBallisticsFrame(Frame):
 
             self.auxCanvas.draw_idle()
 
+    """
     def resizePlot(self, event):
-        self.updateTable()
-        """
         # we use the bbox method here as it has already accounted for padding
         # so no adjustment here is necessary
         width, height = self.fig.get_size_inches() * self.fig.dpi
@@ -2183,21 +2194,10 @@ class InteriorBallisticsFrame(Frame):
             if HTrace is not None:
                 xs, rhos = zip(*HTrace)
                 rhos = [r * rho for rho in rhos]
-                # rho_max = max(rhos)
                 self.auxAxH.plot(xs, rhos, c="tab:blue", zorder=2.1)
-                self.auxAxH.plot(
-                    xs,
-                    [chi_k * r if x < l_c else r for x in xs],
-                    c="tab:blue",
-                    zorder=2.1,
-                )
-                self.auxAxH.fill_between(
-                    xs,
-                    rhos,
-                    [chi_k * r if x < l_c else r for x in xs],
-                    alpha=0.5,
-                    zorder=2.1,
-                )
+                inline = [chi_k**0.5 * r if x < l_c else r for x in xs]
+                self.auxAxH.plot(xs, inline, c="tab:blue")
+                self.auxAxH.fill_between(xs, rhos, inline, alpha=0.5)
                 self.auxAxH.set_ylim(bottom=0)
 
             self.auxFig.set_layout_engine("constrained")
@@ -2213,7 +2213,7 @@ class InteriorBallisticsFrame(Frame):
         tblFrm.rowconfigure(0, weight=1)
         # configure the numerical
         self.tv = ttk.Treeview(
-            tblFrm, selectmode="browse", height=5
+            tblFrm, selectmode="browse", height=10
         )  # this set the nbr. of values
         self.tv.grid(row=0, column=0, sticky="nsew")
 
@@ -2421,7 +2421,7 @@ class InteriorBallisticsFrame(Frame):
         self.tv.tag_configure(POINT_FRACTURE, foreground="brown")
         self.tv.tag_configure(POINT_EXIT, foreground="steel blue")
         self.tv.tag_configure(POINT_START, foreground="steel blue")
-        self.tv.tag_configure("*", foreground="grey")
+        self.tv.tag_configure("*", foreground="tan")
 
         t_Font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
 
@@ -2794,7 +2794,7 @@ def main():
 
     # this allows us to set our own taskbar icon
     # "mycompany.myproduct.subproduct.version"
-    myappid = "Phoenix.Internal Ballistics.Solver"  # arbitrary string
+    myappid = "Phoenix.Interior.Ballistics.Solver"  # arbitrary string
     windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     root = Tk()
@@ -2819,7 +2819,7 @@ def main():
     root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
 
     root.option_add("*tearOff", False)
-    root.title("PIBS v0.4.8α")
+    root.title("PIBS v0.4.8")
     menubar = Menu(root)
     root.config(menu=menubar)
     """
@@ -2828,10 +2828,11 @@ def main():
     ibFrame = IB(tabControl, menubar, dpi, scale)
     tabControl.add(ibFrame, text="INTERIOR")
     """
-    root.state("zoomed")  # maximize window
     root.columnconfigure(0, weight=1)
     root.rowconfigure(0, weight=1)
     InteriorBallisticsFrame(root, menubar, dpi)
+
+    root.state("zoomed")  # maximize window
     # center(root)
     # root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
 
