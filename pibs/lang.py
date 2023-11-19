@@ -538,6 +538,8 @@ ENGLISH = {
     "sffLabel": "Safety Fact.",
     "afLabel": "Autofrettage",
     "gmLabel": "Gun Mass",
+    "traceHull": "Tube Trace",
+    "tracePress": "Pressure Trace",
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -913,7 +915,7 @@ CHINESE = {
     "PEAK_AVG_P": "最大平均压强",
     "PEAK_BREECH_P": "最大膛底压强",
     "PEAK_SHOT_P": "最大弹底压强",
-    "auxFrmLabel": "膛内曲线",
+    "auxFrmLabel": "膛内示踪",
     "auxText": "".join(
         (
             "膛内压强示意图，各条压强曲线对应采样点，按平均气体温度着色。",
@@ -926,5 +928,7 @@ CHINESE = {
     "sffLabel": "安全系数",
     "afLabel": "炮管自紧",
     "gmLabel": "炮管质量",
+    "traceHull": "结构示踪",
+    "tracePress": "压强示踪",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}

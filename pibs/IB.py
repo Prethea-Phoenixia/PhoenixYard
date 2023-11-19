@@ -251,11 +251,12 @@ class InteriorBallisticsFrame(Frame):
         self.addAuxFrm()
         self.addspecFrm()
         self.addTblFrm()
-        self.update_idletasks()
+
+        # self.update_idletasks()
         self.addGeomPlot()
-        self.update_idletasks()
+        # self.update_idletasks()
         self.addFigPlot()
-        self.update_idletasks()
+        # self.update_idletasks()
         self.addAuxPlot()
 
         self.ambCallback()
@@ -599,10 +600,36 @@ class InteriorBallisticsFrame(Frame):
             allLC=checks,
         )
 
+        auxChecks = []
+        j += 1
+        k = 0
+        self.traceHull = LocLabelCheck(
+            parent=pltOptnFrm,
+            row=j,
+            col=k,
+            labelLocKey="traceHull",
+            locFunc=self.getLocStr,
+            allLC=auxChecks,
+        )
+
+        k += 1
+        self.tracePress = LocLabelCheck(
+            parent=pltOptnFrm,
+            row=j,
+            col=k,
+            labelLocKey="tracePress",
+            locFunc=self.getLocStr,
+            allLC=auxChecks,
+        )
+
         for check in checks:
             check.trace_add("write", self.updateFigPlot)
 
+        for check in auxChecks:
+            check.trace_add("write", self.updateAuxPlot)
+
         self.locs.extend(checks)
+        self.locs.extend(auxChecks)
 
     def addLeftFrm(self):
         leftFrm = ttk.Frame(self)
@@ -1700,36 +1727,12 @@ class InteriorBallisticsFrame(Frame):
 
     def addGeomPlot(self):
         geomPlotFrm = self.geomPlotFrm
-
-        # _, _, width, height = self.geomPlotFrm.bbox("insert")
-
-        # geomPlotFrm.config(height=0.5 * geomPlotFrm.winfo_width())
-
-        width = geomPlotFrm.winfo_width() - 2
-        height = geomPlotFrm.winfo_height() - 2
-
         geomPlotFrm.columnconfigure(0, weight=1)
         geomPlotFrm.rowconfigure(0, weight=1)
-
-        """
-        geomPlotFrm.config(width=width, height=width)
-        # we lock the frame the plot is put in
-        geomPlotFrm.grid_propagate(False)
-        # and lock it there
-        If we set the global dpi awareness for this window
-        to false (0), this will result in a correctly sized
-        window, and everything would be fine, ironically.
-        (in this case, dpi = dpi)
-        """
-        # last ditch effort to prevent blowing up the frame
         geomPlotFrm.grid_propagate(False)
 
-        dpi = self.dpi
         with mpl.rc_context(GEOM_CONTEXT):
-            fig = Figure(
-                figsize=(width / dpi, height / dpi),
-                dpi=96,
-            )
+            fig = Figure(dpi=96)
             self.geomFig = fig
             self.geomAx = fig.add_subplot(111)
 
@@ -1751,42 +1754,17 @@ class InteriorBallisticsFrame(Frame):
             allLLF=self.locs,
         )
         plotFrm.grid(row=2, column=1, sticky="nsew")
-        plotFrm.columnconfigure(0, weight=1)
-        plotFrm.rowconfigure(0, weight=1)
 
         self.plotFrm = plotFrm
 
     def addFigPlot(self):
         plotFrm = self.plotFrm
+        plotFrm.columnconfigure(0, weight=1)
+        plotFrm.rowconfigure(0, weight=1)
+        plotFrm.grid_propagate(False)
 
-        # this will force a resize event to ensure the inserted
-        # graph is of the correct size.
-
-        # this is necessary here because winfo_width() will return
-        # valid values with simply update_idletask()
-        width = plotFrm.winfo_width() - 6
-        # in pixels, -2 to account for label frame border thickness
-        # additional -4 for padding
-        height = plotFrm.winfo_height() - 6
-        # technically we also need to account for the height of the
-        # label frame text, but since its screen dependent its not
-        # really possible.
-
-        """
-        For some reason the above specification is not strictly adhered to
-        in practice, this might be a bug on tkAgg or matplotlib backend.
-        """
-        # plotFrm.grid_propagate(False)
-
-        dpi = self.dpi
         with mpl.rc_context(FIG_CONTEXT):
-            fig = Figure(
-                figsize=(width / dpi, height / dpi),
-                dpi=96,
-                layout="constrained",
-            )
-            # fig.subplots_adjust(bottom=0.1)
-
+            fig = Figure(dpi=96, layout="constrained")
             axes = fig.add_subplot(111)
 
             ax = axes
@@ -1799,9 +1777,6 @@ class InteriorBallisticsFrame(Frame):
             axv.yaxis.tick_left()
 
             ax.set_xlabel(" ")
-
-            # axv.spines.right.set_position(("axes", 1.0 + 45 * dpi / 96 / width))
-            # ax.spines.right.set_position("zero")
             axP.spines.right.set_position(("data", 0.5))
             axF.spines.left.set_position(("data", 0.5))
 
@@ -1832,30 +1807,18 @@ class InteriorBallisticsFrame(Frame):
             allLLF=self.locs,
         )
         auxFrm.grid(row=3, column=1, sticky="nsew")
-        auxFrm.columnconfigure(0, weight=1)
-        auxFrm.rowconfigure(0, weight=1)
 
         self.auxFrm = auxFrm
 
     def addAuxPlot(self):
         auxFrm = self.auxFrm
-        width = auxFrm.winfo_width() - 6
-        height = auxFrm.winfo_height() - 6
+        auxFrm.columnconfigure(0, weight=1)
+        auxFrm.rowconfigure(0, weight=1)
 
-        """
-        For some reason the above specification is not strictly adhered to
-        in practice, this might be a bug on tkAgg or matplotlib backend.
-        """
-        # auxFrm.grid_propagate(False)
+        auxFrm.grid_propagate(False)
 
-        dpi = self.dpi
         with mpl.rc_context(FIG_CONTEXT):
-            fig = Figure(
-                figsize=(width / dpi, height / dpi),
-                dpi=96,
-                layout="constrained",
-            )
-            # fig.subplots_adjust(bottom=0.1)
+            fig = Figure(dpi=96, layout="constrained")
 
             axes = fig.add_subplot(111)
 
@@ -1872,19 +1835,6 @@ class InteriorBallisticsFrame(Frame):
             )
 
             self.auxCanvas.draw_idle()
-
-    """
-    def resizePlot(self, event):
-        # we use the bbox method here as it has already accounted for padding
-        # so no adjustment here is necessary
-        width, height = self.fig.get_size_inches() * self.fig.dpi
-        dpi = self.dpi
-        with mpl.rc_context(FIG_CONTEXT):
-            self.axv.spines.right.set_position(
-                ("axes", 1 + 45 * dpi / 96 / width)
-            )
-            # self.pltCanvas.draw_idle() # this does help but isn't guaranteed to work
-        """
 
     def timedLoop(self):
         if self.process is not None:
@@ -2172,7 +2122,9 @@ class InteriorBallisticsFrame(Frame):
                 y = [v * 1e-6 for v in y]
                 x_max = max(x_max, max(x))
                 y_max = max(y_max, max(y))
-                self.auxAx.plot(x, y, c=color, alpha=alpha, ls=linestyle)
+
+                if self.tracePress.get():
+                    self.auxAx.plot(x, y, c=color, alpha=alpha, ls=linestyle)
 
             self.auxAx.set_xlim(left=0, right=x_max)
             self.auxAx.set_ylim(bottom=0, top=y_max * 1.15)
@@ -2191,14 +2143,16 @@ class InteriorBallisticsFrame(Frame):
             self.auxAx.set_xlabel(self.getLocStr("figAuxDomain"))
 
             HTrace = self.structure[1]
-            if HTrace is not None:
+            if HTrace is not None and self.traceHull.get():
                 xs, rhos = zip(*HTrace)
                 rhos = [r * rho for rho in rhos]
-                self.auxAxH.plot(xs, rhos, c="tab:blue", zorder=2.1)
                 inline = [chi_k**0.5 * r if x < l_c else r for x in xs]
+
+                self.auxAxH.plot(xs, rhos, c="tab:blue")
                 self.auxAxH.plot(xs, inline, c="tab:blue")
-                self.auxAxH.fill_between(xs, rhos, inline, alpha=0.5)
-                self.auxAxH.set_ylim(bottom=0)
+                self.auxAxH.fill_between(xs, rhos, inline, alpha=0.66)
+
+            self.auxAxH.set_ylim(bottom=0)
 
             self.auxFig.set_layout_engine("constrained")
             self.auxCanvas.draw_idle()
@@ -2213,7 +2167,7 @@ class InteriorBallisticsFrame(Frame):
         tblFrm.rowconfigure(0, weight=1)
         # configure the numerical
         self.tv = ttk.Treeview(
-            tblFrm, selectmode="browse", height=10
+            tblFrm, selectmode="browse", height=8
         )  # this set the nbr. of values
         self.tv.grid(row=0, column=0, sticky="nsew")
 
@@ -2372,7 +2326,7 @@ class InteriorBallisticsFrame(Frame):
         self.errorLst = []
 
     def updateTable(self):
-        self.update_idletasks()
+        # self.update_idletasks()
         self.tv.delete(*self.tv.get_children())
 
         try:
@@ -2832,10 +2786,10 @@ def main():
     root.rowconfigure(0, weight=1)
     InteriorBallisticsFrame(root, menubar, dpi)
 
-    root.state("zoomed")  # maximize window
     # center(root)
-    # root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
-
+    root.update_idletasks()
+    root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
+    root.state("zoomed")  # maximize window
     root.mainloop()
 
 
