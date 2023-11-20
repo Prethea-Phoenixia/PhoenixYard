@@ -236,7 +236,7 @@ class InteriorBallisticsFrame(Frame):
         self.rowconfigure(3, weight=2)
 
         self.addNamePlate()
-        self.addTopFrm()
+        # self.addTopFrm()
         self.addLeftFrm()
         self.addRightFrm()
         self.addErrFrm()
@@ -487,6 +487,7 @@ class InteriorBallisticsFrame(Frame):
 
         self.name = name
 
+    """
     def addTopFrm(self):
         topFrm = ttk.Frame(self)
         topFrm.grid(row=1, column=1, sticky="nsew")
@@ -502,128 +503,10 @@ class InteriorBallisticsFrame(Frame):
         )
         pltOptnFrm.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
 
-        for i in range(5):
-            pltOptnFrm.columnconfigure(i, weight=1)
 
-        checks = []
+        
 
-        j = 0
-        k = 0
-        self.plotAvgP = LocLabelCheck(
-            parent=pltOptnFrm,
-            row=j,
-            col=k,
-            labelLocKey="plotAvgP",
-            locFunc=self.getLocStr,
-            allLC=checks,
-        )
-        k += 1
-        self.plotBaseP = LocLabelCheck(
-            parent=pltOptnFrm,
-            row=j,
-            col=k,
-            labelLocKey="plotBaseP",
-            locFunc=self.getLocStr,
-            allLC=checks,
-        )
-
-        k += 1
-        self.plotBreechNozzleP = LocLabelCheck(
-            parent=pltOptnFrm,
-            row=j,
-            col=k,
-            descLabelKey="Breech/Nozzle Pressure",
-            locFunc=self.getLocStr,
-            allLC=checks,
-        )
-        k += 1
-        self.plotStagP = LocLabelCheck(
-            parent=pltOptnFrm,
-            row=j,
-            col=k,
-            labelLocKey="plotStagP",
-            locFunc=self.getLocStr,
-            allLC=checks,
-        )
-
-        j = 1
-        k = 0
-
-        self.plotVel = LocLabelCheck(
-            parent=pltOptnFrm,
-            row=j,
-            col=k,
-            labelLocKey="plotVel",
-            locFunc=self.getLocStr,
-            allLC=checks,
-        )
-        k += 1
-        self.plotNozzleV = LocLabelCheck(
-            parent=pltOptnFrm,
-            row=j,
-            col=k,
-            labelLocKey="plotNozzleV",
-            locFunc=self.getLocStr,
-            allLC=checks,
-        )
-        k += 1
-        self.plotBurnup = LocLabelCheck(
-            parent=pltOptnFrm,
-            row=j,
-            col=k,
-            labelLocKey="plotBurnup",
-            locFunc=self.getLocStr,
-            allLC=checks,
-        )
-        k += 1
-        self.plotEta = LocLabelCheck(
-            parent=pltOptnFrm,
-            row=j,
-            col=k,
-            labelLocKey="plotEta",
-            locFunc=self.getLocStr,
-            allLC=checks,
-        )
-        k += 1
-        self.plotRecoil = LocLabelCheck(
-            parent=pltOptnFrm,
-            row=j,
-            col=k,
-            labelLocKey="plotRecoil",
-            locFunc=self.getLocStr,
-            allLC=checks,
-        )
-
-        auxChecks = []
-        j += 1
-        k = 0
-        self.traceHull = LocLabelCheck(
-            parent=pltOptnFrm,
-            row=j,
-            col=k,
-            labelLocKey="traceHull",
-            locFunc=self.getLocStr,
-            allLC=auxChecks,
-        )
-
-        k += 1
-        self.tracePress = LocLabelCheck(
-            parent=pltOptnFrm,
-            row=j,
-            col=k,
-            labelLocKey="tracePress",
-            locFunc=self.getLocStr,
-            allLC=auxChecks,
-        )
-
-        for check in checks:
-            check.trace_add("write", self.updateFigPlot)
-
-        for check in auxChecks:
-            check.trace_add("write", self.updateAuxPlot)
-
-        self.locs.extend(checks)
-        self.locs.extend(auxChecks)
+    """
 
     def addLeftFrm(self):
         leftFrm = ttk.Frame(self)
@@ -1751,6 +1634,103 @@ class InteriorBallisticsFrame(Frame):
 
         self.plotFrm = plotFrm
 
+        for i in range(5):
+            plotFrm.columnconfigure(i, weight=1)
+
+        checks = []
+
+        j = 1
+        k = 0
+        self.plotAvgP = LocLabelCheck(
+            parent=plotFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotAvgP",
+            locFunc=self.getLocStr,
+            allLC=checks,
+        )
+        k += 1
+        self.plotBaseP = LocLabelCheck(
+            parent=plotFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotBaseP",
+            locFunc=self.getLocStr,
+            allLC=checks,
+        )
+
+        k += 1
+        self.plotBreechNozzleP = LocLabelCheck(
+            parent=plotFrm,
+            row=j,
+            col=k,
+            descLabelKey="Breech/Nozzle Pressure",
+            locFunc=self.getLocStr,
+            allLC=checks,
+        )
+        k += 1
+        self.plotStagP = LocLabelCheck(
+            parent=plotFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotStagP",
+            locFunc=self.getLocStr,
+            allLC=checks,
+        )
+
+        j += 1
+        k = 0
+
+        self.plotVel = LocLabelCheck(
+            parent=plotFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotVel",
+            locFunc=self.getLocStr,
+            allLC=checks,
+        )
+        k += 1
+        self.plotNozzleV = LocLabelCheck(
+            parent=plotFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotNozzleV",
+            locFunc=self.getLocStr,
+            allLC=checks,
+        )
+        k += 1
+        self.plotBurnup = LocLabelCheck(
+            parent=plotFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotBurnup",
+            locFunc=self.getLocStr,
+            allLC=checks,
+        )
+        k += 1
+        self.plotEta = LocLabelCheck(
+            parent=plotFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotEta",
+            locFunc=self.getLocStr,
+            allLC=checks,
+        )
+        k += 1
+        self.plotRecoil = LocLabelCheck(
+            parent=plotFrm,
+            row=j,
+            col=k,
+            labelLocKey="plotRecoil",
+            locFunc=self.getLocStr,
+            allLC=checks,
+        )
+
+        for check in checks:
+            check.trace_add("write", self.updateFigPlot)
+
+        self.locs.extend(checks)
+
     def addFigPlot(self):
         plotFrm = self.plotFrm
         plotFrm.columnconfigure(0, weight=1)
@@ -1785,7 +1765,7 @@ class InteriorBallisticsFrame(Frame):
 
             self.pltCanvas = FigureCanvasTkAgg(fig, master=plotFrm)
             self.pltCanvas.get_tk_widget().grid(
-                row=0, column=0, padx=2, pady=2, sticky="nsew"
+                row=0, column=0, padx=2, pady=2, sticky="nsew", columnspan=5
             )
 
             self.pltCanvas.draw_idle()
@@ -1801,8 +1781,37 @@ class InteriorBallisticsFrame(Frame):
             allLLF=self.locs,
         )
         auxFrm.grid(row=3, column=1, padx=2, pady=2, sticky="nsew")
-
         self.auxFrm = auxFrm
+
+        for i in range(2):
+            auxFrm.columnconfigure(i, weight=1)
+
+        auxChecks = []
+        j = 1
+        k = 0
+        self.traceHull = LocLabelCheck(
+            parent=auxFrm,
+            row=j,
+            col=k,
+            labelLocKey="traceHull",
+            locFunc=self.getLocStr,
+            allLC=auxChecks,
+        )
+
+        k += 1
+        self.tracePress = LocLabelCheck(
+            parent=auxFrm,
+            row=j,
+            col=k,
+            labelLocKey="tracePress",
+            locFunc=self.getLocStr,
+            allLC=auxChecks,
+        )
+
+        for check in auxChecks:
+            check.trace_add("write", self.updateAuxPlot)
+
+        self.locs.extend(auxChecks)
 
     def addAuxPlot(self):
         auxFrm = self.auxFrm
@@ -1825,7 +1834,7 @@ class InteriorBallisticsFrame(Frame):
             self.auxAxH.yaxis.tick_right()
             self.auxCanvas = FigureCanvasTkAgg(fig, master=auxFrm)
             self.auxCanvas.get_tk_widget().grid(
-                row=0, column=0, padx=2, pady=2, sticky="nsew"
+                row=0, column=0, padx=2, pady=2, sticky="nsew", columnspan=2
             )
 
             self.auxCanvas.draw_idle()
@@ -1845,7 +1854,12 @@ class InteriorBallisticsFrame(Frame):
     def updateFigPlot(self, *args):
         gun = self.gun
         if gun is None:
-            self.pltCanvas.draw_idle()
+            with mpl.rc_context(FIG_CONTEXT):
+                self.ax.cla()
+                self.axP.cla()
+                self.axv.cla()
+                self.axF.cla()
+                self.pltCanvas.draw_idle()
             return
 
         with mpl.rc_context(FIG_CONTEXT):
@@ -2076,7 +2090,10 @@ class InteriorBallisticsFrame(Frame):
     def updateAuxPlot(self, *args):
         gun = self.gun
         if gun is None:
-            self.auxCanvas.draw_idle()
+            with mpl.rc_context(FIG_CONTEXT):
+                self.auxAx.cla()
+                self.auxAxH.cla()
+                self.auxCanvas.draw_idle()
             return
 
         with mpl.rc_context(FIG_CONTEXT):
