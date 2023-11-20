@@ -153,7 +153,6 @@ class InteriorBallisticsFrame(Frame):
         self.queue = Queue()
         self.process = None
 
-        # self.pos = -1
         self.dpi = dpi
         self.parent = parent
         self.forceUpdOnThemeWidget = []
@@ -174,11 +173,6 @@ class InteriorBallisticsFrame(Frame):
         )
         langMenu = Menu(menubar)
         menubar.add_cascade(label="Lang 语言", menu=langMenu, underline=0)
-
-        """solMenu = Menu(menubar)
-        menubar.add_cascade(
-            label=self.getLocStr("solLabel"), menu=solMenu, underline=0
-        )"""
 
         self.fileMenu = fileMenu
         self.themeMenu = themeMenu
@@ -1753,7 +1747,7 @@ class InteriorBallisticsFrame(Frame):
             tooltipLocKey="plotText",
             allLLF=self.locs,
         )
-        plotFrm.grid(row=2, column=1, sticky="nsew")
+        plotFrm.grid(row=2, column=1, padx=2, pady=2, sticky="nsew")
 
         self.plotFrm = plotFrm
 
@@ -1806,7 +1800,7 @@ class InteriorBallisticsFrame(Frame):
             tooltipLocKey="auxText",
             allLLF=self.locs,
         )
-        auxFrm.grid(row=3, column=1, sticky="nsew")
+        auxFrm.grid(row=3, column=1, padx=2, pady=2, sticky="nsew")
 
         self.auxFrm = auxFrm
 
@@ -1860,18 +1854,9 @@ class InteriorBallisticsFrame(Frame):
             self.axv.cla()
             self.axF.cla()
 
-            dpi = self.dpi
-            size = self.fig.get_size_inches() * self.fig.dpi
-            """
-            self.ax.spines.right.set_position(
-                ("axes", 1 - 45 * dpi / 96 / size[0])
-            )"""
-            # self.ax.spines.right.set_position("zero")
-
             vTgt = self.kwargs["designVelocity"]
             gunType = self.kwargs["typ"]
             dom = self.kwargs["dom"]
-            # tol = self.kwargs["tol"]
 
             xs, vs = [], []
 
@@ -2150,7 +2135,12 @@ class InteriorBallisticsFrame(Frame):
 
                 self.auxAxH.plot(xs, rhos, c="tab:blue")
                 self.auxAxH.plot(xs, inline, c="tab:blue")
-                self.auxAxH.fill_between(xs, rhos, inline, alpha=0.66)
+                self.auxAxH.fill_between(
+                    xs,
+                    rhos,
+                    inline,
+                    alpha=0.5 if self.tracePress.get() else 0.8,
+                )
 
             self.auxAxH.set_ylim(bottom=0)
 
@@ -2326,7 +2316,6 @@ class InteriorBallisticsFrame(Frame):
         self.errorLst = []
 
     def updateTable(self):
-        # self.update_idletasks()
         self.tv.delete(*self.tv.get_children())
 
         try:
@@ -2651,8 +2640,6 @@ def calculate(
     optimize = kwargs["opt"]
     debug = kwargs["deb"]
 
-    # sigfig = int(-log10(kwargs["tol"])) + 1
-
     try:
         if constrain:
             if gunType == CONVENTIONAL:
@@ -2662,14 +2649,11 @@ def calculate(
 
             if optimize:
                 l_f, e_1, l_g = constrained.findMinV(**kwargs)
-                # kwargs.update({"loadFraction": roundSig(l_f, n=sigfig)})
                 kwargs.update({"loadFraction": l_f})
             else:
                 e_1, l_g = constrained.solve(**kwargs)
 
-            # kwargs.update({"grainSize": roundSig(2 * e_1, n=sigfig)})
             kwargs.update({"grainSize": 2 * e_1})
-            # kwargs.update({"lengthGun": roundSig(l_g, n=sigfig)})
             kwargs.update({"lengthGun": l_g})
 
             chamberVolume = (
