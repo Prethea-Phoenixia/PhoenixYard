@@ -143,8 +143,8 @@ class Gun:
             if self.psi_0 <= 0:
                 raise ValueError(
                     "Initial burnup fraction is solved to be negative."
-                    + " In practice this implies a detonation of the gun"
-                    + " breech will likely occur."
+                    + " In practice this implies a detonation of the chmaber"
+                    + " will likely occur."
                 )
 
         Zs = cubic(
@@ -994,7 +994,7 @@ class Gun:
 
         except Exception as e:
             print(e)
-            structure = [None, None]
+            structure = [None, None, None, None]
 
         return data, error, p_trace, structure
 
@@ -1048,7 +1048,7 @@ class Gun:
         l: projectile travel
         p_s: pressure of shot
         p_b: pressure of breech
-        x: probe point, start from the breech bottom.
+        x: probe point, start from the breech face.
         """
         L_1 = l
         L_0 = self.l_0 / self.chi_k  # physical length of the chamber.
@@ -1083,8 +1083,11 @@ class Gun:
         return p_x, u
 
     def getStructural(self, data, step, tol):
+        # step 1. calculate the barrel mass
+        r = 0.5 * self.caliber
         l_c = self.l_c
         l_g = self.l_g
+        chi_k = self.chi_k
         x_probes = (
             [i / step * l_c for i in range(step)]
             + [l_c * (1 - tol)]
@@ -1232,7 +1235,7 @@ class Gun:
             i = x_probes.index(l_c)
             x_c, p_c = x_probes[:i], p_probes[:i]
             x_b, p_b = x_probes[i:], p_probes[i:]
-            Vrho_c = Vrho_k(x_c, p_c, S * self.chi_k)
+            Vrho_c = Vrho_k(x_c, p_c, S * chi_k)
             Vrho_b = Vrho_k(x_b, p_b, S)
 
             V = Vrho_c[0] + Vrho_b[0]
@@ -1281,18 +1284,41 @@ class Gun:
                 rho_1 = rho_probes[i + 1]
                 dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
                 if x_1 <= l_c:
-                    V += dV * self.chi_k
+                    V += dV * chi_k
                 else:
                     V += dV
 
-        hull = []
+        P__sigma = p_probes[0] / sigma * 2  # 2 for interrupted screw
+        R2__rb = rho_probes[0]
+        R1__R2 = max((1 - 1 / R2__rb * (P__sigma) ** 0.5) ** 0.5, R2__rb**-1)
+        R1__rb = R1__R2 * R2__rb
+        L__rb = 0.5 * (
+            P__sigma**0.5
+            * (R1__rb**2 / P__sigma - R1__R2**2 / (1 - R1__R2**2)) ** -0.5
+        )
+
+        rb = r * chi_k**0.5
+        Sb = S * chi_k
+
+        L = L__rb * rb
+        R1 = R1__rb * rb
+
+        bore = []
         for x, rho in zip(x_probes, rho_probes):
             if x < l_c:
-                hull.append((x, rho * self.chi_k**0.5))
+                bore.append((x, rho * rb))
             else:
-                hull.append((x, rho))
+                bore.append((x, rho * r))
 
-        return V * self.material.rho, hull
+        bore_mass = (
+            V + (R2__rb**2 - R1__rb**2) * Sb * L
+        ) * self.material.rho
+
+        breech = [(-L, R1), (0.0, R1)]
+
+        breech_mass = R1__rb**2 * Sb * L * self.material.rho
+
+        return bore_mass, bore, breech_mass, breech
 
 
 if __name__ == "__main__":
@@ -1324,7 +1350,7 @@ if __name__ == "__main__":
         lengthGun=3.5,
         chambrage=1.5,
         dragCoefficient=0.05,
-        structuralMaterial=Material._30SIMN2MOVA,
+        structuralMaterial=Material._30SIMN2MOVA.createMaterialAtTemp(0),
         structuralSafetyFactor=1.1,
         # autofrettage=False,
     )

@@ -101,7 +101,7 @@ class Recoiless:
             if self.psi_0 <= 0:
                 raise ValueError(
                     "Initial burnup fraction is solved to be negative."
-                    + " In practice this implies a detonation of the gun breech"
+                    + " In practice this implies a detonation of the chamber"
                     + " will likely occur."
                 )
 
@@ -1059,7 +1059,7 @@ class Recoiless:
 
         except Exception as e:
             print(e)
-            structure = [None, None]
+            structure = [None, None, None, None]
 
         return data, error, p_trace, structure
 
@@ -1178,6 +1178,7 @@ class Recoiless:
         return Cf
 
     def getStructural(self, data, step, tol):
+        r = 0.5 * self.caliber
         l_c = self.l_c
         l_g = self.l_g
         x_probes = (
@@ -1383,11 +1384,11 @@ class Recoiless:
         hull = []
         for x, rho in zip(x_probes, rho_probes):
             if x < l_c:
-                hull.append((x, rho * self.chi_k**0.5))
+                hull.append((x, rho * self.chi_k**0.5 * r))
             else:
-                hull.append((x, rho))
+                hull.append((x, rho * r))
 
-        return V * self.material.rho, hull
+        return V * self.material.rho, hull, None, None
 
 
 if __name__ == "__main__":

@@ -120,7 +120,8 @@ def RKF78(
     debug=False,
 ):
     """
-    use Runge Kutta Fehlberg of 7(8)th power to solve system of Equation dFunc
+    use Runge Kutta Fehlberg of 7(8)th power to solve system of equation
+    as defined by dFunc
 
     Arguments:
         dFunc   : d/dx|x=x(y1, y2, y3....) = dFunc(x, y1, y2, y3..., dx)

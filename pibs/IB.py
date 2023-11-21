@@ -41,6 +41,7 @@ from misc import (
     resolvepath,
     roundSig,
     loadfont,
+    formatMass,
 )
 from math import ceil, pi, log10
 
@@ -593,6 +594,15 @@ class InteriorBallisticsFrame(Frame):
             parent=parFrm,
             row=i,
             labelLocKey="gmLabel",
+            locFunc=self.getLocStr,
+            allDisps=self.locs,
+        )
+
+        i += 2
+        self.bm = Loc12Disp(
+            parent=parFrm,
+            row=i,
+            labelLocKey="bmLabel",
             locFunc=self.getLocStr,
             allDisps=self.locs,
         )
@@ -1226,10 +1236,16 @@ class InteriorBallisticsFrame(Frame):
 
             self.name.set(self.getDescriptive())
 
-            mass = self.structure[0]
+            bore_mass = self.structure[0]
 
             self.gm.set(
-                toSI(mass * 1e3, unit="g") if mass is not None else "N/A"
+                formatMass(bore_mass) if bore_mass is not None else "N/A"
+            )
+
+            breech_mass = self.structure[2]
+
+            self.bm.set(
+                formatMass(breech_mass) if breech_mass is not None else "N/A"
             )
 
         self.updateTable()
@@ -2099,6 +2115,7 @@ class InteriorBallisticsFrame(Frame):
         with mpl.rc_context(FIG_CONTEXT):
             self.auxAx.cla()
             self.auxAxH.cla()
+            gunType = self.kwargs["typ"]
 
             pTrace = self.pressureTrace
 
@@ -2145,18 +2162,44 @@ class InteriorBallisticsFrame(Frame):
             self.auxAx.set_xlabel(self.getLocStr("figAuxDomain"))
 
             HTrace = self.structure[1]
-            if HTrace is not None and self.traceHull.get():
-                xs, rhos = zip(*HTrace)
-                rhos = [r * rho for rho in rhos]
-                inline = [chi_k**0.5 * r if x < l_c else r for x in xs]
 
-                self.auxAxH.plot(xs, rhos, c="tab:blue")
-                self.auxAxH.plot(xs, inline, c="tab:blue")
+            if HTrace is not None and self.traceHull.get():
+                xHull, rHull = zip(*HTrace)
+                rHull = [r * 1e3 for r in rHull]
+                inline = [chi_k**0.5 * r if x < l_c else r for x in xHull]
+                rRim = rHull[0]
+
+                BTrace = self.structure[3]
+                if gunType == CONVENTIONAL and BTrace is not None:
+                    xBreech, rBreech = zip(*BTrace)
+                    rBreech = [r * 1e3 for r in rBreech]
+                    rFace = rBreech[-1]
+
+                    self.auxAxH.plot(xBreech, rBreech, c="tab:green")
+                    self.auxAxH.fill_between(
+                        xBreech,
+                        rBreech,
+                        [0 for _ in xBreech],
+                        alpha=0.5 if self.tracePress.get() else 0.8,
+                        color="tab:green",
+                    )
+
+                    xBase = min(xBreech)
+                    self.auxAx.set_xlim(left=xBase)
+
+                    xHull = list(xBreech) + list(xHull)
+                    rHull = [rRim for _ in xBreech] + rHull
+                    inline = [rFace for _ in xBreech] + inline
+
+                self.auxAxH.plot(xHull, rHull, c="tab:blue")
+                self.auxAxH.plot(xHull, inline, c="tab:blue")
+
                 self.auxAxH.fill_between(
-                    xs,
-                    rhos,
+                    xHull,
+                    rHull,
                     inline,
                     alpha=0.5 if self.tracePress.get() else 0.8,
+                    color="tab:blue",
                 )
 
             self.auxAxH.set_ylim(bottom=0)
@@ -2637,7 +2680,7 @@ class InteriorBallisticsFrame(Frame):
             self.updateFigPlot()
             self.updateAuxPlot()
 
-        except AttributeError as e:
+        except AttributeError:
             pass
         try:
             self.tv.tag_configure("oddrow", background=bgc)

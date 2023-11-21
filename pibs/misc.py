@@ -197,34 +197,23 @@ def dot_aligned(matrix, units, useSN, stripWS=True):
     return tuple(zip(*transposed))
 
 
-"""
-def center(win):
-    #centers a tkinter window
-    #:param win: the main window or Toplevel window to center
-
-    from win32api import GetMonitorInfo, MonitorFromPoint
-
-    monitor_info = GetMonitorInfo(MonitorFromPoint((0, 0)))
-    monitor_area = monitor_info.get("Monitor")
-    work_area = monitor_info.get("Work")
-    # print("The taskbar height is {}.".format(monitor_area[3] - work_area[3]))
-    taskbar_height = monitor_area[3] - work_area[3]
-    win.update_idletasks()
-    width = win.winfo_width()
-    frm_width = win.winfo_rootx() - win.winfo_x()
-    win_width = width + 2 * frm_width
-    height = win.winfo_height()
-    titlebar_height = win.winfo_rooty() - win.winfo_y()
-    win_height = height + titlebar_height + frm_width
-    x = win.winfo_screenwidth() // 2 - win_width // 2
-    y = (win.winfo_screenheight() - taskbar_height) // 2 - win_height // 2
-    win.geometry("{}x{}+{}+{}".format(width, height, x, y))
-    win.deiconify()
-"""
-
-
 def roundSig(x, n=4):
     return round(x, (n - 1) - int(floor(log10(abs(x)))))
+
+
+def formatMass(m, n=4):
+    if m < 1e-3:
+        return "{:.{:}g} mg".format(m * 1e6, n)
+    elif m < 1:
+        return "{:.{:}g} g".format(m * 1e3, n)
+    elif m < 1000:
+        return "{:.{:}g} kg".format(m, n)
+    elif m < 1e6:
+        return "{:.{:}g} t".format(m * 1e-3, n)
+    elif m < 1e9:
+        return "{:.{:}g} kt".format(m * 1e-6, n)
+    elif m < 1e12:
+        return "{:.{:}g} Mt".format(m * 1e-9, n)
 
 
 if __name__ == "__main__":

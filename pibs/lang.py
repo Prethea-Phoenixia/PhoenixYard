@@ -537,10 +537,11 @@ ENGLISH = {
     "matFrmTempLabel": "Structural Temperature",
     "sffLabel": "Safety Fact.",
     "afLabel": "Autofrettage",
-    "gmLabel": "Gun Mass",
+    "gmLabel": "Bore Mass",
     "traceHull": "Tube Trace",
     "tracePress": "Pressure Trace",
     "segmentLabel": "Segments",
+    "bmLabel": "Breech Mass",
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -932,5 +933,6 @@ CHINESE = {
     "traceHull": "结构曲线",
     "tracePress": "压强曲线",
     "segmentLabel": "结构分段",
+    "bmLabel": "炮尾质量",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}
