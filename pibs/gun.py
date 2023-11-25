@@ -1091,8 +1091,8 @@ class Gun:
         sigma = self.material.Y
         S = self.S
 
-        rb = r * chi_k**0.5
-        Sb = S * chi_k
+        rb = r * chi_k**0.5  # radius of breech
+        Sb = S * chi_k  # area of breech
 
         x_probes = (
             [i / step * l_c for i in range(step)]
@@ -1115,115 +1115,6 @@ class Gun:
             x = x_probes[i]
             p_probes[i] = p * self.ssf
 
-        def sigma_vM(k, p, m):
-            """
-            Calculate the von Misses stress at the plastic-elastic
-            juncture. This is the limiting stress point for an auto-
-            frettaged gun barrel under internal pressure loading.
-            """
-            sigma_tr = (
-                sigma
-                * (k / m) ** 2
-                * (
-                    (m / k) ** 2
-                    - (1 - (m / k) ** 2 + 2 * log(m)) / (k**2 - 1)
-                )
-                + 2 * p / (k**2 - 1) * (k / m) ** 2
-            )
-            return (
-                sigma_tr * 3**0.5 * 0.5
-            )  # convert Tresca to von Misses equivalent stress
-
-        def Vrho_k(x_s, p_s, S):
-            def f(m):
-                rho_s = []
-                V = 0
-                for p in p_s:
-                    sigma_max = sigma_vM(m, p, m)
-                    """
-                    the limit as k -> +inf for the stress is:
-
-                    lim sigma_tr =
-                     k-> +inf
-                      sigma * [1 - (1 + 2 ln(m))/m**2 ] + 2p/m**2
-                    """
-                    if sigma > sigma_max:
-                        rho = m
-                    else:
-                        rho = 0.5 * sum(
-                            secant(
-                                lambda k: sigma_vM(k, p, m),
-                                m,
-                                m + tol,
-                                y=sigma,
-                                x_min=m,
-                                y_rel_tol=tol,
-                            )
-                        )
-
-                    rho_s.append(rho)
-
-                for i in range(len(x_s) - 1):
-                    x_0 = x_s[i]
-                    x_1 = x_s[i + 1]
-                    rho_0 = rho_s[i]
-                    rho_1 = rho_s[i + 1]
-                    dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * (x_1 - x_0) * S
-                    V += dV
-                return V, rho_s
-
-            p_max = max(p_s)
-
-            def sigma_min(m):
-                return (
-                    (
-                        sigma * (1 - (1 + 2 * log(m)) / m**2)
-                        + 2 * p_max / m**2
-                    )
-                    * 3**0.5
-                    * 0.5
-                )
-
-            m_opt = exp(max(p_s) / sigma * 3**0.5 * 0.5)
-
-            if sigma_min(m_opt) > sigma:
-                """if the minimum junction stress at the optimal autofrettage
-                fraction cannot be achieved down to material yield even as
-                the thickness goes to infinity, raise an error and abort
-                calculation"""
-                raise ValueError()
-
-            elif sigma_min(1) > sigma:
-                """if the minimum junction stress at an autofrettage fraction
-                of 1 exceeds material yield, implies a certain amount of
-                autofrettaging is required to contain the pressure"""
-                m_min = 0.5 * sum(
-                    secant(
-                        sigma_min,
-                        1 + tol,
-                        m_opt,
-                        y=sigma * (1 - tol),
-                        x_min=1,
-                        y_rel_tol=tol,
-                    )
-                )
-                """safety, fudge code to ensure a valid minimum autofrettage
-                fraction is found.
-                """
-                while sigma_min(m_min) > sigma:
-                    m_min *= 1 + tol
-
-            else:
-                m_min = 1 + tol
-
-            m_best = 0.5 * sum(
-                gss(
-                    lambda m: f(m)[0], m_min, m_opt, y_rel_tol=tol, findMin=True
-                )
-            )
-
-            return f(m_best)
-
         if self.is_af:
             """
             m : r_a / r_i
@@ -1238,8 +1129,8 @@ class Gun:
             i = x_probes.index(l_c)
             x_c, p_c = x_probes[:i], p_probes[:i]
             x_b, p_b = x_probes[i:], p_probes[i:]
-            Vrho_c = Vrho_k(x_c, p_c, S * chi_k)
-            Vrho_b = Vrho_k(x_b, p_b, S)
+            Vrho_c = Gun._Vrho_k(x_c, p_c, S * chi_k, sigma, tol)
+            Vrho_b = Gun._Vrho_k(x_b, p_b, S, sigma, tol)
 
             V = Vrho_c[0] + Vrho_b[0]
             rho_probes = Vrho_c[1] + Vrho_b[1]
@@ -1274,12 +1165,6 @@ class Gun:
                 y = p / sigma
                 if y > 3**-0.5:
                     raise ValueError()
-                """
-                rho = (
-                    (-((-(y**2) * (3 * y**2 - 4)) ** 0.5) - 1)
-                    / (3 * y**2 - 1)
-                ) ** 0.5
-                """
                 rho = (
                     (1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)
                 ) ** 0.5
@@ -1324,6 +1209,109 @@ class Gun:
         breech_mass = R1__rb**2 * Sb * L * self.material.rho
 
         return bore_mass, bore, breech_mass, breech
+
+    @staticmethod
+    def _Vrho_k(x_s, p_s, S, sigma, tol):
+        def f(m):
+            rho_s = []
+            V = 0
+            for p in p_s:
+                sigma_max = Gun._sigma_vM(m, p, m, sigma)
+                """
+                the limit as k -> +inf for the stress is:
+
+                lim sigma_tr =
+                 k-> +inf
+                  sigma * [1 - (1 + 2 ln(m))/m**2 ] + 2p/m**2
+                """
+                if sigma > sigma_max:
+                    rho = m
+                else:
+                    rho = 0.5 * sum(
+                        secant(
+                            lambda k: Gun._sigma_vM(k, p, m, sigma),
+                            m,
+                            m + tol,
+                            y=sigma,
+                            x_min=m,
+                            y_rel_tol=tol,
+                        )
+                    )
+
+                rho_s.append(rho)
+
+            for i in range(len(x_s) - 1):
+                x_0 = x_s[i]
+                x_1 = x_s[i + 1]
+                rho_0 = rho_s[i]
+                rho_1 = rho_s[i + 1]
+                dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * (x_1 - x_0) * S
+                V += dV
+            return V, rho_s
+
+        p_max = max(p_s)
+
+        def sigma_min(m):
+            return (
+                (sigma * (1 - (1 + 2 * log(m)) / m**2) + 2 * p_max / m**2)
+                * 3**0.5
+                * 0.5
+            )
+
+        m_opt = exp(max(p_s) / sigma * 3**0.5 * 0.5)
+
+        if sigma_min(m_opt) > sigma:
+            """if the minimum junction stress at the optimal autofrettage
+            fraction cannot be achieved down to material yield even as
+            the thickness goes to infinity, raise an error and abort
+            calculation"""
+            raise ValueError()
+
+        elif sigma_min(1) > sigma:
+            """if the minimum junction stress at an autofrettage fraction
+            of 1 exceeds material yield, implies a certain amount of
+            autofrettaging is required to contain the pressure"""
+            m_min = 0.5 * sum(
+                secant(
+                    sigma_min,
+                    1 + tol,
+                    m_opt,
+                    y=sigma * (1 - tol),
+                    x_min=1,
+                    y_rel_tol=tol,
+                )
+            )
+            """safety, fudge code to ensure a valid minimum autofrettage
+            fraction is found.
+            """
+            while sigma_min(m_min) > sigma:
+                m_min *= 1 + tol
+
+        else:
+            m_min = 1 + tol
+
+        m_best = 0.5 * sum(
+            gss(lambda m: f(m)[0], m_min, m_opt, y_rel_tol=tol, findMin=True)
+        )
+
+        return f(m_best)
+
+    @staticmethod
+    def _sigma_vM(k, p, m, sigma):
+        """
+        Calculate the von Misses stress at the plastic-elastic
+        juncture. This is the limiting stress point for an auto-
+        frettaged gun barrel under internal pressure loading.
+        """
+        sigma_tr = (
+            sigma
+            * (k / m) ** 2
+            * ((m / k) ** 2 - (1 - (m / k) ** 2 + 2 * log(m)) / (k**2 - 1))
+            + 2 * p / (k**2 - 1) * (k / m) ** 2
+        )
+        return (
+            sigma_tr * 3**0.5 * 0.5
+        )  # convert Tresca to von Misses equivalent stress
 
 
 if __name__ == "__main__":

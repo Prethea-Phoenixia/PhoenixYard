@@ -792,7 +792,7 @@ class InteriorBallisticsFrame(Frame):
             col=0,
             labelLocKey="vTgtLabel",
             unitText="m/s",
-            default="1500.0",
+            default="1200.0",
             validation=validationNN,
             locFunc=self.getLocStr,
             allInputs=self.locs,

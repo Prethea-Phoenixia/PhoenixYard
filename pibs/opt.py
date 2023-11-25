@@ -503,7 +503,7 @@ class Constrained:
                 labda_1=labda_1,
                 labda_2=labda_2,
                 sol=sol,
-                cc=cc_n * 0.5 + cc * 0.5,
+                cc=cc_n,
                 it=it + 1,
                 ambientRho=ambientRho,
                 ambientP=ambientP,
