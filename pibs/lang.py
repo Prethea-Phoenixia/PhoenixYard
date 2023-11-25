@@ -542,6 +542,7 @@ ENGLISH = {
     "tracePress": "Pressure Trace",
     "segmentLabel": "Segments",
     "bmLabel": "Breech Mass",
+    "nmLabel": "Nozzle Mass",
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -934,5 +935,6 @@ CHINESE = {
     "tracePress": "压强曲线",
     "segmentLabel": "结构分段",
     "bmLabel": "炮尾质量",
+    "nmLabel": "喷管质量",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}

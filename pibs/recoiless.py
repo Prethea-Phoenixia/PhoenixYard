@@ -1,5 +1,5 @@
-from math import pi, inf, exp, log
-from num import gss, RKF78, cubic, secant
+from math import pi, inf, exp, log, tan, cos
+from num import gss, RKF78, cubic, secant, dekker
 from prop import GrainComp, Propellant
 
 from gun import DOMAIN_TIME, DOMAIN_LENG
@@ -1181,6 +1181,21 @@ class Recoiless:
         r = 0.5 * self.caliber
         l_c = self.l_c
         l_g = self.l_g
+        chi_k = self.chi_k
+        sigma = self.material.Y
+        S = self.S
+        gamma = self.theta + 1
+
+        S_j_bar = self.S_j_bar
+        A_bar = self.A_bar
+        r_k = r * chi_k**0.5
+        r_b = r_k * S_j_bar**0.5
+        r_a = r_b * A_bar**0.5
+
+        S_k = S * chi_k
+        S_b = S_k * S_j_bar
+        S_a = S_b * A_bar
+
         x_probes = (
             [i / step * l_c for i in range(step)]
             + [l_c * (1 - tol)]
@@ -1201,9 +1216,6 @@ class Recoiless:
         for i, p in enumerate(p_probes):
             x = x_probes[i]
             p_probes[i] = p * self.ssf
-
-        sigma = self.material.Y
-        S = self.S
 
         def sigma_vM(k, p, m):
             """
@@ -1364,9 +1376,14 @@ class Recoiless:
                 y = p / sigma
                 if y > 3**-0.5:
                     raise ValueError()
+                """
                 rho = (
                     (-((-(y**2) * (3 * y**2 - 4)) ** 0.5) - 1)
                     / (3 * y**2 - 1)
+                ) ** 0.5
+                """
+                rho = (
+                    (1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)
                 ) ** 0.5
                 rho_probes.append(rho)
 
@@ -1381,6 +1398,8 @@ class Recoiless:
                 else:
                     V += dV
 
+        tubeMass = V * self.material.rho
+
         hull = []
         for x, rho in zip(x_probes, rho_probes):
             if x < l_c:
@@ -1388,14 +1407,125 @@ class Recoiless:
             else:
                 hull.append((x, rho * r))
 
-        return V * self.material.rho, hull, None, None
+        """
+        subscript k denote the end of the chamber
+        subscript b denote the throat of nozzle
+        subscript a denote the nozzle base.
+
+        beta is the half angle of the constriction section
+        alpha is the half angle of the expansion section
+        """
+        beta = 45
+        l_b = (r_k - r_b) / tan(beta * pi / 180)
+        alpha = 15
+        l_a = (r_a - r_b) / tan(alpha * pi / 180)
+
+        p_max = p_probes[0]
+        """
+        For nozzle design, we simply take the maximum breech face pressure
+        as the maximum pressure 
+        """
+
+        nozzle = []
+
+        neg_x_probes = (
+            [-l_b - l_a + l_a * i / step for i in range(step)]
+            + [-l_b - tol * l_a]
+            + [-l_b + l_b * i / step for i in range(step)]
+            + [0]
+        )
+
+        for x in neg_x_probes:
+            if x < -l_b:
+                k = (x + l_b + l_a) / l_a
+                r = k * r_b + (1 - k) * r_a
+                p = (
+                    Recoiless.getPr(gamma, (r / r_b) ** 2, tol)[1]
+                    / ((2 / (gamma + 1)) ** (gamma / (gamma - 1)))
+                    * p_max
+                )
+            else:
+                k = (x + l_b) / l_b
+                r = k * r_k + (1 - k) * r_b
+                p = p_max
+            y = p / sigma
+            rho = ((1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)) ** 0.5
+            nozzle.append((x, r, r * rho))
+
+        V = 0
+
+        for i, (x_0, r_i_0, r_o_0) in enumerate(nozzle[:-1]):
+            x_1, r_i_1, r_o_1 = nozzle[i + 1]
+            h = x_1 - x_0
+            S_0 = pi * (r_o_0**2 - r_i_0**2)
+            S_1 = pi * (r_o_1**2 - r_i_1**2)
+
+            V += 0.5 * (S_0 + S_1) * h
+
+        nozzleMass = V * self.material.rho
+
+        return tubeMass, hull, nozzleMass, nozzle
+
+    @staticmethod
+    def getAr(gamma, Pr):
+        if Pr == 0 or Pr == 1:
+            return inf
+        return (
+            (0.5 * (gamma + 1)) ** (1 / (gamma - 1))
+            * Pr ** (1 / gamma)
+            * ((gamma + 1) / (gamma - 1) * (1 - Pr ** ((gamma - 1) / gamma)))
+            ** 0.5
+        ) ** -1
+
+    @staticmethod
+    def getPr(gamma, Ar, tol):
+        """
+        Given an area ratio Ar, calculate the pressure ratio Pr for a
+        converging-diverging nozzle. One area ratio corresponds to two
+        pressure ratio, for subsonic and supersonic, respectively.
+
+        Ar: Nozzle cs area at probe point x over throat area
+            Ar = Ax / At
+        Pr: pressure ratio at probe point x over upstream pressure
+            Pr = Px / Pc
+
+        returns:
+            Pr_sub: subsonic solution
+            Pr_sup: supersonic solution
+
+        """
+        # pressure ratio of nozzle throat over the upstream pressure
+        Pr_c = (2 / (gamma + 1)) ** (gamma / (gamma - 1))
+
+        Pr_sup = 0.5 * sum(
+            dekker(
+                lambda Pr: Recoiless.getAr(gamma, Pr),
+                0,
+                Pr_c,
+                y=Ar,
+                y_rel_tol=tol,
+            )
+        )
+        Pr_sub = 0.5 * sum(
+            dekker(
+                lambda Pr: Recoiless.getAr(gamma, Pr),
+                Pr_c,
+                1,
+                y=Ar,
+                y_rel_tol=tol,
+            )
+        )
+
+        return Pr_sub, Pr_sup
 
 
 if __name__ == "__main__":
     """standard 7 hole cylinder has d_0=e_1, hole dia = 0.5 * arc width
     d_0 = 4*2e_1+3*d_0 = 11 * e_1
     """
+
     from tabulate import tabulate
+    from material import Material
 
     compositions = GrainComp.readFile("data/propellants.csv")
 
@@ -1418,6 +1548,8 @@ if __name__ == "__main__":
         lengthGun=3.5,
         nozzleExpansion=2.0,
         chambrage=1.0,
+        structuralMaterial=Material._30SIMN2MOVA.createMaterialAtTemp(0),
+        structuralSafetyFactor=1.1,
     )
     record = []
 

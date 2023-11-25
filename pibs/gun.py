@@ -1088,6 +1088,12 @@ class Gun:
         l_c = self.l_c
         l_g = self.l_g
         chi_k = self.chi_k
+        sigma = self.material.Y
+        S = self.S
+
+        rb = r * chi_k**0.5
+        Sb = S * chi_k
+
         x_probes = (
             [i / step * l_c for i in range(step)]
             + [l_c * (1 - tol)]
@@ -1108,9 +1114,6 @@ class Gun:
         for i, p in enumerate(p_probes):
             x = x_probes[i]
             p_probes[i] = p * self.ssf
-
-        sigma = self.material.Y
-        S = self.S
 
         def sigma_vM(k, p, m):
             """
@@ -1271,9 +1274,14 @@ class Gun:
                 y = p / sigma
                 if y > 3**-0.5:
                     raise ValueError()
+                """
                 rho = (
                     (-((-(y**2) * (3 * y**2 - 4)) ** 0.5) - 1)
                     / (3 * y**2 - 1)
+                ) ** 0.5
+                """
+                rho = (
+                    (1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)
                 ) ** 0.5
                 rho_probes.append(rho)
 
@@ -1296,9 +1304,6 @@ class Gun:
             P__sigma**0.5
             * (R1__rb**2 / P__sigma - R1__R2**2 / (1 - R1__R2**2)) ** -0.5
         )
-
-        rb = r * chi_k**0.5
-        Sb = S * chi_k
 
         L = L__rb * rb
         R1 = R1__rb * rb

@@ -1,28 +1,12 @@
-from tkinter import (
-    Frame,
-    Menu,
-    Text,
-    filedialog,
-    messagebox,
-    StringVar,
-    IntVar,
-    Tk,
-    ttk,
-)
+from tkinter import Frame, Menu, Text, filedialog, messagebox, StringVar, IntVar
+from tkinter import Tk, ttk
 
 import tkinter.font as tkFont
 import traceback
 
 from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
-from gun import (
-    POINT_START,
-    POINT_PEAK_AVG,
-    POINT_BURNOUT,
-    POINT_FRACTURE,
-    POINT_EXIT,
-    POINT_PEAK_SHOT,
-    POINT_PEAK_BREECH,
-)
+from gun import POINT_START, POINT_BURNOUT, POINT_FRACTURE, POINT_EXIT
+from gun import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_PEAK_BREECH
 from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
 from recoiless import Recoiless
 
@@ -32,17 +16,11 @@ from optRecoiless import ConstrainedRecoiless
 from tip import CreateToolTip
 from lang import STRING
 
-from misc import (
-    toSI,
-    validateNN,
-    validatePI,
-    formatIntInput,
-    dot_aligned,
-    resolvepath,
-    roundSig,
-    loadfont,
-    formatMass,
-)
+from misc import validateNN, validatePI
+from misc import roundSig, formatMass, dot_aligned, toSI
+from misc import formatIntInput
+from misc import loadfont, resolvepath
+
 from math import ceil, pi, log10
 
 import matplotlib.pyplot as mpl
@@ -62,15 +40,10 @@ from ctypes import windll
 import platform
 
 from matplotlib import font_manager
-from locWidget import (
-    LocDropdown,
-    Loc12Disp,
-    Loc122Disp,
-    Loc2Input,
-    Loc3Input,
-    LocLabelFrame,
-    LocLabelCheck,
-)
+
+from locWidget import Loc12Disp, Loc122Disp
+from locWidget import Loc2Input, Loc3Input
+from locWidget import LocLabelFrame, LocLabelCheck, LocDropdown
 
 from material import MATERIALS
 
@@ -599,7 +572,7 @@ class InteriorBallisticsFrame(Frame):
         )
 
         i += 2
-        self.bm = Loc12Disp(
+        self.bnm = Loc12Disp(
             parent=parFrm,
             row=i,
             labelLocKey="bmLabel",
@@ -1242,10 +1215,12 @@ class InteriorBallisticsFrame(Frame):
                 formatMass(bore_mass) if bore_mass is not None else "N/A"
             )
 
-            breech_mass = self.structure[2]
+            breech_nozzle_mass = self.structure[2]
 
-            self.bm.set(
-                formatMass(breech_mass) if breech_mass is not None else "N/A"
+            self.bnm.set(
+                "N/A"
+                if breech_nozzle_mass is None
+                else formatMass(breech_nozzle_mass)
             )
 
         self.updateTable()
@@ -2183,13 +2158,29 @@ class InteriorBallisticsFrame(Frame):
                         alpha=0.5 if self.tracePress.get() else 0.8,
                         color="tab:green",
                     )
-
-                    xBase = min(xBreech)
-                    self.auxAx.set_xlim(left=xBase)
+                    self.auxAx.set_xlim(left=min(xBreech))
 
                     xHull = list(xBreech) + list(xHull)
                     rHull = [rRim for _ in xBreech] + rHull
                     inline = [rFace for _ in xBreech] + inline
+
+                elif gunType == RECOILESS and BTrace is not None:
+                    xNozzle, rIn, rOut = zip(*BTrace)
+                    rIn = [r * 1e3 for r in rIn]
+                    rOut = [r * 1e3 for r in rOut]
+
+                    self.auxAxH.plot(xNozzle, rIn, c="tab:green")
+                    self.auxAxH.plot(xNozzle, rOut, c="tab:green")
+
+                    self.auxAxH.fill_between(
+                        xNozzle,
+                        rIn,
+                        rOut,
+                        alpha=0.5 if self.tracePress.get() else 0.8,
+                        color="tab:green",
+                    )
+
+                    self.auxAx.set_xlim(left=min(xNozzle))
 
                 self.auxAxH.plot(xHull, rHull, c="tab:blue")
                 self.auxAxH.plot(xHull, inline, c="tab:blue")
@@ -2499,6 +2490,10 @@ class InteriorBallisticsFrame(Frame):
         self.updateError()
 
     def typeCallback(self, *args):
+        """
+        callback for when the gun type is changed.
+
+        """
         if self.process is not None:
             return
 
@@ -2507,7 +2502,9 @@ class InteriorBallisticsFrame(Frame):
         if gunType == CONVENTIONAL:
             self.nozzExp.remove()
             self.nozzEff.remove()
+
             self.plotBreechNozzleP.reLocalize("plotBreechP")
+            self.bnm.reLocalize("bmLabel")
 
             self.dropSoln.enable()
 
@@ -2517,7 +2514,10 @@ class InteriorBallisticsFrame(Frame):
         elif gunType == RECOILESS:
             self.nozzExp.restore()
             self.nozzEff.restore()
+
             self.plotBreechNozzleP.reLocalize("plotNozzleP")
+            self.bnm.reLocalize("nmLabel")
+
             self.dropSoln.setByObj(SOL_LAGRANGE)
             self.dropSoln.disable()
 
