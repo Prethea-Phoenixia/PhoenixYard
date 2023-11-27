@@ -3,6 +3,7 @@ import difflib
 from corner import balance
 from num import secant
 from periodic import molarMasses
+from math import exp
 
 
 class Ingredient:
@@ -344,7 +345,53 @@ class Mixture:
         print("")
 
 
+def estU1(nitration, ng, cen, dbp, dnt, vas):
+    """
+    Estimate the burn velocity assuming a linear realtionship
+    between pressure and burn rate, i.e. u = u1 * P
+
+    nitration:
+        N, nitration % of nitrocellulose
+        硝化棉中氮的百分含量
+    ng:
+        H, percentage of nitroglycerin
+        硝化甘油的百分含量
+
+    cent:
+        E, percentage of centralite
+        中定剂的百分含量
+    dbp:
+        F, percentage of dibutyl phthalate
+        苯二甲酸二丁酯的百分含量
+    dnt:
+        G, percentage of dinitrotoluene
+        二硝基甲苯的百分含量
+    vaseline:
+        I, 凡士林的百分含量
+
+    The result is converted into m/s/Pa
+    """
+    N, H, E, F, G, I = nitration, ng, cen, dbp, dnt, vas
+
+    return (
+        10
+        ** (
+            0.7838
+            - 9
+            + 0.1366 * (N - 11.8)
+            + 0.008652 * H
+            - 0.02620 * E
+            - 0.02235 * F
+            - 0.007355 * G
+            - 0.03447 * I
+        )  # m^3/s-kg
+        / 9.8
+    )
+
+
 if __name__ == "__main__":
+    print(estU1(12.0, 26.5, 3, 4.5, 9, 1))
+    input()
     Ingredient.readFile("data/PEPCODED.DAF")
     NC1260 = Ingredient.getLine(683)
     RDX = Ingredient.getLine(847)
