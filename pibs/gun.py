@@ -1181,8 +1181,9 @@ class Gun:
                 else:
                     V += dV
 
-        P__sigma = p_probes[0] / sigma * 2  # 2 for interrupted screw
+        P__sigma = p_probes[0] / sigma
         R2__rb = rho_probes[0]
+
         R1__R2 = max((1 - 1 / R2__rb * (P__sigma) ** 0.5) ** 0.5, R2__rb**-1)
         R1__rb = R1__R2 * R2__rb
         L__rb = 0.5 * (
@@ -1207,6 +1208,11 @@ class Gun:
         breech = [(-L, R1), (0.0, R1)]
 
         breech_mass = R1__rb**2 * Sb * L * self.material.rho
+
+        if isinstance(bore_mass, complex):
+            bore_mass = None
+        if isinstance(breech_mass, complex):
+            breech_mass = None
 
         return bore_mass, bore, breech_mass, breech
 
@@ -1336,7 +1342,7 @@ if __name__ == "__main__":
         caliber=0.05,
         shotMass=1.0,
         propellant=M17SHC,
-        grainSize=0.66e-3,
+        grainSize=6.66e-3,
         chargeMass=cm,
         chamberVolume=cm / M17SHC.rho_p / lf,
         startPressure=30e6,
