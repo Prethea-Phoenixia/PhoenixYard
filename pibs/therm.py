@@ -285,7 +285,7 @@ class Mixture:
                     "{:>2} : {:^6} {:<6.1%} {:<6.4f}".format(i, name, mass, num)
                     for i, (name, mass, num) in enumerate(speciesList)
                 ],
-                sep="\n"
+                sep="\n",
             )
             print(
                 "Average.Mol.Weight : {:>6.4g} g/mol Δ={:>6.1%}".format(
@@ -334,7 +334,7 @@ class Mixture:
                 "{:>2} : {:^6} {:<6.1%} {:<6.4f}".format(i, name, mass, num)
                 for i, (name, mass, num) in enumerate(self.speciesList)
             ],
-            sep="\n"
+            sep="\n",
         )
         print("Impetus / Force    : {:>8.5g} J/g".format(self.f))
         print("Covolume           : {:>8.4g} cc/g".format(self.b))
@@ -342,6 +342,12 @@ class Mixture:
         print(" @ Load Density    : {:>8.6g} g/cc".format(self.Delta))
         print(" @ Pressure        : {:>8.1f} MPa".format(self.p))
         print("avg Adb. index     : {:>8.5g}".format(self.gamma))
+        print("")
+        print("Estimated Burnrates:-----------------------------")
+        b = -0.8340 + 8.3956e-4 * self.Tv
+        print("after Ludwig Stiefel (ADA086093):")
+        print(f"r <mm/s> = {b:.3f} (P <MPa>) ^ 0.8053")
+        print(f"r <m/s> = {b * 1e-3 / 1e6**0.8053:.4g} (P <Pa>) ^ 0.8053")
         print("")
 
 
@@ -389,21 +395,18 @@ def estU1(nitration, ng, cen, dbp, dnt, vas):
     )
 
 
+def estU8053(Tv):
+    return (-0.8340 + 8.3956e-4 * Tv) * 1e-3 / 1e6**0.8053
+
+
 if __name__ == "__main__":
-    print(estU1(12.0, 26.5, 3, 4.5, 9, 1))
-    input()
     Ingredient.readFile("data/PEPCODED.DAF")
+    """
+
     NC1260 = Ingredient.getLine(683)
     RDX = Ingredient.getLine(847)
 
-    EC = Ingredient(
-        name="Ethyl Centralite",
-        elements={"C": 17, "H": 20, "O": 1, "N": 2},
-        rho=1.140,
-        rho_u="g/cc",
-        Hf=-391.5,
-        Hf_u="J/g",
-    )
+    
 
     ATEC = Ingredient(
         name="Acetyl triethyl citrate",
@@ -509,6 +512,9 @@ if __name__ == "__main__":
     )
 
     ATKPRDS22.prettyPrint()
+    """
+
+    """
 
     import matplotlib.pyplot as plt
     from labellines import labelLines
@@ -538,3 +544,99 @@ if __name__ == "__main__":
     labelLines(ax.get_lines())
 
     plt.show()
+
+    """
+
+    NG = Ingredient.getLine(693)
+    NC1316 = Ingredient.nitrocellulose(0.1316)
+    NC1315 = Ingredient.nitrocellulose(0.1315)
+    NC1311 = Ingredient.nitrocellulose(0.1311)
+    DBP = Ingredient.find("DIBUTYL PHTHALATE")
+    DNT = Ingredient.find("DINITRO TOLUENE")
+    DPA = Ingredient.find("2 NITRO DIPHENYL AMINE")
+
+    KNO3 = Ingredient.find("POTASSIUM NITRATE")
+    K2SO4 = Ingredient.find("POTASSIUM SULFATE")
+
+    ETC = Ingredient(
+        name="Ethyl Centralite",
+        elements={"C": 17, "H": 20, "O": 1, "N": 2},
+        rho=1.140,
+        rho_u="g/cc",
+        Hf=-391.5,
+        Hf_u="J/g",
+    )
+    MEC = Ingredient(
+        name="Methyl Centralite",
+        elements={"C": 15, "H": 16, "O": 1, "N": 2},
+        rho=1.2,
+        rho_u="g/cc",
+        Hf=-73.1,
+        Hf_u="kJ/mol",
+    )
+
+    WC846 = Mixture(
+        name="WC846",
+        compoDict={NC1316: 81.40, NG: 10.39, DBP: 5.61, DPA: 0.97, DNT: 0.06},
+        Delta=0.2,
+    )
+
+    WC846.prettyPrint()
+
+    WC870 = Mixture(
+        name="WC870",
+        compoDict={
+            NC1311: 79.70,
+            NG: 9.94,
+            DBP: 5.68,
+            DPA: 0.95,
+            KNO3: 0.78,
+            DNT: 0.69,
+        },
+        Delta=0.2,
+    )
+    WC870.prettyPrint()
+
+    IMR4227 = Mixture(
+        name="IMR4227",
+        compoDict={NC1315: 89.72, DNT: 6.74, DPA: 0.84, K2SO4: 0.73},
+        Delta=0.2,
+    )
+    IMR4227.prettyPrint()
+
+    IMR4350 = Mixture(
+        name="IMR4350",
+        compoDict={NC1315: 91.56, DNT: 4.80, DPA: 0.85, K2SO4: 0.73},
+        Delta=0.2,
+    )
+    IMR4350.prettyPrint()
+
+    IMR8138M = Mixture(
+        name="IMR8138M",
+        compoDict={NC1315: 92.96, ETC: 3.60, DPA: 0.89, K2SO4: 0.69},
+        Delta=0.2,
+    )
+    IMR8138M.prettyPrint()
+
+    IMR4895 = Mixture(
+        name="IMR4895",
+        compoDict={NC1315: 88.99, DNT: 7.55, DPA: 0.78, K2SO4: 0.93},
+        Delta=0.2,
+    )
+    IMR4895.prettyPrint()
+
+    IMR5010 = Mixture(
+        name="IMR5010",
+        compoDict={NC1315: 88.27, DNT: 8.76, K2SO4: 0.64, DPA: 0.55},
+        Delta=0.2,
+    )
+    IMR5010.prettyPrint()
+
+    CMR160 = Mixture(
+        name="CMR160",
+        compoDict={NC1315: 95.77, MEC: 2.43, DPA: 0.73, K2SO4: 0.84},
+    )
+    CMR160.prettyPrint()
+
+    for T in (2855, 2782, 2878, 2927, 2816, 2874, 2869, 2776):
+        print(f"{estU8053(T):.5g}")
