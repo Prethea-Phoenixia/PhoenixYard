@@ -1209,11 +1209,6 @@ class Gun:
 
         breech_mass = R1__rb**2 * Sb * L * self.material.rho
 
-        if isinstance(bore_mass, complex):
-            bore_mass = None
-        if isinstance(breech_mass, complex):
-            breech_mass = None
-
         return bore_mass, bore, breech_mass, breech
 
     @staticmethod
