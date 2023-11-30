@@ -576,6 +576,7 @@ class InteriorBallisticsFrame(Frame):
             parent=parFrm,
             row=i,
             labelLocKey="bmLabel",
+            tooltipLocKey="bmText",
             locFunc=self.getLocStr,
             allDisps=self.locs,
         )
@@ -2504,7 +2505,7 @@ class InteriorBallisticsFrame(Frame):
             self.nozzEff.remove()
 
             self.plotBreechNozzleP.reLocalize("plotBreechP")
-            self.bnm.reLocalize("bmLabel")
+            self.bnm.reLocalize("bmLabel", "bmText")
 
             self.dropSoln.enable()
 
@@ -2516,7 +2517,7 @@ class InteriorBallisticsFrame(Frame):
             self.nozzEff.restore()
 
             self.plotBreechNozzleP.reLocalize("plotNozzleP")
-            self.bnm.reLocalize("nmLabel")
+            self.bnm.reLocalize("nmLabel", "")
 
             self.dropSoln.setByObj(SOL_LAGRANGE)
             self.dropSoln.disable()

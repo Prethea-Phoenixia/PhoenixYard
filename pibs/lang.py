@@ -543,6 +543,19 @@ ENGLISH = {
     "segmentLabel": "Segments",
     "bmLabel": "Breech Mass",
     "nmLabel": "Nozzle Mass",
+    "bmText": " ".join(
+        (
+            "Breech mass is calculated for a straight wall, uninterrupted screw",
+            "type, after the work of V.A.Gadolin. with the screw radius",
+            "optimized for minimum mass, subjected to reasonable constraints.",
+            "In practice, the breech block is usually a separate piece, onto",
+            "which the barrel is screwed to, complicating the real stress",
+            "distribution. The breech can also be made in the style of sliding",
+            "block as well. Therefore the value calculated is notional and is"
+            "intended for guiding design process and for comparing effects",
+            "of different parameters.",
+        )
+    ),
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -936,5 +949,14 @@ CHINESE = {
     "segmentLabel": "结构分段",
     "bmLabel": "炮尾质量",
     "nmLabel": "喷管质量",
+    "bmText": "".join(
+        (
+            "炮闩的质量按V.A.加道林的方法计算，为直壁螺式。",
+            "炮闩直径已作最小质量（即最短炮尾）优化。",
+            "实际武器上，炮尾常常是一个独立部件，与炮管通过螺纹",
+            "连接，炮闩也可作楔式，受力情况更为复杂，故此，",
+            "该简化计算值仅作初步设计参考，方便比较不同参数方案。",
+        )
+    ),
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}

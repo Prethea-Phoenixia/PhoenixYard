@@ -451,13 +451,17 @@ class LocLabelCheck:
         descLabelKey=None,
         tooltipLocKey=None,
         locFunc=None,
+        width=20,
         allLC=[],
     ):
         self.nominalState = "normal"
         self.checkVar = IntVar(value=default)
         self.locFunc = locFunc
         self.checkWidget = ttk.Checkbutton(
-            parent, text=locFunc(labelLocKey), variable=self.checkVar
+            parent,
+            text=locFunc(labelLocKey),
+            variable=self.checkVar,
+            width=width,
         )
         self.checkWidget.grid(
             row=row,
