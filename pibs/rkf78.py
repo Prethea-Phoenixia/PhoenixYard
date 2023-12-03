@@ -172,17 +172,19 @@ def RKF78(
             # initialize the error esimate, which is 8th order
             y_next_hat = [y for y in y_this]
 
-            for i in range(13):  # i ranging from 0 to 12
-                bi = bs[i]  # retrieve the line of constant from Butcher Tableau
-                xi = x + _as[i] * h  # x to use for calling dfunc
-
+            for i, (bi, asi) in enumerate(zip(bs, _as)):
+                """i ranging from 0 to 12
+                bi retrieve the line of constant from Butcher Tableau
+                """
+                xi = x + asi * h  # x to use for calling dfunc
                 yi = [y for y in y_this]  # initialize the current y vector
-                for j in range(i):
+                for bij, Kj in zip(bi[:i], allK):
                     """Update the current y estimate using *all* values calculated
                     up to this point.
+                    zip iterates up to the shortest list.
+                    bij retrieve the "weight" for previous calculation
+                    Kj retrieves previous calculation
                     """
-                    bij = bi[j]  # retrieve the "weight" of previous calculation
-                    Kj = allK[j]
 
                     """This is a fancy way of writing:
                     yi   = yi  +  bij  *  Kj
