@@ -1191,7 +1191,7 @@ class Gun:
             * (R1__rb**2 / P__sigma - R1__R2**2 / (1 - R1__R2**2)) ** -0.5
         )
 
-        L = L__rb * rb
+        L = L__rb * rb * 2  # *2 to account for screw interruption
         R1 = R1__rb * rb
 
         bore = []
