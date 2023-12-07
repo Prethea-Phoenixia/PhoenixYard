@@ -169,20 +169,15 @@ def RKF78(
             for param in sig.parameters.values()
             if param.kind == param.POSITIONAL_OR_KEYWORD
         ]
-        print("f:")
+        print("setup")
 
-        for i, param in enumerate(paramstr):
+        for i, param in enumerate(paramstr[:-1]):
             print("{:_^12}|".format(param), end="")
 
         print("\n{:^12.8g}|".format(x_0), end="")
         for i, yval in enumerate(y_this):
             print("{:^12.8g}|".format(yval), end="")
-        print("{:^12}|".format("d " + paramstr[0]), end="")
-
-        print("\n{:^12.8g}|".format(x_1), end="")
-        for i, yval in enumerate(y_this):
-            print("{:^12}|".format("?"), end="")
-        print("{:^12}|".format("d " + paramstr[0]))
+        print()
 
     if adaptTo is False or ((params - 2) == len(adaptTo) == len(iniVal)):
         pass
@@ -441,16 +436,16 @@ def RKF78(
 
         h *= min(max(delta, 0.125), 2)
 
+    if debug:
+        print("record")
+        for line in record:
+            x, yval = line
+            print("{:^12.8g}|".format(x), end="")
+            for i, y in enumerate(yval):
+                print("{:^12.8g}|".format(y), end="")
+            print()
+
     if abs(x - x_1) > abs(x_1 - x_0) * relTol:
-        # debug code
-        if debug:
-            print("x0", x_0)
-            print("x1", x_1)
-            print("x", x, "y", *y_this)
-            print("dy/dx", *dFunc(x, *y_this, h))
-
-            print(*record, sep="\n")
-
         raise ValueError(
             "Premature Termination of Integration due to vanishing step size,"
             + " x at {}, h at {}.".format(x, h)
@@ -463,7 +458,9 @@ def main():
     def df1(x, y, _):
         return (7 * y**2 * x**3,)
 
-    _, v, e = RKF78(df1, (3,), 2, 0, relTol=1e-4, absTol=1e-4, minTol=1e-14)
+    _, v, e = RKF78(
+        df1, (3,), 2, 0, relTol=1e-4, absTol=1e-4, minTol=1e-14, debug=True
+    )
 
     print(v)
     print(e)

@@ -401,12 +401,18 @@ def estU8053(Tv):
 
 if __name__ == "__main__":
     Ingredient.readFile("data/PEPCODED.DAF")
-    """
 
     NC1260 = Ingredient.getLine(683)
     RDX = Ingredient.getLine(847)
 
-    
+    EC = Ingredient(
+        name="Ethyl Centralite",
+        elements={"C": 17, "H": 20, "O": 1, "N": 2},
+        rho=1.140,
+        rho_u="g/cc",
+        Hf=-391.5,
+        Hf_u="J/g",
+    )
 
     ATEC = Ingredient(
         name="Acetyl triethyl citrate",
@@ -512,7 +518,6 @@ if __name__ == "__main__":
     )
 
     ATKPRDS22.prettyPrint()
-    """
 
     """
 
@@ -547,6 +552,7 @@ if __name__ == "__main__":
 
     """
 
+    """
     NG = Ingredient.getLine(693)
     NC1316 = Ingredient.nitrocellulose(0.1316)
     NC1315 = Ingredient.nitrocellulose(0.1315)
@@ -640,3 +646,4 @@ if __name__ == "__main__":
 
     for T in (2855, 2782, 2878, 2927, 2816, 2874, 2869, 2776):
         print(f"{estU8053(T):.5g}")
+"""
