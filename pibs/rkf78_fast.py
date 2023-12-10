@@ -124,7 +124,7 @@ def RKF78(
                 : optional, accepts following arguments:
                 x   : current value of integrand
                 ys  : current value of the SoE
-                dys : estimated first derivative
+                record : record of value up to that point
                     and terminates the integrator on a boolean value of True
 
         adaptTo : optional, values used to control error

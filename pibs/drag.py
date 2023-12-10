@@ -627,6 +627,8 @@ if __name__ == "__main__":
 
     ax = plt.subplot()
 
+    """
+
     for curve in KdCurve:
         xs = [x / 100 for x in range(401)]
         ys = []
@@ -636,16 +638,16 @@ if __name__ == "__main__":
             except ValueError:
                 ys.append(None)
         ax.plot(xs, ys)
+        """
 
-    """
     for curve in KdCurve:
         ax.scatter(curve.mach, curve.drag, s=2)
         x = np.linspace(curve.mach[0], curve.mach[-1], 3300)
-        ax.plot(x, [curve.get(M) for M in x], label=curve.desc)
+        ax.plot(x, [curve.Kd(M) for M in x], label=curve.desc)
 
     labelLines(ax.get_lines(), fontsize=8, outline_width=2, align=True)
-    
+
     ax.set_xlim(0, 9)
     ax.set_ylim(0, None)
-    """
+
     plt.show()
