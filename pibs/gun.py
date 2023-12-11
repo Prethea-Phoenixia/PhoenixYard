@@ -1,5 +1,5 @@
 from math import pi, log, inf, exp
-from num import gss, RKF78, cubic, intg, bisect, secant
+from num import gss, RKF78, cubic, intg, secant, dekker
 from prop import GrainComp, Propellant
 
 
@@ -57,8 +57,9 @@ def pidduck(wpm, k, tol):
                 (1 - Omega) ** (k / (k - 1)) / Omega
             )
 
-    a, b = bisect(f_Omega, 0, 1, tol)
+    a, b = dekker(f_Omega, 0, 1, tol, y_abs_tol=minTol)
     Omega = 0.5 * (a + b)
+
     if k == 1:
         labda_1 = (exp(Omega) - 1) / wpm
     else:
@@ -1164,10 +1165,14 @@ class Gun:
             for p in p_probes:
                 y = p / sigma
                 if y > 3**-0.5:
-                    raise ValueError()
+                    raise ValueError(
+                        f"Limit to conventional construction ({sigma * 3*1e-6:.3f} MPa)"
+                        + " exceeded in section."
+                    )
                 rho = (
                     (1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)
                 ) ** 0.5
+
                 rho_probes.append(rho)
 
             for i in range(len(x_probes) - 1):
@@ -1266,7 +1271,10 @@ class Gun:
             fraction cannot be achieved down to material yield even as
             the thickness goes to infinity, raise an error and abort
             calculation"""
-            raise ValueError()
+            raise ValueError(
+                "Plastic-elastic junction stress exceeds material "
+                + f"yield ({sigma * 3*1e-6:.3f} MPa) for autofrettaged construction."
+            )
 
         elif sigma_min(1) > sigma:
             """if the minimum junction stress at an autofrettage fraction

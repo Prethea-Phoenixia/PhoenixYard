@@ -299,6 +299,7 @@ def dekker(
         fb_i, fb_j = fb_j, fb_k
 
     if debug:
+        print(record)
         print("{:>4}{:>24}{:>24}".format("I", "X", "FX"))
         record.sort(key=lambda line: line[1])
         for line in record:

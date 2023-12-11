@@ -6,8 +6,8 @@ R = 3390e3
 M = 6.39e23
 """
 
-R = 6371e3
-M = 5.972e24
+R = 1740e3
+M = 7.347e22
 G = 6.6743e-11
 
 
@@ -65,11 +65,11 @@ if __name__ == "__main__":
     from tabulate import tabulate
 
     data = []
-    for i in range(1, 90):
-        phi = i / 90 * pi  # (0,180] in 2 deg increment
+    for i in range(1, 36):
+        phi = i * 5 / 180 * pi
         r_b = R * phi
-        theta, v_bo = f_v_bo(r_b, h_bo=100e3)
-        r_b_prime, ttt = f_r_b(v_bo, pi / 2 - theta, 100e3)
+        theta, v_bo = f_v_bo(r_b, h_bo=0e3)
+        r_b_prime, ttt = f_r_b(v_bo, pi / 2 - theta, 0e3)
         data.append(
             (
                 phi * 180 / pi,

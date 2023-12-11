@@ -1268,7 +1268,10 @@ class Recoiless:
             for p in p_probes:
                 y = p / sigma
                 if y > 3**-0.5:
-                    raise ValueError()
+                    raise ValueError(
+                        f"Limit to conventional construction ({sigma * 3*1e-6:.3f} MPa)"
+                        + " exceeded in barrel."
+                    )
                 rho = (
                     (1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)
                 ) ** 0.5
@@ -1285,7 +1288,7 @@ class Recoiless:
                 else:
                     V += dV
 
-        tubeMass = V * self.material.rho
+        tube_mass = V * self.material.rho
 
         hull = []
         for x, rho in zip(x_probes, rho_probes):
@@ -1335,7 +1338,14 @@ class Recoiless:
                 k = (x + l_b) / l_b
                 r = k * r_k + (1 - k) * r_b
                 p = p_max
+
             y = p / sigma
+
+            if y > 3**-0.5:
+                raise ValueError(
+                    f"Limit to conventional construction ({sigma * 3*1e-6:.3f} MPa)"
+                    + " exceeded in nozzle."
+                )
             rho = ((1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)) ** 0.5
             nozzle.append((x, r, r * rho))
 
@@ -1349,9 +1359,9 @@ class Recoiless:
 
             V += 0.5 * (S_0 + S_1) * h
 
-        nozzleMass = V * self.material.rho
+        nozzle_mass = V * self.material.rho
 
-        return tubeMass, hull, nozzleMass, nozzle
+        return tube_mass, hull, nozzle_mass, nozzle
 
     @staticmethod
     def getAr(gamma, Pr):
@@ -1422,16 +1432,16 @@ if __name__ == "__main__":
 
     M17C = Propellant(M17, SimpleGeometry.CYLINDER, None, 2.5)
     M1C = Propellant(M1, SimpleGeometry.CYLINDER, None, 10)
-    lf = 0.3
+    lf = 0.6
     print("DELTA/rho:", lf)
     test = Recoiless(
         caliber=0.082,
         shotMass=2,
         propellant=M1C,
-        grainSize=1e-4,
+        grainSize=4e-4,
         chargeMass=0.3,
         chamberVolume=0.3 / M1C.rho_p / lf,
-        startPressure=30e6,
+        startPressure=10e6,
         lengthGun=3.5,
         nozzleExpansion=2.0,
         chambrage=1.0,
