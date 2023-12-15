@@ -84,7 +84,7 @@ class ConstrainedRecoiless:
         chargeMassRatio,
         tol,
         minWeb=1e-6,
-        containBurnout=True,
+        # containBurnout=True,
         maxLength=1e3,
         ambientRho=1.204,
         ambientP=101.325e3,
@@ -493,7 +493,8 @@ class ConstrainedRecoiless:
         """
         v_bar_d = v_d / v_j
 
-        if v_bar_i > v_bar_d and containBurnout:
+        # if v_bar_i > v_bar_d and containBurnout:
+        if v_bar_i > v_bar_d:
             raise ValueError(
                 "Design velocity exceeded ({:.4g} m/s > {:.4g} m/s) before peak pressure.".format(
                     v_bar_i * v_j, v_bar_d * v_j
@@ -652,7 +653,7 @@ class ConstrainedRecoiless:
                 chargeMassRatio=chargeMassRatio,
                 tol=tol,  # this is to ensure unimodality up to ~tol
                 minWeb=minWeb,
-                containBurnout=False,
+                # containBurnout=False,
                 maxLength=maxLength,
                 ambientP=ambientP,
                 ambientRho=ambientRho,

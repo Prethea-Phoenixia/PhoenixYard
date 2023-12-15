@@ -1,5 +1,5 @@
 from num import gss, RKF78, cubic, dekker
-from prop import Propellant
+
 from random import uniform
 from math import pi, log
 from gun import pidduck
@@ -13,10 +13,10 @@ inner method be called as compared to the outter. A small value
 is necessary to prevent numerical instability form causing sporadic
 appearance of outlier, at the cost of increased computation times.
 """
-MAX_GUESSES = (
-    100  #  maximum number of guesses taken to find valid load fraction.
-)
-MAX_ITER = 100  # maximum iteration to correct for chamberage effects.
+#  maximum number of guesses taken to find valid load fraction.
+MAX_GUESSES = 100
+# maximum iteration to correct for chamberage effects.
+MAX_ITER = 100
 
 
 class Constrained:
@@ -85,7 +85,7 @@ class Constrained:
         chargeMassRatio,
         tol,
         minWeb=1e-6,
-        containBurnout=True,
+        # containBurnout=True,
         maxLength=1e3,
         labda_1=None,
         labda_2=None,
@@ -387,7 +387,8 @@ class Constrained:
                 )
             )
 
-        if v_j * v_bar_i > v_d and containBurnout:
+        # if v_j * v_bar_i > v_d and containBurnout:
+        if v_j * v_bar_i > v_d:
             raise ValueError(
                 "Design velocity exceeded ({:.4g} m/s > {:.4g} m/s) before peak pressure.".format(
                     v_bar_i * v_j, v_bar_d * v_j
@@ -498,7 +499,7 @@ class Constrained:
                 chargeMassRatio=chargeMassRatio,
                 tol=tol,
                 minWeb=minWeb,
-                containBurnout=containBurnout,
+                # containBurnout=containBurnout,
                 maxLength=maxLength,
                 labda_1=labda_1,
                 labda_2=labda_2,
@@ -567,7 +568,7 @@ class Constrained:
                 chargeMassRatio=chargeMassRatio,
                 tol=tol,
                 minWeb=minWeb,
-                containBurnout=False,
+                # containBurnout=False,
                 maxLength=maxLength,
                 labda_1=labda_1,
                 labda_2=labda_2,
@@ -676,77 +677,4 @@ class Constrained:
 
 
 if __name__ == "__main__":
-    import cProfile
-
-    from prop import GrainComp, SimpleGeometry
-
-    compositions = GrainComp.readFile("data/propellants.csv")
-    S22 = compositions["ATK PRD(S)22"]
-    M1 = compositions["M1"]
-    S22S = Propellant(S22, SimpleGeometry.SPHERE, 1, 2.5)
-    M1S = Propellant(M1, SimpleGeometry.SPHERE, 1, 2.5)
-    test = Constrained(
-        caliber=50e-3,
-        shotMass=1,
-        propellant=M1S,
-        startPressure=10e6,
-        dragCoefficient=5e-2,
-        designPressure=350e6,
-        designVelocity=1200,
-        chambrage=1.5,
-    )
-
-    datas = []
-    """
-    pr = cProfile.Profile()
-    pr.enable()
-    """
-    for i in range(5):
-        datas.append(
-            test.findMinV(
-                chargeMassRatio=1,
-                tol=1e-3,
-                minWeb=1e-6,
-                maxLength=1000,
-                control=POINT_PEAK_SHOT,
-            )
-        )
-    for i in range(5):
-        datas.append(
-            test.findMinV(
-                chargeMassRatio=1,
-                tol=1e-3,
-                minWeb=1e-6,
-                maxLength=1000,
-                control=POINT_PEAK_AVG,
-            )
-        )
-    for i in range(5):
-        datas.append(
-            test.findMinV(
-                chargeMassRatio=1,
-                tol=1e-3,
-                minWeb=1e-6,
-                maxLength=1000,
-                control=POINT_PEAK_BREECH,
-            )
-        )
-    """
-    pr.disable()
-    pr.print_stats(sort="time")
-    """
-    from tabulate import tabulate
-
-    means = [sum(x) / len(datas) for x in zip(*datas)]
-
-    delta = []
-    for line in datas:
-        delta.append((v - m) / m for v, m in zip(line, means))
-
-    print(tabulate(datas, headers=("load fract.", "web", "length")))
-    print(*means)
-    print(
-        tabulate(
-            delta, headers=("load fract.", "web", "length"), floatfmt=".3e"
-        )
-    )
+    pass

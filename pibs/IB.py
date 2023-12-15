@@ -1154,7 +1154,7 @@ class InteriorBallisticsFrame(Frame):
 
         if gun is not None:
             if constrain:
-                webmm = roundSig(1e3 * kwargs["grainSize"], n=sigfig)
+                webmm = roundSig(kwargs["grainSize"] * 1e3, n=sigfig)
                 self.arcmm.set(webmm)
 
                 lgmm = roundSig(kwargs["lengthGun"] * 1e3, n=sigfig)
@@ -2839,5 +2839,5 @@ def main():
 
 
 if __name__ == "__main__":
-    print(__name__)
+    # print(__name__)
     main()
