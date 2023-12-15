@@ -493,7 +493,8 @@ class Constrained:
         cc_n = 1 - (1 - 1 / chi_k) * log(l_bar_g_prime + 1) / l_bar_g_prime
         # cc_n = cc * kappa + cc_n * (1 - kappa)
 
-        if abs(cc_n - cc) > tol**2 and it < MAX_ITER:
+        # if abs(cc_n - cc) > tol and it < MAX_ITER:
+        if abs((l_bar_g - l_bar_g_0) / l_bar_g_prime) > tol and it < MAX_ITER:
             # successive better approximations will eventually
             # result in value within tolerance.
 
