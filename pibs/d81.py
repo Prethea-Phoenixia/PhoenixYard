@@ -53,10 +53,10 @@ if __name__ == "__main__":
     import multiprocessing
 
     parameters = []
-    for i in range(63):
-        chargeMassRatio = 0.9 + 0.05 * i
-        for j in range(13):
-            loadFraction = 0.2 + 0.05 * j
+    for i in range(int(3.1 / 0.02) + 1):
+        chargeMassRatio = 0.9 + 0.02 * i
+        for j in range(int(0.6 / 0.02) + 1):
+            loadFraction = 0.2 + 0.02 * j
             parameters.append((loadFraction, chargeMassRatio))
 
     with multiprocessing.Pool() as pool:
@@ -72,17 +72,17 @@ if __name__ == "__main__":
             for v in range(int((max(data) - min(data)) // delta))
         ]
 
-    print(max(ls))
-
     gunLengthContours = ax.tricontour(
         xs,
         ys,
         ls,
-        levels=[5, 6, 7, 8, 9],
+        levels=[(min(ls) // 0.1 + 1) * 0.1, 5, 6, 7, 8, 9],
+        linestyles=["dotted"] + ["solid" for _ in range(5)],
         colors="black",
         alpha=0.5,
         linewidths=1,
     )
+
     ax.clabel(
         gunLengthContours,
         gunLengthContours.levels,
@@ -97,10 +97,10 @@ if __name__ == "__main__":
         xs,
         ys,
         vs,
-        levels=[60, 70, 80, 90, 100],
+        levels=[66, 70, 80, 90, 100],
         colors="blue",
         alpha=0.5,
-        linestyles="dotted",
+        linestyles=["dotted"] + ["solid" for _ in range(5)],
         linewidths=1,
     )
     ax.clabel(

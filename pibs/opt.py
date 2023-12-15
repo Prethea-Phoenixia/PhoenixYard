@@ -16,7 +16,7 @@ appearance of outlier, at the cost of increased computation times.
 #  maximum number of guesses taken to find valid load fraction.
 MAX_GUESSES = 100
 # maximum iteration to correct for chamberage effects.
-MAX_ITER = 100
+MAX_ITER = 10
 
 
 class Constrained:
@@ -85,12 +85,12 @@ class Constrained:
         chargeMassRatio,
         tol,
         minWeb=1e-6,
-        # containBurnout=True,
         maxLength=1e3,
         labda_1=None,
         labda_2=None,
         cc=None,
         it=0,
+        l_bar_g_0=None,
         sol=SOL_LAGRANGE,
         ambientRho=1.204,
         ambientP=101.325e3,
@@ -98,7 +98,6 @@ class Constrained:
         control=POINT_PEAK_AVG,
         **_,
     ):
-        # start = time.time()
         if any(
             (
                 minWeb <= 0,
@@ -138,8 +137,11 @@ class Constrained:
         chi_k = self.chi_k
         f_psi_Z = self.f_psi_Z
 
+        if l_bar_g_0 is None:
+            l_bar_g_0 = 0
+
         if cc is None:
-            cc = 1 / chi_k
+            cc = 1
 
         if loadFraction > maxLF:
             raise ValueError(
@@ -387,7 +389,6 @@ class Constrained:
                 )
             )
 
-        # if v_j * v_bar_i > v_d and containBurnout:
         if v_j * v_bar_i > v_d:
             raise ValueError(
                 "Design velocity exceeded ({:.4g} m/s > {:.4g} m/s) before peak pressure.".format(
@@ -486,11 +487,13 @@ class Constrained:
 
         # calculate the averaged chambrage correction factor
         # implied by this solution
-        cc_n = 1 - (1 - 1 / chi_k) * log(l_bar_g + 1) / l_bar_g
 
-        # lengtime = time.time()
+        kappa = it / MAX_ITER
+        l_bar_g_prime = l_bar_g_0 * kappa + l_bar_g * (1 - kappa)
+        cc_n = 1 - (1 - 1 / chi_k) * log(l_bar_g_prime + 1) / l_bar_g_prime
+        # cc_n = cc * kappa + cc_n * (1 - kappa)
 
-        if abs(cc_n - cc) > tol and it < MAX_ITER:
+        if abs(cc_n - cc) > tol**2 and it < MAX_ITER:
             # successive better approximations will eventually
             # result in value within tolerance.
 
@@ -499,13 +502,13 @@ class Constrained:
                 chargeMassRatio=chargeMassRatio,
                 tol=tol,
                 minWeb=minWeb,
-                # containBurnout=containBurnout,
                 maxLength=maxLength,
                 labda_1=labda_1,
                 labda_2=labda_2,
                 sol=sol,
                 cc=cc_n,
                 it=it + 1,
+                l_bar_g_0=l_bar_g,
                 ambientRho=ambientRho,
                 ambientP=ambientP,
                 ambientGamma=ambientGamma,
@@ -514,6 +517,8 @@ class Constrained:
             # TODO: Maximum recursion depth exceeded in comparison is
             # occasionally thrown here. Investigate why.
         else:
+            if it == MAX_ITER:
+                print("Return on maximum iteration.", abs(cc_n - cc))
             return e_1, l_bar_g * l_0
 
     def findMinV(
@@ -568,7 +573,6 @@ class Constrained:
                 chargeMassRatio=chargeMassRatio,
                 tol=tol,
                 minWeb=minWeb,
-                # containBurnout=False,
                 maxLength=maxLength,
                 labda_1=labda_1,
                 labda_2=labda_2,
