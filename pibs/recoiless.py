@@ -1057,7 +1057,7 @@ class Recoiless:
                     break
 
         try:
-            if self.structuralMaterial is None:
+            if self.material is None:
                 raise ValueError("Structural material not specified")
 
             structure = self.getStructural(data, step, tol)

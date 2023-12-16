@@ -991,7 +991,7 @@ class Gun:
             p_trace.append((tag, psi, T, p_line))
 
         try:
-            if self.structuralMaterial is None:
+            if self.material is None:
                 raise ValueError("Structural material not specified")
 
             structure = self.getStructural(data, step, tol)
