@@ -16,15 +16,16 @@ from labellines import labelLine, labelLines
 compositions = GrainComp.readFile("data/propellants.csv")
 M10 = compositions["M10"]  # standin for pyroxylin
 # beta does not affect the actual curve....
-M10Cy = Propellant(M10, SimpleGeometry.TUBE, 1, 100)
+M10Tu = Propellant(M10, SimpleGeometry.TUBE, 1, 100)
 
 caliber = 125e-3
-tol = 1e-3
+tol = 1e-5
 dragCoefficient = 3e-2
-D81 = Constrained(
+control = POINT_PEAK_AVG
+target = Constrained(
     caliber=caliber,
     shotMass=5.67,
-    propellant=M10Cy,
+    propellant=M10Tu,
     startPressure=30e6,
     dragCoefficient=dragCoefficient,
     designPressure=392e6,
@@ -34,34 +35,34 @@ D81 = Constrained(
 
 
 def f(loadFraction, chargeMassRatio):
-    chargeMass = D81.m * chargeMassRatio
-    loadDensity = loadFraction * D81.propellant.rho_p
+    chargeMass = target.m * chargeMassRatio
+    loadDensity = loadFraction * target.propellant.rho_p
     try:
-        halfWeb, lengthGun = D81.solve(
+        halfWeb, lengthGun = target.solve(
             loadFraction,
             chargeMassRatio,
             tol,
-            minWeb=1e-4,
-            maxLength=1e2,
+            minWeb=1e-6,
+            maxLength=1e3,
             sol=SOL_LAGRANGE,
             ambientRho=1.204,
             ambientP=101.325e3,
             ambientGamma=1.4,
-            control=POINT_PEAK_AVG,
+            control=control,
         )
 
         chamberVolume = chargeMass / loadDensity
 
         gun = Gun(
             caliber=caliber,
-            shotMass=D81.m,
-            propellant=M10Cy,
+            shotMass=target.m,
+            propellant=M10Tu,
             grainSize=2 * halfWeb,
             chargeMass=chargeMass,
             chamberVolume=chamberVolume,
-            startPressure=D81.p_0,
+            startPressure=target.p_0,
             lengthGun=lengthGun,
-            chambrage=D81.chi_k,
+            chambrage=target.chi_k,
             dragCoefficient=dragCoefficient,
         )
         datas = gun.integrate(
@@ -80,7 +81,7 @@ def f(loadFraction, chargeMassRatio):
         except ValueError:
             burnout = 1
 
-        tubeVolume = (lengthGun) * D81.S
+        tubeVolume = (lengthGun) * target.S
         volume = chamberVolume + tubeVolume  # convert to liters
 
         halfWeb *= 2e3
@@ -97,10 +98,10 @@ if __name__ == "__main__":
     import multiprocessing
 
     parameters = []
-    for i in range(int(3.1 / 0.05) + 1):
-        chargeMassRatio = 0.9 + 0.05 * i
-        for j in range(int(0.55 / 0.05) + 1):
-            loadFraction = 0.2 + 0.05 * j
+    for i in range(int(3.1 / 0.1) + 1):
+        chargeMassRatio = 0.9 + 0.1 * i
+        for j in range(int(0.8 / 0.02) + 1):
+            loadFraction = 0.1 + 0.02 * j
             parameters.append((loadFraction, chargeMassRatio))
 
     with multiprocessing.Pool() as pool:
@@ -114,11 +115,11 @@ if __name__ == "__main__":
 
     for chamberVolume in [5, 10, 15, 20, 25, 30, 35]:
         ax.plot(
-            (0, D81.propellant.rho_p),
-            (0, chamberVolume * 1e-3 * D81.propellant.rho_p),
-            c="grey",
+            (0, target.propellant.rho_p),
+            (0, chamberVolume * 1e-3 * target.propellant.rho_p),
+            c="black",
             alpha=0.5,
-            linestyle="dashed",
+            linestyle="dotted",
             label=f"{chamberVolume:.0f} L",
             linewidth=1,
         )
@@ -131,110 +132,102 @@ if __name__ == "__main__":
             for v in range(int((max(data) - min(data)) // delta))
         ]
 
+    """
     gunLengthContours = ax.tricontour(
         xs,
         ys,
         ls,
-        levels=[4 + 0.2 * v for v in range(10)],
-        linestyles=["solid"] + ["dotted" for _ in range(4)],
+        levels=[5, 6, 7],
+        linestyles="dashdot",
         colors="black",
-        alpha=0.5,
-        linewidths=1,
-    )
-
-    clabels = ax.clabel(
-        gunLengthContours,
-        gunLengthContours.levels[:10:5],
-        inline=True,
-        fontsize=8,
-        fmt=lambda x: f"{x:.1f} m",
-        use_clabeltext=True,
-    )
-
-    gunLengthContours = ax.tricontour(
-        xs,
-        ys,
-        ls,
-        levels=[6, 7, 8, 9],
-        linestyles="solid",
-        colors="black",
-        alpha=0.5,
+        alpha=1,
         linewidths=1,
     )
 
     clabels = ax.clabel(
         gunLengthContours,
         gunLengthContours.levels,
-        inline=True,
+        inline=False,
         fontsize=8,
         fmt=lambda x: f"{x:.1f} m",
         use_clabeltext=True,
     )
 
-    print(max(vs))
     """
+
     gunVolumeContours = ax.tricontour(
         xs,
         ys,
         vs,
-        levels=[70, 80, 90, 100],
-        colors="blue",
-        alpha=0.5,
-        linestyles=["solid" for _ in range(5)],
+        levels=[70, 80, 90, 100, 110],
+        colors="black",
+        alpha=1,
+        linestyles="solid",
         linewidths=1,
     )
-    ax.clabel(
+    clabels = ax.clabel(
         gunVolumeContours,
         gunVolumeContours.levels,
-        inline=True,
+        inline=False,
         fontsize=8,
         fmt=lambda x: f"{x:.0f} L",
+        use_clabeltext=True,
     )
-    """
 
     propArchContours = ax.tricontour(
         xs,
         ys,
         es,
-        levels=[0.2 * v for v in range(31)],
-        colors="red",
-        linestyles=["solid"] + ["dotted" for _ in range(4)],
-        alpha=0.5,
+        levels=[0, 0.5, 1, 1.5, 2, 2.5, 3],
+        colors="black",
+        linestyles="dashed",
+        alpha=1,
         linewidths=1,
     )
     clabels = ax.clabel(
         propArchContours,
-        propArchContours.levels[::5],
-        inline=True,
+        propArchContours.levels,
+        inline=False,
         fontsize=8,
-        fmt=lambda x: f"{x:.0f} mm",
+        fmt=lambda x: f"{x:.1f} mm",
         use_clabeltext=True,
     )
+    for label in clabels:
+        label.set_va("top")
 
     gunBurnoutContours = ax.tricontour(
         xs,
         ys,
         bos,
-        levels=[0.2 * v for v in range(5)],
-        colors="purple",
-        alpha=0.5,
-        linewidths=1,
+        levels=[0.8],
+        colors="black",
+        linestyles="dashdot",
+        alpha=1,
+        # linewidths=1,
     )
 
     clabels = ax.clabel(
         gunBurnoutContours,
         gunBurnoutContours.levels,
-        inline=True,
+        inline=False,
         fontsize=8,
         fmt=lambda x: f"{x:.0%}",
         use_clabeltext=True,
     )
-    """
     for label in clabels:
-        label.set_va("top")
-        # label.set_rotation(0)
-    """
-    ax.set_xlim(0, 0.8 * D81.propellant.rho_p)
-    ax.set_ylim(0, 4 * D81.m)
+        label.set_va("bottom")
+
+    ax.tricontourf(
+        xs,
+        ys,
+        bos,
+        levels=[0.0, 0.8],
+        colors="black",
+        alpha=0.1,
+    )
+
+    ax.scatter(10 / 22.7 * 1e3, 10, s=33, marker="*")
+    ax.set_xlim(0, 0.8 * target.propellant.rho_p)
+    ax.set_ylim(0, 4 * target.m)
 
     plt.show()
