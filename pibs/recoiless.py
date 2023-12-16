@@ -31,8 +31,8 @@ class Recoiless:
         lengthGun,
         chambrage,
         nozzleExpansion,
-        structuralMaterial,
-        structuralSafetyFactor,
+        structuralMaterial=None,
+        structuralSafetyFactor=1.1,
         dragCoefficient=0,
         nozzleEfficiency=0.92,
         autofrettage=True,
@@ -1057,6 +1057,9 @@ class Recoiless:
                     break
 
         try:
+            if self.structuralMaterial is None:
+                raise ValueError("Structural material not specified")
+
             structure = self.getStructural(data, step, tol)
 
         except Exception as e:

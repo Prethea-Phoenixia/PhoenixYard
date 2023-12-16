@@ -85,8 +85,8 @@ class Gun:
         startPressure,
         lengthGun,
         chambrage,
-        structuralMaterial,
-        structuralSafetyFactor,
+        structuralMaterial=None,
+        structuralSafetyFactor=1.1,
         dragCoefficient=0,
         autofrettage=True,
         **_,
@@ -991,10 +991,12 @@ class Gun:
             p_trace.append((tag, psi, T, p_line))
 
         try:
+            if self.structuralMaterial is None:
+                raise ValueError("Structural material not specified")
+
             structure = self.getStructural(data, step, tol)
 
         except Exception as e:
-            print(e)
             structure = [None, None, None, None]
 
         return data, error, p_trace, structure
@@ -1352,8 +1354,6 @@ if __name__ == "__main__":
         lengthGun=3.5,
         chambrage=1.5,
         dragCoefficient=0.05,
-        structuralMaterial=Material._30SIMN2MOVA.createMaterialAtTemp(0),
-        structuralSafetyFactor=1.1,
         # autofrettage=False,
     )
     """
