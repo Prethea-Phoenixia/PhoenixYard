@@ -10,29 +10,20 @@ from gun import (
     POINT_PEAK_SHOT,
     POINT_BURNOUT,
 )
+import copy
 
 from labellines import labelLine, labelLines
 
 compositions = GrainComp.readFile("data/propellants.csv")
-Py = compositions["Pyroxylin"]  # standin for pyroxylin
+Py = copy.deepcopy(compositions["M10"])  # standin for pyroxylin
+Py.u_1 *= 1.22
 # beta does not affect the actual curve....
 PyTu = Propellant(Py, SimpleGeometry.TUBE, 1, 100)
 
 caliber = 125e-3
-tol = 1e-3
+tol = 1e-5
 dragCoefficient = 3e-2
 control = POINT_PEAK_AVG
-"""
-target = Constrained(
-    caliber=caliber,
-    shotMass=5.67,
-    propellant=PyTu,
-    startPressure=30e6,
-    dragCoefficient=dragCoefficient,
-    designPressure=392e6,
-    designVelocity=1800,
-    chambrage=1.25,  # almost exact, 4 * 12.27L/ pi (1.25dm)^2 * 8dm
-) # D-81"""
 
 target = Constrained(
     caliber=caliber,
@@ -112,8 +103,8 @@ if __name__ == "__main__":
     parameters = []
     for i in range(int(3.1 / 0.1) + 1):
         chargeMassRatio = 0.9 + 0.1 * i
-        for j in range(int(0.8 / 0.02) + 1):
-            loadFraction = 0.1 + 0.02 * j
+        for j in range(int(0.8 / 0.025) + 1):
+            loadFraction = 0.1 + 0.025 * j
             parameters.append((loadFraction, chargeMassRatio))
 
     with multiprocessing.Pool() as pool:
@@ -132,7 +123,9 @@ if __name__ == "__main__":
             c="black",
             alpha=0.5,
             linestyle="dotted",
-            label=f"{chamberVolume:.0f} L",
+            label=f"{chamberVolume:.0f} L"
+            if chamberVolume != 12.27
+            else f"{chamberVolume:.2f} L",
             linewidth=1,
         )
 
@@ -144,13 +137,12 @@ if __name__ == "__main__":
             for v in range(int((max(data) - min(data)) // delta))
         ]
 
-    """
     gunLengthContours = ax.tricontour(
         xs,
         ys,
         ls,
         levels=[5, 6, 7],
-        linestyles="dashdot",
+        linestyles="solid",
         colors="black",
         alpha=1,
         linewidths=1,
@@ -166,13 +158,12 @@ if __name__ == "__main__":
     )
 
     """
-
     gunVolumeContours = ax.tricontour(
         xs,
         ys,
         vs,
-        levels=[70, 80, 90, 100, 110],
-        colors="black",
+        levels=[70, 76.1, 80, 90, 100, 110],
+        colors=["black", "red", "black", "black", "black", "black", "black"],
         alpha=1,
         linestyles="solid",
         linewidths=1,
@@ -184,7 +175,7 @@ if __name__ == "__main__":
         fontsize=8,
         fmt=lambda x: f"{x:.0f} L",
         use_clabeltext=True,
-    )
+    )"""
 
     propArchContours = ax.tricontour(
         xs,
@@ -238,7 +229,7 @@ if __name__ == "__main__":
         alpha=0.1,
     )
 
-    ax.scatter(10 / 22.7 * 1e3, 10, s=33, marker="*")
+    ax.scatter(10 / 12.27 * 1e3, 10, s=33, marker="*")
     ax.set_xlim(0, 0.8 * target.propellant.rho_p)
     ax.set_ylim(0, 4 * target.m)
 
