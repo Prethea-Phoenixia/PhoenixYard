@@ -476,10 +476,6 @@ class InteriorBallisticsFrame(Frame):
             allLLF=self.locs,
         )
         pltOptnFrm.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
-
-
-        
-
     """
 
     def addLeftFrm(self):
@@ -774,6 +770,22 @@ class InteriorBallisticsFrame(Frame):
 
         j += 1
 
+        self.lock_Lg = LocLabelCheck(
+            parent=consFrm,
+            row=j,
+            col=0,
+            columnspan=3,
+            default=0,
+            labelLocKey="lockButton",
+            tooltipLocKey="lockText",
+            locFunc=self.getLocStr,
+            allLC=self.locs,
+        )
+
+        self.lock_Lg.trace_add("write", self.ctrlCallback)
+
+        j += 1
+
         self.opt_lf = LocLabelCheck(
             parent=consFrm,
             row=j,
@@ -785,6 +797,8 @@ class InteriorBallisticsFrame(Frame):
             locFunc=self.getLocStr,
             allLC=self.locs,
         )
+
+        self.opt_lf.trace_add("write", self.ctrlCallback)
 
         j += 1
         self.vTgt = Loc3Input(
@@ -967,6 +981,7 @@ class InteriorBallisticsFrame(Frame):
 
         try:
             constrain = self.solve_W_Lg.get() == 1
+            lock = self.lock_Lg.get() == 1
             optimize = self.opt_lf.get() == 1
             debug = self.DEBUG.get() == 1
             atmosphere = self.inAtmos.get() == 1
@@ -1019,6 +1034,7 @@ class InteriorBallisticsFrame(Frame):
                 "opt": optimize,
                 "con": constrain,
                 "deb": debug,
+                "lock": lock,
                 "typ": gunType,
                 "dom": self.dropDomain.getObj(),
                 "sol": self.dropSoln.getObj(),
@@ -1122,6 +1138,7 @@ class InteriorBallisticsFrame(Frame):
         kwargs = self.kwargs
 
         constrain = kwargs["con"]
+        lock = kwargs["lock"]
         optimize = kwargs["opt"]
         gunType = kwargs["typ"]
         maxInset = kwargs["maxInset"]
@@ -1131,7 +1148,6 @@ class InteriorBallisticsFrame(Frame):
 
         boreS = pi * 0.25 * caliber**2
         breechS = boreS * chambrage
-        # insetV = boreS * inset
         exactlyTelescopedVreal = (breechS - boreS) * maxInset
 
         sigfig = int(-log10(kwargs["tol"])) + 1
@@ -1157,8 +1173,9 @@ class InteriorBallisticsFrame(Frame):
                 webmm = roundSig(kwargs["grainSize"] * 1e3, n=sigfig)
                 self.arcmm.set(webmm)
 
-                lgmm = roundSig(kwargs["lengthGun"] * 1e3, n=sigfig)
-                self.tblmm.set(lgmm)
+                if not lock:
+                    lgmm = roundSig(kwargs["lengthGun"] * 1e3, n=sigfig)
+                    self.tblmm.set(lgmm)
 
                 if optimize:
                     if self.useCv.getObj() == USE_CV:
@@ -2491,13 +2508,6 @@ class InteriorBallisticsFrame(Frame):
         self.updateError()
 
     def typeCallback(self, *args):
-        """
-        callback for when the gun type is changed.
-
-        """
-        if self.process is not None:
-            return
-
         gunType = self.typeOptn.getObj()
 
         if gunType == CONVENTIONAL:
@@ -2526,24 +2536,33 @@ class InteriorBallisticsFrame(Frame):
                 widget.enable()
 
     def ctrlCallback(self, *args):
-        if self.process is not None:
-            return
-
         if self.solve_W_Lg.get() == 0:
             self.vTgt.disable()
             self.pTgt.disable()
             self.opt_lf.disable()
+            self.lock_Lg.disable()
             self.minWeb.disable()
             self.lgmax.disable()
-
             self.pControl.disable()
+
         else:
-            self.vTgt.enable()
+            if self.lock_Lg.get() == 1:
+                self.vTgt.disable()
+                self.opt_lf.disable()
+                self.tblmm.enable()
+            else:
+                self.vTgt.enable()
+                self.opt_lf.enable()
+                self.tblmm.disable()
+
+            if self.opt_lf.get() == 1:
+                self.lock_Lg.disable()
+            else:
+                self.lock_Lg.enable()
+
             self.pTgt.enable()
-            self.opt_lf.enable()
             self.minWeb.enable()
             self.lgmax.enable()
-
             self.pControl.enable()
 
     def cvlfConsisCallback(self, *args):
@@ -2565,17 +2584,11 @@ class InteriorBallisticsFrame(Frame):
             return
 
     def ambCallback(self, *args):
-        if self.process is not None:
-            return
-
         self.ambP.enable() if self.inAtmos.get() else self.ambP.disable()
         self.ambRho.enable() if self.inAtmos.get() else self.ambRho.disable()
         self.ambGam.enable() if self.inAtmos.get() else self.ambGam.disable()
 
     def cvlfCallback(self, *args):
-        if self.process is not None:
-            return
-
         useCv = self.useCv.getObj() == USE_CV
 
         self.ldf.disable() if useCv else self.ldf.enable()
@@ -2699,6 +2712,7 @@ def calculate(
     gunType = kwargs["typ"]
     constrain = kwargs["con"]
     optimize = kwargs["opt"]
+    lock = kwargs["lock"]
     debug = kwargs["deb"]
 
     try:
@@ -2712,10 +2726,12 @@ def calculate(
                 l_f, e_1, l_g = constrained.findMinV(**kwargs)
                 kwargs.update({"loadFraction": l_f})
             else:
-                e_1, l_g = constrained.solve(**kwargs)
+                e_1, l_g = constrained.solve(**kwargs, enforce_order=not lock)
 
             kwargs.update({"grainSize": 2 * e_1})
-            kwargs.update({"lengthGun": l_g})
+
+            if not lock:
+                kwargs.update({"lengthGun": l_g})
 
             chamberVolume = (
                 kwargs["chargeMass"]

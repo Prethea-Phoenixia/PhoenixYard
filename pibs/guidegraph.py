@@ -21,7 +21,7 @@ Py.u_1 *= 1.22
 PyTu = Propellant(Py, SimpleGeometry.TUBE, 1, 100)
 
 caliber = 125e-3
-tol = 1e-5
+tol = 1e-3
 dragCoefficient = 3e-2
 control = POINT_PEAK_AVG
 

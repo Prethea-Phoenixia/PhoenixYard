@@ -96,6 +96,7 @@ class Constrained:
         ambientP=101.325e3,
         ambientGamma=1.4,
         control=POINT_PEAK_AVG,
+        enforce_order=True,  # ensure velocity target is achieved after pressure target.
         **_,
     ):
         if any(
@@ -389,7 +390,7 @@ class Constrained:
                 )
             )
 
-        if v_j * v_bar_i > v_d:
+        if v_j * v_bar_i > v_d and enforce_order:
             raise ValueError(
                 "Design velocity exceeded ({:.4g} m/s > {:.4g} m/s) before peak pressure.".format(
                     v_bar_i * v_j, v_bar_d * v_j
@@ -479,7 +480,7 @@ class Constrained:
 
         if abs(v_bar_g - v_bar_d) > (tol * v_bar_d):
             raise ValueError(
-                "Velocity specification is not met, last calculated to "
+                "Velocity target is not met, last calculated to "
                 + "v = {:.4g} m/s ({:+.3g} %), x = {:.4g} m, p = {:.4g} MPa".format(
                     v_g, (v_bar_g - v_bar_d) / v_bar_d * 1e2, l_g, p_g * 1e-6
                 )
@@ -514,12 +515,13 @@ class Constrained:
                 ambientP=ambientP,
                 ambientGamma=ambientGamma,
                 control=control,
+                enforce_order=enforce_order,
             )
             # TODO: Maximum recursion depth exceeded in comparison is
             # occasionally thrown here. Investigate why.
         else:
-            if it == MAX_ITER:
-                print("Return on maximum iteration.", abs(cc_n - cc))
+            # if it == MAX_ITER:
+            #    print("Return on maximum iteration.", abs(cc_n - cc))
             return e_1, l_bar_g * l_0
 
     def findMinV(
@@ -582,6 +584,7 @@ class Constrained:
                 ambientP=ambientP,
                 ambientGamma=ambientGamma,
                 control=control,
+                enforce_order=True,
             )
 
             return e_1, (l_g + l_0), l_g

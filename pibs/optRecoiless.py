@@ -89,6 +89,7 @@ class ConstrainedRecoiless:
         ambientP=101.325e3,
         ambientGamma=1.4,
         control=POINT_PEAK_AVG,
+        enforce_order=True,
         **_,
     ):
         if any(
@@ -457,11 +458,11 @@ class ConstrainedRecoiless:
         """
 
         dp_bar_i, *vals_1 = _f_p_e_1(e_1)
-        dp_bar_j, *vals_2 = _f_p_e_1(e_1_2)
 
         (Z_i, t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i) = vals_1
 
         if abs(dp_bar_i) > tol * p_bar_d:
+            dp_bar_j, *vals_2 = _f_p_e_1(e_1_2)
             raise ValueError(
                 "Design pressure is not met, current best solution peaked at "
                 + "P = {:.4g}MPa ({:+.3g}%) ".format(
@@ -492,7 +493,7 @@ class ConstrainedRecoiless:
         """
         v_bar_d = v_d / v_j
 
-        if v_bar_i > v_bar_d:
+        if v_bar_i > v_bar_d and enforce_order:
             raise ValueError(
                 "Design velocity exceeded ({:.4g} m/s > {:.4g} m/s) before peak pressure.".format(
                     v_bar_i * v_j, v_bar_d * v_j
@@ -595,17 +596,15 @@ class ConstrainedRecoiless:
                 + "p = {:.4g} MPa.".format(p_g * 1e-6)
             )
 
-        elif t_bar_g < t_bar_i:
+        elif t_bar_g < t_bar_i and enforce_order:
             raise ValueError(
-                "Projectile is already decelerating at peak pressure point, "
+                "Target velocity is achieved before peak pressure point, "
                 + "last calculated at v = {:.4g} m/s,".format(v_g)
                 + "x = {:.4g} m, p = {:.4g} MPa. ".format(l_g, p_g * 1e-6)
-                + "This indicate excessively low propulsive effort compared to drag "
-                + "in bore. Reduce the caliber, or specify more energetic propellant charge."
             )
         if abs(v_bar_g - v_bar_d) > (tol * v_bar_d):
             raise ValueError(
-                "Velocity specification is not met, last calculated to "
+                "Velocity target is not met, last calculated to "
                 + "v = {:.4g} m/s ({:+.3g} %), x = {:.4g} m, p = {:.4g} MPa".format(
                     v_g, (v_bar_g - v_bar_d) / v_bar_d * 1e2, l_g, p_g * 1e-6
                 )
@@ -656,6 +655,7 @@ class ConstrainedRecoiless:
                 ambientRho=ambientRho,
                 ambientGamma=ambientGamma,
                 control=control,
+                enforce_order=True,
             )
             return e_1, (l_g + l_0), l_g
 

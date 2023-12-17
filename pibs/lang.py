@@ -31,6 +31,7 @@ ENGLISH = {
     "opFrmLabel": "Operations",
     "consFrmLabel": "Constraints",
     "consButton": "Constrain Design",
+    "lockButton": "Lock Tube Length",
     "minTVButton": "Minimize Tube Volume",
     "sampleFrmLabel": "Sampling",
     "pltOptnFrm": "Plot Option",
@@ -557,6 +558,14 @@ ENGLISH = {
             "of different parameters.",
         )
     ),
+    "lockText": " ".join(
+        (
+            "Respect the user specified barrel length (projectile travel)",
+            "during constrained solving over the velocity target.",
+            "This option is mutually",
+            "exclusive with minimum chamber volume optimization.",
+        )
+    ),
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -591,6 +600,7 @@ CHINESE = {
     "solFrmLabel": "内弹道气动分布",
     "consFrmLabel": "反算设置",
     "consButton": "反算弧厚身管长",
+    "lockButton": "锁定管长",
     "minTVButton": "求最小膛容解",
     "sampleFrmLabel": "采样控制",
     "pltOptnFrm": "作图控制",
@@ -958,6 +968,13 @@ CHINESE = {
             "实际武器上，炮尾常常是一个独立部件，与炮管通过螺纹",
             "连接，炮闩也可作楔式，受力情况更为复杂，故此，",
             "该简化计算值仅作初步设计参考，方便比较不同参数方案。",
+        )
+    ),
+    "lockText": "".join(
+        (
+            "使用输入的炮管长度（弹药行程）覆盖程序反解计算的输出。",
+            "对于反解计算，该选项等于只考虑压强限制。该选项与",
+            "最小膛容解计算互斥。",
         )
     ),
 }
