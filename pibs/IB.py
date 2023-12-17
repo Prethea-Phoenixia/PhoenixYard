@@ -2544,6 +2544,7 @@ class InteriorBallisticsFrame(Frame):
             self.minWeb.disable()
             self.lgmax.disable()
             self.pControl.disable()
+            self.tblmm.enable()
 
         else:
             if self.lock_Lg.get() == 1:
