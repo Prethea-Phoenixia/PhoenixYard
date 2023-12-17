@@ -14,9 +14,9 @@ from gun import (
 from labellines import labelLine, labelLines
 
 compositions = GrainComp.readFile("data/propellants.csv")
-M10 = compositions["M10"]  # standin for pyroxylin
+Py = compositions["Pyroxylin"]  # standin for pyroxylin
 # beta does not affect the actual curve....
-M10Tu = Propellant(M10, SimpleGeometry.TUBE, 1, 100)
+PyTu = Propellant(Py, SimpleGeometry.TUBE, 1, 100)
 
 caliber = 125e-3
 tol = 1e-3
@@ -26,7 +26,7 @@ control = POINT_PEAK_AVG
 target = Constrained(
     caliber=caliber,
     shotMass=5.67,
-    propellant=M10Tu,
+    propellant=PyTu,
     startPressure=30e6,
     dragCoefficient=dragCoefficient,
     designPressure=392e6,
@@ -37,7 +37,7 @@ target = Constrained(
 target = Constrained(
     caliber=caliber,
     shotMass=5.67,
-    propellant=M10Tu,
+    propellant=PyTu,
     startPressure=30e6,
     dragCoefficient=dragCoefficient,
     designPressure=392e6,
@@ -68,7 +68,7 @@ def f(loadFraction, chargeMassRatio):
         gun = Gun(
             caliber=caliber,
             shotMass=target.m,
-            propellant=M10Tu,
+            propellant=PyTu,
             grainSize=2 * halfWeb,
             chargeMass=chargeMass,
             chamberVolume=chamberVolume,
