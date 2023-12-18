@@ -16,9 +16,8 @@ from labellines import labelLine, labelLines
 
 compositions = GrainComp.readFile("data/propellants.csv")
 Py = copy.deepcopy(compositions["M10"])  # standin for pyroxylin
-Py.u_1 *= 1.22
 # beta does not affect the actual curve....
-PyTu = Propellant(Py, SimpleGeometry.TUBE, 1, 100)
+PyTu = Propellant(Py, SimpleGeometry.TUBE, 1, 100, 0.22)
 
 caliber = 125e-3
 tol = 1e-3
