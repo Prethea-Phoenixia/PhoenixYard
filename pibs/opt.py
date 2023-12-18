@@ -90,13 +90,13 @@ class Constrained:
         labda_2=None,
         cc=None,
         it=0,
-        l_bar_g_0=None,
+        lengthGun=None,
         sol=SOL_LAGRANGE,
         ambientRho=1.204,
         ambientP=101.325e3,
         ambientGamma=1.4,
         control=POINT_PEAK_AVG,
-        enforce_order=True,  # ensure velocity target is achieved after pressure target.
+        known_bore=False,
         **_,
     ):
         if any(
@@ -115,6 +115,7 @@ class Constrained:
             raise ValueError(
                 "Invalid parameters to solve constrained design problem"
             )
+
         """
         minWeb  : represents minimum possible grain size
         """
@@ -138,12 +139,6 @@ class Constrained:
         chi_k = self.chi_k
         f_psi_Z = self.f_psi_Z
 
-        if l_bar_g_0 is None:
-            l_bar_g_0 = 0
-
-        if cc is None:
-            cc = 1
-
         if loadFraction > maxLF:
             raise ValueError(
                 "Specified Load Fraction Violates Geometrical Constraint"
@@ -154,6 +149,14 @@ class Constrained:
         Delta = omega / V_0
         l_0 = V_0 / S
         gamma = theta + 1
+
+        if lengthGun is None:
+            l_bar_g_0 = maxLength / l_0
+        else:
+            l_bar_g_0 = lengthGun / l_0
+
+        if cc is None:
+            cc = 1 - (1 - 1 / chi_k) * log(l_bar_g_0 + 1) / l_bar_g_0
 
         if any((labda_1 is None, labda_2 is None)):
             if sol == SOL_LAGRANGE:
@@ -390,7 +393,10 @@ class Constrained:
                 )
             )
 
-        if v_j * v_bar_i > v_d and enforce_order:
+        if known_bore:
+            return e_1, lengthGun
+
+        if v_j * v_bar_i > v_d:
             raise ValueError(
                 "Design velocity exceeded ({:.4g} m/s > {:.4g} m/s) before peak pressure.".format(
                     v_bar_i * v_j, v_bar_d * v_j
@@ -510,12 +516,12 @@ class Constrained:
                 sol=sol,
                 cc=cc_n,
                 it=it + 1,
-                l_bar_g_0=l_bar_g,
+                lengthGun=l_bar_g * l_0,
                 ambientRho=ambientRho,
                 ambientP=ambientP,
                 ambientGamma=ambientGamma,
                 control=control,
-                enforce_order=enforce_order,
+                known_bore=known_bore,
             )
             # TODO: Maximum recursion depth exceeded in comparison is
             # occasionally thrown here. Investigate why.
@@ -584,7 +590,7 @@ class Constrained:
                 ambientP=ambientP,
                 ambientGamma=ambientGamma,
                 control=control,
-                enforce_order=True,
+                known_bore=False,
             )
 
             return e_1, (l_g + l_0), l_g

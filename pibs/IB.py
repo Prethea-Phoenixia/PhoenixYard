@@ -2755,7 +2755,7 @@ def calculate(
                 l_f, e_1, l_g = constrained.findMinV(**kwargs)
                 kwargs.update({"loadFraction": l_f})
             else:
-                e_1, l_g = constrained.solve(**kwargs, enforce_order=not lock)
+                e_1, l_g = constrained.solve(**kwargs, known_bore=lock)
 
             kwargs.update({"grainSize": 2 * e_1})
 

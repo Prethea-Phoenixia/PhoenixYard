@@ -38,7 +38,7 @@ def f(shotMass):
         startPressure=30e6,
         dragCoefficient=dragCoefficient,
         designPressure=457e6,
-        designVelocity=1800,
+        designVelocity=1000,
         chambrage=1.25,  # almost exact, 4 * 12.27L/ pi (1.25dm)^2 * 8dm
     )
     chargeMassRatio = 10 / shotMass
@@ -47,14 +47,15 @@ def f(shotMass):
             loadFraction,
             chargeMassRatio,
             tol,
-            minWeb=1e-6,
+            minWeb=1e-7,
             maxLength=1e3,
             sol=SOL_LAGRANGE,
             ambientRho=1.204,
             ambientP=101.325e3,
             ambientGamma=1.4,
             control=control,
-            enforce_order=False,
+            lengthGun=lengthGun,
+            known_bore=True,
         )
         gun = Gun(
             caliber=caliber,
@@ -87,7 +88,8 @@ def f(shotMass):
         velocity = datas[-1][4]
 
         web = halfWeb * 2e3
-    except ValueError:
+    except ValueError as e:
+        print(e)
         web, burnout, velocity = None, None, None
 
     return shotMass, web, burnout, velocity
@@ -98,8 +100,8 @@ if __name__ == "__main__":
     import multiprocessing
 
     parameters = []
-    for i in range(int(5 / 0.1) + 1):
-        shotMass = 2 + 0.1 * i
+    for i in range(int(18 / 0.2) + 1):
+        shotMass = 2 + 0.2 * i
         parameters.append(shotMass)
 
     with multiprocessing.Pool() as pool:

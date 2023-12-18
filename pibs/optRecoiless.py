@@ -89,7 +89,8 @@ class ConstrainedRecoiless:
         ambientP=101.325e3,
         ambientGamma=1.4,
         control=POINT_PEAK_AVG,
-        enforce_order=True,
+        lengthGun=None,
+        known_bore=False,
         **_,
     ):
         if any(
@@ -488,12 +489,15 @@ class ConstrainedRecoiless:
             """
             Z_i = Z_b + tol
 
+        if known_bore:
+            return e_1, lengthGun
+
         """
         step 2, find the requisite muzzle length to achieve design velocity
         """
         v_bar_d = v_d / v_j
 
-        if v_bar_i > v_bar_d and enforce_order:
+        if v_bar_i > v_bar_d:
             raise ValueError(
                 "Design velocity exceeded ({:.4g} m/s > {:.4g} m/s) before peak pressure.".format(
                     v_bar_i * v_j, v_bar_d * v_j
@@ -596,7 +600,7 @@ class ConstrainedRecoiless:
                 + "p = {:.4g} MPa.".format(p_g * 1e-6)
             )
 
-        elif t_bar_g < t_bar_i and enforce_order:
+        elif t_bar_g < t_bar_i:
             raise ValueError(
                 "Target velocity is achieved before peak pressure point, "
                 + "last calculated at v = {:.4g} m/s,".format(v_g)
@@ -655,7 +659,7 @@ class ConstrainedRecoiless:
                 ambientRho=ambientRho,
                 ambientGamma=ambientGamma,
                 control=control,
-                enforce_order=True,
+                known_bore=False,
             )
             return e_1, (l_g + l_0), l_g
 

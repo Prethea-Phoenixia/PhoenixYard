@@ -322,15 +322,12 @@ class Loc3Input(Loc2Input):
         self.unitLabel.grid()
 
     def getDescriptive(self):
-        return (
-            self.locFunc(
-                self.labelLocKey
-                if self.descLabelKey is None
-                else self.descLabelKey,
-                forceDefault=True,
-            )
-            + f" ({self.unitText:})"
-        )
+        return self.locFunc(
+            self.labelLocKey
+            if self.descLabelKey is None
+            else self.descLabelKey,
+            forceDefault=True,
+        ) + (f" ({self.unitText:})" if self.unitText != "" else "")
 
 
 class LocDropdown:
