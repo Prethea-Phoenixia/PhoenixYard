@@ -566,6 +566,17 @@ ENGLISH = {
             "exclusive with minimum chamber volume optimization.",
         )
     ),
+    "fudgeLabel": "Burn Rate Mod.",
+    "fudgeText": " ".join(
+        (
+            "   Modifies the burn-rate used during calculation. This has the effect",
+            "of scaling the calculated web, or the thickness of the burn arch,",
+            "and does not affect the underlying calculation in any other way.\n",
+            "   This can, and was commonly used to match experiment data, since",
+            "burn rate data was calculated from closed-bomb results, for a particular",
+            "load density, at a certain temperature, for a particular batch.",
+        )
+    ),
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -975,6 +986,15 @@ CHINESE = {
             "使用输入的炮管长度（弹药行程）覆盖程序反解计算的输出。",
             "对于反解计算，该选项等于只考虑压强限制。该选项与",
             "最小膛容解计算互斥。",
+        )
+    ),
+    "fudgeLabel": "燃速修正",
+    "fudgeText": "".join(
+        (
+            "火药燃速修正系数。火药燃速的数据是在某一特定装填密度，特定温度的条件下，",
+            "针对某一特定批次测定的。对于实际的内弹道计算，常常需要根据经验，有条件的",
+            "情况下对照实验数据的前提下进行修正。对于内弹道计算而言，修正燃速仅影响",
+            "内弹道解与火药药厚的对应关系，",
         )
     ),
 }

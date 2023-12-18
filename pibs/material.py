@@ -55,12 +55,17 @@ class Material(Enum):
     )
 
     def getTdict(self):
-        return {"{:.0f} K".format(T): i for i, T in enumerate(self.Ts)}
+        return {f"{T:.0f} K": f"{T:.0f} K" for i, T in enumerate(self.Ts)}
 
-    def createMaterialAtTemp(self, i):
-        return MaterialAtTemp(
-            self.desc + "@{:.0f} K".format(self.Ts[i]), self.rho, self.Ys[i]
-        )
+    def createMaterialAtTemp(self, Tstr):
+        for i, T in enumerate(self.Ts):
+            if Tstr == f"{T:.0f} K":
+                return MaterialAtTemp(
+                    self.desc + "@{:.0f} K".format(self.Ts[i]),
+                    self.rho,
+                    self.Ys[i],
+                )
+        raise ValueError(f"Material has no condition at {Tstr:}")
 
 
 class MaterialAtTemp:

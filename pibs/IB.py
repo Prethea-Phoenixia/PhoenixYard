@@ -16,7 +16,7 @@ from optRecoiless import ConstrainedRecoiless
 from tip import CreateToolTip
 from lang import STRING
 
-from misc import validateNN, validatePI
+from misc import validateNN, validatePI, validateFLT
 from misc import roundSig, formatMass, dot_aligned, toSI
 from misc import formatIntInput
 from misc import loadfont, resolvepath
@@ -355,7 +355,17 @@ class InteriorBallisticsFrame(Frame):
                     pass
 
         except Exception as e:
-            messagebox.showinfo(self.getLocStr("excTitle"), str(e))
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+
+            if self.DEBUG.get() == 1:
+                errMsg = "".join(
+                    traceback.format_exception(
+                        exc_type, exc_value, exc_traceback
+                    )
+                )
+            else:
+                errMsg = str(e)
+            messagebox.showinfo(self.getLocStr("excTitle"), errMsg)
 
     def export(self):
         gun = self.gun
@@ -1270,6 +1280,7 @@ class InteriorBallisticsFrame(Frame):
 
         # validation
         validationNN = self.register(validateNN)
+        validationFLT = self.register(validateFLT)
 
         i = 0
 
@@ -1473,6 +1484,19 @@ class InteriorBallisticsFrame(Frame):
             allInputs=self.locs,
         )
         j += 1
+        self.burnRateFudge = Loc3Input(
+            parent=grainFrm,
+            color="red",
+            row=j,
+            labelLocKey="fudgeLabel",
+            unitText="%",
+            default="0.0",
+            validation=validationFLT,
+            tooltipLocKey="fudgeText",
+            locFunc=self.getLocStr,
+            allInputs=self.locs,
+        )
+        j += 1
         self.grdR = Loc3Input(
             parent=grainFrm,
             row=j,
@@ -1604,6 +1628,7 @@ class InteriorBallisticsFrame(Frame):
         self.dropProp.trace_add("write", self.updateSpec)
         self.dropGeom.trace_add("write", self.updateGeom)
 
+        self.burnRateFudge.trace_add("write", self.callback)
         self.grdR.trace_add("write", self.callback)
         self.grlR.trace_add("write", self.callback)
         self.arcmm.trace_add("write", self.callback)
@@ -1804,6 +1829,7 @@ class InteriorBallisticsFrame(Frame):
             col=k,
             labelLocKey="traceHull",
             locFunc=self.getLocStr,
+            default=0,
             allLC=auxChecks,
         )
 
@@ -2488,6 +2514,8 @@ class InteriorBallisticsFrame(Frame):
                 geom,
                 float(self.grdR.get()),
                 float(self.grlR.get()),
+                float(self.burnRateFudge.get())
+                * 1e-2,  # convert percentage to float
             )
             self.updateGeomPlot()
 

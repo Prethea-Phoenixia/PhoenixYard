@@ -308,6 +308,7 @@ class Loc3Input(Loc2Input):
 
         ulb = ttk.Label(parent, text=unitText)
         ulb.grid(row=row, column=col + 2, sticky="nsew", padx=2, pady=2)
+        self.unitText = unitText
         self.unitLabel = ulb
 
         allInputs.append(self)
@@ -319,6 +320,17 @@ class Loc3Input(Loc2Input):
     def restore(self):
         super().restore()
         self.unitLabel.grid()
+
+    def getDescriptive(self):
+        return (
+            self.locFunc(
+                self.labelLocKey
+                if self.descLabelKey is None
+                else self.descLabelKey,
+                forceDefault=True,
+            )
+            + f" ({self.unitText:})"
+        )
 
 
 class LocDropdown:

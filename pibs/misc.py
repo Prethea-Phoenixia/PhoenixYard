@@ -147,14 +147,31 @@ def validateNN(inp):
         return False
 
 
-def validatePI(inp):
-    """
-    validate an input such that the result is a positive integer"""
-
+def validatePI(
+    inp,
+):  # validate an input such that the result is a positive integer
     if inp == "":
         return True  # we will catch this by filling the default value
     try:
         return float(inp).is_integer() and float(inp) > 0 and "." not in inp
+    except ValueError:
+        return False
+
+
+def validateFLT(inp):  # validate an input such that the result is a float.
+    if (
+        inp == ""
+        or inp == "."
+        or inp == "-"
+        or (inp.count("e") == 1 and inp[-1] == "e")  # scientific input
+        or (
+            inp.count("e") == 1 and inp[-2:] == "e-"
+        )  # scientific input with negative exponent
+    ):
+        return True
+    try:
+        float(inp)
+        return True
     except ValueError:
         return False
 

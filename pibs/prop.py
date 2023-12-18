@@ -258,7 +258,7 @@ class GrainComp:
 
 class Propellant:
     # assumed to be multi-holed propellants
-    def __init__(self, composition, propGeom, R1, R2):
+    def __init__(self, composition, propGeom, R1, R2, fudge=0):
         """
         given e_1 as the maximum burn depth.
         R1: ratio w.r.t arc thickness
@@ -278,6 +278,8 @@ class Propellant:
 
                 teritary length to primary length ratio
                 for rectangular rod shapes, 2*c/(2*e_1)
+
+        fudge: burn rate modifier, uesd to match experiment.
 
 
         Requried attributes:
@@ -299,6 +301,8 @@ class Propellant:
         """
         self.R1 = R1
         self.R2 = R2
+
+        self.fudge = fudge
 
         if any(
             (
@@ -433,7 +437,12 @@ class Propellant:
             attrName.startswith("__") and attrName.endswith("__")
         ):
             try:
-                return getattr(self.composition, attrName)
+                if attrName == "u_1":
+                    return getattr(self.composition, attrName) * (
+                        1 + self.fudge
+                    )
+                else:
+                    return getattr(self.composition, attrName)
             except AttributeError:
                 raise AttributeError(
                     "%r object has no attribute %r"
