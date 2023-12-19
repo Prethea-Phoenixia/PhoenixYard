@@ -17,11 +17,11 @@ from labellines import labelLine, labelLines
 compositions = GrainComp.readFile("data/propellants.csv")
 Py = copy.deepcopy(compositions["M10"])  # standin for pyroxylin
 # beta does not affect the actual curve....
-PyTu = Propellant(Py, SimpleGeometry.TUBE, 1, 100, 0.22)
+PyTu = Propellant(Py, SimpleGeometry.TUBE, 1, 100, 0.225)
 
 caliber = 125e-3
-tol = 1e-3
-dragCoefficient = 3e-2
+tol = 1e-5
+dragCoefficient = 2e-2
 control = POINT_PEAK_AVG
 
 target = Constrained(
@@ -114,9 +114,9 @@ if __name__ == "__main__":
 
     xs, ys, es, ls, bos, vs = zip(*[v for v in results if v[2] is not None])
 
-    fig, ax = plt.subplots(layout="constrained")
+    fig, ax = plt.subplots(layout="constrained", figsize=(11.69, 8.27))
 
-    for chamberVolume in [5, 10, 15, 20, 25, 30, 35]:
+    for chamberVolume in [5, 10, 12.27, 15, 20, 25, 30, 35]:
         ax.plot(
             (0, target.propellant.rho_p),
             (0, chamberVolume * 1e-3 * target.propellant.rho_p),
@@ -129,7 +129,7 @@ if __name__ == "__main__":
             linewidth=1,
         )
 
-    labelLines(ax.get_lines(), xvals=(0, 600), fontsize=8, outline_width=1)
+    labelLines(ax.get_lines(), xvals=(0, 600), fontsize=10, outline_width=1)
 
     def makeLevels(data, delta):
         return [
@@ -141,7 +141,7 @@ if __name__ == "__main__":
         xs,
         ys,
         ls,
-        levels=[50 + 2 * v for v in range(10)],
+        levels=[48 + 4 * v for v in range(10)],
         linestyles="solid",
         colors="black",
         alpha=1,
@@ -151,12 +151,10 @@ if __name__ == "__main__":
     clabels = ax.clabel(
         gunLengthContours,
         gunLengthContours.levels,
-        inline=False,
-        fontsize=8,
-        fmt=lambda x: f"{x:.1f} m",
+        inline=True,
+        fontsize=10,
         use_clabeltext=True,
     )
-
     """
     gunVolumeContours = ax.tricontour(
         xs,
@@ -190,14 +188,10 @@ if __name__ == "__main__":
     clabels = ax.clabel(
         propArchContours,
         propArchContours.levels,
-        inline=False,
-        fontsize=8,
-        fmt=lambda x: f"{x:.1f} mm",
+        inline=True,
+        fontsize=10,
         use_clabeltext=True,
     )
-    for label in clabels:
-        label.set_va("top")
-
     gunBurnoutContours = ax.tricontour(
         xs,
         ys,
@@ -213,7 +207,7 @@ if __name__ == "__main__":
         gunBurnoutContours,
         gunBurnoutContours.levels,
         inline=False,
-        fontsize=8,
+        fontsize=10,
         fmt=lambda x: f"{x:.0%}",
         use_clabeltext=True,
     )
@@ -229,7 +223,7 @@ if __name__ == "__main__":
         alpha=0.1,
     )
 
-    ax.scatter(10 / 12.27 * 1e3, 10, s=33, marker="*")
+    ax.scatter(10 / 12.27 * 1e3, 10, s=100, marker="*")
     ax.set_xlim(0, 0.8 * target.propellant.rho_p)
     ax.set_ylim(0, 4 * target.m)
 
