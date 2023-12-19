@@ -111,10 +111,29 @@ if __name__ == "__main__":
 
     fig, axv = plt.subplots(layout="constrained")
 
-    axv.plot(ms, vs)
+    axv.plot(ms, [v - 1800 for v in vs])
+    axp = axv.twinx()
 
-    axe = axv.twinx()
+    from math import tanh, exp
 
-    axe.plot(ms, es, linestyle="dashed")
+    for Y in (800e6, 1000e6, 1200e6):
+        ps = []
+        for m, v in zip(ms, vs):
+            k = m / 5.67
+            LDR = k * 14.39
+
+            aLDRr = (LDR + 3.77 * (1 - tanh((LDR - 10) / 6.89))) / (
+                14.39 + 3.77 * (1 - tanh((14.39 - 10) / 6.89))
+            )
+
+            relPen = aLDRr * exp(
+                -25.9 * Y / (7850 * v**2) + 25.9 * Y / (7850 * 1800**2)
+            )
+            ps.append(relPen)
+
+        axp.plot(ms, ps, color="red")
+    axp.set_ylim(0, 2)
+    # axe = axv.twinx()
+    # axe.plot(ms, es, linestyle="dashed")
 
     plt.show()

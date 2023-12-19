@@ -88,6 +88,7 @@ def f(loadFraction, chargeMassRatio):
 
         halfWeb *= 2e3
         volume *= 1e3
+        lengthGun *= 10
     except ValueError:
         # print(e)
         halfWeb, lengthGun, volume, burnout = None, None, None, None
@@ -140,7 +141,7 @@ if __name__ == "__main__":
         xs,
         ys,
         ls,
-        levels=[5, 6, 7],
+        levels=[50 + 2 * v for v in range(10)],
         linestyles="solid",
         colors="black",
         alpha=1,
