@@ -153,7 +153,6 @@ class InteriorBallisticsFrame(Frame):
         self.debugMenu = debugMenu
 
         self.themeRadio = IntVar(value=0)
-        self.useTheme()
 
         self.DEBUG = IntVar(value=0)
 
@@ -244,6 +243,8 @@ class InteriorBallisticsFrame(Frame):
 
         parent.bind("<Return>", lambda *_: self.onCalculate())
         parent.protocol("WM_DELETE_WINDOW", self.quit)
+
+        self.useTheme()
 
         self.tLid = None
         self.timedLoop()
@@ -2411,6 +2412,9 @@ class InteriorBallisticsFrame(Frame):
         self.errorLst = []
 
     def updateTable(self):
+        gun = self.gun
+        if gun is None:
+            return
         self.tv.delete(*self.tv.get_children())
 
         try:
@@ -2485,7 +2489,11 @@ class InteriorBallisticsFrame(Frame):
             )
         for i, (row, erow) in enumerate(zip(tableData, errorData)):
             self.tv.insert(
-                "", "end", str(i + 1), values=row, tags=(row[0], "monospace")
+                "",
+                "end",
+                str(i + 1),
+                values=row,
+                tags=(row[0], "monospace"),
             )
             self.tv.insert(
                 str(i + 1),
@@ -2725,11 +2733,15 @@ class InteriorBallisticsFrame(Frame):
 
         except AttributeError:
             pass
+
+        """
         try:
             self.tv.tag_configure("oddrow", background=bgc)
             self.tv.tag_configure("evenrow", background=ebgc)
         except AttributeError:
             pass
+        self.updateTable()
+        """
 
         self.update_idletasks()
 

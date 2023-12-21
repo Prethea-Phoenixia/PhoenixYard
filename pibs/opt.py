@@ -181,7 +181,7 @@ class Constrained:
 
         gamma_1 = ambientGamma
 
-        if v_j < v_d:
+        if v_j < v_d and not known_bore:
             raise ValueError(
                 "Propellant load too low to achieve design velocity. "
                 + " The 2nd ballistic limit for this loading conditions is"

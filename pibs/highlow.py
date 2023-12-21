@@ -545,10 +545,14 @@ class Highlow:
             tau_2_err=0,
         )
 
-        def abort(x, ys, o_x, o_ys):
+        def abort(x, ys, record):
             Z = x
             t_bar, eta, tau_1, tau_2 = ys
             p_2_bar = self._f_p_2_bar(0, eta, tau_2)
+
+            if len(record) < 1:
+                return False
+            o_x, o_ys = record[-1]
 
             _, o_eta, _, o_tau_2 = o_ys
             o_p_2_bar = self._f_p_2_bar(0, o_eta, o_tau_2)
@@ -580,7 +584,6 @@ class Highlow:
                     minTol=minTol,
                     abortFunc=abort,
                     record=r,
-                    debug=True,
                 )[1]
 
             except ValueError:
@@ -645,7 +648,7 @@ class Highlow:
         Delta_Z = Z_b - Z_0
 
         # fmt: off
-        t_bar_i, l_bar_i, v_bar_i, p_bar_i, eta_i, tau_1_i, tau_2_i = (
+        t_bar_i, l_bar_i, v_bar_i, _, eta_i, tau_1_i, tau_2_i = (
             t_bar_1, 0, 0, self.p_0_s_bar, eta_1, tau_1_1, tau_2_1
         )
         # fmt: on
@@ -662,9 +665,8 @@ class Highlow:
         """
         ztlvett_record = [(Z_1, (t_bar_1, 0, 0, eta_1, tau_1_1, tau_2_1))]
 
-        def abort(x, ys, o_x, o_ys):
-            Z, t_bar, l_bar, v_bar, eta, tau_1, tau_2 = x, *ys
-
+        def abort(x, ys, record):
+            Z, _, l_bar, v_bar, eta, tau_1, _ = x, *ys
             p_1_bar = self._f_p_1_bar(Z, eta, tau_1)
 
             return any(
@@ -928,7 +930,6 @@ class Highlow:
                 relTol=tol,
                 absTol=tol**2,
                 minTol=minTol,
-                # debug=True,
             )[1]
             p_bar = self._f_p_1_bar(Z, eta, tau_1)
 
@@ -1155,10 +1156,10 @@ class Highlow:
             T_1_err = tau_1_err * self.T_v
             T_2_err = tau_2_err * self.T_v
             # fmt: off
-            data.append((dtag, t, l, psi, v, p_1, p_2, eta, T_1, T_2))
+            data.append((dtag, t, l, psi, v, p_1, p_2, T_1, T_2, eta))
             error.append(
-                (etag, t_err, l_err, psi_err, v_err, p_1_err, p_2_err, eta_err,
-                 T_1_err, T_2_err)
+                (etag, t_err, l_err, psi_err, v_err, p_1_err, p_2_err,
+                 T_1_err, T_2_err, eta_err)
             )
             # fmt: on
 
@@ -1187,7 +1188,7 @@ class Highlow:
             )
         )
 
-        return data, error
+        return data, error, None, None
 
     def getEff(self, vg):
         """
@@ -1235,7 +1236,7 @@ if __name__ == "__main__":
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(10, 1e-3, dom=DOMAIN_TIME)[0],
+            test.integrate(10, 1e-4, dom=DOMAIN_TIME)[0],
             headers=(
                 "tag",
                 "t",
@@ -1244,12 +1245,14 @@ if __name__ == "__main__":
                 "v",
                 "p1",
                 "p2",
-                "eta",
                 "T1",
                 "T2",
+                "eta",
             ),
         )
     )
+
+    input()
 
     print("\nnumerical: length")
     print(
@@ -1263,9 +1266,9 @@ if __name__ == "__main__":
                 "v",
                 "p1",
                 "p2",
-                "eta",
                 "T1",
                 "T2",
+                "eta",
             ),
         )
     )
