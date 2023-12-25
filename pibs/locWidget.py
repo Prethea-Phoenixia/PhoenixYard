@@ -162,6 +162,7 @@ class Loc2Input:
         descLabelKey=None,
         default="",
         validation=None,
+        labelWidth=10,
         entryWidth=10,
         formatter=formatFloatInput,
         color=None,
@@ -171,7 +172,9 @@ class Loc2Input:
         locFunc=None,
         allInputs=[],
     ):
-        lb = ttk.Label(parent, text=locFunc(labelLocKey), anchor=anchor)
+        lb = ttk.Label(
+            parent, text=locFunc(labelLocKey), width=labelWidth, anchor=anchor
+        )
 
         lb.grid(
             row=row,
@@ -280,6 +283,7 @@ class Loc3Input(Loc2Input):
         unitText="",
         default="",
         validation=None,
+        labelWidth=10,
         entryWidth=10,
         formatter=formatFloatInput,
         color=None,
@@ -297,6 +301,7 @@ class Loc3Input(Loc2Input):
             descLabelKey=descLabelKey,
             default=default,
             validation=validation,
+            labelWidth=labelWidth,
             entryWidth=entryWidth,
             formatter=formatter,
             color=color,

@@ -212,7 +212,6 @@ class InteriorBallisticsFrame(Frame):
         # self.addTopFrm()
         self.addLeftFrm()
         self.addRightFrm()
-        self.addErrFrm()
 
         self.addPlotFrm()
         self.addAuxFrm()
@@ -588,6 +587,33 @@ class InteriorBallisticsFrame(Frame):
             allDisps=self.locs,
         )
 
+        i += 1
+        parFrm.rowconfigure(i, weight=1)
+        errorFrm = LocLabelFrame(
+            parFrm,
+            locKey="errFrmLabel",
+            locFunc=self.getLocStr,
+            allLLF=self.locs,
+        )
+        errorFrm.grid(
+            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+        )
+        errorFrm.columnconfigure(0, weight=1)
+        errorFrm.rowconfigure(0, weight=1)
+
+        errScroll = ttk.Scrollbar(errorFrm, orient="vertical")
+        errScroll.grid(row=0, column=1, sticky="nsew")
+        self.errorText = Text(
+            errorFrm,
+            yscrollcommand=errScroll.set,
+            wrap="word",
+            height=6,
+            width=0,
+            font=(FONTNAME, FONTSIZE),
+        )
+
+        self.errorText.grid(row=0, column=0, sticky="nsew")
+
     def addRightFrm(self):
         """
         rightFrm
@@ -844,7 +870,7 @@ class InteriorBallisticsFrame(Frame):
             strObjDict=CONTROLS,
             locFunc=self.getLocStr,
             dropdowns=self.locs,
-            descLabelKey="pTgtLabel",
+            descLabelKey="Pressure Constraint",
         )
 
         self.pControl.grid(
@@ -939,32 +965,6 @@ class InteriorBallisticsFrame(Frame):
         self.pbar.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
-
-        i += 1
-        errorFrm = LocLabelFrame(
-            opFrm,
-            locKey="errFrmLabel",
-            locFunc=self.getLocStr,
-            allLLF=self.locs,
-        )
-        errorFrm.grid(
-            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
-        )
-        errorFrm.columnconfigure(0, weight=1)
-        errorFrm.rowconfigure(0, weight=1)
-
-        errScroll = ttk.Scrollbar(errorFrm, orient="vertical")
-        errScroll.grid(row=0, column=1, sticky="nsew")
-        self.errorText = Text(
-            errorFrm,
-            yscrollcommand=errScroll.set,
-            wrap="word",
-            height=6,
-            width=0,
-            font=(FONTNAME, FONTSIZE),
-        )
-
-        self.errorText.grid(row=0, column=0, sticky="nsew")
 
         i += 1
 
@@ -1266,9 +1266,6 @@ class InteriorBallisticsFrame(Frame):
             except AttributeError:
                 pass
 
-    def addErrFrm(self):
-        pass
-
     def addspecFrm(self):
         specFrm = LocLabelFrame(
             self,
@@ -1415,10 +1412,9 @@ class InteriorBallisticsFrame(Frame):
 
         self.specs = Text(
             propFrm,
-            # wrap=WORD,
             wrap="none",
             height=5,
-            width=35,
+            width=30,
             yscrollcommand=specScroll.set,
             xscrollcommand=specHScroll.set,
             font=(FONTNAME, FONTSIZE),

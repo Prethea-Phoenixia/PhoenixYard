@@ -86,13 +86,13 @@ def f(shotMass):
             burnout = 1
 
         velocity = datas[-1][4]
+        eff = gun.getEff(velocity)
 
         web = halfWeb * 2e3
     except ValueError as e:
-        print(e)
-        web, burnout, velocity = None, None, None
+        web, burnout, velocity, eff = None, None, None, None
 
-    return shotMass, web, burnout, velocity
+    return shotMass, web, burnout, velocity, eff
 
 
 if __name__ == "__main__":
@@ -107,11 +107,18 @@ if __name__ == "__main__":
     with multiprocessing.Pool() as pool:
         results = pool.map(f, parameters)
 
-    ms, es, bos, vs = zip(*[v for v in results if v[1] is not None])
+    ms, es, bos, vs, es = zip(*[v for v in results if v[1] is not None])
 
     fig, axv = plt.subplots(layout="constrained")
 
-    axv.plot(ms, [v - 1800 for v in vs])
+    axv.plot(ms, vs)
+
+    axe = axv.twinx()
+
+    axe.plot(ms, es)
+    axe.set_ylim(0, 1)
+
+    """
     axp = axv.twinx()
 
     from math import tanh, exp
@@ -135,5 +142,6 @@ if __name__ == "__main__":
     axp.set_ylim(0, 2)
     # axe = axv.twinx()
     # axe.plot(ms, es, linestyle="dashed")
+    """
 
     plt.show()

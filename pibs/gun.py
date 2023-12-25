@@ -1134,7 +1134,6 @@ class Gun:
             x_b, p_b = x_probes[i:], p_probes[i:]
             Vrho_c = Gun._Vrho_k(x_c, p_c, S * chi_k, sigma, tol)
             Vrho_b = Gun._Vrho_k(x_b, p_b, S, sigma, tol)
-
             V = Vrho_c[0] + Vrho_b[0]
             rho_probes = Vrho_c[1] + Vrho_b[1]
 
