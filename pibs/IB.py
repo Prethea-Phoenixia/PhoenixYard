@@ -587,7 +587,7 @@ class InteriorBallisticsFrame(Frame):
             allDisps=self.locs,
         )
 
-        i += 1
+        i += 2
         parFrm.rowconfigure(i, weight=1)
         errorFrm = LocLabelFrame(
             parFrm,
@@ -1637,10 +1637,11 @@ class InteriorBallisticsFrame(Frame):
         geomPlotFrm = self.geomPlotFrm
         geomPlotFrm.columnconfigure(0, weight=1)
         geomPlotFrm.rowconfigure(0, weight=1)
+
         geomPlotFrm.grid_propagate(False)
 
         with mpl.rc_context(GEOM_CONTEXT):
-            fig = Figure(dpi=96)
+            fig = Figure(dpi=96, layout="constrained")
             self.geomFig = fig
             self.geomAx = fig.add_subplot(111)
 
@@ -1648,7 +1649,7 @@ class InteriorBallisticsFrame(Frame):
             self.geomCanvas.get_tk_widget().grid(
                 row=0, column=0, padx=0, pady=0, sticky="nsew"
             )
-            fig.set_layout_engine(None)
+            # fig.set_layout_engine(None)
             self.geomCanvas.draw_idle()
 
     def addPlotFrm(self):
@@ -1766,6 +1767,7 @@ class InteriorBallisticsFrame(Frame):
         plotFrm = self.plotFrm
         plotFrm.columnconfigure(0, weight=1)
         plotFrm.rowconfigure(0, weight=1)
+
         plotFrm.grid_propagate(False)
 
         with mpl.rc_context(FIG_CONTEXT):
@@ -1854,7 +1856,6 @@ class InteriorBallisticsFrame(Frame):
 
         with mpl.rc_context(FIG_CONTEXT):
             fig = Figure(dpi=96, layout="constrained")
-
             axes = fig.add_subplot(111)
 
             ax = axes
@@ -1934,20 +1935,11 @@ class InteriorBallisticsFrame(Frame):
                     psis.append(psi)
 
             elif gunType == RECOILESS:
+                # fmt: off
                 for (
-                    tag,
-                    t,
-                    l,
-                    psi,
-                    v,
-                    vx,
-                    Px,
-                    P0,
-                    P,
-                    Ps,
-                    T,
-                    eta,
+                    tag, t, l, psi, v, vx, Px, P0, P, Ps, T, eta
                 ) in self.tableData:
+                    # fmt: on
                     if tag == POINT_PEAK_AVG:
                         if dom == DOMAIN_TIME:
                             xPeak = t * 1e3
@@ -2115,8 +2107,7 @@ class InteriorBallisticsFrame(Frame):
             elif dom == DOMAIN_LENG:
                 self.ax.set_xlabel(self.getLocStr("figLengDomain"))
 
-            self.fig.set_layout_engine("constrained")
-
+            # self.fig.set_layout_engine("constrained")
             self.pltCanvas.draw_idle()
 
     def updateAuxPlot(self, *args):
@@ -2236,7 +2227,7 @@ class InteriorBallisticsFrame(Frame):
 
             self.auxAxH.set_ylim(bottom=0)
 
-            self.auxFig.set_layout_engine("constrained")
+            # self.auxFig.set_layout_engine("constrained")
             self.auxCanvas.draw_idle()
 
     def addTblFrm(self):
@@ -2398,7 +2389,7 @@ class InteriorBallisticsFrame(Frame):
                     [i * 0.5 for i in range(ceil(max(ys) / 0.5) + 1)]
                 )
 
-            self.geomFig.set_layout_engine("constrained")
+            # self.geomFig.set_layout_engine("constrained")
             self.geomCanvas.draw_idle()
 
     def updateError(self):

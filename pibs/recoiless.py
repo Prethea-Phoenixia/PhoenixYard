@@ -1063,7 +1063,15 @@ class Recoiless:
             structure = self.getStructural(data, step, tol)
 
         except Exception as e:
-            print(e)
+            import sys, traceback
+
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+
+            errMsg = "".join(
+                traceback.format_exception(exc_type, exc_value, exc_traceback)
+            )
+            print(errMsg)
+
             structure = [None, None, None, None]
 
         return data, error, p_trace, structure
@@ -1183,7 +1191,6 @@ class Recoiless:
         return Cf
 
     def getStructural(self, data, step, tol):
-        r = 0.5 * self.caliber
         l_c = self.l_c
         l_g = self.l_g
         chi_k = self.chi_k
@@ -1193,13 +1200,10 @@ class Recoiless:
 
         S_j_bar = self.S_j_bar
         A_bar = self.A_bar
-        r_k = r * chi_k**0.5
-        r_b = r_k * S_j_bar**0.5
-        r_a = r_b * A_bar**0.5
-
-        S_k = S * chi_k
-        S_b = S_k * S_j_bar
-        S_a = S_b * A_bar
+        r_s = 0.5 * self.caliber  # radius of the shot.
+        r_b = r_s * chi_k**0.5  # chamber/breech radius
+        r_t = r_b * S_j_bar**0.5  # throat radius
+        r_n = r_t * A_bar**0.5  # nozzle exit radius
 
         x_probes = (
             [i / step * l_c for i in range(step)]
@@ -1207,8 +1211,8 @@ class Recoiless:
             + [i / step * l_g + l_c for i in range(step)]
             + [l_g + l_c]
         )
-        p_probes = [0] * len(x_probes)
 
+        p_probes = [0] * len(x_probes)
         for line in data:
             tag, t, l, psi, v, vb, pb, p0, p, ps, T, eta = line
             for i, x in enumerate(x_probes):
@@ -1222,9 +1226,92 @@ class Recoiless:
             x = x_probes[i]
             p_probes[i] = p * self.ssf
 
+        """
+        subscript k denote the end of the chamber
+        subscript b denote the throat of nozzle
+        subscript a denote the nozzle base.
+
+        beta is the half angle of the constriction section
+        alpha is the half angle of the expansion section
+        """
+        beta = 45
+        l_b = (r_b - r_t) / tan(beta * pi / 180)
+        alpha = 15
+        l_a = (r_n - r_t) / tan(alpha * pi / 180)
+
+        p_max = p_probes[0]
+        """
+        For nozzle design, we simply take the maximum breech face pressure
+        as the maximum pressure
+        """
+
+        neg_x_probes = (
+            [-l_b - l_a + l_a * i / step for i in range(step)]
+            + [-l_b - tol * l_a]
+            + [-l_b + l_b * i / step for i in range(step)]
+            + [0]
+        )
+        neg_p_probes = []
+        neg_S_probes = []
+
+        r_probes = []
+
+        for x in neg_x_probes:
+            if x < -l_b:
+                k = (x + l_b + l_a) / l_a
+                r = k * r_t + (1 - k) * r_n
+                p = (
+                    Recoiless.getPr(gamma, (r / r_t) ** 2, tol)[1]
+                    / ((2 / (gamma + 1)) ** (gamma / (gamma - 1)))
+                    * p_max
+                )
+
+            else:
+                k = (x + l_b) / l_b
+                r = k * r_b + (1 - k) * r_t
+                p = p_max
+
+            if p > 3**-0.5 * sigma:
+                raise ValueError(
+                    f"Limit to conventional construction ({sigma * 3*1e-6:.3f} MPa)"
+                    + " exceeded in nozzle."
+                )
+
+            r_probes.append(r)
+            neg_p_probes.append(p)
+            neg_S_probes.append(pi * r**2)
+
+        if self.is_af:
+            V_n, rho_n = Gun._Vrho_k(
+                neg_x_probes, neg_p_probes, neg_S_probes, sigma, tol
+            )
+
+        else:
+            V_n, rho_n = 0, []
+
+            for p in neg_p_probes:
+                y = p / sigma
+                rho = (
+                    (1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)
+                ) ** 0.5
+                rho_n.append(rho)
+
+            for i in range(len(neg_x_probes) - 1):
+                x_0, x_1 = neg_x_probes[i], neg_x_probes[i + 1]
+                h = x_1 - x_0
+                S_0, S_1 = neg_S_probes[i], neg_S_probes[i + 1]
+                rho_0, rho_1 = rho_n[i], rho_n[i + 1]
+                dV = 0.5 * ((rho_0**2 - 1) * S_0 + (rho_1**2 - 1) * S_1) * h
+                V_n += dV
+        nozzle = []
+        for x, r, rho in zip(neg_x_probes, r_probes, rho_n):
+            nozzle.append((x, r, r * rho))
+
+        nozzle_mass = V_n * self.material.rho
+
         if self.is_af:
             """
-            m : r_a / r_i
+            m : r_n / r_i
             k : r_o / r_i
             n : p_vM_max / sigma
 
@@ -1234,13 +1321,21 @@ class Recoiless:
             necessary to contain the working pressure, is
             """
             i = x_probes.index(l_c)
-            x_c, p_c = x_probes[:i], p_probes[:i]
-            x_b, p_b = x_probes[i:], p_probes[i:]
-            Vrho_c = Gun._Vrho_k(x_c, p_c, S * self.chi_k, sigma, tol)
-            Vrho_b = Gun._Vrho_k(x_b, p_b, S, sigma, tol)
-
-            V = Vrho_c[0] + Vrho_b[0]
-            rho_probes = Vrho_c[1] + Vrho_b[1]
+            x_c, p_c = x_probes[:i], p_probes[:i]  # c for chamber
+            x_b, p_b = x_probes[i:], p_probes[i:]  # b for barrel
+            V_c, rho_c = Gun._Vrho_k(
+                x_c, p_c, [S * chi_k for _ in x_c], sigma, tol, k_min=rho_n[-1]
+            )
+            V_b, rho_b = Gun._Vrho_k(
+                x_b,
+                p_b,
+                [S for _ in x_b],
+                sigma,
+                tol,
+                k_max=rho_c[-1] * chi_k**0.5,
+            )
+            V = V_c + V_b
+            rho_probes = rho_c + rho_b
 
         else:
             """
@@ -1287,7 +1382,7 @@ class Recoiless:
                 rho_1 = rho_probes[i + 1]
                 dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
                 if x_1 <= l_c:
-                    V += dV * self.chi_k
+                    V += dV * chi_k
                 else:
                     V += dV
 
@@ -1296,73 +1391,9 @@ class Recoiless:
         hull = []
         for x, rho in zip(x_probes, rho_probes):
             if x < l_c:
-                hull.append((x, rho * self.chi_k**0.5 * r))
+                hull.append((x, rho * r_b))
             else:
-                hull.append((x, rho * r))
-
-        """
-        subscript k denote the end of the chamber
-        subscript b denote the throat of nozzle
-        subscript a denote the nozzle base.
-
-        beta is the half angle of the constriction section
-        alpha is the half angle of the expansion section
-        """
-        beta = 45
-        l_b = (r_k - r_b) / tan(beta * pi / 180)
-        alpha = 15
-        l_a = (r_a - r_b) / tan(alpha * pi / 180)
-
-        p_max = p_probes[0]
-        """
-        For nozzle design, we simply take the maximum breech face pressure
-        as the maximum pressure
-        """
-
-        nozzle = []
-
-        neg_x_probes = (
-            [-l_b - l_a + l_a * i / step for i in range(step)]
-            + [-l_b - tol * l_a]
-            + [-l_b + l_b * i / step for i in range(step)]
-            + [0]
-        )
-
-        for x in neg_x_probes:
-            if x < -l_b:
-                k = (x + l_b + l_a) / l_a
-                r = k * r_b + (1 - k) * r_a
-                p = (
-                    Recoiless.getPr(gamma, (r / r_b) ** 2, tol)[1]
-                    / ((2 / (gamma + 1)) ** (gamma / (gamma - 1)))
-                    * p_max
-                )
-            else:
-                k = (x + l_b) / l_b
-                r = k * r_k + (1 - k) * r_b
-                p = p_max
-
-            y = p / sigma
-
-            if y > 3**-0.5:
-                raise ValueError(
-                    f"Limit to conventional construction ({sigma * 3*1e-6:.3f} MPa)"
-                    + " exceeded in nozzle."
-                )
-            rho = ((1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)) ** 0.5
-            nozzle.append((x, r, r * rho))
-
-        V = 0
-
-        for i, (x_0, r_i_0, r_o_0) in enumerate(nozzle[:-1]):
-            x_1, r_i_1, r_o_1 = nozzle[i + 1]
-            h = x_1 - x_0
-            S_0 = pi * (r_o_0**2 - r_i_0**2)
-            S_1 = pi * (r_o_1**2 - r_i_1**2)
-
-            V += 0.5 * (S_0 + S_1) * h
-
-        nozzle_mass = V * self.material.rho
+                hull.append((x, rho * r_s))
 
         return tube_mass, hull, nozzle_mass, nozzle
 

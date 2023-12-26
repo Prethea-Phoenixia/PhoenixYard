@@ -903,14 +903,11 @@ class Gun:
 
         for bar_dataLine, bar_errorLine in zip(bar_data, bar_err):
             dtag, t_bar, l_bar, Z, v_bar, p_bar = bar_dataLine
+            # fmt:off
             (
-                etag,
-                t_bar_err,
-                l_bar_err,
-                Z_err,
-                v_bar_err,
-                p_bar_err,
+                etag, t_bar_err, l_bar_err, Z_err, v_bar_err, p_bar_err
             ) = bar_errorLine
+            # fmt:on
 
             t, t_err = (t_bar * tScale, t_bar_err * tScale)
             l, l_err = (l_bar * self.l_0, l_bar_err * self.l_0)
@@ -1094,8 +1091,8 @@ class Gun:
         sigma = self.material.Y
         S = self.S
 
-        rb = r * chi_k**0.5  # radius of breech
-        Sb = S * chi_k  # area of breech
+        r_b = r * chi_k**0.5  # radius of breech
+        S_b = S * chi_k  # area of breech
 
         x_probes = (
             [i / step * l_c for i in range(step)]
@@ -1130,12 +1127,21 @@ class Gun:
             necessary to contain the working pressure, is
             """
             i = x_probes.index(l_c)
-            x_c, p_c = x_probes[:i], p_probes[:i]
-            x_b, p_b = x_probes[i:], p_probes[i:]
-            Vrho_c = Gun._Vrho_k(x_c, p_c, S * chi_k, sigma, tol)
-            Vrho_b = Gun._Vrho_k(x_b, p_b, S, sigma, tol)
-            V = Vrho_c[0] + Vrho_b[0]
-            rho_probes = Vrho_c[1] + Vrho_b[1]
+            x_c, p_c = x_probes[:i], p_probes[:i]  # c for chamber
+            x_b, p_b = x_probes[i:], p_probes[i:]  # b for barrel
+            V_c, rho_c = Gun._Vrho_k(
+                x_c, p_c, [S * chi_k for _ in x_c], sigma, tol
+            )
+            V_b, rho_b = Gun._Vrho_k(
+                x_b,
+                p_b,
+                [S for _ in x_b],
+                sigma,
+                tol,
+                k_max=rho_c[-1] * chi_k**0.5,
+            )
+            V = V_c + V_b
+            rho_probes = rho_c + rho_b
 
         else:
             """
@@ -1197,28 +1203,28 @@ class Gun:
             * (R1__rb**2 / P__sigma - R1__R2**2 / (1 - R1__R2**2)) ** -0.5
         )
 
-        L = L__rb * rb * 2  # *2 to account for screw interruption
-        R1 = R1__rb * rb
+        L = L__rb * r_b * 2  # *2 to account for screw interruption
+        R1 = R1__rb * r_b
 
         bore = []
         for x, rho in zip(x_probes, rho_probes):
             if x < l_c:
-                bore.append((x, rho * rb))
+                bore.append((x, rho * r_b))
             else:
                 bore.append((x, rho * r))
 
         bore_mass = (
-            V + (R2__rb**2 - R1__rb**2) * Sb * L
+            V + (R2__rb**2 - R1__rb**2) * S_b * L
         ) * self.material.rho
 
         breech = [(-L, R1), (0.0, R1)]
 
-        breech_mass = R1__rb**2 * Sb * L * self.material.rho
+        breech_mass = R1__rb**2 * S_b * L * self.material.rho
 
         return bore_mass, bore, breech_mass, breech
 
     @staticmethod
-    def _Vrho_k(x_s, p_s, S, sigma, tol):
+    def _Vrho_k(x_s, p_s, S_s, sigma, tol, k_max=None, k_min=None):
         def f(m):
             rho_s = []
             V = 0
@@ -1248,11 +1254,14 @@ class Gun:
                 rho_s.append(rho)
 
             for i in range(len(x_s) - 1):
-                x_0 = x_s[i]
-                x_1 = x_s[i + 1]
-                rho_0 = rho_s[i]
-                rho_1 = rho_s[i + 1]
-                dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * (x_1 - x_0) * S
+                x_0, x_1 = x_s[i], x_s[i + 1]
+                S_0, S_1 = S_s[i], S_s[i + 1]
+                rho_0, rho_1 = rho_s[i], rho_s[i + 1]
+                dV = (
+                    0.5
+                    * ((rho_0**2 - 1) * S_0 + (rho_1**2 - 1) * S_1)
+                    * (x_1 - x_0)
+                )
                 V += dV
             return V, rho_s
 
@@ -1265,9 +1274,9 @@ class Gun:
                 * 0.5
             )
 
-        m_opt = exp(max(p_s) / sigma * 3**0.5 * 0.5)
+        m_max = exp(max(p_s) / sigma * 3**0.5 * 0.5)
 
-        if sigma_min(m_opt) > sigma:
+        if sigma_min(m_max) > sigma:
             """if the minimum junction stress at the optimal autofrettage
             fraction cannot be achieved down to material yield even as
             the thickness goes to infinity, raise an error and abort
@@ -1281,16 +1290,14 @@ class Gun:
             """if the minimum junction stress at an autofrettage fraction
             of 1 exceeds material yield, implies a certain amount of
             autofrettaging is required to contain the pressure"""
-            m_min = 0.5 * sum(
-                secant(
-                    sigma_min,
-                    1 + tol,
-                    m_opt,
-                    y=sigma * (1 - tol),
-                    x_min=1,
-                    y_rel_tol=tol,
-                )
+            m_min, _ = dekker(
+                sigma_min,
+                1,
+                m_max,
+                y=sigma,
+                y_rel_tol=tol,
             )
+
             """safety, fudge code to ensure a valid minimum autofrettage
             fraction is found.
             """
@@ -1300,8 +1307,36 @@ class Gun:
         else:
             m_min = 1 + tol
 
+        if k_max is not None:
+            """another constraint is the continuation criteria, i.e. the
+            barrel should not require a thickness jump from the breech"""
+            try:
+                m_k, _ = dekker(
+                    lambda m: f(m)[1][0],
+                    m_min,
+                    m_max,
+                    y=k_max,
+                    y_rel_tol=tol,
+                )
+                m_min = max(m_k, m_min)
+            except ValueError:
+                pass
+
+        if k_min is not None:
+            try:
+                m_k, _ = dekker(
+                    lambda m: f(m)[1][0],
+                    m_min,
+                    m_max,
+                    y=k_min,
+                    y_rel_tol=tol,
+                )
+                m_max = min(m_k, m_max)
+            except ValueError:
+                pass
+
         m_best = 0.5 * sum(
-            gss(lambda m: f(m)[0], m_min, m_opt, y_rel_tol=tol, findMin=True)
+            gss(lambda m: f(m)[0], m_min, m_max, y_rel_tol=tol, findMin=True)
         )
 
         return f(m_best)
@@ -1309,9 +1344,18 @@ class Gun:
     @staticmethod
     def _sigma_vM(k, p, m, sigma):
         """
-        Calculate the von Misses stress at the plastic-elastic
+        k   : probing point, radius ratio
+        p   : working pressure (from within)
+        m   : autofrettaged (plastically yielded region) rim radius over
+            : barrel radius.
+
+        Calculate the von Misses stress at point radius ratio k.
+        When supplied with k = m, the result is for at plastic-elastic
         juncture. This is the limiting stress point for an auto-
         frettaged gun barrel under internal pressure loading.
+
+        In general, for increasing m up until m=k, the ability of a barrel to
+        tolerate stress increase.
         """
         sigma_tr = (
             sigma
