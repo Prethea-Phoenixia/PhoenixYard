@@ -994,6 +994,12 @@ class Gun:
             structure = self.getStructural(data, step, tol)
 
         except Exception as e:
+            # import sys, traceback
+            # exc_type, exc_value, exc_traceback = sys.exc_info()
+            # errMsg = "".join(
+            #     traceback.format_exception(exc_type, exc_value, exc_traceback)
+            # )
+            # print(errMsg)
             structure = [None, None, None, None]
 
         return data, error, p_trace, structure
@@ -1112,7 +1118,7 @@ class Gun:
                     break
 
         for i, p in enumerate(p_probes):
-            x = x_probes[i]
+            # x = x_probes[i]
             p_probes[i] = p * self.ssf
 
         if self.is_af:
@@ -1129,9 +1135,11 @@ class Gun:
             i = x_probes.index(l_c)
             x_c, p_c = x_probes[:i], p_probes[:i]  # c for chamber
             x_b, p_b = x_probes[i:], p_probes[i:]  # b for barrel
+
             V_c, rho_c = Gun._Vrho_k(
                 x_c, p_c, [S * chi_k for _ in x_c], sigma, tol
             )
+
             V_b, rho_b = Gun._Vrho_k(
                 x_b,
                 p_b,
@@ -1140,6 +1148,7 @@ class Gun:
                 tol,
                 k_max=rho_c[-1] * chi_k**0.5,
             )
+
             V = V_c + V_b
             rho_probes = rho_c + rho_b
 
@@ -1240,15 +1249,13 @@ class Gun:
                 if sigma > sigma_max:
                     rho = m
                 else:
-                    rho = 0.5 * sum(
-                        secant(
-                            lambda k: Gun._sigma_vM(k, p, m, sigma),
-                            m,
-                            m + tol,
-                            y=sigma,
-                            x_min=m,
-                            y_rel_tol=tol,
-                        )
+                    rho, _ = secant(
+                        lambda k: Gun._sigma_vM(k, p, m, sigma),
+                        m + tol,
+                        m + 2 * tol,
+                        y=sigma,
+                        x_min=m,
+                        y_rel_tol=tol**2,
                     )
 
                 rho_s.append(rho)
@@ -1274,9 +1281,10 @@ class Gun:
                 * 0.5
             )
 
-        m_max = exp(max(p_s) / sigma * 3**0.5 * 0.5)
+        m_opt = exp(max(p_s) / sigma * 3**0.5 * 0.5)
+        # optimal autofrettage for this pressure
 
-        if sigma_min(m_max) > sigma:
+        if sigma_min(m_opt) > sigma:
             """if the minimum junction stress at the optimal autofrettage
             fraction cannot be achieved down to material yield even as
             the thickness goes to infinity, raise an error and abort
@@ -1293,7 +1301,7 @@ class Gun:
             m_min, _ = dekker(
                 sigma_min,
                 1,
-                m_max,
+                m_opt,
                 y=sigma,
                 y_rel_tol=tol,
             )
@@ -1307,37 +1315,56 @@ class Gun:
         else:
             m_min = 1 + tol
 
+        m_max = m_opt
         if k_max is not None:
             """another constraint is the continuation criteria, i.e. the
-            barrel should not require a thickness jump from the breech"""
+            barrel base should not require a thickness jump from the front of
+            breech, within reason.
+
+            A maximum ratio corresponds to a minimum autofrettage ratio.
+            manually setting f(m_opt) to -1 since this is always true,
+            but the limitations to numerical accuracy can cause the result
+            to float around ~ +/- 10 * tol
+
+            Since in all use cases k_max is set using a seciton of the chamber
+            with higher pressure ratings, it is almost guaranteed that the
+            corresponding m_min must exist. In the case this is not true, the
+            resulting error raised will cause the program to gracefully default
+            to finding the minimum autofrettaged mass.
+            """
             try:
                 m_k, _ = dekker(
-                    lambda m: f(m)[1][0],
+                    lambda m: f(m)[1][0] if m != m_opt else -1,
                     m_min,
-                    m_max,
+                    m_opt,
                     y=k_max,
                     y_rel_tol=tol,
                 )
                 m_min = max(m_k, m_min)
-            except ValueError:
+            except ValueError as e:
+                print(e)
                 pass
 
         if k_min is not None:
             try:
                 m_k, _ = dekker(
-                    lambda m: f(m)[1][0],
+                    lambda m: f(m)[1][0] if m != m_opt else -1,
                     m_min,
-                    m_max,
+                    m_opt,
                     y=k_min,
                     y_rel_tol=tol,
                 )
                 m_max = min(m_k, m_max)
-            except ValueError:
+            except ValueError as e:
+                print(e)
                 pass
+
+        print("m_min", m_min, "m_max", m_max)
 
         m_best = 0.5 * sum(
             gss(lambda m: f(m)[0], m_min, m_max, y_rel_tol=tol, findMin=True)
         )
+        print("m_best", m_best)
 
         return f(m_best)
 

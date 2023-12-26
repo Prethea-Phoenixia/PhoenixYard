@@ -97,6 +97,7 @@ class Constrained:
         ambientGamma=1.4,
         control=POINT_PEAK_AVG,
         known_bore=False,
+        suppress=False,  # suppress design velocity exceeded before peak pressure check
         **_,
     ):
         if any(
@@ -396,7 +397,7 @@ class Constrained:
         if known_bore:
             return e_1, lengthGun
 
-        if v_j * v_bar_i > v_d:
+        if v_j * v_bar_i > v_d and not suppress:
             raise ValueError(
                 "Design velocity exceeded ({:.4g} m/s > {:.4g} m/s) before peak pressure.".format(
                     v_bar_i * v_j, v_bar_d * v_j
@@ -522,6 +523,7 @@ class Constrained:
                 ambientGamma=ambientGamma,
                 control=control,
                 known_bore=known_bore,
+                suppress=suppress,
             )
             # TODO: Maximum recursion depth exceeded in comparison is
             # occasionally thrown here. Investigate why.
@@ -591,6 +593,7 @@ class Constrained:
                 ambientGamma=ambientGamma,
                 control=control,
                 known_bore=False,
+                suppress=True,
             )
 
             return e_1, (l_g + l_0), l_g

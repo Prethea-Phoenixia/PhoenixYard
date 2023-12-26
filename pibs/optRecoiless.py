@@ -91,6 +91,7 @@ class ConstrainedRecoiless:
         control=POINT_PEAK_AVG,
         lengthGun=None,
         known_bore=False,
+        suppress=False,  # suppress design velocity exceeded before peak pressure check
         **_,
     ):
         if any(
@@ -497,7 +498,7 @@ class ConstrainedRecoiless:
         """
         v_bar_d = v_d / v_j
 
-        if v_bar_i > v_bar_d:
+        if v_bar_i > v_bar_d and not suppress:
             raise ValueError(
                 "Design velocity exceeded ({:.4g} m/s > {:.4g} m/s) before peak pressure.".format(
                     v_bar_i * v_j, v_bar_d * v_j
@@ -660,6 +661,7 @@ class ConstrainedRecoiless:
                 ambientGamma=ambientGamma,
                 control=control,
                 known_bore=False,
+                suppress=True,
             )
             return e_1, (l_g + l_0), l_g
 

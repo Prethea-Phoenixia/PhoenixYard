@@ -1828,7 +1828,7 @@ class InteriorBallisticsFrame(Frame):
             col=k,
             labelLocKey="traceHull",
             locFunc=self.getLocStr,
-            default=0,
+            default=1,
             allLC=auxChecks,
         )
 

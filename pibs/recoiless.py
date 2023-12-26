@@ -1062,15 +1062,15 @@ class Recoiless:
 
             structure = self.getStructural(data, step, tol)
 
-        except Exception as e:
-            import sys, traceback
+        except Exception:
+            # import sys, traceback
 
-            exc_type, exc_value, exc_traceback = sys.exc_info()
+            # exc_type, exc_value, exc_traceback = sys.exc_info()
 
-            errMsg = "".join(
-                traceback.format_exception(exc_type, exc_value, exc_traceback)
-            )
-            print(errMsg)
+            # errMsg = "".join(
+            #     traceback.format_exception(exc_type, exc_value, exc_traceback)
+            # )
+            # print(errMsg)
 
             structure = [None, None, None, None]
 
