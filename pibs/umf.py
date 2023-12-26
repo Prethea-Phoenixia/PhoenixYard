@@ -160,7 +160,7 @@ def secant(
 
     if x_0 == x_1 or fx_0 == fx_1:
         errStr = "Impossible to calculate initial slope for secant search."
-        errStr += "\nf({:})={:}\nf({:})={:}".format(x_0, fx_0, x_1, fx_1)
+        errStr += "\nf({})-{}={}\nf({})-{}={}".format(x_0, y, fx_0, x_1, y, fx_1)
         raise ValueError(errStr)
 
     for i in range(it):
@@ -199,8 +199,8 @@ def secant(
                     for line in record:
                         print("{:>4}{:>24}{:>24}".format(*line))
                 raise ValueError(
-                    "Numerical plateau found at f({})=f({})={}".format(
-                        x_1, x_2, fx_2
+                    "Numerical plateau found at f({})-{}=f({})-{}={}".format(
+                        x_1, y, x_2, y, fx_2
                     )
                 )
 
@@ -216,8 +216,8 @@ def secant(
     raise ValueError(
         "Secant method called from {} to {}\n".format(x_min, x_max)
         + "Maximum iteration exceeded at it = {}/{}".format(i, it)
-        + ",\n[0] f({})={}->\n[1] f({})={}->\n[2] f({})={}".format(
-            x_0, fx_0, x_1, fx_1, x_2, fx_2
+        + ",\n[0] f({})-{}={}->\n[1] f({})-{}={}->\n[2] f({})-{}={}".format(
+            x_0, y, fx_0, x_1, y, fx_1, x_2, y, fx_2
         )
     )
 
@@ -234,7 +234,7 @@ def dekker(
     if fx_0 * fx_1 >= 0:
         raise ValueError(
             "Dekker method must be initiated by guesses bracketing root:\n"
-            + "f({})={}, f({})={}".format(x_0, fx_0, x_1, fx_1)
+            + "f({})-{}={}, f({})-{}={}".format(x_0, y, fx_0, x_1, y, fx_1)
         )
 
     if abs(fx_0) < abs(fx_1):
@@ -307,7 +307,7 @@ def dekker(
     raise ValueError(
         "Dekker method called from {} to {}\n".format(x_0, x_1)
         + "Maximum iteration exceeded at it = {}/{}".format(i, it)
-        + ",\nf({})={}->\nf({})={}".format(b_i, fb_i, b_j, fb_j)
+        + ",\nf({})-{}={}->\nf({})-{}={}".format(b_i, y, fb_i, b_j, y, fb_j)
     )
 
 
