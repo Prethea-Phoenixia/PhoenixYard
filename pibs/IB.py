@@ -209,7 +209,6 @@ class InteriorBallisticsFrame(Frame):
         self.rowconfigure(3, weight=2)
 
         self.addNamePlate()
-        # self.addTopFrm()
         self.addLeftFrm()
         self.addRightFrm()
 
@@ -218,11 +217,8 @@ class InteriorBallisticsFrame(Frame):
         self.addspecFrm()
         self.addTblFrm()
 
-        # self.update_idletasks()
         self.addGeomPlot()
-        # self.update_idletasks()
         self.addFigPlot()
-        # self.update_idletasks()
         self.addAuxPlot()
 
         self.ambCallback()
@@ -471,23 +467,6 @@ class InteriorBallisticsFrame(Frame):
 
         self.name = name
 
-    """
-    def addTopFrm(self):
-        topFrm = ttk.Frame(self)
-        topFrm.grid(row=1, column=1, sticky="nsew")
-
-        topFrm.columnconfigure(0, weight=1)
-        topFrm.rowconfigure(0, weight=1)
-
-        pltOptnFrm = LocLabelFrame(
-            topFrm,
-            locKey="pltOptnFrm",
-            locFunc=self.getLocStr,
-            allLLF=self.locs,
-        )
-        pltOptnFrm.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
-    """
-
     def addLeftFrm(self):
         leftFrm = ttk.Frame(self)
         leftFrm.grid(row=1, column=0, rowspan=5, sticky="nsew")
@@ -615,16 +594,6 @@ class InteriorBallisticsFrame(Frame):
         self.errorText.grid(row=0, column=0, sticky="nsew")
 
     def addRightFrm(self):
-        """
-        rightFrm
-        |-mecFrm
-        |-solFrm
-        |-envFrm
-        |-opFrm
-          |-consFrm
-          |-sampleFrm
-
-        """
         rightFrm = ttk.Frame(self)
         rightFrm.grid(row=0, column=3, rowspan=6, sticky="nsew")
         rightFrm.columnconfigure(0, weight=1)

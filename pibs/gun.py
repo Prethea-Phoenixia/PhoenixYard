@@ -1347,8 +1347,7 @@ class Gun:
                     y_rel_tol=tol,
                 )
                 m_min = max(m_k, m_min)
-            except ValueError as e:
-                print(e)
+            except ValueError:
                 pass
 
         if k_min is not None:
@@ -1361,8 +1360,7 @@ class Gun:
                     y_rel_tol=tol,
                 )
                 m_max = min(m_k, m_max)
-            except ValueError as e:
-                print(e)
+            except ValueError:
                 pass
 
         # print("m_min", m_min, "m_max", m_max)
