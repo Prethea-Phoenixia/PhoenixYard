@@ -1273,7 +1273,7 @@ class Recoiless:
 
             if p > 3**-0.5 * sigma:
                 raise ValueError(
-                    f"Limit to conventional construction ({sigma * 3*1e-6:.3f} MPa)"
+                    f"Limit to conventional construction ({sigma * 1e-6:.3f} MPa)"
                     + " exceeded in nozzle."
                 )
 
@@ -1333,6 +1333,7 @@ class Recoiless:
                 sigma,
                 tol,
                 k_max=rho_c[-1] * chi_k**0.5,
+                p_ref=max(p_c),
             )
             V = V_c + V_b
             rho_probes = rho_c + rho_b

@@ -1399,9 +1399,9 @@ class InteriorBallisticsFrame(Frame):
         specScroll = ttk.Scrollbar(propFrm, orient="vertical")
         specScroll.grid(
             row=1,
+            rowspan=2,
             column=1,
             sticky="nsew",
-            pady=2,
         )
         specHScroll = ttk.Scrollbar(propFrm, orient="horizontal")
         specHScroll.grid(
@@ -1437,7 +1437,7 @@ class InteriorBallisticsFrame(Frame):
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
         grainFrm.columnconfigure(0, weight=1)
-        grainFrm.rowconfigure(0, weight=1)
+        grainFrm.rowconfigure(0, weight=1, minsize=50)
 
         geomPlotFrm = LocLabelFrame(
             grainFrm,
@@ -1766,7 +1766,7 @@ class InteriorBallisticsFrame(Frame):
     def addFigPlot(self):
         plotFrm = self.plotFrm
         plotFrm.columnconfigure(0, weight=1)
-        plotFrm.rowconfigure(0, weight=1)
+        plotFrm.rowconfigure(0, weight=1, minsize=50)
 
         plotFrm.grid_propagate(False)
 
@@ -1850,7 +1850,7 @@ class InteriorBallisticsFrame(Frame):
     def addAuxPlot(self):
         auxFrm = self.auxFrm
         auxFrm.columnconfigure(0, weight=1)
-        auxFrm.rowconfigure(0, weight=1)
+        auxFrm.rowconfigure(0, weight=1, minsize=50)
 
         auxFrm.grid_propagate(False)
 
@@ -2248,7 +2248,7 @@ class InteriorBallisticsFrame(Frame):
             tblFrm, orient="vertical"
         )  # create a scrollbar
         vertscroll.configure(command=self.tv.yview)  # make it vertical
-        vertscroll.grid(row=0, column=1, sticky="nsew")
+        vertscroll.grid(row=0, rowspan=2, column=1, sticky="nsew")
 
         horzscroll = ttk.Scrollbar(tblFrm, orient="horizontal")
         horzscroll.configure(command=self.tv.xview)
@@ -2411,6 +2411,10 @@ class InteriorBallisticsFrame(Frame):
             gunType = self.typeOptn.getObj()
             tableData, errorData = [], []
 
+        locTableData = []
+        for i, line in enumerate(tableData):
+            locTableData.append((self.getLocStr(line[0]), *line[1:]))
+
         if gunType == CONVENTIONAL:
             # fmt: off
             useSN = (
@@ -2432,8 +2436,8 @@ class InteriorBallisticsFrame(Frame):
             )
             # fmt: on
 
-        tableData = dot_aligned(
-            tableData,
+        locTableData = dot_aligned(
+            locTableData,
             units=units,
             useSN=useSN,
         )
@@ -2443,13 +2447,26 @@ class InteriorBallisticsFrame(Frame):
         columnList = self.getLocStr("columnList")[gunType]
         self.tv["columns"] = columnList
         self.tv["show"] = "headings"
-        self.tv.tag_configure(POINT_PEAK_AVG, foreground="#2ca02c")
-        self.tv.tag_configure(POINT_PEAK_BREECH, foreground="orange")
-        self.tv.tag_configure(POINT_PEAK_SHOT, foreground="yellow green")
-        self.tv.tag_configure(POINT_BURNOUT, foreground="red")
-        self.tv.tag_configure(POINT_FRACTURE, foreground="brown")
-        self.tv.tag_configure(POINT_EXIT, foreground="steel blue")
-        self.tv.tag_configure(POINT_START, foreground="steel blue")
+
+        self.tv.tag_configure(
+            self.getLocStr(POINT_PEAK_AVG), foreground="#2ca02c"
+        )
+        self.tv.tag_configure(
+            self.getLocStr(POINT_PEAK_BREECH), foreground="orange"
+        )
+        self.tv.tag_configure(
+            self.getLocStr(POINT_PEAK_SHOT), foreground="yellow green"
+        )
+        self.tv.tag_configure(self.getLocStr(POINT_BURNOUT), foreground="red")
+        self.tv.tag_configure(
+            self.getLocStr(POINT_FRACTURE), foreground="brown"
+        )
+        self.tv.tag_configure(
+            self.getLocStr(POINT_EXIT), foreground="steel blue"
+        )
+        self.tv.tag_configure(
+            self.getLocStr(POINT_START), foreground="steel blue"
+        )
         self.tv.tag_configure("*", foreground="tan")
 
         t_Font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
@@ -2474,7 +2491,7 @@ class InteriorBallisticsFrame(Frame):
                 minwidth=fontWidth * 14,
                 anchor="e",
             )
-        for i, (row, erow) in enumerate(zip(tableData, errorData)):
+        for i, (row, erow) in enumerate(zip(locTableData, errorData)):
             self.tv.insert(
                 "",
                 "end",
@@ -2874,9 +2891,9 @@ def main():
     root.columnconfigure(0, weight=1)
     root.rowconfigure(0, weight=1)
     InteriorBallisticsFrame(root, menubar, dpi)
-
+    # root.update()
     # center(root)
-    root.update_idletasks()
+
     root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
     root.state("zoomed")  # maximize window
     root.mainloop()

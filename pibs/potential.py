@@ -20,7 +20,7 @@ Py = copy.deepcopy(compositions["M10"])  # standin for pyroxylin
 PyTu = Propellant(Py, SimpleGeometry.TUBE, 1, 100, 0.22)
 
 caliber = 125e-3
-tol = 1e-4
+tol = 1e-3
 dragCoefficient = 3e-2
 control = POINT_PEAK_BREECH
 chamberVolume = 12.27e-3  # in liters

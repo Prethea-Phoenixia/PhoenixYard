@@ -971,10 +971,8 @@ class Gun:
         )
 
         # calculate a pressure and flow velcoity tracing.
-
         p_trace = []
         l_c = self.l_c
-        l_g = self.l_g
 
         for line in data:
             tag, t, l, psi, v, p_b, p, p_s, T = line
@@ -1137,7 +1135,11 @@ class Gun:
             x_b, p_b = x_probes[i:], p_probes[i:]  # b for barrel
 
             V_c, rho_c = Gun._Vrho_k(
-                x_c, p_c, [S * chi_k for _ in x_c], sigma, tol
+                x_c,
+                p_c,
+                [S * chi_k for _ in x_c],
+                sigma,
+                tol,
             )
 
             V_b, rho_b = Gun._Vrho_k(
@@ -1146,6 +1148,7 @@ class Gun:
                 [S for _ in x_b],
                 sigma,
                 tol,
+                p_ref=max(p_c),
                 k_max=rho_c[-1] * chi_k**0.5,
             )
 
@@ -1233,7 +1236,9 @@ class Gun:
         return bore_mass, bore, breech_mass, breech
 
     @staticmethod
-    def _Vrho_k(x_s, p_s, S_s, sigma, tol, k_max=None, k_min=None):
+    def _Vrho_k(
+        x_s, p_s, S_s, sigma, tol, k_max=None, k_min=None, index=0, p_ref=None
+    ):
         def f(m):
             rho_s = []
             V = 0
@@ -1272,14 +1277,15 @@ class Gun:
                 V += dV
             return V, rho_s
 
-        p_max = max(p_s)
+        if p_ref is not None:
+            p_max = p_ref
+        else:
+            p_max = max(p_s)
 
         def sigma_min(m):
             return (
-                (sigma * (1 - (1 + 2 * log(m)) / m**2) + 2 * p_max / m**2)
-                * 3**0.5
-                * 0.5
-            )
+                sigma * (1 - (1 + 2 * log(m)) / m**2) + 2 * p_max / m**2
+            ) * (3**0.5 * 0.5)
 
         m_opt = exp(max(p_s) / sigma * 3**0.5 * 0.5)
         # optimal autofrettage for this pressure
@@ -1291,7 +1297,7 @@ class Gun:
             calculation"""
             raise ValueError(
                 "Plastic-elastic junction stress exceeds material "
-                + f"yield ({sigma * 3*1e-6:.3f} MPa) for autofrettaged construction."
+                + f"yield ({sigma * 1e-6:.3f} MPa) for autofrettaged construction."
             )
 
         elif sigma_min(1) > sigma:
@@ -1310,10 +1316,10 @@ class Gun:
             fraction is found.
             """
             while sigma_min(m_min) > sigma:
-                m_min *= 1 + tol
+                m_min *= 1 + tol**2
 
         else:
-            m_min = 1 + tol
+            m_min = 1 + tol**2
 
         m_max = m_opt
         if k_max is not None:
@@ -1334,7 +1340,7 @@ class Gun:
             """
             try:
                 m_k, _ = dekker(
-                    lambda m: f(m)[1][0] if m != m_opt else -1,
+                    lambda m: f(m)[1][index] if m != m_opt else -1,
                     m_min,
                     m_opt,
                     y=k_max,
@@ -1348,7 +1354,7 @@ class Gun:
         if k_min is not None:
             try:
                 m_k, _ = dekker(
-                    lambda m: f(m)[1][0] if m != m_opt else -1,
+                    lambda m: f(m)[1][index] if m != m_opt else -1,
                     m_min,
                     m_opt,
                     y=k_min,
@@ -1359,12 +1365,13 @@ class Gun:
                 print(e)
                 pass
 
-        print("m_min", m_min, "m_max", m_max)
+        # print("m_min", m_min, "m_max", m_max)
 
-        m_best = 0.5 * sum(
-            gss(lambda m: f(m)[0], m_min, m_max, y_rel_tol=tol, findMin=True)
+        m_best, _ = gss(
+            lambda m: f(m)[0], m_min, m_max, y_rel_tol=tol, findMin=True
         )
-        print("m_best", m_best)
+
+        # print("m_best", m_best)
 
         return f(m_best)
 
