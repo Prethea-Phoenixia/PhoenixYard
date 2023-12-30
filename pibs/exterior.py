@@ -680,7 +680,7 @@ def calc_for_R(
 
 if __name__ == "__main__":
     test = Bullet(
-        "test", mass=9.0990629, diam=88e-3, Kd_curve=KdCurve["G8"], form=0.925
+        "test", mass=4.6, diam=27e-3, Kd_curve=KdCurve["M829"], form=1
     )
     # print(dec_to_dms(1 / 3600))
     """
@@ -706,7 +706,7 @@ if __name__ == "__main__":
     )
     """
     test.rangeTable(
-        tol=1e-3, vel=819.92, minR=0, maxR=12000, deltaR=1000, tgtH=2000
+        tol=1e-3, vel=2000, minR=0, maxR=200000, deltaR=2000, tgtH=0.1
     )
 
     """

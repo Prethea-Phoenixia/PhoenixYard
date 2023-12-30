@@ -63,7 +63,7 @@ ENGLISH = {
     "plotNozzleP": "Lock Pressure",
     "plotStagP": "Stagnation Pressure",
     "plotVel": "Shot Velocity",
-    "plotNozzleV": "Nozzle Throat Velocity",
+    "plotNozzleV": "Throat Velocity",
     "plotBurnup": "Burnup Fraction",
     "plotEta": "Escape Fraction",
     "plotRecoil": "Recoil",

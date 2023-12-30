@@ -205,8 +205,8 @@ class InteriorBallisticsFrame(Frame):
         self.errorLst = []
 
         self.columnconfigure(1, weight=1)
-        self.rowconfigure(2, weight=3)
-        self.rowconfigure(3, weight=2)
+        self.rowconfigure(1, weight=3)
+        self.rowconfigure(2, weight=2)
 
         self.addNamePlate()
         self.addLeftFrm()
@@ -1406,7 +1406,7 @@ class InteriorBallisticsFrame(Frame):
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
         grainFrm.columnconfigure(0, weight=1)
-        grainFrm.rowconfigure(0, weight=1, minsize=50)
+        grainFrm.rowconfigure(0, weight=1, minsize=100)
 
         geomPlotFrm = LocLabelFrame(
             grainFrm,
@@ -1625,13 +1625,13 @@ class InteriorBallisticsFrame(Frame):
         plotFrm = LocLabelFrame(
             self,
             locKey="plotFrmLabel",
-            width=640,
+            width=960,
             height=300,
             locFunc=self.getLocStr,
             tooltipLocKey="plotText",
             allLLF=self.locs,
         )
-        plotFrm.grid(row=2, column=1, padx=2, pady=2, sticky="nsew")
+        plotFrm.grid(row=1, column=1, padx=2, pady=2, sticky="nsew")
 
         self.plotFrm = plotFrm
 
@@ -1776,13 +1776,13 @@ class InteriorBallisticsFrame(Frame):
         auxFrm = LocLabelFrame(
             self,
             locKey="auxFrmLabel",
-            width=640,
+            width=960,
             height=200,
             locFunc=self.getLocStr,
             tooltipLocKey="auxText",
             allLLF=self.locs,
         )
-        auxFrm.grid(row=3, column=1, padx=2, pady=2, sticky="nsew")
+        auxFrm.grid(row=2, column=1, padx=2, pady=2, sticky="nsew")
         self.auxFrm = auxFrm
 
         for i in range(2):
@@ -2091,6 +2091,7 @@ class InteriorBallisticsFrame(Frame):
         with mpl.rc_context(FIG_CONTEXT):
             self.auxAx.cla()
             self.auxAxH.cla()
+
             gunType = self.kwargs["typ"]
 
             pTrace = self.pressureTrace
@@ -2203,7 +2204,7 @@ class InteriorBallisticsFrame(Frame):
         tblFrm = LocLabelFrame(
             self, locKey="tblFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
         )
-        tblFrm.grid(row=4, column=1, sticky="nsew")
+        tblFrm.grid(row=3, column=1, sticky="nsew")
 
         tblFrm.columnconfigure(0, weight=1)
         tblFrm.rowconfigure(0, weight=1)
@@ -2447,7 +2448,7 @@ class InteriorBallisticsFrame(Frame):
         fontWidth, _ = t_Font.measure("m"), t_Font.metrics("linespace")
 
         winWidth = self.tv.winfo_width()
-        width = int(winWidth / len(self.tv["columns"]))
+        width = round(winWidth / len(self.tv["columns"]))
 
         for i, column in enumerate(columnList):  # foreach column
             self.tv.heading(
