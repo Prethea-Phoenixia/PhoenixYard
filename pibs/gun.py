@@ -992,12 +992,13 @@ class Gun:
             structure = self.getStructural(data, step, tol)
 
         except Exception as e:
-            # import sys, traceback
-            # exc_type, exc_value, exc_traceback = sys.exc_info()
-            # errMsg = "".join(
-            #     traceback.format_exception(exc_type, exc_value, exc_traceback)
-            # )
-            # print(errMsg)
+            import sys, traceback
+
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            errMsg = "".join(
+                traceback.format_exception(exc_type, exc_value, exc_traceback)
+            )
+            print(errMsg)
             structure = [None, None, None, None]
 
         return data, error, p_trace, structure
@@ -1060,14 +1061,6 @@ class Gun:
         A_1 = self.S
         A_0 = A_1 * self.chi_k
 
-        """
-        p_0 = p_b / (
-            1
-            + self.labda_1  # 0.5
-            * (self.omega / (self.phi_1 * self.m)) # epsilon_0
-            * (self.l_0 / ((self.l_0 + l) * self.chi_k)) ** 2
-        )  # note: this is approximate but in line with deriviation
-        """
         p_0 = p_s * (
             1
             + self.labda_1  # 0.5
@@ -1076,13 +1069,19 @@ class Gun:
         )
 
         if x < L_0:
-            u = A_1 * x * v / (self.V_0 + A_1 * L_1)
             y = x / L_0
             p_x = p_b * (1 - y**2) + p_0 * y**2
+        elif x == L_0:
+            p_x = p_0
+        else:
+            a = (p_s - p_0) / ((L_0 + L_1) ** 2 - L_0**2)
+            b = p_0 - a * L_0**2
+            p_x = a * x**2 + b
+
+        if x < L_0:
+            u = A_1 * x * v / (self.V_0 + A_1 * L_1)
         else:
             u = (A_1 * x + (A_0 - A_1) * L_0) * v / (self.V_0 + A_1 * L_1)
-            y = (x - L_0) / L_1 if L_1 != 0 else 0
-            p_x = p_0 * (1 - y**2) + p_s * y**2
 
         return p_x, u
 
