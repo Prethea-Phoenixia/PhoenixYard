@@ -1068,12 +1068,14 @@ class Gun:
         #     * (1 - (self.l_0 / (self.l_0 + l)) ** 2)  # (1- theta_0**2)
         # )
 
+        r = self.chi_k * x if x < L_0 else (x - L_0) + self.l_0
         p_x = p_s * (
             1
             + self.labda_1  # 0.5
             * (self.omega / (self.phi_1 * self.m))  # epsilon_0
-            * (1 - (x / (L_0 + l)) ** 2)  # (1- theta_0**2))
+            * (1 - (r / (self.l_0 + l)) ** 2)  # (1- theta_0**2))
         )
+
         if x < L_0:
             u = A_1 * x * v / (self.V_0 + A_1 * L_1)
         else:
