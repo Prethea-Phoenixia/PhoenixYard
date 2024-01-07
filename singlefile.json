@@ -7,7 +7,7 @@
   },
   {
    "optionDest": "filenames",
-   "value": "C:/Users/Phoenix/Documents/Gits/Phoenix-s-Interior-Ballistic-Solver-PIBS/pibs/IB.py"
+   "value": "C:/Users/Jinpeng Zhai/Documents/GitHub/Phoenix-s-Interior-Ballistic-Solver-PIBS/pibs/IB.py"
   },
   {
    "optionDest": "onefile",
@@ -19,7 +19,7 @@
   },
   {
    "optionDest": "icon_file",
-   "value": "C:/Users/Phoenix/Documents/Gits/Phoenix-s-Interior-Ballistic-Solver-PIBS/pibs/ui/logo.ico"
+   "value": "C:/Users/Jinpeng Zhai/Documents/GitHub/Phoenix-s-Interior-Ballistic-Solver-PIBS/pibs/ui/logo.ico"
   },
   {
    "optionDest": "name",
@@ -63,11 +63,11 @@
   },
   {
    "optionDest": "datas",
-   "value": "C:/Users/Phoenix/Documents/Gits/Phoenix-s-Interior-Ballistic-Solver-PIBS/pibs/data;data/"
+   "value": "C:/Users/Jinpeng Zhai/Documents/GitHub/Phoenix-s-Interior-Ballistic-Solver-PIBS/pibs/data;data/"
   },
   {
    "optionDest": "datas",
-   "value": "C:/Users/Phoenix/Documents/Gits/Phoenix-s-Interior-Ballistic-Solver-PIBS/pibs/ui;ui/"
+   "value": "C:/Users/Jinpeng Zhai/Documents/GitHub/Phoenix-s-Interior-Ballistic-Solver-PIBS/pibs/ui;ui/"
   }
  ],
  "nonPyinstallerOptions": {
