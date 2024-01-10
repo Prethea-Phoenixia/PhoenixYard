@@ -1406,7 +1406,7 @@ class InteriorBallisticsFrame(Frame):
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
         grainFrm.columnconfigure(0, weight=1)
-        grainFrm.rowconfigure(0, weight=1, minsize=100)
+        grainFrm.rowconfigure(0, weight=1, minsize=200)
 
         geomPlotFrm = LocLabelFrame(
             grainFrm,
@@ -2783,17 +2783,13 @@ def calculate(
         else:
             errorReport.append(str(e))
 
+    # fmt: off
     queue.put(
         (
-            kwargs,
-            gun,
-            tableData,
-            errorData,
-            pressureTrace,
-            structure,
-            errorReport,
+            kwargs, gun, tableData, errorData, pressureTrace, structure, errorReport
         )
     )
+    # fmt: on
 
 
 def main():

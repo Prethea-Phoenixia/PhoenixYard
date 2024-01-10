@@ -1,4 +1,5 @@
 import inspect
+import sys, traceback
 
 a2 = 2 / 27
 a3 = 1 / 9
@@ -393,6 +394,16 @@ def RKF78(
             ZeroDivisionError,
             OverflowError,
         ) as e:
+            # if debug:
+            #     exc_type, exc_value, exc_traceback = sys.exc_info()
+            #     errMsg = "".join(
+            #         traceback.format_exception(
+            #             exc_type, exc_value, exc_traceback
+            #         )
+            #     )
+            #     print(f"Error encountered at x={x:.8g}")
+            #     print(str(errMsg))
+            #     print(e)
             h *= beta
             continue
 

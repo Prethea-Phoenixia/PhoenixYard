@@ -1,4 +1,5 @@
 import inspect
+import sys, traceback
 
 """
 Constants to be used for Runge-Kutta-Fehlberg 7(8), see:
@@ -216,7 +217,15 @@ def RKF78(
             ZeroDivisionError,  # divide by zero in the equation
             OverflowError,  # numerical overflow, in practice very rare
         ) as e:
-            # print(e)
+            # if debug:
+            #     exc_type, exc_value, exc_traceback = sys.exc_info()
+            #     errMsg = "".join(
+            #         traceback.format_exception(
+            #             exc_type, exc_value, exc_traceback
+            #         )
+            #     )
+            #     print(f"Error encountered at x={x:.8g}")
+            #     print(str(errMsg))
             h *= beta
             continue
 

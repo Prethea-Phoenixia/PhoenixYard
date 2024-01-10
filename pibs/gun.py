@@ -992,13 +992,12 @@ class Gun:
             structure = self.getStructural(data, step, tol)
 
         except Exception as e:
-            import sys, traceback
-
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            errMsg = "".join(
-                traceback.format_exception(exc_type, exc_value, exc_traceback)
-            )
-            print(errMsg)
+            # import sys, traceback
+            # exc_type, exc_value, exc_traceback = sys.exc_info()
+            # errMsg = "".join(
+            #     traceback.format_exception(exc_type, exc_value, exc_traceback)
+            # )
+            # print(errMsg)
             structure = [None, None, None, None]
 
         return data, error, p_trace, structure

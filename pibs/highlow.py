@@ -26,7 +26,7 @@ class Highlow:
         chargeMass,
         chamberVolume,  # high pressure chamber
         expansionVolume,  # low pressure chamber
-        expansionStartPressure,  # low pressure chamber starting pressure
+        burstPressure,  # low pressure chamber starting pressure
         startPressure,  # shot start pressure
         portAreaRatio,  # total area of passable "mesh" relative to bore.
         chambrage,
@@ -46,7 +46,7 @@ class Highlow:
                 lengthGun <= 0,
                 dragCoefficient < 0,
                 dragCoefficient >= 1,
-                expansionStartPressure < 0,
+                burstPressure < 0,
                 startPressure < 0,
             )
         ):
@@ -67,7 +67,7 @@ class Highlow:
         self.V_0 = chamberVolume
         self.V_1 = expansionVolume
 
-        self.p_0_e = expansionStartPressure
+        self.p_0_e = burstPressure
         self.p_0_s = startPressure
 
         self.l_g = lengthGun
@@ -173,12 +173,8 @@ class Highlow:
         )
 
     def _ode_t(self, t_bar, Z, l_bar, v_bar, eta, tau_1, tau_2, _):
-        # VALUES FOR HIGH PRESSURE CHAMBER
         psi = self.f_psi_Z(Z)
-        dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
-
-        # VALUES FOR LOW PRESSURE CHAMBER
         p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
 
         # COMBUSTION OF POWDER
@@ -186,6 +182,8 @@ class Highlow:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_1_bar**self.n
         else:
             dZ = 0  # dZ/dt_bar
+
+        dpsi = self.f_sigma_Z(Z) * dZ  # dpsi/dt_bar
 
         # FLOW INTO LOW PRESSURE CHAMBER
         pr = p_2_bar / p_1_bar
@@ -203,7 +201,7 @@ class Highlow:
         deta /= tau_1**0.5
 
         # CHANGE IN HIGH PRESSURE CHAMBER
-        dtau_1 = ((1 - tau_1) * (dpsi * dZ) - self.theta * tau_1 * deta) / (
+        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (
             psi - eta
         )  # dtau/dt_bar
 
@@ -231,10 +229,10 @@ class Highlow:
 
         return (dZ, dl_bar, dv_bar, deta, dtau_1, dtau_2)
 
-    def _ode_ts(self, t_bar, Z, eta, tau_1, tau_2, Delta):
+    def _ode_ts(self, t_bar, Z, eta, tau_1, tau_2, _):
         # VALUES FOR HIGH PRESSURE CHAMBER
         psi = self.f_psi_Z(Z)
-        dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
+
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
         # VALUES FOR LOW PRESSURE CHAMBER
         p_2_bar = self._f_p_2_bar(0, eta, tau_2)
@@ -244,6 +242,8 @@ class Highlow:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_1_bar**self.n
         else:
             dZ = 0  # dZ/dt_bar
+
+        dpsi = self.f_sigma_Z(Z) * dZ  # dpsi/dZ
 
         # FLOW INTO LOW PRESSURE CHAMBER
         pr = p_2_bar / p_1_bar
@@ -264,23 +264,27 @@ class Highlow:
         deta /= tau_1**0.5
 
         # CHANGE IN HIGH PRESSURE CHAMBER
-        dtau_1 = ((1 - tau_1) * (dpsi * dZ) - self.theta * tau_1 * deta) / (
+        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (
             psi - eta
         )  # dtau/dt_bar
 
         # CHANGE IN LOW PRESSURE CHAMBER
 
-        eta += deta * Delta
+        # eta += deta * Delta
         # else:
         # dtau_2 = (self.theta * tau_1 * deta) / eta
-        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
+
+        if eta != 0:
+            dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
+        else:
+            dtau_2 = 0
 
         return (dZ, deta, dtau_1, dtau_2)
 
     def _ode_l(self, l_bar, t_bar, Z, v_bar, eta, tau_1, tau_2, _):
         # VALUES FOR HIGH PRESSURE CHAMBER
         psi = self.f_psi_Z(Z)
-        dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
+
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
 
         # VALUES FOR LOW PRESSURE CHAMBER
@@ -309,8 +313,11 @@ class Highlow:
 
         deta /= tau_1**0.5
 
+        # PROPELLANT BURNUP
+        dpsi = self.f_sigma_Z(Z) * dZ
+
         # CHANGE IN HIGH PRESSURE CHAMBER
-        dtau_1 = ((1 - tau_1) * (dpsi * dZ) - self.theta * tau_1 * (deta)) / (
+        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * (deta)) / (
             psi - eta
         )  # dtau/dl_bar
 
@@ -340,14 +347,12 @@ class Highlow:
         return (dt_bar, dZ, dv_bar, deta, dtau_1, dtau_2)
 
     def _ode_Z(self, Z, t_bar, l_bar, v_bar, eta, tau_1, tau_2, _):
-        # VALUES FOR HIGH PRESSURE CHAMBER
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
-        # VALUES FOR LOW PRESSURE CHAMBER
         p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
 
-        # PASSAGE OF TIME
+        # PASSAGE OF TIME, dt_bar/dZ
         dt_bar = (2 * self.B / self.theta) ** 0.5 * p_1_bar**-self.n
 
         # FLOW INTO LOW PRESSURE CHAMBER
@@ -368,7 +373,7 @@ class Highlow:
 
         # CHANGE IN HIGH PRESSURE CHAMBER
 
-        dtau_1 = ((1 - tau_1) * (dpsi) - self.theta * tau_1 * (deta)) / (
+        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (
             psi - eta
         )  # dtau_1 / dZ
 
@@ -397,23 +402,24 @@ class Highlow:
 
         return (dt_bar, dl_bar, dv_bar, deta, dtau_1, dtau_2)
 
-    def _ode_Zs(self, Z, t_bar, eta, tau_1, tau_2, Delta):
-        # VALUES FOR HIGH PRESSURE CHAMBER
-        # print("in", Z, t_bar, eta, tau_1, tau_2)
+    def _ode_Zs(self, Z, t_bar, eta, tau_1, tau_2, _):
         psi = self.f_psi_Z(Z)
-        dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
-        # VALUES FOR LOW PRESSURE CHAMBER
+        dt_bar = (
+            2 * self.B / self.theta
+        ) ** 0.5 * p_1_bar**-self.n  # dt_bar/dZ
+        dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
+
         p_2_bar = self._f_p_2_bar(0, eta, tau_2)
 
-        # PASSAGE OF TIME
-        dt_bar = (2 * self.B / self.theta) ** 0.5 * p_1_bar**-self.n
-
+        # print(p_1_bar, p_2_bar)
         # FLOW INTO LOW PRESSURE CHAMBER
         pr = p_2_bar / p_1_bar
         if pr < self.cfpr:
             # FLOW IS CRITICAL
-            deta = self.C_A * self.S_j_bar * p_1_bar * dt_bar  # deta / dZ
+            deta = (
+                self.C_A * self.S_j_bar * p_1_bar * dt_bar
+            )  # deta/dt_bar * dt_bar/dZ = deta/dZ
             # print("{:.3f}, crit, {:.3f}".format(pr, deta))
         else:
             # FLOW IS SUB CRITICAL
@@ -427,16 +433,20 @@ class Highlow:
             # print("{:.3f}, subcrit, {:.3f}".format(pr, deta))
         deta /= tau_1**0.5
 
-        dtau_1 = ((1 - tau_1) * (dpsi) - self.theta * tau_1 * (deta)) / (
+        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (
             psi - eta
         )  # dtau_1 / dZ
 
         # CHANGE IN LOW PRESSURE CHAMBER
+        if eta != 0:
+            dtau_2 = (
+                ((1 + self.theta) * tau_1 - tau_2) * deta
+            ) / eta  # dtau_2/dZ
+        else:
+            dtau_2 = 0
 
-        eta += deta * Delta
-
-        # dtau_2 = (self.theta * tau_1 * deta) / eta
-        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta  # dtau_2/dZ
+        # print("->", Z, t_bar, eta, tau_1, tau_2)
+        # print(dt_bar, deta, dtau_1, dtau_2, "->")
 
         return (dt_bar, deta, dtau_1, dtau_2)
 
@@ -506,8 +516,9 @@ class Highlow:
 
         # fmt: off
         def updBarData(
-            tag, t_bar, l_bar, Z, v_bar, eta, tau_1, tau_2, t_bar_err, l_bar_err,
-            Z_err, v_bar_err, eta_err, tau_1_err, tau_2_err,
+            tag="", t_bar=0, l_bar=0, Z=0, v_bar=0, eta=0, tau_1=0, tau_2=0,
+            t_bar_err=0, l_bar_err=0, Z_err=0, v_bar_err=0, eta_err=0,
+            tau_1_err=0, tau_2_err=0,
         ):
             p_1_bar, p_2_bar = (
                 self._f_p_1_bar(Z, eta, tau_1),
@@ -535,14 +546,7 @@ class Highlow:
             v_bar=0,
             eta=0,
             tau_1=1,
-            tau_2=1,
-            t_bar_err=0,
-            l_bar_err=0,
-            Z_err=0,
-            v_bar_err=0,
-            eta_err=0,
-            tau_1_err=0,
-            tau_2_err=0,
+            tau_2=1 + self.theta,
         )
 
         def abort(x, ys, record):
@@ -565,14 +569,32 @@ class Highlow:
                 or p_1_bar > p_bar_max
             )
 
-        fr = [[Z_0, [0, 0, 1, 1]]]  # record for the function f
+        t_bar_0 = 0
+        eta_0 = 0
+        tau_1_0 = 1
+        tau_2_0 = 1 + self.theta
+
+        dt_bar_0, deta_0, dtau_1_0, dtau_2_0 = self._ode_Zs(
+            Z_0, t_bar_0, eta_0, tau_1_0, tau_2_0, _
+        )
+        dZ = Z_0 * tol / dt_bar_0
+        Z_0 += dZ
+        t_bar_0 += dt_bar_0 * dZ
+        eta_0 += deta_0 * dZ
+        tau_1_0 += dtau_1_0 * dZ
+        tau_2_0 += dtau_2_0 * dZ
+
+        fr = [
+            [Z_0, [t_bar_0, eta_0, tau_1_0, tau_2_0]]
+        ]  # record for the function f
 
         def f(Z):
             i = fr.index([v for v in fr if v[0] <= Z][-1])
 
             x = fr[i][0]
             ys = fr[i][1]
-            r = []
+            # jump start the calculation:
+
             try:
                 t_bar, eta, tau_1, tau_2 = RKF78(
                     self._ode_Zs,
@@ -583,13 +605,16 @@ class Highlow:
                     absTol=tol**2,
                     minTol=minTol,
                     abortFunc=abort,
-                    record=r,
+                    record=fr,
+                    # debug=True,
                 )[1]
+                # print("here")
+                # print(t_bar, eta, tau_1, tau_2)
 
             except ValueError:
-                t_bar, eta, tau_1, tau_2 = r[-1][1]
+                t_bar, eta, tau_1, tau_2 = fr[-1][1]
 
-            fr.extend(v for v in r if v[0] > fr[-1][0])
+            fr.extend(v for v in fr if v[0] > fr[-1][0])
 
             p_2_bar = self._f_p_2_bar(0, eta, tau_2)
             return p_2_bar
@@ -616,7 +641,7 @@ class Highlow:
 
         t_bar_1, eta_1, tau_1_1, tau_2_1 = RKF78(
             self._ode_Zs,
-            (0, 0, 1, 1),
+            (t_bar_0, eta_0, tau_1_0, tau_2_0),
             Z_0,
             Z_1,
             relTol=tol,
@@ -633,13 +658,6 @@ class Highlow:
             eta=eta_1,
             tau_1=tau_1_1,
             tau_2=tau_2_1,
-            t_bar_err=0,
-            l_bar_err=0,
-            Z_err=0,
-            v_bar_err=0,
-            eta_err=0,
-            tau_1_err=0,
-            tau_2_err=0,
         )
 
         Z_i = Z_1
@@ -1010,8 +1028,8 @@ class Highlow:
                             (Z_err, eta_err, tau_1_err, tau_2_err),
                         ) = RKF78(
                             self._ode_ts,
-                            (Z_0, 0, 1, 1),
-                            0,
+                            (Z_0, eta_0, tau_1_0, tau_2_0),
+                            t_bar_0,
                             t_bar_j,
                             relTol=tol,
                             absTol=tol**2,
@@ -1175,12 +1193,12 @@ class Highlow:
             data.append((
                 "*", t, l_bar * self.l_0, psi, v_bar * self.v_j,
                 p_1_bar * pScale, p_2_bar * pScale,
-                eta, tau_1 * self.T_v, tau_2 * self.T_v,
+                tau_1 * self.T_v, tau_2 * self.T_v, eta 
             ))
 
             errLine = ("L", *("--" for _ in range(9)))
             error.append(errLine)
-        # fmt: ongoing
+        # fmt: on
         data, error = zip(
             *(
                 (a, b)
@@ -1224,8 +1242,8 @@ if __name__ == "__main__":
         chargeMass=0.3,
         chamberVolume=0.3 / M1C.rho_p / lf,
         expansionVolume=0.9 / M1C.rho_p / lf,
-        startPressure=200e6,
-        expansionStartPressure=10e6,
+        startPressure=5e6,
+        burstPressure=10e6,
         lengthGun=3.5,
         nozzleExpansion=2.0,
         portAreaRatio=1,
@@ -1236,7 +1254,7 @@ if __name__ == "__main__":
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(10, 1e-4, dom=DOMAIN_TIME)[0],
+            test.integrate(0, 1e-3, dom=DOMAIN_TIME)[0],
             headers=(
                 "tag",
                 "t",
@@ -1252,7 +1270,7 @@ if __name__ == "__main__":
         )
     )
 
-    input()
+    # input()
 
     print("\nnumerical: length")
     print(

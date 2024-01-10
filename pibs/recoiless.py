@@ -838,14 +838,11 @@ class Recoiless:
         """
         try:
             if dom == DOMAIN_TIME:
+                # fmt:off
                 (Z_j, l_bar_j, v_bar_j, t_bar_j, eta_j, tau_j) = (
-                    Z_0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    1,
+                    Z_0, 0, 0, 0, 0, 1
                 )
+                # fmt: on
                 for j in range(step):
                     t_bar_k = t_bar_e / (step + 1) * (j + 1)
                     (
