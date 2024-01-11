@@ -28,7 +28,7 @@ class Highlow:
         expansionVolume,  # low pressure chamber
         burstPressure,  # low pressure chamber starting pressure
         startPressure,  # shot start pressure
-        portAreaRatio,  # total area of passable "mesh" relative to bore.
+        portArea,
         chambrage,
         lengthGun,
         nozzleExpansion,
@@ -123,8 +123,11 @@ class Highlow:
             )
 
         self.Z_0 = Zs[0]  # pick the smallest solution
-        self.S_j_bar = portAreaRatio
-        self.S_j = self.S * portAreaRatio
+        # self.S_j_bar = portAreaRatio
+        # self.S_j = self.S * portAreaRatio
+
+        self.S_j = portArea
+        self.S_j_bar = portArea / self.S
 
         gamma = self.theta + 1
         phi_2 = 0.15  # for small ports 1.5mm to 2mm in size
@@ -269,11 +272,6 @@ class Highlow:
         )  # dtau/dt_bar
 
         # CHANGE IN LOW PRESSURE CHAMBER
-
-        # eta += deta * Delta
-        # else:
-        # dtau_2 = (self.theta * tau_1 * deta) / eta
-
         if eta != 0:
             dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
         else:
@@ -316,10 +314,8 @@ class Highlow:
         # PROPELLANT BURNUP
         dpsi = self.f_sigma_Z(Z) * dZ
 
-        # CHANGE IN HIGH PRESSURE CHAMBER
-        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * (deta)) / (
-            psi - eta
-        )  # dtau/dl_bar
+        # CHANGE IN HIGH PRESSURE CHAMBER  dtau/dl_bar
+        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (psi - eta)
 
         # ATMOSPHERIC DRAG
         if self.c_a_bar != 0 and v_bar > 0:
@@ -371,11 +367,9 @@ class Highlow:
             ) * dt_bar
         deta /= tau_1**0.5
 
-        # CHANGE IN HIGH PRESSURE CHAMBER
+        # CHANGE IN HIGH PRESSURE CHAMBER  dtau_1 / dZ
 
-        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (
-            psi - eta
-        )  # dtau_1 / dZ
+        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (psi - eta)
 
         # ATMOSPHERIC DRAG
         if self.c_a_bar != 0 and v_bar > 0:
@@ -539,7 +533,6 @@ class Highlow:
             )
         # fmt: on
         updBarData(
-            tag=None,
             t_bar=0,
             l_bar=0,
             Z=Z_0,
@@ -954,6 +947,13 @@ class Highlow:
             if m == "a":
                 return p_bar
 
+            p_bar_s, p_bar_b = self.toPsPb(p_bar, eta)
+
+            if m == "s":
+                return p_bar_s
+            elif m == "b":
+                return p_bar_b
+
         def findPeak(f, tag):
             """
             tolerance is specified a bit differently for gold section search
@@ -1012,6 +1012,8 @@ class Highlow:
             )
 
         findPeak(lambda x: f(x, "a"), POINT_PEAK_AVG)
+        findPeak(lambda x: f(x, "s"), POINT_PEAK_SHOT)
+        findPeak(lambda x: f(x, "b"), POINT_PEAK_BREECH)
 
         """
         populate data for output purposes
@@ -1169,14 +1171,17 @@ class Highlow:
                 if isinstance(p_2_bar_err, str)
                 else p_2_bar_err * pScale
             )
+
+            p_s, p_b = self.toPsPb(p_2, eta)
+
             T_1 = tau_1 * self.T_v
             T_2 = tau_2 * self.T_v
             T_1_err = tau_1_err * self.T_v
             T_2_err = tau_2_err * self.T_v
             # fmt: off
-            data.append((dtag, t, l, psi, v, p_1, p_2, T_1, T_2, eta))
+            data.append((dtag, t, l, psi, v, p_1, p_b, p_2, p_s, T_1, T_2, eta))
             error.append(
-                (etag, t_err, l_err, psi_err, v_err, p_1_err, p_2_err,
+                (etag, t_err, l_err, psi_err, v_err, p_1_err, "---", p_2_err, "---",
                  T_1_err, T_2_err, eta_err)
             )
             # fmt: on
@@ -1190,13 +1195,17 @@ class Highlow:
             if t in [line[1] for line in data]:
                 continue
 
+            p_2 = p_2_bar * pScale
+
+            p_s, p_b = self.toPsPb(p_2, eta)
+
             data.append((
                 "*", t, l_bar * self.l_0, psi, v_bar * self.v_j,
-                p_1_bar * pScale, p_2_bar * pScale,
-                tau_1 * self.T_v, tau_2 * self.T_v, eta 
+                p_1_bar * pScale, p_b, p_2, p_s,
+                tau_1 * self.T_v, tau_2 * self.T_v, eta
             ))
 
-            errLine = ("L", *("--" for _ in range(9)))
+            errLine = ("L", *("--" for _ in range(11)))
             error.append(errLine)
         # fmt: on
         data, error = zip(
@@ -1206,7 +1215,23 @@ class Highlow:
             )
         )
 
-        return data, error, None, None
+        # calculate a pressure and flow velcoity tracing.
+        p_trace = []
+
+        for line in data:
+            tag, t, l, psi, v, p_h, p_b, p, p_s, T_1, T_2, eta = line
+            p_line = []
+            for i in range(step):
+                x = i / step * (l + (self.V_0 + self.V_1) / self.S / self.chi_k)
+                p_x = self.toPx(l, p_h, p_s, x)
+                p_line.append((x, p_x))
+
+            p_line.append(
+                (l + (self.V_0 + self.V_1) / self.S / self.chi_k, p_s)
+            )
+            p_trace.append((tag, psi, T_2, p_line))
+
+        return data, error, p_trace, [None, None, None, None]
 
     def getEff(self, vg):
         """
@@ -1216,6 +1241,49 @@ class Highlow:
         te = (vg / self.v_j) ** 2
         be = te / self.phi
         return te, be
+
+    def toPsPb(self, p, eta):
+        """
+        Convert average chamber pressure at a certain travel to
+        shot base pressure, and breech face pressure
+
+        p: average pressure
+        eta: fraction of propellant gas in the low pressure chamber
+
+        Ps: pressure at shot
+        Pb: pressure at breech
+        """
+
+        p_s = p / (1 + self.omega * eta / (3 * self.phi_1 * self.m))
+        p_b = p_s * (1 + self.omega * eta / (2 * self.phi_1 * self.m))
+
+        return p_s, p_b
+
+    def toPx(self, l, p_h, p_s, x):
+        """
+        | L_h | L_l |======l======
+        """
+        L_h = (
+            self.V_0 / self.S / self.chi_k
+        )  # length of the high pressure chamber
+        L_l = self.V_1 / self.S / self.chi_k  # low pressure chamber
+
+        if x < L_l:
+            p_x = p_h
+        else:
+            r = (
+                self.chi_k * (x - L_h)
+                if x < (L_l + L_h)
+                else (x - L_l - L_h) + self.V_1 / self.S
+            )
+            p_x = p_s * (
+                1
+                + 0.5
+                * (self.omega / (self.phi_1 * self.m))
+                * (1 - (r / (self.V_1 / self.S + l)) ** 2)
+            )
+
+        return p_x
 
 
 if __name__ == "__main__":
@@ -1246,7 +1314,7 @@ if __name__ == "__main__":
         burstPressure=10e6,
         lengthGun=3.5,
         nozzleExpansion=2.0,
-        portAreaRatio=1,
+        portArea=0.5 * (pi * 0.082**2 * 0.25),
         chambrage=1,
     )
     record = []
@@ -1254,7 +1322,7 @@ if __name__ == "__main__":
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(0, 1e-3, dom=DOMAIN_TIME)[0],
+            test.integrate(5, 1e-3, dom=DOMAIN_TIME)[0],
             headers=(
                 "tag",
                 "t",
@@ -1262,7 +1330,9 @@ if __name__ == "__main__":
                 "psi",
                 "v",
                 "p1",
+                "pb",
                 "p2",
+                "ps",
                 "T1",
                 "T2",
                 "eta",
@@ -1283,7 +1353,9 @@ if __name__ == "__main__":
                 "psi",
                 "v",
                 "p1",
+                "pb",
                 "p2",
+                "ps",
                 "T1",
                 "T2",
                 "eta",

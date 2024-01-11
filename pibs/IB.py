@@ -9,6 +9,7 @@ from gun import POINT_START, POINT_BURNOUT, POINT_FRACTURE, POINT_EXIT
 from gun import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_PEAK_BREECH
 from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
 from recoiless import Recoiless
+from highlow import Highlow
 
 from prop import Propellant, GrainComp, GEOMETRIES, SimpleGeometry
 from opt import Constrained
@@ -52,7 +53,7 @@ RECOILESS = "RECOILESS"
 CONVENTIONAL = "CONVENTIONAL"
 HIGHLOW = "HIGHLOW"
 
-TYPES = {CONVENTIONAL: CONVENTIONAL, RECOILESS: RECOILESS}
+TYPES = {CONVENTIONAL: CONVENTIONAL, RECOILESS: RECOILESS, HIGHLOW: HIGHLOW}
 
 CARTRIDGE = "CARTRIDGE"
 TELESCOPED = "TELESCOPED"
@@ -986,22 +987,20 @@ class InteriorBallisticsFrame(Frame):
             chambrage = float(self.clr.get())
             chargeMass = float(self.chgkg.get())
             caliber = float(self.calmm.get()) * 1e-3
+            boreS = pi * 0.25 * caliber**2
+            breechS = chambrage * boreS
 
             gunLength = float(self.tblmm.get()) * 1e-3
             loadFraction = float(self.ldf.get()) * 1e-2
 
             if telescoped:  # converting to equivalent cartridged gun.
                 maxInset = float(self.insetmm.get()) * 1e-3
-                boreS = pi * 0.25 * caliber**2
-                breechS = chambrage * boreS
-
                 exactlyTelescopedV = breechS * maxInset
 
                 if chamberVolume > exactlyTelescopedV:
                     inset = maxInset
                 else:
                     inset = chamberVolume / breechS
-                    # chamberVolume *= (chambrage - 1) / chambrage
 
                 # gunLength += inset
                 insetV = inset * boreS
@@ -1032,7 +1031,10 @@ class InteriorBallisticsFrame(Frame):
                     float(self.chgkg.get()) / float(self.shtkg.get())
                 ),
                 "chamberVolume": chamberVolume,
+                "expansionVolume": float(self.evL.get()) * 1e-3,
+                "portArea": breechS * float(self.perf.get()) * 1e-2,
                 "startPressure": float(self.stpMPa.get()) * 1e6,
+                "burstPressure": float(self.bstMPa.get()) * 1e6,
                 "lengthGun": gunLength,
                 "chambrage": chambrage,  # chamber expansion
                 "nozzleExpansion": float(
@@ -1202,6 +1204,8 @@ class InteriorBallisticsFrame(Frame):
                 ps = self.readTable(POINT_PEAK_SHOT)[7]
             elif gunType == RECOILESS:
                 ps = self.readTable(POINT_PEAK_SHOT)[9]
+            elif gunType == HIGHLOW:
+                ps = self.readTable(POINT_PEAK_SHOT)[8]
 
             self.pa.set(toSI(ps * gun.S / gun.m, unit="m/s²"))
 
@@ -1524,6 +1528,18 @@ class InteriorBallisticsFrame(Frame):
             locFunc=self.getLocStr,
             allInputs=self.locs,
         )
+        i += 1
+        self.evL = Loc3Input(
+            parent=specFrm,
+            row=i,
+            labelLocKey="evLabel",
+            unitText="L",
+            default="5",
+            validation=validationNN,
+            tooltipLocKey="evText",
+            locFunc=self.getLocStr,
+            allInputs=self.locs,
+        )
 
         self.useCv.trace_add("write", self.cvlfCallback)
         self.cvL.trace_add("write", self.cvlfConsisCallback)
@@ -1561,9 +1577,33 @@ class InteriorBallisticsFrame(Frame):
             row=i,
             labelLocKey="stpLabel",
             unitText="MPa",
-            default="10",
+            default="30",
             validation=validationNN,
             tooltipLocKey="stpText",
+            locFunc=self.getLocStr,
+            allInputs=self.locs,
+        )
+        i += 1
+        self.bstMPa = Loc3Input(
+            parent=specFrm,
+            row=i,
+            labelLocKey="bstLabel",
+            unitText="MPa",
+            default="10",
+            validation=validationNN,
+            tooltipLocKey="bstText",
+            locFunc=self.getLocStr,
+            allInputs=self.locs,
+        )
+        i += 1
+        self.perf = Loc3Input(
+            parent=specFrm,
+            row=i,
+            labelLocKey="perfLabel",
+            unitText="%",
+            default="50",
+            validation=validationNN,
+            tooltipLocKey="perfText",
             locFunc=self.getLocStr,
             allInputs=self.locs,
         )
@@ -1876,7 +1916,6 @@ class InteriorBallisticsFrame(Frame):
 
             xs, vs = [], []
 
-            Pa_m = []
             Pas, Pss, Pbs, P0s = [], [], [], []
             Frs = []
             psis, etas = [], []
@@ -1914,11 +1953,6 @@ class InteriorBallisticsFrame(Frame):
                             xPeak = t * 1e3
                         elif dom == DOMAIN_LENG:
                             xPeak = l
-                        Pa_m.append("^")
-                    elif tag == "*":
-                        Pa_m.append("x")
-                    else:
-                        Pa_m.append(",")
 
                     if dom == DOMAIN_TIME:
                         xs.append(t * 1000)
@@ -1936,6 +1970,32 @@ class InteriorBallisticsFrame(Frame):
                     psis.append(psi)
                     etas.append(eta)
 
+            elif gunType == HIGHLOW:
+                # fmt: off
+                for (tag, t, l, psi, v, Ph, Pb, P, Ps, Th, Tl, eta) in self.tableData:
+                    # fmt: on
+                    if tag == POINT_PEAK_AVG:
+                        if dom == DOMAIN_TIME:
+                            xPeak = t * 1e3
+                        elif dom == DOMAIN_LENG:
+                            xPeak = l
+
+                    if dom == DOMAIN_TIME:
+                        xs.append(t * 1000)
+                    elif dom == DOMAIN_LENG:
+                        xs.append(l)
+
+                    Fr = P * gun.S
+
+                    vs.append(v)
+                    Pas.append(P / 1e6)
+                    Pss.append(Ps / 1e6)
+                    Pbs.append(Pb / 1e6)
+                    P0s.append(Ph / 1e6)
+                    Frs.append(Fr / 1e6)
+                    psis.append(psi)
+                    etas.append(eta)
+
             self.axP.spines.right.set_position(("data", xPeak))
             self.axF.spines.left.set_position(("data", xPeak))
 
@@ -1945,7 +2005,7 @@ class InteriorBallisticsFrame(Frame):
                     Pbs,
                     c="xkcd:goldenrod",
                     label=self.getLocStr("figBreech")
-                    if gunType == CONVENTIONAL
+                    if gunType == CONVENTIONAL or gunType == HIGHLOW
                     else self.getLocStr("figNozzleP")
                     if gunType == RECOILESS
                     else "",
@@ -1957,7 +2017,7 @@ class InteriorBallisticsFrame(Frame):
                         xs,
                         P0s,
                         "seagreen",
-                        label=self.getLocStr("figStagnation"),
+                        label=self.getLocStr("figHighChamber"),
                     )
 
                 if self.plotNozzleV.get():
@@ -1968,6 +2028,15 @@ class InteriorBallisticsFrame(Frame):
                 if self.plotEta.get():
                     self.ax.plot(
                         xs, etas, "crimson", label=self.getLocStr("figOutflow")
+                    )
+
+            elif gunType == HIGHLOW:
+                if self.plotStagP.get():
+                    self.axP.plot(
+                        xs,
+                        P0s,
+                        "seagreen",
+                        label=self.getLocStr("figStagnation"),
                     )
 
             if self.plotAvgP.get():
@@ -2008,7 +2077,7 @@ class InteriorBallisticsFrame(Frame):
                 )
 
             if self.plotRecoil.get():
-                if gunType == CONVENTIONAL:
+                if gunType == CONVENTIONAL or gunType == HIGHLOW:
                     self.axF.plot(
                         xs,
                         Frs,
@@ -2095,7 +2164,6 @@ class InteriorBallisticsFrame(Frame):
             gunType = self.kwargs["typ"]
 
             pTrace = self.pressureTrace
-
             cmap = mpl.colormaps["afmhot"]
 
             x_max = 0
@@ -2127,7 +2195,7 @@ class InteriorBallisticsFrame(Frame):
 
             l_c = gun.l_c
             chi_k = gun.chi_k
-            r = 0.5 * gun.caliber * 1e3
+            r = 0.5 * self.kwargs["caliber"] * 1e3
             self.auxAx.plot(
                 (l_c, l_c), (0, y_max * 1.15), c="grey", ls="dotted", zorder=1.5
             )
@@ -2406,6 +2474,14 @@ class InteriorBallisticsFrame(Frame):
             )
             # fmt: on
 
+        elif gunType == HIGHLOW:
+            # fmt: off
+            useSN = (
+                False, False, False, True, False, False, False, False, False, True, True, True
+            )
+            units = (None, "s", "m", None, "m/s", "Pa", "Pa", "Pa", "Pa", "K", "K", None)
+            # fmt: on
+
         locTableData = dot_aligned(
             locTableData,
             units=units,
@@ -2528,6 +2604,7 @@ class InteriorBallisticsFrame(Frame):
             self.bnm.reLocalize("bmLabel", "bmText")
 
             self.dropSoln.enable()
+            self.ammoOptn.enable()
 
             for widget in (self.plotEta, self.plotNozzleV):
                 widget.disable()
@@ -2541,9 +2618,13 @@ class InteriorBallisticsFrame(Frame):
 
             self.dropSoln.setByObj(SOL_LAGRANGE)
             self.dropSoln.disable()
+            self.ammoOptn.enable()
 
             for widget in (self.plotEta, self.plotNozzleV):
                 widget.enable()
+
+        elif gunType == HIGHLOW:
+            pass
 
     def ctrlCallback(self, *args):
         if self.solve_W_Lg.get() == 0:
@@ -2759,6 +2840,8 @@ def calculate(
             gun = Gun(**kwargs)
         elif gunType == RECOILESS:
             gun = Recoiless(**kwargs)
+        elif gunType == HIGHLOW:
+            gun = Highlow(**kwargs)
 
         tableData, errorData, pressureTrace, structure = gun.integrate(**kwargs)
         errorReport = []

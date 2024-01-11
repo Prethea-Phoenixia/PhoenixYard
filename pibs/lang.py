@@ -18,8 +18,10 @@ ENGLISH = {
     "chgLabel": "Charge Mass",
     "ldfLabel": "Load Factor",
     "clrLabel": "Chambrage Ratio",
+    "perfLabel": "Perforation",
     "dgcLabel": "Drag Coefficient",
     "stpLabel": "Start Pressure",
+    "bstLabel": "Burst Pressure",
     "nozzExpLabel": "Nozz. Expansion",
     "nozzEffLabel": "Nozz. Efficiency",
     "tblFrmLabel": "Result Table",
@@ -41,6 +43,7 @@ ENGLISH = {
     "teffLabel": "Thermal Efficiency",
     "beffLabel": "Ballistic Efficiency",
     "cvLabel": "Chamber Volume",
+    "evLabel": "Expansion Volume",
     "ldLabel": "Loading Density",
     "paLabel": "Peak Acceleration",
     "propFrmLabel": "Propellant",
@@ -71,7 +74,7 @@ ENGLISH = {
     "calcLabel": "CALCULATE ↩",
     "CONVENTIONAL": "Conventional Gun",
     "RECOILESS": "Recoiless Gun",
-    "HIGHLOW": "Highlow Launcher",
+    "HIGHLOW": "High-Low Launcher",
     "DOMAIN_TIME": "Time",
     "DOMAIN_LENG": "Length",
     "SOL_LAGRANGE": "Lagrange ∂ρ/∂x = 0",
@@ -344,6 +347,20 @@ ENGLISH = {
             "peak pressure. ",
         )
     ),
+    "bstText": " ".join(
+        (
+            "Burst Pressure, parameter specifying the pressure at which the",
+            "high pressure chamber burst disk ruptures, introducing propellant",
+            "into the barrel behind the projectile.",
+        )
+    ),
+    "evText": " ".join(
+        (
+            "Volume of the expansion chamber, or the low pressure chamber in",
+            "a high-low system, to which propellant gas is bled from the",
+            "powder chamber",
+        )
+    ),
     "clrText": " ".join(
         (
             "Chambrage ratio, or the average cross section of chamber",
@@ -360,6 +377,13 @@ ENGLISH = {
             "corresponding amount. For recoiless gun, due to the slow",
             "velocity of shot and low pressure, currently the chambrage",
             "effect is not corrected for.",
+        )
+    ),
+    "perfText": " ".join(
+        (
+            "Perforation ratio, or the sum of vent holes area to the gun breech",
+            "cross section. Can exceed 100% in the case of parallel chamber",
+            "geometry high-low guns.",
         )
     ),
     "dgcText": " ".join(
@@ -482,7 +506,9 @@ ENGLISH = {
             "Burnup",
             "Velocity",
             "High Press.",
-            "Low Press.",
+            "Breech Press.",
+            "Low Avg. Press.",
+            "Shot Press.",
             "High Temp.",
             "Low Temp.",
             "Outflow Fract.",
@@ -504,6 +530,7 @@ ENGLISH = {
     "figShotVel": "Shot V.\nm/s",
     "figBreech": "Breech Face P.\nMPa",
     "figStagnation": "Stagnation P.\nMPa",
+    "figHighChamber": "High P. Chamber\nMPa",
     "figNozzleP": "Lock P.\nMPa",
     "figNozzleV": "Nozz. Throat V.\nm/s",
     "figOutflow": "Outflow Frac.",
