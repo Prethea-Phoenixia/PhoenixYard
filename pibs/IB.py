@@ -1524,7 +1524,7 @@ class InteriorBallisticsFrame(Frame):
             row=i,
             labelLocKey="cvLabel",
             unitText="L",
-            default="20",
+            default="20.0",
             validation=validationNN,
             locFunc=self.getLocStr,
             allInputs=self.locs,
@@ -1535,7 +1535,7 @@ class InteriorBallisticsFrame(Frame):
             row=i,
             labelLocKey="evLabel",
             unitText="L",
-            default="5",
+            default="1.0",
             validation=validationNN,
             tooltipLocKey="evText",
             locFunc=self.getLocStr,
@@ -1578,7 +1578,7 @@ class InteriorBallisticsFrame(Frame):
             row=i,
             labelLocKey="stpLabel",
             unitText="MPa",
-            default="30",
+            default="30.0",
             validation=validationNN,
             tooltipLocKey="stpText",
             locFunc=self.getLocStr,
@@ -1590,7 +1590,7 @@ class InteriorBallisticsFrame(Frame):
             row=i,
             labelLocKey="bstLabel",
             unitText="MPa",
-            default="10",
+            default="10.0",
             validation=validationNN,
             tooltipLocKey="bstText",
             locFunc=self.getLocStr,
@@ -1602,7 +1602,7 @@ class InteriorBallisticsFrame(Frame):
             row=i,
             labelLocKey="perfLabel",
             unitText="%",
-            default="50",
+            default="50.0",
             validation=validationNN,
             tooltipLocKey="perfText",
             locFunc=self.getLocStr,
@@ -1614,7 +1614,7 @@ class InteriorBallisticsFrame(Frame):
             row=i,
             labelLocKey="nozzExpLabel",
             unitText="x",
-            default="4",
+            default="4.0",
             validation=validationNN,
             tooltipLocKey="nozzExpText",
             locFunc=self.getLocStr,
@@ -1758,15 +1758,15 @@ class InteriorBallisticsFrame(Frame):
             locFunc=self.getLocStr,
             allLC=checks,
         )
-        k += 1
-        self.plotRecoil = LocLabelCheck(
-            parent=plotFrm,
-            row=j,
-            col=k,
-            labelLocKey="plotRecoil",
-            locFunc=self.getLocStr,
-            allLC=checks,
-        )
+        # k += 1
+        # self.plotRecoil = LocLabelCheck(
+        #     parent=plotFrm,
+        #     row=j,
+        #     col=k,
+        #     labelLocKey="plotRecoil",
+        #     locFunc=self.getLocStr,
+        #     allLC=checks,
+        # )
 
         for check in checks:
             check.trace_add("write", self.updateFigPlot)
@@ -1935,12 +1935,12 @@ class InteriorBallisticsFrame(Frame):
                     elif dom == DOMAIN_LENG:
                         xs.append(l)
 
-                    Fr = P * gun.S
+                    # Fr = P * gun.S
                     vs.append(v)
                     Pas.append(P / 1e6)
                     Pss.append(Ps / 1e6)
                     Pbs.append(Pb / 1e6)
-                    Frs.append(Fr / 1e6)
+                    # Frs.append(Fr / 1e6)
                     psis.append(psi)
 
             elif gunType == RECOILESS:
@@ -1960,14 +1960,14 @@ class InteriorBallisticsFrame(Frame):
                     elif dom == DOMAIN_LENG:
                         xs.append(l)
 
-                    Fr = P * gun.S * (1 - gun.C_f * gun.S_j_bar)
+                    # Fr = P * gun.S * (1 - gun.C_f * gun.S_j_bar)
                     vs.append(v)
                     vxs.append(vx)
                     Pas.append(P / 1e6)
                     Pss.append(Ps / 1e6)
                     Pbs.append(Px / 1e6)
                     P0s.append(P0 / 1e6)
-                    Frs.append(Fr / 1e6)
+                    # Frs.append(Fr / 1e6)
                     psis.append(psi)
                     etas.append(eta)
 
@@ -1986,14 +1986,14 @@ class InteriorBallisticsFrame(Frame):
                     elif dom == DOMAIN_LENG:
                         xs.append(l)
 
-                    Fr = P * gun.S
+                    # Fr = P * gun.S
 
                     vs.append(v)
                     Pas.append(P / 1e6)
                     Pss.append(Ps / 1e6)
                     Pbs.append(Pb / 1e6)
                     P0s.append(Ph / 1e6)
-                    Frs.append(Fr / 1e6)
+                    # Frs.append(Fr / 1e6)
                     psis.append(psi)
                     etas.append(eta)
 
@@ -2018,7 +2018,7 @@ class InteriorBallisticsFrame(Frame):
                         xs,
                         P0s,
                         "seagreen",
-                        label=self.getLocStr("figHighChamber"),
+                        label=self.getLocStr("figStagnation"),
                     )
 
                 if self.plotNozzleV.get():
@@ -2037,7 +2037,7 @@ class InteriorBallisticsFrame(Frame):
                         xs,
                         P0s,
                         "seagreen",
-                        label=self.getLocStr("figStagnation"),
+                        label=self.getLocStr("figHighChamber"),
                     )
 
             if self.plotAvgP.get():
@@ -2077,23 +2077,23 @@ class InteriorBallisticsFrame(Frame):
                     xs, psis, c="tab:red", label=self.getLocStr("figPsi")
                 )
 
-            if self.plotRecoil.get():
-                if gunType == CONVENTIONAL or gunType == HIGHLOW:
-                    self.axF.plot(
-                        xs,
-                        Frs,
-                        c="tab:green",
-                        label=self.getLocStr("figRecoil"),
-                        linestyle="dotted",
-                    )
-                elif gunType == RECOILESS:
-                    self.axF.plot(
-                        xs,
-                        tuple(-v for v in Frs),
-                        c="tab:green",
-                        label="-" + self.getLocStr("figRecoil"),
-                        linestyle="dotted",
-                    )
+            # if self.plotRecoil.get():
+            #     if gunType == CONVENTIONAL or gunType == HIGHLOW:
+            #         self.axF.plot(
+            #             xs,
+            #             Frs,
+            #             c="tab:green",
+            #             label=self.getLocStr("figRecoil"),
+            #             linestyle="dotted",
+            #         )
+            #     elif gunType == RECOILESS:
+            #         self.axF.plot(
+            #             xs,
+            #             tuple(-v for v in Frs),
+            #             c="tab:green",
+            #             label="-" + self.getLocStr("figRecoil"),
+            #             linestyle="dotted",
+            #         )
 
             linesLabeled = []
             for lines, xvals in zip(

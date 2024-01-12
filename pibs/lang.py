@@ -534,7 +534,7 @@ ENGLISH = {
     "figShotVel": "Shot V.\nm/s",
     "figBreech": "Breech Face P.\nMPa",
     "figStagnation": "Stagnation P.\nMPa",
-    "figHighChamber": "High P. Chamber\nMPa",
+    "figHighChamber": "High Chamber P.\nMPa",
     "figNozzleP": "Lock P.\nMPa",
     "figNozzleV": "Nozz. Throat V.\nm/s",
     "figOutflow": "Outflow Frac.",

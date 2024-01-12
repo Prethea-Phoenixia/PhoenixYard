@@ -123,8 +123,6 @@ class Highlow:
             )
 
         self.Z_0 = Zs[0]  # pick the smallest solution
-        # self.S_j_bar = portAreaRatio
-        # self.S_j = self.S * portAreaRatio
 
         self.S_j = portArea
         self.S_j_bar = portArea / self.S
@@ -542,26 +540,6 @@ class Highlow:
             tau_2=1 + self.theta,
         )
 
-        def abort(x, ys, record):
-            Z = x
-            t_bar, eta, tau_1, tau_2 = ys
-            p_2_bar = self._f_p_2_bar(0, eta, tau_2)
-
-            if len(record) < 1:
-                return False
-            o_x, o_ys = record[-1]
-
-            _, o_eta, _, o_tau_2 = o_ys
-            o_p_2_bar = self._f_p_2_bar(0, o_eta, o_tau_2)
-
-            p_1_bar = self._f_p_1_bar(Z, eta, tau_1)
-
-            return (
-                p_2_bar > 2 * self.p_0_s_bar
-                or p_2_bar < o_p_2_bar
-                or p_1_bar > p_bar_max
-            )
-
         t_bar_0 = 0
         eta_0 = 0
         tau_1_0 = 1
@@ -581,59 +559,86 @@ class Highlow:
             [Z_0, [t_bar_0, eta_0, tau_1_0, tau_2_0]]
         ]  # record for the function f
 
+        def abort(x, ys, record):
+            Z = x
+            t_bar, eta, tau_1, tau_2 = ys
+            p_2_bar = self._f_p_2_bar(0, eta, tau_2)
+
+            if len(record) < 1:
+                return False
+            o_x, o_ys = record[-1]
+
+            _, o_eta, _, o_tau_2 = o_ys
+            o_p_2_bar = self._f_p_2_bar(0, o_eta, o_tau_2)
+
+            p_1_bar = self._f_p_1_bar(Z, eta, tau_1)
+
+            delta = abs(p_2_bar - p_1_bar) / p_1_bar
+
+            return (
+                p_2_bar > 2 * self.p_0_s_bar
+                or p_2_bar < o_p_2_bar
+                or p_1_bar > p_bar_max
+                or delta < tol  # TODO: CATCH THIS!!!
+            )
+
         def f(Z):
             i = tett_record.index([v for v in tett_record if v[0] <= Z][-1])
 
             x = tett_record[i][0]
             ys = tett_record[i][1]
-            # jump start the calculation:
 
-            try:
-                t_bar, eta, tau_1, tau_2 = RKF78(
-                    self._ode_Zs,
-                    ys,
-                    x,
-                    Z,
-                    relTol=tol,
-                    absTol=tol**2,
-                    minTol=minTol,
-                    abortFunc=abort,
-                    record=tett_record,
-                    # debug=True,
-                )[1]
-                # print("here")
-                # print(t_bar, eta, tau_1, tau_2)
-
-            except ValueError:
-                t_bar, eta, tau_1, tau_2 = tett_record[-1][1]
+            _, (t_bar, eta, tau_1, tau_2), _ = RKF78(
+                self._ode_Zs,
+                ys,
+                x,
+                Z,
+                relTol=tol,
+                absTol=tol**2,
+                minTol=minTol,
+                abortFunc=abort,
+                record=tett_record,
+            )
 
             tett_record.extend(
                 v for v in tett_record if v[0] > tett_record[-1][0]
             )
-
             p_2_bar = self._f_p_2_bar(0, eta, tau_2)
+
+            tett_record[-1]
             return p_2_bar
 
-        p_bar_m = f(Z_b)
+        # p_bar_m = f(Z_b)
 
-        # print(p_bar_m * pScale)
-        if p_bar_m < self.p_0_s_bar:
-            print(*tett_record, sep="\n")
+        Z, (t_bar, eta, tau_1, tau_2), _ = RKF78(
+            self._ode_Zs,
+            tett_record[0][1],
+            tett_record[0][0],
+            Z_b,
+            relTol=tol,
+            absTol=tol**2,
+            minTol=minTol,
+            abortFunc=abort,
+            record=tett_record,
+        )
+        p_1_bar_sm = self._f_p_1_bar(Z, eta, tau_1)
+        p_2_bar_sm = self._f_p_2_bar(0, eta, tau_2)
+
+        print(p_1_bar_sm)
+        print(p_2_bar_sm)
+
+        if abs(p_1_bar_sm - p_2_bar_sm) / p_1_bar_sm < tol:
             raise ValueError(
-                "Maximum pressure developed in low-chamber ({:.6f} MPa) ".format(
-                    p_bar_m * pScale / 1e6
-                )
-                + "not enough to start the shot."
+                "Equilibrium between high and low chamber achieved "
+                + "before shot has started, "
+                + f"at ({p_2_bar_sm * pScale * 1e-6:.6f} MPa)."
             )
 
-        # fmt: off
-        record.extend(
-            (t_bar, (0, self.f_psi_Z(Z), 0,
-                     self._f_p_1_bar(Z, eta, tau_1),
-                     self._f_p_2_bar(0, eta, tau_2), eta, tau_1, tau_2))
-            for (Z, (t_bar, eta, tau_1, tau_2)) in tett_record
-        )
-        # fmt: on
+        if p_2_bar_sm < self.p_0_s_bar:
+            raise ValueError(
+                f"Maximum pressure developed in low-chamber ({p_2_bar_sm * pScale * 1e-6:.6f} MPa) "
+                + "not enough to start the shot."
+            )
 
         Z_1 = 0.5 * sum(
             bisect(
@@ -643,6 +648,15 @@ class Highlow:
                 y_abs_tol=self.p_0_s_bar * tol,
             )
         )
+
+        # fmt: off
+        record.extend(
+            (t_bar, (0, self.f_psi_Z(Z), 0,
+                     self._f_p_1_bar(Z, eta, tau_1),
+                     self._f_p_2_bar(0, eta, tau_2), eta, tau_1, tau_2))
+            for (Z, (t_bar, eta, tau_1, tau_2)) in tett_record if Z < Z_1
+        )
+        # fmt: on
 
         t_bar_1, eta_1, tau_1_1, tau_2_1 = RKF78(
             self._ode_Zs,
