@@ -510,7 +510,7 @@ class Highlow:
 
         # fmt: off
         def updBarData(
-            tag="", t_bar=0, l_bar=0, Z=0, v_bar=0, eta=0, tau_1=0, tau_2=0,
+            tag="*", t_bar=0, l_bar=0, Z=0, v_bar=0, eta=0, tau_1=0, tau_2=0,
             t_bar_err=0, l_bar_err=0, Z_err=0, v_bar_err=0, eta_err=0,
             tau_1_err=0, tau_2_err=0,
         ):
@@ -577,15 +577,15 @@ class Highlow:
         tau_1_0 += dtau_1_0 * dZ
         tau_2_0 += dtau_2_0 * dZ
 
-        fr = [
+        tett_record = [
             [Z_0, [t_bar_0, eta_0, tau_1_0, tau_2_0]]
         ]  # record for the function f
 
         def f(Z):
-            i = fr.index([v for v in fr if v[0] <= Z][-1])
+            i = tett_record.index([v for v in tett_record if v[0] <= Z][-1])
 
-            x = fr[i][0]
-            ys = fr[i][1]
+            x = tett_record[i][0]
+            ys = tett_record[i][1]
             # jump start the calculation:
 
             try:
@@ -598,16 +598,18 @@ class Highlow:
                     absTol=tol**2,
                     minTol=minTol,
                     abortFunc=abort,
-                    record=fr,
+                    record=tett_record,
                     # debug=True,
                 )[1]
                 # print("here")
                 # print(t_bar, eta, tau_1, tau_2)
 
             except ValueError:
-                t_bar, eta, tau_1, tau_2 = fr[-1][1]
+                t_bar, eta, tau_1, tau_2 = tett_record[-1][1]
 
-            fr.extend(v for v in fr if v[0] > fr[-1][0])
+            tett_record.extend(
+                v for v in tett_record if v[0] > tett_record[-1][0]
+            )
 
             p_2_bar = self._f_p_2_bar(0, eta, tau_2)
             return p_2_bar
@@ -616,12 +618,22 @@ class Highlow:
 
         # print(p_bar_m * pScale)
         if p_bar_m < self.p_0_s_bar:
+            print(*tett_record, sep="\n")
             raise ValueError(
                 "Maximum pressure developed in low-chamber ({:.6f} MPa) ".format(
                     p_bar_m * pScale / 1e6
                 )
                 + "not enough to start the shot."
             )
+
+        # fmt: off
+        record.extend(
+            (t_bar, (0, self.f_psi_Z(Z), 0,
+                     self._f_p_1_bar(Z, eta, tau_1),
+                     self._f_p_2_bar(0, eta, tau_2), eta, tau_1, tau_2))
+            for (Z, (t_bar, eta, tau_1, tau_2)) in tett_record
+        )
+        # fmt: on
 
         Z_1 = 0.5 * sum(
             bisect(
@@ -1215,14 +1227,15 @@ class Highlow:
             )
         )
 
-        # calculate a pressure and flow velcoity tracing.
+        # calculate a pressure tracing.
         p_trace = []
 
+        L_h = (self.V_0 + self.V_1) / self.S / self.chi_k
         for line in data:
             tag, t, l, psi, v, p_h, p_b, p, p_s, T_1, T_2, eta = line
-            p_line = []
+            p_line = [(0, p_h), (L_h * (1 - tol), p_h)]
             for i in range(step):
-                x = i / step * (l + (self.V_0 + self.V_1) / self.S / self.chi_k)
+                x = i / step * l + L_h
                 p_x = self.toPx(l, p_h, p_s, x)
                 p_line.append((x, p_x))
 
@@ -1322,7 +1335,7 @@ if __name__ == "__main__":
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(5, 1e-3, dom=DOMAIN_TIME)[0],
+            test.integrate(10, 1e-3, dom=DOMAIN_TIME)[0],
             headers=(
                 "tag",
                 "t",

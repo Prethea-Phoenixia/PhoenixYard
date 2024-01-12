@@ -510,6 +510,12 @@ class LocLabelCheck:
     def enable(self):
         self.checkWidget.config(state="normal")
 
+    def remove(self):
+        self.checkWidget.grid_remove()
+
+    def restore(self):
+        self.checkWidget.grid()
+
     def get(self):
         return self.checkVar.get()
 

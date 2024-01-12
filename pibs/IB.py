@@ -558,7 +558,7 @@ class InteriorBallisticsFrame(Frame):
         )
 
         i += 2
-        self.bnm = Loc12Disp(
+        self.bm = Loc12Disp(
             parent=parFrm,
             row=i,
             labelLocKey="bmLabel",
@@ -1219,7 +1219,7 @@ class InteriorBallisticsFrame(Frame):
 
             breech_nozzle_mass = self.structure[2]
 
-            self.bnm.set(
+            self.bm.set(
                 "N/A"
                 if breech_nozzle_mass is None
                 else formatMass(breech_nozzle_mass)
@@ -1410,7 +1410,7 @@ class InteriorBallisticsFrame(Frame):
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
         grainFrm.columnconfigure(0, weight=1)
-        grainFrm.rowconfigure(0, weight=1, minsize=200)
+        grainFrm.rowconfigure(0, weight=1, minsize=100)
 
         geomPlotFrm = LocLabelFrame(
             grainFrm,
@@ -1419,6 +1419,7 @@ class InteriorBallisticsFrame(Frame):
             locFunc=self.getLocStr,
             tooltipLocKey="geomPlotText",
             allLLF=self.locs,
+            height=200,
         )
 
         j = 0
@@ -1701,7 +1702,7 @@ class InteriorBallisticsFrame(Frame):
         )
 
         k += 1
-        self.plotBreechNozzleP = LocLabelCheck(
+        self.plotBreechP = LocLabelCheck(
             parent=plotFrm,
             row=j,
             col=k,
@@ -1753,7 +1754,7 @@ class InteriorBallisticsFrame(Frame):
             parent=plotFrm,
             row=j,
             col=k,
-            labelLocKey="plotEta",
+            labelLocKey="plotEtaEsc",
             locFunc=self.getLocStr,
             allLC=checks,
         )
@@ -1999,7 +2000,7 @@ class InteriorBallisticsFrame(Frame):
             self.axP.spines.right.set_position(("data", xPeak))
             self.axF.spines.left.set_position(("data", xPeak))
 
-            if self.plotBreechNozzleP.get():
+            if self.plotBreechP.get():
                 self.axP.plot(
                     xs,
                     Pbs,
@@ -2597,34 +2598,62 @@ class InteriorBallisticsFrame(Frame):
         gunType = self.typeOptn.getObj()
 
         if gunType == CONVENTIONAL:
-            self.nozzExp.remove()
-            self.nozzEff.remove()
-
-            self.plotBreechNozzleP.reLocalize("plotBreechP")
-            self.bnm.reLocalize("bmLabel", "bmText")
-
             self.dropSoln.enable()
-            self.ammoOptn.enable()
+        else:
+            self.dropSoln.setByObj(SOL_LAGRANGE)
+            self.dropSoln.disable()
 
-            for widget in (self.plotEta, self.plotNozzleV):
-                widget.disable()
-
-        elif gunType == RECOILESS:
+        if gunType == RECOILESS:
             self.nozzExp.restore()
             self.nozzEff.restore()
 
-            self.plotBreechNozzleP.reLocalize("plotNozzleP")
-            self.bnm.reLocalize("nmLabel", "")
+            self.plotNozzleV.restore()
+        else:
+            self.nozzExp.remove()
+            self.nozzEff.remove()
 
-            self.dropSoln.setByObj(SOL_LAGRANGE)
-            self.dropSoln.disable()
+            self.plotNozzleV.remove()
+
+        if gunType == HIGHLOW:
+            self.evL.restore()
+            self.bstMPa.restore()
+            self.perf.restore()
+        else:
+            self.evL.remove()
+            self.bstMPa.remove()
+            self.perf.remove()
+
+        if gunType == CONVENTIONAL or gunType == RECOILESS:
             self.ammoOptn.enable()
+        else:
+            self.ammoOptn.setByObj(CARTRIDGE)
+            self.ammoOptn.disable()
 
-            for widget in (self.plotEta, self.plotNozzleV):
-                widget.enable()
+        if gunType == CONVENTIONAL:
+            self.plotBreechP.reLocalize("plotBreechP")
+            self.bm.reLocalize("bmLabel", "bmText")
 
+            self.plotStagP.remove()
+
+            self.plotEta.remove()
+        elif gunType == RECOILESS:
+            self.plotBreechP.reLocalize("plotNozzleP")
+            self.bm.reLocalize("nmLabel", "")
+
+            self.plotStagP.restore()
+            self.plotStagP.reLocalize("plotStagP")
+
+            self.plotEta.restore()
+            self.plotEta.reLocalize("plotEtaEsc")
         elif gunType == HIGHLOW:
-            pass
+            self.plotBreechP.reLocalize("plotLowP")
+            self.bm.reLocalize("", "")
+
+            self.plotStagP.restore()
+            self.plotStagP.reLocalize("plotHighP")
+
+            self.plotEta.restore()
+            self.plotEta.reLocalize("plotEtaBld")
 
     def ctrlCallback(self, *args):
         if self.solve_W_Lg.get() == 0:

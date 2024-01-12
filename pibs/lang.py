@@ -64,11 +64,14 @@ ENGLISH = {
     "plotBaseP": "Base Pressure",
     "plotBreechP": "Breech Pressure",
     "plotNozzleP": "Lock Pressure",
+    "plotLowP": "Bleed Pressure",
     "plotStagP": "Stagnation Pressure",
+    "plotHighP": "High Chamber Press.",
     "plotVel": "Shot Velocity",
     "plotNozzleV": "Throat Velocity",
     "plotBurnup": "Burnup Fraction",
-    "plotEta": "Escape Fraction",
+    "plotEtaEsc": "Escape Fraction",
+    "plotEtaBld": "Bleed Fraction",
     "plotRecoil": "Recoil",
     "stepLabel": "step",
     "calcLabel": "CALCULATE ↩",
@@ -381,9 +384,10 @@ ENGLISH = {
     ),
     "perfText": " ".join(
         (
-            "Perforation ratio, or the sum of vent holes area to the gun breech",
+            "Perforation ratio, or the sum of bleed holes area to the gun breech",
             "cross section. Can exceed 100% in the case of parallel chamber",
-            "geometry high-low guns.",
+            "geometry high-low guns.\n",
+            "The perforations are assumed to have an diameter of 1.5-2 mm.",
         )
     ),
     "dgcText": " ".join(
