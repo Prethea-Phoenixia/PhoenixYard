@@ -386,7 +386,7 @@ ENGLISH = {
         (
             "Perforation ratio, or the sum of bleed holes area to the gun breech",
             "cross section. Can exceed 100% in the case of parallel chamber",
-            "geometry high-low guns.\n",
+            "geometry high-low guns, or for perforations larger than assumed.\n",
             "The perforations are assumed to have an diameter of 1.5-2 mm.",
         )
     ),

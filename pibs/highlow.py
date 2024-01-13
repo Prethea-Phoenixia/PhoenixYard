@@ -1247,12 +1247,16 @@ class Highlow:
         # calculate a pressure tracing.
         p_trace = []
 
-        L_h = (self.V_0 + self.V_1) / self.S / self.chi_k
+        L_h = (
+            self.l_0 / self.chi_k
+        )  # physical length of the high pressure chamber
+        L_l = self.l_1 / self.chi_k  # low pressure chamber
+
         for line in data:
             tag, t, l, psi, v, p_h, p_b, p, p_s, T_1, T_2, eta = line
             p_line = [(0, p_h), (L_h * (1 - tol), p_h)]
             for i in range(step):
-                x = i / step * l + L_h
+                x = i / step * (l + L_l) + L_h
                 p_x = self.toPx(l, p_h, p_b, p_s, x)
                 p_line.append((x, p_x))
 
@@ -1285,7 +1289,7 @@ class Highlow:
         Pb: pressure at breech
         """
         Labda_g = l / self.l_1
-        labda_1_prime = 0.5 * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
+        labda_1_prime = (1 / 2) * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
         labda_2_prime = (1 / 3) * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
 
         factor_s = 1 + labda_2_prime * (
@@ -1302,8 +1306,9 @@ class Highlow:
         """
         | L_h | L_l |======l======
         """
-        L_h = self.l_0 / self.chi_k
-        # physical length of the high pressure chamber
+        L_h = (
+            self.l_0 / self.chi_k
+        )  # physical length of the high pressure chamber
         L_l = self.l_1 / self.chi_k  # low pressure chamber
 
         if x < L_l:

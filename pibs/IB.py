@@ -1787,23 +1787,23 @@ class InteriorBallisticsFrame(Frame):
             ax = axes
             axP = ax.twinx()
             axv = ax.twinx()
-            axF = ax.twinx()
+            # axF = ax.twinx()
 
             ax.yaxis.tick_right()
-            axF.yaxis.tick_left()
+            # axF.yaxis.tick_left()
             axv.yaxis.tick_left()
 
             ax.set_xlabel(" ")
             axP.spines.right.set_position(("data", 0.5))
-            axF.spines.left.set_position(("data", 0.5))
+            # axF.spines.left.set_position(("data", 0.5))
 
             axP.yaxis.set_ticks(axP.get_yticks()[1:-1:])
-            axF.yaxis.set_ticks(axF.get_yticks()[1:-1:])
+            # axF.yaxis.set_ticks(axF.get_yticks()[1:-1:])
 
             self.ax = ax
             self.axP = axP
             self.axv = axv
-            self.axF = axF
+            # self.axF = axF
             self.fig = fig
 
             self.pltCanvas = FigureCanvasTkAgg(fig, master=plotFrm)
@@ -1901,7 +1901,7 @@ class InteriorBallisticsFrame(Frame):
                 self.ax.cla()
                 self.axP.cla()
                 self.axv.cla()
-                self.axF.cla()
+                # self.axF.cla()
                 self.pltCanvas.draw_idle()
             return
 
@@ -1909,7 +1909,7 @@ class InteriorBallisticsFrame(Frame):
             self.ax.cla()
             self.axP.cla()
             self.axv.cla()
-            self.axF.cla()
+            # self.axF.cla()
 
             vTgt = self.kwargs["designVelocity"]
             gunType = self.kwargs["typ"]
@@ -1918,7 +1918,7 @@ class InteriorBallisticsFrame(Frame):
             xs, vs = [], []
 
             Pas, Pss, Pbs, P0s = [], [], [], []
-            Frs = []
+            # Frs = []
             psis, etas = [], []
             vxs = []
 
@@ -1998,7 +1998,7 @@ class InteriorBallisticsFrame(Frame):
                     etas.append(eta)
 
             self.axP.spines.right.set_position(("data", xPeak))
-            self.axF.spines.left.set_position(("data", xPeak))
+            # self.axF.spines.left.set_position(("data", xPeak))
 
             if self.plotBreechP.get():
                 self.axP.plot(
@@ -2106,7 +2106,7 @@ class InteriorBallisticsFrame(Frame):
                     self.axP.get_lines(),
                     self.ax.get_lines(),
                     self.axv.get_lines(),
-                    self.axF.get_lines(),
+                    # self.axF.get_lines(),
                 ),
                 (
                     (0.2 * xs[-1] + 0.8 * xPeak, xs[-1]),
@@ -2121,21 +2121,21 @@ class InteriorBallisticsFrame(Frame):
             self.ax.set_xlim(left=0, right=xs[-1])
             pmax = max(Pas + Pbs + Pss + P0s)
             self.axP.set(ylim=(0, pmax * 1.1))
-            self.axF.set(ylim=(0, pmax * gun.S * 1.1))
+            # self.axF.set(ylim=(0, pmax * gun.S * 1.1))
             self.axv.set(ylim=(0, max(vs + vxs) * 1.15))
             self.ax.set_ylim(bottom=0, top=1.05)
 
-            fmax = pmax * gun.S
+            # fmax = pmax * gun.S
 
             self.axP.yaxis.set_ticks(
                 [v for v in self.axP.get_yticks() if v <= pmax][1:]
             )
-            self.axF.yaxis.set_ticks(
-                [v for v in self.axF.get_yticks() if v <= fmax][1:]
-            )
+            # self.axF.yaxis.set_ticks(
+            #     [v for v in self.axF.get_yticks() if v <= fmax][1:]
+            # )
 
             self.ax.yaxis.tick_right()
-            self.axF.yaxis.tick_left()
+            # self.axF.yaxis.tick_left()
             self.axv.yaxis.tick_left()
 
             tkw = dict(size=4, width=1.5)
@@ -2143,7 +2143,7 @@ class InteriorBallisticsFrame(Frame):
             self.ax.tick_params(axis="y", colors="tab:red", **tkw)
             self.axv.tick_params(axis="y", colors="tab:blue", **tkw)
             self.axP.tick_params(axis="y", colors="tab:green", **tkw)
-            self.axF.tick_params(axis="y", colors="tab:green", **tkw)
+            # self.axF.tick_params(axis="y", colors="tab:green", **tkw)
             self.ax.tick_params(axis="x", **tkw)
 
             if dom == DOMAIN_TIME:
@@ -2806,7 +2806,7 @@ class InteriorBallisticsFrame(Frame):
                 self.axv,
                 self.axP,
                 self.geomAx,
-                self.axF,
+                # self.axF,
                 self.auxAx,
                 self.auxAxH,
             ):
