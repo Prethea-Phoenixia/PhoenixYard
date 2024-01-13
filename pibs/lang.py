@@ -538,6 +538,8 @@ ENGLISH = {
     "figNozzleP": "Lock P.\nMPa",
     "figNozzleV": "Nozz. Throat V.\nm/s",
     "figOutflow": "Outflow Frac.",
+    "figBleed": "Bleed Frac.",
+    "figBleedP": "Bleed P.\nMPa",
     "figAvgP": "Space Mean P.\nMPa",
     "figShotBase": "Shot Base P.\nMPa",
     "figTgtV": "Velocity Target",

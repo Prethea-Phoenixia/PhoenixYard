@@ -1706,7 +1706,7 @@ class InteriorBallisticsFrame(Frame):
             parent=plotFrm,
             row=j,
             col=k,
-            descLabelKey="Breech/Nozzle Pressure",
+            descLabelKey="Breech/Nozzle/Bleed Pressure",
             locFunc=self.getLocStr,
             allLC=checks,
         )
@@ -1715,7 +1715,7 @@ class InteriorBallisticsFrame(Frame):
             parent=plotFrm,
             row=j,
             col=k,
-            labelLocKey="plotStagP",
+            descLabelKey="Stagnation/High Chamber Pressure",
             locFunc=self.getLocStr,
             allLC=checks,
         )
@@ -1754,7 +1754,7 @@ class InteriorBallisticsFrame(Frame):
             parent=plotFrm,
             row=j,
             col=k,
-            labelLocKey="plotEtaEsc",
+            descLabelKey="Outflow/Bleed Fraction",
             locFunc=self.getLocStr,
             allLC=checks,
         )
@@ -2006,10 +2006,10 @@ class InteriorBallisticsFrame(Frame):
                     Pbs,
                     c="xkcd:goldenrod",
                     label=self.getLocStr("figBreech")
-                    if gunType == CONVENTIONAL or gunType == HIGHLOW
+                    if gunType == CONVENTIONAL
                     else self.getLocStr("figNozzleP")
                     if gunType == RECOILESS
-                    else "",
+                    else self.getLocStr("figBleedP"),
                 )
 
             if gunType == RECOILESS:
@@ -2038,6 +2038,11 @@ class InteriorBallisticsFrame(Frame):
                         P0s,
                         "seagreen",
                         label=self.getLocStr("figHighChamber"),
+                    )
+
+                if self.plotEta.get():
+                    self.ax.plot(
+                        xs, etas, "crimson", label=self.getLocStr("figBleed")
                     )
 
             if self.plotAvgP.get():

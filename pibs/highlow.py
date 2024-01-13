@@ -1,4 +1,4 @@
-from math import pi
+from math import pi, log
 from num import gss, RKF78, cubic, bisect
 from prop import GrainComp, Propellant
 
@@ -76,9 +76,15 @@ class Highlow:
 
         self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
+        self.l_1 = self.V_1 / self.S
+
+        Labda = self.l_g / self.l_1
+        cc = (
+            1 - (1 - 1 / self.chi_k) * log(Labda + 1) / Labda
+        )  # chambrage correction factor
 
         self.phi_1 = 1 / (1 - dragCoefficient)  # drag work coefficient
-        self.phi = self.phi_1 + self.omega / (3 * self.m)
+        self.phi = self.phi_1 + self.omega / (3 * self.m) * cc
 
         self.v_j = (
             2 * self.f * self.omega / (self.theta * self.phi * self.m)
@@ -363,6 +369,7 @@ class Highlow:
                 * self.S_j_bar
                 * p_1_bar
             ) * dt_bar
+
         deta /= tau_1**0.5
 
         # CHANGE IN HIGH PRESSURE CHAMBER  dtau_1 / dZ
@@ -412,7 +419,6 @@ class Highlow:
             deta = (
                 self.C_A * self.S_j_bar * p_1_bar * dt_bar
             )  # deta/dt_bar * dt_bar/dZ = deta/dZ
-            # print("{:.3f}, crit, {:.3f}".format(pr, deta))
         else:
             # FLOW IS SUB CRITICAL
             gamma = self.theta + 1
@@ -422,7 +428,7 @@ class Highlow:
                 * self.S_j_bar
                 * p_1_bar
             ) * dt_bar
-            # print("{:.3f}, subcrit, {:.3f}".format(pr, deta))
+
         deta /= tau_1**0.5
 
         dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (
@@ -473,7 +479,7 @@ class Highlow:
         if any((ambientP < 0, ambientRho < 0, ambientGamma < 1)):
             raise ValueError("Invalid ambient condition")
 
-        tScale = self.l_0 / self.v_j
+        tScale = self.l_1 / self.v_j
         pScale = self.f * self.Delta
 
         p_max = 1e9  # 1GPa
@@ -494,7 +500,7 @@ class Highlow:
 
         self.k_1 = ambientGamma
 
-        l_g_bar = self.l_g / self.l_0
+        l_g_bar = self.l_g / self.l_1
         p_bar_0 = self.p_0_e / pScale
 
         if p_bar_0 > p_bar_max:
@@ -623,9 +629,6 @@ class Highlow:
         )
         p_1_bar_sm = self._f_p_1_bar(Z, eta, tau_1)
         p_2_bar_sm = self._f_p_2_bar(0, eta, tau_2)
-
-        print(p_1_bar_sm)
-        print(p_2_bar_sm)
 
         if abs(p_1_bar_sm - p_2_bar_sm) / p_1_bar_sm < tol:
             raise ValueError(
@@ -768,7 +771,7 @@ class Highlow:
                     raise ValueError(
                         "Squib load condition detected: Shot stopped in bore.\n"
                         + "Shot is last calculated at {:.0f} mm at {:.0f} mm/s after {:.0f} ms".format(
-                            l_bar * self.l_0 * 1e3,
+                            l_bar * self.l_1 * 1e3,
                             v_bar * self.v_j * 1e3,
                             t_bar * tScale * 1e3,
                         )
@@ -780,7 +783,7 @@ class Highlow:
                         + " values encountered in results.\n"
                         + "{:.0f} ms, {:.0f} mm, {:.0f} m/s, {:.0f} MPa".format(
                             t_bar_j * tScale * 1e3,
-                            l_bar_j * self.l_0 * 1e3,
+                            l_bar_j * self.l_1 * 1e3,
                             v_bar_j * self.v_j,
                             p_bar_1_j * pScale / 1e6,
                         )
@@ -973,12 +976,12 @@ class Highlow:
             if m == "a":
                 return p_bar
 
-            p_bar_s, p_bar_b = self.toPsPb(p_bar, eta)
+            p_s, p_b = self.toPsPb(l_bar * self.l_1, p_bar * pScale, eta)
 
             if m == "s":
-                return p_bar_s
+                return p_s
             elif m == "b":
-                return p_bar_b
+                return p_b
 
         def findPeak(f, tag):
             """
@@ -1183,7 +1186,7 @@ class Highlow:
              tau_1_err, tau_2_err) = bar_errorLine
             # fmt: on
             t, t_err = (t_bar * tScale, t_bar_err * tScale)
-            l, l_err = (l_bar * self.l_0, l_bar_err * self.l_0)
+            l, l_err = (l_bar * self.l_1, l_bar_err * self.l_1)
             psi, psi_err = (self.f_psi_Z(Z), abs(self.f_sigma_Z(Z) * Z_err))
             v, v_err = v_bar * self.v_j, v_bar_err * self.v_j
 
@@ -1198,7 +1201,7 @@ class Highlow:
                 else p_2_bar_err * pScale
             )
 
-            p_s, p_b = self.toPsPb(p_2, eta)
+            p_s, p_b = self.toPsPb(l, p_2, eta)
 
             T_1 = tau_1 * self.T_v
             T_2 = tau_2 * self.T_v
@@ -1223,10 +1226,10 @@ class Highlow:
 
             p_2 = p_2_bar * pScale
 
-            p_s, p_b = self.toPsPb(p_2, eta)
+            p_s, p_b = self.toPsPb(l_bar * self.l_1, p_2, eta)
 
             data.append((
-                "*", t, l_bar * self.l_0, psi, v_bar * self.v_j,
+                "*", t, l_bar * self.l_1, psi, v_bar * self.v_j,
                 p_1_bar * pScale, p_b, p_2, p_s,
                 tau_1 * self.T_v, tau_2 * self.T_v, eta
             ))
@@ -1250,7 +1253,7 @@ class Highlow:
             p_line = [(0, p_h), (L_h * (1 - tol), p_h)]
             for i in range(step):
                 x = i / step * l + L_h
-                p_x = self.toPx(l, p_h, p_s, x)
+                p_x = self.toPx(l, p_h, p_b, p_s, x)
                 p_line.append((x, p_x))
 
             p_line.append(
@@ -1269,31 +1272,39 @@ class Highlow:
         be = te / self.phi
         return te, be
 
-    def toPsPb(self, p, eta):
+    def toPsPb(self, l, p, eta):
         """
         Convert average chamber pressure at a certain travel to
         shot base pressure, and breech face pressure
 
-        p: average pressure
         eta: fraction of propellant gas in the low pressure chamber
+        l: travel of the projectile
+        p: average pressure
 
         Ps: pressure at shot
         Pb: pressure at breech
         """
+        Labda_g = l / self.l_1
+        labda_1_prime = 0.5 * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
+        labda_2_prime = (1 / 3) * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
 
-        p_s = p / (1 + self.omega * eta / (3 * self.phi_1 * self.m))
-        p_b = p_s * (1 + self.omega * eta / (2 * self.phi_1 * self.m))
+        factor_s = 1 + labda_2_prime * (
+            self.omega * eta / (self.phi_1 * self.m)
+        )
 
-        return p_s, p_b
+        factor_b = (self.phi_1 * self.m + labda_2_prime * self.omega * eta) / (
+            self.phi_1 * self.m + labda_1_prime * self.omega * eta
+        )
 
-    def toPx(self, l, p_h, p_s, x):
+        return p / factor_s, p / factor_b
+
+    def toPx(self, l, p_h, p_b, p_s, x):
         """
         | L_h | L_l |======l======
         """
-        L_h = (
-            self.V_0 / self.S / self.chi_k
-        )  # length of the high pressure chamber
-        L_l = self.V_1 / self.S / self.chi_k  # low pressure chamber
+        L_h = self.l_0 / self.chi_k
+        # physical length of the high pressure chamber
+        L_l = self.l_1 / self.chi_k  # low pressure chamber
 
         if x < L_l:
             p_x = p_h
@@ -1301,14 +1312,11 @@ class Highlow:
             r = (
                 self.chi_k * (x - L_h)
                 if x < (L_l + L_h)
-                else (x - L_l - L_h) + self.V_1 / self.S
+                else (x - L_l - L_h) + self.l_1
             )
-            p_x = p_s * (
-                1
-                + 0.5
-                * (self.omega / (self.phi_1 * self.m))
-                * (1 - (r / (self.V_1 / self.S + l)) ** 2)
-            )
+            k = (r / (self.l_1 + l)) ** 2
+
+            p_x = p_s * k + p_b * (1 - k)
 
         return p_x
 
