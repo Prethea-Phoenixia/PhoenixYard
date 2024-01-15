@@ -265,9 +265,7 @@ class Loc2Input:
 
     def getDescriptive(self):
         return self.locFunc(
-            self.labelLocKey
-            if self.descLabelKey is None
-            else self.descLabelKey,
+            self.labelLocKey if self.descLabelKey is None else self.descLabelKey,
             forceDefault=True,
         )
 
@@ -328,17 +326,13 @@ class Loc3Input(Loc2Input):
 
     def getDescriptive(self):
         return self.locFunc(
-            self.labelLocKey
-            if self.descLabelKey is None
-            else self.descLabelKey,
+            self.labelLocKey if self.descLabelKey is None else self.descLabelKey,
             forceDefault=True,
         ) + (f" ({self.unitText:})" if self.unitText != "" else "")
 
 
 class LocDropdown:
-    def __init__(
-        self, parent, strObjDict, locFunc, dropdowns=[], descLabelKey=""
-    ):
+    def __init__(self, parent, strObjDict, locFunc, dropdowns=[], descLabelKey=""):
         """
         localized key of string type: underlying object
         """
@@ -365,9 +359,7 @@ class LocDropdown:
 
     def reLocalize(self):
         index = self.widget["values"].index(self.textVar.get())
-        self.locStrObjDict = {
-            self.locFunc(k): v for k, v in self.strObjDict.items()
-        }
+        self.locStrObjDict = {self.locFunc(k): v for k, v in self.strObjDict.items()}
         self.widget.config(values=tuple(self.locStrObjDict.keys()))
         self.widget.current(index)
 
@@ -534,8 +526,6 @@ class LocLabelCheck:
 
     def getDescriptive(self):
         return self.locFunc(
-            self.labelLocKey
-            if self.descLabelKey is None
-            else self.descLabelKey,
+            self.labelLocKey if self.descLabelKey is None else self.descLabelKey,
             forceDefault=True,
         )

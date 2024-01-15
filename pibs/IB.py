@@ -7,6 +7,7 @@ import traceback
 from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
 from gun import POINT_START, POINT_BURNOUT, POINT_FRACTURE, POINT_EXIT
 from gun import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_PEAK_BREECH
+from recoiless import POINT_PEAK_STAG
 from highlow import POINT_PEAK_HIGH, POINT_PEAK_BLEED
 from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
 from recoiless import Recoiless
@@ -1328,7 +1329,7 @@ class InteriorBallisticsFrame(Frame):
         self.specs = Text(
             propFrm,
             wrap="none",
-            height=5,
+            height=10,
             width=30,
             yscrollcommand=specScroll.set,
             xscrollcommand=specHScroll.set,
@@ -1350,7 +1351,7 @@ class InteriorBallisticsFrame(Frame):
         )
         grainFrm.grid(row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
         grainFrm.columnconfigure(0, weight=1)
-        grainFrm.rowconfigure(0, weight=1, minsize=100)
+        grainFrm.rowconfigure(0, weight=1, minsize=200)
 
         geomPlotFrm = LocLabelFrame(
             grainFrm,
@@ -1359,7 +1360,6 @@ class InteriorBallisticsFrame(Frame):
             locFunc=self.getLocStr,
             tooltipLocKey="geomPlotText",
             allLLF=self.locs,
-            height=200,
         )
 
         j = 0
@@ -2410,11 +2410,7 @@ class InteriorBallisticsFrame(Frame):
             units = (None, "s", "m", None, "m/s", "Pa", "Pa", "Pa", "Pa", "K", "K", None)
             # fmt: on
 
-        locTableData = dot_aligned(
-            locTableData,
-            units=units,
-            useSN=useSN,
-        )
+        locTableData = dot_aligned(locTableData, units=units, useSN=useSN)
 
         errorData = dot_aligned(errorData, units=units, useSN=useSN)
 
@@ -2422,7 +2418,9 @@ class InteriorBallisticsFrame(Frame):
         self.tv["columns"] = columnList
         self.tv["show"] = "headings"
 
-        self.tv.tag_configure(self.getLocStr(POINT_PEAK_HIGH), foreground="cyan")
+        self.tv.tag_configure(self.getLocStr(POINT_PEAK_STAG), foreground="#2e8b57")
+        self.tv.tag_configure(self.getLocStr(POINT_PEAK_HIGH), foreground="#2e8b57")
+
         self.tv.tag_configure(self.getLocStr(POINT_PEAK_AVG), foreground="#2ca02c")
         self.tv.tag_configure(self.getLocStr(POINT_PEAK_BREECH), foreground="orange")
         self.tv.tag_configure(self.getLocStr(POINT_PEAK_BLEED), foreground="orange")
@@ -2463,7 +2461,7 @@ class InteriorBallisticsFrame(Frame):
                 "end",
                 str(i + 1),
                 values=row,
-                tags=(row[0], "monospace"),
+                tags=(row[0].strip(), "monospace"),
             )
             self.tv.insert(
                 str(i + 1),
@@ -2552,6 +2550,14 @@ class InteriorBallisticsFrame(Frame):
             self.plotStagP.remove()
 
             self.plotEta.remove()
+
+            self.pControl.reset(
+                {
+                    POINT_PEAK_AVG: POINT_PEAK_AVG,
+                    POINT_PEAK_BREECH: POINT_PEAK_BREECH,
+                    POINT_PEAK_SHOT: POINT_PEAK_SHOT,
+                }
+            )
         elif gunType == RECOILESS:
             self.plotBreechP.reLocalize("plotNozzleP")
             self.bm.reLocalize("nmLabel", "")
@@ -2561,6 +2567,16 @@ class InteriorBallisticsFrame(Frame):
 
             self.plotEta.restore()
             self.plotEta.reLocalize("plotEtaEsc")
+
+            self.pControl.reset(
+                {
+                    POINT_PEAK_STAG: POINT_PEAK_STAG,
+                    POINT_PEAK_AVG: POINT_PEAK_AVG,
+                    POINT_PEAK_BREECH: POINT_PEAK_BREECH,
+                    POINT_PEAK_SHOT: POINT_PEAK_SHOT,
+                }
+            )
+
         elif gunType == HIGHLOW:
             self.plotBreechP.reLocalize("plotLowP")
             self.bm.reLocalize("", "")

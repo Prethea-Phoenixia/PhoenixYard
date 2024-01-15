@@ -333,7 +333,7 @@ class Constrained:
                 xs = [v[0] for v in record]
                 record.extend(v for v in r if v[0] not in xs)
                 record.sort()
-                return _f_p_bar(Z, l_bar, v_bar)
+                return _f_p_bar(Z, l_bar, v_bar), Z, t_bar, l_bar, v_bar
 
             """
             find the peak pressure point.
@@ -344,13 +344,21 @@ class Constrained:
             else:
                 Z_i = Z_0
 
-            Z_1, Z_2 = gss(_f_p_Z, Z_i, Z_j, y_rel_tol=self.tol, findMin=False)
+            Z_1, Z_2 = gss(
+                lambda Z: _f_p_Z(Z)[0],
+                Z_i,
+                Z_j,
+                y_rel_tol=0.5 * self.tol,
+                findMin=False,
+            )
             Z_p = 0.5 * (Z_1 + Z_2)
 
             if abs(Z_p - Z_b) < self.tol:
                 Z_p = Z_b
 
-            return _f_p_Z(Z_p) - p_bar_d, record[-1][0], *record[-1][-1]
+            p_bar_p, *vals = _f_p_Z(Z_p)
+
+            return p_bar_p - p_bar_d, *vals
 
         dp_bar_probe = _f_p_e_1(self.minWeb)[0]
         probeWeb = self.minWeb

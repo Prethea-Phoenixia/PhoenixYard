@@ -56,9 +56,7 @@ class Highlow:
             raise ValueError("Invalid gun parameters")
 
         if chargeMass > (propellant.maxLF * propellant.rho_p * chamberVolume):
-            raise ValueError(
-                "Specified Load Fraction Violates Geometrical Constraint"
-            )
+            raise ValueError("Specified Load Fraction Violates Geometrical Constraint")
 
         self.propellant = propellant
 
@@ -89,9 +87,7 @@ class Highlow:
         self.phi_1 = 1 / (1 - dragCoefficient)  # drag work coefficient
         self.phi = self.phi_1 + self.omega / (3 * self.m) * cc
 
-        self.v_j = (
-            2 * self.f * self.omega / (self.theta * self.phi * self.m)
-        ) ** 0.5
+        self.v_j = (2 * self.f * self.omega / (self.theta * self.phi * self.m)) ** 0.5
 
         if self.p_0_e == 0:
             raise NotImplementedError(
@@ -116,14 +112,10 @@ class Highlow:
             * (self.f * self.Delta) ** (2 * (1 - self.n))
         )
 
-        Zs = cubic(
-            self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0
-        )
+        Zs = cubic(self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0)
         # pick a valid solution between 0 and 1
         Zs = sorted(
-            Z
-            for Z in Zs
-            if not isinstance(Z, complex) and (Z > 0.0 and Z < 1.0)
+            Z for Z in Zs if not isinstance(Z, complex) and (Z > 0.0 and Z < 1.0)
         )  # evaluated from left to right, guards against complex >/< float
         if len(Zs) < 1:
             raise ValueError(
@@ -171,16 +163,12 @@ class Highlow:
 
     def _f_p_1_bar(self, Z, eta, tau_1, psi=None):
         psi = psi if psi else self.f_psi_Z(Z)
-        l_psi_bar = 1 - self.Delta * (
-            (1 - psi) / self.rho_p + self.alpha * (psi - eta)
-        )
+        l_psi_bar = 1 - self.Delta * ((1 - psi) / self.rho_p + self.alpha * (psi - eta))
 
         return tau_1 / l_psi_bar * (psi - eta)
 
     def _f_p_2_bar(self, l_bar, eta, tau_2):
-        return (
-            tau_2 * eta / (l_bar + self.V_bar - self.alpha * self.Delta * eta)
-        )
+        return tau_2 * eta / (l_bar + self.V_bar - self.alpha * self.Delta * eta)
 
     def _ode_t(self, t_bar, Z, l_bar, v_bar, eta, tau_1, tau_2, _):
         psi = self.f_psi_Z(Z)
@@ -233,9 +221,7 @@ class Highlow:
         # CHANGE IN LOW PRESSURE CHAMBER
 
         # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
-        dtau_2 = (
-            ((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar
-        ) / eta
+        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar) / eta
 
         return (dZ, dl_bar, dv_bar, deta, dtau_1, dtau_2)
 
@@ -337,9 +323,7 @@ class Highlow:
 
         # PROJECTILE MOTION
         dt_bar = 1 / v_bar  # dt_bar / dl_bar
-        dv_bar = (
-            self.theta * 0.5 * (p_2_bar - p_d_bar) * dt_bar
-        )  # dv_bar/dl_bar
+        dv_bar = self.theta * 0.5 * (p_2_bar - p_d_bar) * dt_bar  # dv_bar/dl_bar
 
         # CHANGE IN LOW PRESSURE CHAMBER
         # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
@@ -407,9 +391,7 @@ class Highlow:
     def _ode_Zs(self, Z, t_bar, eta, tau_1, tau_2, _):
         psi = self.f_psi_Z(Z)
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
-        dt_bar = (
-            2 * self.B / self.theta
-        ) ** 0.5 * p_1_bar**-self.n  # dt_bar/dZ
+        dt_bar = (2 * self.B / self.theta) ** 0.5 * p_1_bar**-self.n  # dt_bar/dZ
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
 
         p_2_bar = self._f_p_2_bar(0, eta, tau_2)
@@ -440,9 +422,7 @@ class Highlow:
 
         # CHANGE IN LOW PRESSURE CHAMBER
         if eta != 0:
-            dtau_2 = (
-                ((1 + self.theta) * tau_1 - tau_2) * deta
-            ) / eta  # dtau_2/dZ
+            dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta  # dtau_2/dZ
         else:
             dtau_2 = 0
 
@@ -495,9 +475,7 @@ class Highlow:
         self.p_a_bar = ambientP / pScale
 
         if ambientRho != 0:
-            self.c_a_bar = (
-                ambientGamma * ambientP / ambientRho
-            ) ** 0.5 / self.v_j
+            self.c_a_bar = (ambientGamma * ambientP / ambientRho) ** 0.5 / self.v_j
         else:
             self.c_a_bar = 0
 
@@ -609,9 +587,7 @@ class Highlow:
                 record=tett_record,
             )
 
-            tett_record.extend(
-                v for v in tett_record if v[0] > tett_record[-1][0]
-            )
+            tett_record.extend(v for v in tett_record if v[0] > tett_record[-1][0])
             p_2_bar = self._f_p_2_bar(0, eta, tau_2)
 
             tett_record[-1]
@@ -712,9 +688,7 @@ class Highlow:
             Z, _, l_bar, v_bar, eta, tau_1, _ = x, *ys
             p_1_bar = self._f_p_1_bar(Z, eta, tau_1)
 
-            return any(
-                (l_bar > l_g_bar, p_1_bar > p_bar_max, v_bar <= 0, p_1_bar < 0)
-            )
+            return any((l_bar > l_g_bar, p_1_bar > p_bar_max, v_bar <= 0, p_1_bar < 0))
 
         while Z_i < Z_b:  # terminates if burnout is achieved
             ztlvett_record_i = []
@@ -977,15 +951,15 @@ class Highlow:
 
             if m == "h":
                 p_bar_high = self._f_p_1_bar(Z, eta, tau_1)
-                return p_bar_high * pScale
+                return p_bar_high
             p_bar_low = self._f_p_2_bar(l_bar, eta, tau_2)
             if m == "a":
-                return p_bar_low * pScale
+                return p_bar_low
             p_s, p_b = self.toPsPb(l_bar * self.l_1, p_bar_low * pScale, eta)
             if m == "s":
-                return p_s
+                return p_s / pScale
             elif m == "b":
-                return p_b
+                return p_b / pScale
 
         def findPeak(g, tag):
             """
@@ -1196,14 +1170,10 @@ class Highlow:
             v, v_err = v_bar * self.v_j, v_bar_err * self.v_j
 
             p_1, p_1_err = p_1_bar * pScale, (
-                p_1_bar_err
-                if isinstance(p_1_bar_err, str)
-                else p_1_bar_err * pScale
+                p_1_bar_err if isinstance(p_1_bar_err, str) else p_1_bar_err * pScale
             )
             p_2, p_2_err = p_2_bar * pScale, (
-                p_2_bar_err
-                if isinstance(p_2_bar_err, str)
-                else p_2_bar_err * pScale
+                p_2_bar_err if isinstance(p_2_bar_err, str) else p_2_bar_err * pScale
             )
 
             p_s, p_b = self.toPsPb(l, p_2, eta)
@@ -1243,18 +1213,13 @@ class Highlow:
             error.append(errLine)
         # fmt: on
         data, error = zip(
-            *(
-                (a, b)
-                for a, b in sorted(zip(data, error), key=lambda x: x[0][1])
-            )
+            *((a, b) for a, b in sorted(zip(data, error), key=lambda x: x[0][1]))
         )
 
         # calculate a pressure tracing.
         p_trace = []
 
-        L_h = (
-            self.l_0 / self.chi_k
-        )  # physical length of the high pressure chamber
+        L_h = self.l_0 / self.chi_k  # physical length of the high pressure chamber
         L_l = self.l_1 / self.chi_k  # low pressure chamber
 
         for line in data:
@@ -1265,9 +1230,7 @@ class Highlow:
                 p_x = self.toPx(l, p_h, p_b, p_s, x)
                 p_line.append((x, p_x))
 
-            p_line.append(
-                (l + (self.V_0 + self.V_1) / self.S / self.chi_k, p_s)
-            )
+            p_line.append((l + (self.V_0 + self.V_1) / self.S / self.chi_k, p_s))
             p_trace.append((tag, psi, T_2, p_line))
 
         return data, error, p_trace, [None, None, None, None]
@@ -1297,9 +1260,7 @@ class Highlow:
         labda_1_prime = (1 / 2) * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
         labda_2_prime = (1 / 3) * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
 
-        factor_s = 1 + labda_2_prime * (
-            self.omega * eta / (self.phi_1 * self.m)
-        )
+        factor_s = 1 + labda_2_prime * (self.omega * eta / (self.phi_1 * self.m))
 
         factor_b = (self.phi_1 * self.m + labda_2_prime * self.omega * eta) / (
             self.phi_1 * self.m + labda_1_prime * self.omega * eta
@@ -1311,9 +1272,7 @@ class Highlow:
         """
         | L_h | L_l |======l======
         """
-        L_h = (
-            self.l_0 / self.chi_k
-        )  # physical length of the high pressure chamber
+        L_h = self.l_0 / self.chi_k  # physical length of the high pressure chamber
         L_l = self.l_1 / self.chi_k  # low pressure chamber
 
         if x < L_l:

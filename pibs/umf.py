@@ -290,6 +290,12 @@ def dekker(
         if any(
             (abs(b_k - a_k) < x_tol, abs(fb_k) < y_abs_tol),
         ):
+            if debug:
+                print("{:>4}{:>24}{:>24}".format("I", "X", "FX"))
+                record.sort(key=lambda line: line[1])
+                for line in record:
+                    print("{:>4}{:>24}{:>24}".format(*line))
+
             return b_k, a_k  # return the best, and the bracketing solution
 
         a_j = a_k

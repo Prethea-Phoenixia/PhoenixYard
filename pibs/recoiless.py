@@ -60,9 +60,7 @@ class Recoiless:
             raise ValueError("Invalid gun parameters")
 
         if chargeMass > (propellant.maxLF * propellant.rho_p * chamberVolume):
-            raise ValueError(
-                "Specified Load Fraction Violates Geometrical Constraint"
-            )
+            raise ValueError("Specified Load Fraction Violates Geometrical Constraint")
 
         self.propellant = propellant
         self.caliber = caliber
@@ -89,9 +87,7 @@ class Recoiless:
         self.ssf = structuralSafetyFactor
         self.is_af = autofrettage
 
-        self.v_j = (
-            2 * self.f * self.omega / (self.theta * self.phi * self.m)
-        ) ** 0.5
+        self.v_j = (2 * self.f * self.omega / (self.theta * self.phi * self.m)) ** 0.5
 
         if self.p_0 == 0:
             raise NotImplementedError(
@@ -116,15 +112,11 @@ class Recoiless:
             * (self.f * self.Delta) ** (2 * (1 - self.n))
         )
 
-        Zs = cubic(
-            self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0
-        )
+        Zs = cubic(self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0)
         # pick a valid solution between 0 and 1
 
         Zs = sorted(
-            Z
-            for Z in Zs
-            if not isinstance(Z, complex) and (Z > 0.0 and Z < 1.0)
+            Z for Z in Zs if not isinstance(Z, complex) and (Z > 0.0 and Z < 1.0)
         )  # evaluated from left to right, guards against complex >/< float
         if len(Zs) < 1:
             raise ValueError(
@@ -165,9 +157,7 @@ class Recoiless:
 
     def _f_p_bar(self, Z, l_bar, eta, tau, psi=None):
         psi = psi if psi else self.f_psi_Z(Z)
-        l_psi_bar = 1 - self.Delta * (
-            (1 - psi) / self.rho_p + self.alpha * (psi - eta)
-        )
+        l_psi_bar = 1 - self.Delta * ((1 - psi) / self.rho_p + self.alpha * (psi - eta))
 
         p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
@@ -198,9 +188,7 @@ class Recoiless:
 
         deta = self.C_A * self.S_j_bar * p_bar / tau**0.5  # deta / dt_bar
         dtau = (
-            (1 - tau) * (dpsi * dZ)
-            - 2 * v_bar * dv_bar
-            - self.theta * tau * deta
+            (1 - tau) * (dpsi * dZ) - 2 * v_bar * dv_bar - self.theta * tau * deta
         ) / (
             psi - eta
         )  # dtau/dt_bar
@@ -237,14 +225,10 @@ class Recoiless:
         dv_bar = self.theta * 0.5 * (p_bar - p_d_bar) / v_bar  # dv_bar/dl_bar
         dt_bar = 1 / v_bar  # dt_bar / dl_bar
 
-        deta = (
-            self.C_A * self.S_j_bar * p_bar / tau**0.5 * dt_bar
-        )  # deta / dl_bar
+        deta = self.C_A * self.S_j_bar * p_bar / tau**0.5 * dt_bar  # deta / dl_bar
 
         dtau = (
-            (1 - tau) * (dpsi * dZ)
-            - 2 * v_bar * (dv_bar)
-            - self.theta * tau * (deta)
+            (1 - tau) * (dpsi * dZ) - 2 * v_bar * (dv_bar) - self.theta * tau * (deta)
         ) / (
             psi - eta
         )  # dtau/dl_bar
@@ -277,14 +261,10 @@ class Recoiless:
             dl_bar = 0  # dl_bar/dZ
             dv_bar = 0  # dv_bar/dZ
 
-        deta = (
-            self.C_A * self.S_j_bar * p_bar / tau**0.5 * dt_bar
-        )  # deta / dZ
+        deta = self.C_A * self.S_j_bar * p_bar / tau**0.5 * dt_bar  # deta / dZ
 
         dtau = (
-            (1 - tau) * (dpsi)
-            - 2 * v_bar * (dv_bar)
-            - self.theta * tau * (deta)
+            (1 - tau) * (dpsi) - 2 * v_bar * (dv_bar) - self.theta * tau * (deta)
         ) / (psi - eta)
 
         return (dt_bar, dl_bar, dv_bar, deta, dtau)
@@ -341,9 +321,7 @@ class Recoiless:
         # ambient conditions
         self.p_a_bar = ambientP / pScale
         if ambientRho != 0:
-            self.c_a_bar = (
-                ambientGamma * ambientP / ambientRho
-            ) ** 0.5 / self.v_j
+            self.c_a_bar = (ambientGamma * ambientP / ambientRho) ** 0.5 / self.v_j
         else:
             self.c_a_bar = 0
 
@@ -443,9 +421,7 @@ class Recoiless:
             Z, _, l_bar, v_bar, eta, tau = x, *ys
             p_bar = self._f_p_bar(Z, l_bar, eta, tau)
 
-            return any(
-                (l_bar > l_g_bar, p_bar > p_bar_max, v_bar <= 0, p_bar < 0)
-            )
+            return any((l_bar > l_g_bar, p_bar > p_bar_max, v_bar <= 0, p_bar < 0))
 
         while Z_i < Z_b:  # terminates if burnout is achieved
             ztlvet_record_i = []
@@ -769,10 +745,10 @@ class Recoiless:
 
             if m == "b":
                 return Pb / pScale
-            elif m == "s":
-                return Ps / pScale
             elif m == "0":
                 return P0 / pScale
+            elif m == "s":
+                return Ps / pScale
 
         def findPeak(g, tag):
             """
@@ -836,6 +812,7 @@ class Recoiless:
         findPeak(lambda x: g(x, "a"), POINT_PEAK_AVG)
         findPeak(lambda x: g(x, "s"), POINT_PEAK_SHOT)
         findPeak(lambda x: g(x, "b"), POINT_PEAK_BREECH)
+        findPeak(lambda x: g(x, "0"), POINT_PEAK_STAG)
 
         """
         populate data for output purposes
@@ -1018,10 +995,7 @@ class Recoiless:
             error.append(errLine)
 
         data, error = zip(
-            *(
-                (a, b)
-                for a, b in sorted(zip(data, error), key=lambda x: x[0][1])
-            )
+            *((a, b) for a, b in sorted(zip(data, error), key=lambda x: x[0][1]))
         )
 
         p_trace = []
@@ -1130,7 +1104,7 @@ class Recoiless:
             if H == H_1
             else 0
         )  # breech pressure
-        l0 = H / (1 + H) * l  # location of the stagnation point
+        # l0 = H / (1 + H) * l  # location of the stagnation point
         return ps, p0, pb, vb
 
     def toPx(self, l, v, vb, ps, T, eta, x):
@@ -1292,9 +1266,7 @@ class Recoiless:
 
             for p in neg_p_probes:
                 y = p / sigma
-                rho = (
-                    (1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)
-                ) ** 0.5
+                rho = ((1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)) ** 0.5
                 rho_n.append(rho)
 
             for i in range(len(neg_x_probes) - 1):
@@ -1372,9 +1344,7 @@ class Recoiless:
                         f"Limit to conventional construction ({sigma * 3*1e-6:.3f} MPa)"
                         + " exceeded in barrel."
                     )
-                rho = (
-                    (1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)
-                ) ** 0.5
+                rho = ((1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)) ** 0.5
                 rho_probes.append(rho)
 
             for i in range(len(x_probes) - 1):
@@ -1406,8 +1376,7 @@ class Recoiless:
         return (
             (0.5 * (gamma + 1)) ** (1 / (gamma - 1))
             * Pr ** (1 / gamma)
-            * ((gamma + 1) / (gamma - 1) * (1 - Pr ** ((gamma - 1) / gamma)))
-            ** 0.5
+            * ((gamma + 1) / (gamma - 1) * (1 - Pr ** ((gamma - 1) / gamma))) ** 0.5
         ) ** -1
 
     @staticmethod

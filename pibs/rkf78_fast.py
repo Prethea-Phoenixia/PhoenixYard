@@ -144,6 +144,7 @@ def RKF78(
         are the estimated maximum deviation (in absolute) for that individual
         component
     """
+    n = 0
     y_this = iniVal
     x = x_0
 
@@ -403,7 +404,6 @@ def RKF78(
             #     )
             #     print(f"Error encountered at x={x:.8g}")
             #     print(str(errMsg))
-            #     print(e)
             h *= beta
             continue
 
@@ -435,6 +435,15 @@ def RKF78(
             if abortFunc is not None and abortFunc(
                 x=x, ys=y_this, record=record
             ):  # premature terminating cond. is met
+                if debug:
+                    print("record")
+                    for line in record:
+                        x, yval = line
+                        print("{:^12.8g}|".format(x), end="")
+                        for i, y in enumerate(yval):
+                            print("{:^12.8g}|".format(y), end="")
+                        print()
+
                 return x, y_this, Rm
 
             record.append([x, [*y_this]])
@@ -446,6 +455,10 @@ def RKF78(
                 delta = 2
 
         h *= min(max(delta, 0.125), 2)
+
+        n += 1
+        # if debug and isinstance(debug, int) and n % debug == 0:
+        #     print(x, *y_this)
 
     if debug:
         print("record")
@@ -469,9 +482,7 @@ def main():
     def df1(x, y, _):
         return (7 * y**2 * x**3,)
 
-    _, v, e = RKF78(
-        df1, (3,), 2, 0, relTol=1e-4, absTol=1e-4, minTol=1e-14, debug=True
-    )
+    _, v, e = RKF78(df1, (3,), 2, 0, relTol=1e-4, absTol=1e-4, minTol=1e-14, debug=True)
 
     print(v)
     print(e)

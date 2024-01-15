@@ -65,9 +65,7 @@ def loadfont(fontpath, private=True, enumerable=False):
     else:
         raise TypeError("fontpath must be of type str or unicode")
 
-    flags = (FR_PRIVATE if private else 0) | (
-        FR_NOT_ENUM if not enumerable else 0
-    )
+    flags = (FR_PRIVATE if private else 0) | (FR_NOT_ENUM if not enumerable else 0)
     numFontsAdded = AddFontResourceEx(byref(pathbuf), flags, 0)
     return bool(numFontsAdded)
 
