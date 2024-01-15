@@ -3,7 +3,7 @@ from prop import Propellant
 from random import uniform
 from math import pi, inf
 from recoiless import Recoiless
-from opt import MAX_GUESSES
+from optGun import MAX_GUESSES
 from gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
 
 
@@ -20,12 +20,13 @@ class ConstrainedRecoiless:
         nozzleExpansion,
         nozzleEfficiency,
         chambrage,
-        control,
-        minWeb,
-        maxLength,
+        tol,
+        minWeb=1e-6,
+        maxLength=1e3,
         ambientRho=1.204,
         ambientP=101.325e3,
         ambientGamma=1.4,
+        control=POINT_PEAK_AVG,
         **_,
     ):
         # constants for constrained designs
@@ -76,6 +77,8 @@ class ConstrainedRecoiless:
         self.ambientP = ambientP
         self.ambientGamma = ambientGamma
 
+        self.tol = tol
+
     def __getattr__(self, attrName):
         if "propellant" in vars(self) and not (
             attrName.startswith("__") and attrName.endswith("__")
@@ -94,7 +97,6 @@ class ConstrainedRecoiless:
         self,
         loadFraction,
         chargeMassRatio,
-        tol,
         lengthGun=None,
         known_bore=False,
         suppress=False,  # suppress design velocity exceeded before peak pressure check
@@ -102,7 +104,7 @@ class ConstrainedRecoiless:
     ):
         if any(
             (
-                tol <= 0,
+                self.tol <= 0,
                 chargeMassRatio <= 0,
                 loadFraction <= 0,
                 loadFraction > 1,
@@ -152,7 +154,7 @@ class ConstrainedRecoiless:
 
         phi = phi_1 + omega / (3 * m)
 
-        S_j_bar = 1 / (Recoiless.getCf(gamma, A_bar, tol) * chi_0)
+        S_j_bar = 1 / (Recoiless.getCf(gamma, A_bar, self.tol) * chi_0)
         if S_j_bar > chi_k:
             raise ValueError(
                 "Achieving recoiless condition necessitates"
@@ -255,7 +257,7 @@ class ConstrainedRecoiless:
             p_bar = _f_p_bar(Z, l_bar, v_bar, eta, tau)
             return (p_bar > 2 * p_bar_d) or l_bar > l_bar_d
 
-        def _f_p_e_1(e_1, tol=tol):
+        def _f_p_e_1(e_1):
             """
             Find pressure maximum bracketed by the range of
             Z_0 < Z < Z_d
@@ -321,11 +323,10 @@ class ConstrainedRecoiless:
                     iniVal=(0, 0, 0, 0, 1),
                     x_0=Z_0,
                     x_1=Z_b,
-                    relTol=tol,
-                    absTol=tol**2,
+                    relTol=self.tol,
+                    absTol=self.tol**2,
                     abortFunc=abort_Z,
                     record=record,
-                    # debug=True,
                 )
 
                 if Z_j not in [line[0] for line in record]:
@@ -335,16 +336,6 @@ class ConstrainedRecoiless:
                 # stepVanished = True
 
             p_bar_j = _f_p_bar(Z_j, l_bar_j, v_bar_j, eta_j, tau_j)
-
-            """print(
-                *[
-                    (Z, _f_p_bar(Z, l_bar, v_bar, eta, tau) * f * Delta)
-                    for (Z, (t_bar, l_bar, v_bar, eta, tau)) in record
-                ],
-                sep="\n",
-            )"""
-
-            # print(*record, sep="\n")
 
             """
             find the peak pressure point.
@@ -383,8 +374,8 @@ class ConstrainedRecoiless:
                         iniVal=ys,
                         x_0=x,
                         x_1=Z,
-                        relTol=tol,
-                        absTol=tol**2,
+                        relTol=self.tol,
+                        absTol=self.tol**2,
                         record=r,
                     )
 
@@ -393,16 +384,10 @@ class ConstrainedRecoiless:
                     record.sort()
                     return _f_p_bar(Z, l_bar, v_bar, eta, tau)
 
-                Z_1, Z_2 = gss(
-                    _f_p_Z,
-                    Z_i,
-                    Z_j,
-                    y_rel_tol=tol,
-                    findMin=False,
-                )
+                Z_1, Z_2 = gss(_f_p_Z, Z_i, Z_j, y_rel_tol=self.tol, findMin=False)
                 Z_p = 0.5 * (Z_1 + Z_2)
 
-                if abs(Z_p - Z_b) < tol:
+                if abs(Z_p - Z_b) < self.tol:
                     Z_p = Z_b
 
                 p_bar_p = _f_p_Z(Z_p)
@@ -434,7 +419,7 @@ class ConstrainedRecoiless:
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
             # x_tol=1e-14,
-            y_abs_tol=p_bar_d * tol,
+            y_abs_tol=p_bar_d * self.tol,
             # debug=True,
         )  # this is the e_1 that satisifies the pressure specification.
 
@@ -446,7 +431,7 @@ class ConstrainedRecoiless:
 
         (Z_i, t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i) = vals_1
 
-        if abs(dp_bar_i) > tol * p_bar_d:
+        if abs(dp_bar_i) > self.tol * p_bar_d:
             dp_bar_j, *vals_2 = _f_p_e_1(e_1_2)
             raise ValueError(
                 "Design pressure is not met, current best solution peaked at "
@@ -464,12 +449,12 @@ class ConstrainedRecoiless:
                 + " solution lies at the edge or outside of solution space."
             )
 
-        if abs(Z_i - Z_b) < tol:
+        if abs(Z_i - Z_b) < self.tol:
             """
             fudging the starting Z value for velocity integration to prevent
             driving integrator to 0 at the transition point.
             """
-            Z_i = Z_b + tol
+            Z_i = Z_b + self.tol
 
         if known_bore:
             return e_1, lengthGun
@@ -550,8 +535,8 @@ class ConstrainedRecoiless:
                 iniVal=(t_bar_i, Z_i, l_bar_i, eta_i, tau_i),
                 x_0=v_bar_i,
                 x_1=v_bar_d,
-                relTol=tol,
-                absTol=tol**2,
+                relTol=self.tol,
+                absTol=self.tol**2,
                 abortFunc=abort_v,
                 record=vtzlet_record,  # debug
                 # debug=True,
@@ -588,7 +573,7 @@ class ConstrainedRecoiless:
                 + "last calculated at v = {:.4g} m/s,".format(v_g)
                 + "x = {:.4g} m, p = {:.4g} MPa. ".format(l_g, p_g * 1e-6)
             )
-        if abs(v_bar_g - v_bar_d) > (tol * v_bar_d):
+        if abs(v_bar_g - v_bar_d) > (self.tol * v_bar_d):
             raise ValueError(
                 "Velocity target is not met, last calculated to "
                 + "v = {:.4g} m/s ({:+.3g} %), x = {:.4g} m, p = {:.4g} MPa".format(
@@ -598,12 +583,7 @@ class ConstrainedRecoiless:
 
         return e_1, l_bar_g * l_0
 
-    def findMinV(
-        self,
-        chargeMassRatio,
-        tol,
-        **_,
-    ):
+    def findMinV(self, chargeMassRatio, **_):
         """
         find the minimum volume solution.
         """
@@ -627,7 +607,6 @@ class ConstrainedRecoiless:
             e_1, l_g = solve(
                 loadFraction=lf,
                 chargeMassRatio=chargeMassRatio,
-                tol=tol,  # this is to ensure unimodality up to ~tol
                 known_bore=False,
                 suppress=True,
             )
@@ -636,7 +615,7 @@ class ConstrainedRecoiless:
         records = []
 
         for i in range(MAX_GUESSES):
-            startProbe = uniform(tol, 1 - tol)
+            startProbe = uniform(self.tol, 1 - self.tol)
 
             try:
                 _, lt_i, lg_i = f(startProbe)
@@ -651,13 +630,13 @@ class ConstrainedRecoiless:
                 + " fraction with {:d} random samples.".format(MAX_GUESSES)
             )
 
-        low = tol
+        low = self.tol
         probe = startProbe
         delta_low = low - probe
 
         new_low = probe + delta_low
 
-        while abs(2 * delta_low) > tol:
+        while abs(2 * delta_low) > self.tol:
             try:
                 _, lt_i, lg_i = f(new_low)
                 records.append((new_low, lt_i))
@@ -669,12 +648,12 @@ class ConstrainedRecoiless:
 
         low = probe
 
-        high = 1 - tol
+        high = 1 - self.tol
         probe = startProbe
         delta_high = high - probe
 
         new_high = probe + delta_high
-        while abs(2 * delta_high) > tol and new_high < 1:
+        while abs(2 * delta_high) > self.tol and new_high < 1:
             try:
                 _, lt_i, lg_i = f(new_high)
                 records.append((new_high, lt_i))
@@ -686,7 +665,7 @@ class ConstrainedRecoiless:
 
         high = probe
 
-        if abs(high - low) < tol:
+        if abs(high - low) < self.tol:
             raise ValueError("No range of values satisfying constraint.")
 
         if len(records) > 2:
@@ -702,13 +681,15 @@ class ConstrainedRecoiless:
         # f() with the same value will spuriously raise value errors. Therefore
         # we conservatively shrink the range by tolerance to avoid this issue.
 
-        low += delta * tol
-        high -= delta * tol
+        low += delta * self.tol
+        high -= delta * self.tol
 
         """
         Step 2, gss to min.
         """
-        lf_low, lf_high = gss(lambda lf: f(lf)[1], low, high, x_tol=tol, findMin=True)
+        lf_low, lf_high = gss(
+            lambda lf: f(lf)[1], low, high, x_tol=self.tol, findMin=True
+        )
         lf = 0.5 * (lf_high + lf_low)
 
         e_1, l_t, l_g = f(lf)
@@ -741,6 +722,7 @@ if __name__ == "__main__":
         control=POINT_PEAK_AVG,
         minWeb=1e-6,
         maxLength=100,
+        tol=1e-3,
     )
 
     datas = []
@@ -748,7 +730,6 @@ if __name__ == "__main__":
         datas.append(
             test.findMinV(
                 chargeMassRatio=0.309 / 4,
-                tol=1e-3,
             )
         )
 

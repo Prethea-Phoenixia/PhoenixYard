@@ -30,6 +30,9 @@ class Constrained:
         designPressure,
         designVelocity,
         chambrage,
+        tol,
+        minWeb=1e-6,
+        maxLength=1e3,
         sol=SOL_LAGRANGE,
         ambientRho=1.204,
         ambientP=101.325e3,
@@ -76,6 +79,11 @@ class Constrained:
         self.ambientGamma = ambientGamma
         self.control = control
 
+        self.minWeb = minWeb
+        self.maxLength = maxLength
+
+        self.tol = tol
+
     def __getattr__(self, attrName):
         if "propellant" in vars(self) and not (
             attrName.startswith("__") and attrName.endswith("__")
@@ -94,9 +102,6 @@ class Constrained:
         self,
         loadFraction,
         chargeMassRatio,
-        tol,
-        minWeb=1e-6,
-        maxLength=1e3,
         labda_1=None,
         labda_2=None,
         cc=None,
@@ -108,12 +113,9 @@ class Constrained:
     ):
         if any(
             (
-                minWeb <= 0,
-                tol <= 0,
                 chargeMassRatio <= 0,
                 loadFraction <= 0,
                 loadFraction > 1,
-                maxLength <= 0,
             )
         ):
             raise ValueError("Invalid parameters to solve constrained design problem")
@@ -151,7 +153,7 @@ class Constrained:
         gamma = theta + 1
 
         if lengthGun is None:
-            l_bar_g_0 = maxLength / l_0
+            l_bar_g_0 = self.maxLength / l_0
         else:
             l_bar_g_0 = lengthGun / l_0
 
@@ -162,9 +164,9 @@ class Constrained:
             if self.sol == SOL_LAGRANGE:
                 labda_1, labda_2 = 1 / 2, 1 / 3
             elif self.sol == SOL_PIDDUCK:
-                labda_1, labda_2 = pidduck(omega / (phi_1 * m), gamma, tol)
+                labda_1, labda_2 = pidduck(omega / (phi_1 * m), gamma, self.tol)
             elif self.sol == SOL_MAMONTOV:
-                labda_1, labda_2 = pidduck(omega / (phi_1 * m), 1, tol)
+                labda_1, labda_2 = pidduck(omega / (phi_1 * m), 1, self.tol)
             else:
                 raise ValueError("Unknown Solution")
 
@@ -235,7 +237,7 @@ class Constrained:
                 "Interior ballistics of conventional gun precludes"
                 + " a pressure lower than that at shot start."
             )
-        l_bar_d = maxLength / l_0
+        l_bar_d = self.maxLength / l_0
 
         def abort_Z(x, ys, record):
             Z = x
@@ -250,7 +252,7 @@ class Constrained:
 
             return (p_bar < op_bar) or (p_bar > 2 * p_bar_d)
 
-        def _f_p_e_1(e_1, tol=tol):
+        def _f_p_e_1(e_1):
             """
             calculate either the peak pressure, given the arc thickness,
             or until the system develops 2x design pressure.
@@ -300,8 +302,8 @@ class Constrained:
                 iniVal=(0, 0, 0),
                 x_0=Z_0,
                 x_1=Z_b,
-                relTol=tol,
-                absTol=tol**2,
+                relTol=self.tol,
+                absTol=self.tol**2,
                 abortFunc=abort_Z,
                 record=record,
             )
@@ -324,8 +326,8 @@ class Constrained:
                     iniVal=ys,
                     x_0=x,
                     x_1=Z,
-                    relTol=tol,
-                    absTol=tol**2,
+                    relTol=self.tol,
+                    absTol=self.tol**2,
                     record=r,
                 )
                 xs = [v[0] for v in record]
@@ -342,16 +344,16 @@ class Constrained:
             else:
                 Z_i = Z_0
 
-            Z_1, Z_2 = gss(_f_p_Z, Z_i, Z_j, y_rel_tol=tol, findMin=False)
+            Z_1, Z_2 = gss(_f_p_Z, Z_i, Z_j, y_rel_tol=self.tol, findMin=False)
             Z_p = 0.5 * (Z_1 + Z_2)
 
-            if abs(Z_p - Z_b) < tol:
+            if abs(Z_p - Z_b) < self.tol:
                 Z_p = Z_b
 
             return _f_p_Z(Z_p) - p_bar_d, record[-1][0], *record[-1][-1]
 
-        dp_bar_probe = _f_p_e_1(minWeb)[0]
-        probeWeb = minWeb
+        dp_bar_probe = _f_p_e_1(self.minWeb)[0]
+        probeWeb = self.minWeb
 
         if dp_bar_probe < 0:
             raise ValueError(
@@ -367,19 +369,19 @@ class Constrained:
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
             # x_tol=1e-14,
-            y_abs_tol=p_bar_d * tol,
+            y_abs_tol=p_bar_d * self.tol,
         )  # this is the e_1 that satisifies the pressure specification.
 
         (p_bar_dev, Z_i, t_bar_i, l_bar_i, v_bar_i) = _f_p_e_1(e_1)
 
-        if abs(Z_i - Z_b) < tol:
+        if abs(Z_i - Z_b) < self.tol:
             """
             fudging the starting Z value for velocity integration to prevent
             driving integrator to 0 at the transition point.
             """
-            Z_i = Z_b + tol
+            Z_i = Z_b + self.tol
 
-        if abs(p_bar_dev) > tol * p_bar_d:
+        if abs(p_bar_dev) > self.tol * p_bar_d:
             raise ValueError(
                 "Design pressure is not met, delta = {:.3g} Pa".format(
                     p_bar_dev * (f * Delta)
@@ -447,8 +449,8 @@ class Constrained:
                 iniVal=(t_bar_i, Z_i, l_bar_i),
                 x_0=v_bar_i,
                 x_1=v_bar_d,
-                relTol=tol,
-                absTol=tol**2,
+                relTol=self.tol,
+                absTol=self.tol**2,
                 abortFunc=abort_v,
                 record=vtzl_record,
             )
@@ -477,7 +479,7 @@ class Constrained:
                 + "p = {:.4g} MPa.".format(p_g * 1e-6)
             )
 
-        if abs(v_bar_g - v_bar_d) > (tol * v_bar_d):
+        if abs(v_bar_g - v_bar_d) > (self.tol * v_bar_d):
             raise ValueError(
                 "Velocity target is not met, last calculated to "
                 + "v = {:.4g} m/s ({:+.3g} %), x = {:.4g} m, p = {:.4g} MPa".format(
@@ -494,16 +496,13 @@ class Constrained:
         # cc_n = cc * kappa + cc_n * (1 - kappa)
 
         # if abs(cc_n - cc) > tol and it < MAX_ITER:
-        if abs((l_bar_g - l_bar_g_0) / l_bar_g_prime) > tol and it < MAX_ITER:
+        if abs((l_bar_g - l_bar_g_0) / l_bar_g_prime) > self.tol and it < MAX_ITER:
             # successive better approximations will eventually
             # result in value within tolerance.
 
             return self.solve(
                 loadFraction=loadFraction,
                 chargeMassRatio=chargeMassRatio,
-                tol=tol,
-                minWeb=minWeb,
-                maxLength=maxLength,
                 labda_1=labda_1,
                 labda_2=labda_2,
                 cc=cc_n,
@@ -519,19 +518,7 @@ class Constrained:
             #    print("Return on maximum iteration.", abs(cc_n - cc))
             return e_1, l_bar_g * l_0
 
-    def findMinV(
-        self,
-        chargeMassRatio,
-        tol,
-        minWeb,
-        maxLength,
-        sol=SOL_PIDDUCK,
-        ambientRho=1.204,
-        ambientP=101.325e3,
-        ambientGamma=1.4,
-        control=POINT_PEAK_AVG,
-        **_,
-    ):
+    def findMinV(self, chargeMassRatio, **_):
         """
         find the minimum volume solution.
         """
@@ -552,12 +539,12 @@ class Constrained:
         theta = self.theta
         gamma = theta + 1
 
-        if sol == SOL_LAGRANGE:
+        if self.sol == SOL_LAGRANGE:
             labda_1, labda_2 = 1 / 2, 1 / 3
-        elif sol == SOL_PIDDUCK:
-            labda_1, labda_2 = pidduck(omega / (phi_1 * m), gamma, tol)
-        elif sol == SOL_MAMONTOV:
-            labda_1, labda_2 = pidduck(omega / (phi_1 * m), 1, tol)
+        elif self.sol == SOL_PIDDUCK:
+            labda_1, labda_2 = pidduck(omega / (phi_1 * m), gamma, self.tol)
+        elif self.sol == SOL_MAMONTOV:
+            labda_1, labda_2 = pidduck(omega / (phi_1 * m), 1, self.tol)
         else:
             raise ValueError("Unknown Solution")
 
@@ -568,16 +555,8 @@ class Constrained:
             e_1, l_g = solve(
                 loadFraction=lf,
                 chargeMassRatio=chargeMassRatio,
-                tol=tol,
-                minWeb=minWeb,
-                maxLength=maxLength,
                 labda_1=labda_1,
                 labda_2=labda_2,
-                sol=sol,
-                ambientRho=ambientRho,
-                ambientP=ambientP,
-                ambientGamma=ambientGamma,
-                control=control,
                 known_bore=False,
                 suppress=True,
             )
@@ -587,7 +566,7 @@ class Constrained:
         records = []
 
         for i in range(MAX_GUESSES):
-            startProbe = uniform(tol, 1 - tol)
+            startProbe = uniform(self.tol, 1 - self.tol)
             try:
                 _, lt_i, lg_i = f(startProbe)
                 records.append((startProbe, lt_i))
@@ -601,13 +580,13 @@ class Constrained:
                 + " with {:d} random samples.".format(MAX_GUESSES)
             )
 
-        low = tol
+        low = self.tol
         probe = startProbe
         delta_low = low - probe
 
         new_low = probe + delta_low
 
-        while abs(2 * delta_low) > tol:
+        while abs(2 * delta_low) > self.tol:
             try:
                 _, lt_i, lg_i = f(new_low)
                 records.append((new_low, lt_i))
@@ -619,13 +598,13 @@ class Constrained:
 
         low = probe
 
-        high = 1 - tol
+        high = 1 - self.tol
         probe = startProbe
         delta_high = high - probe
 
         new_high = probe + delta_high
 
-        while abs(2 * delta_high) > tol and new_high < 1:
+        while abs(2 * delta_high) > self.tol and new_high < 1:
             try:
                 _, lt_i, lg_i = f(new_high)
                 records.append((new_high, lt_i))
@@ -637,7 +616,7 @@ class Constrained:
 
         high = probe
 
-        if abs(high - low) < tol:
+        if abs(high - low) < self.tol:
             raise ValueError("No range of values satisfying constraint.")
 
         if len(records) > 2:
@@ -649,8 +628,8 @@ class Constrained:
 
         delta = high - low
 
-        low += delta * tol
-        high -= delta * tol
+        low += delta * self.tol
+        high -= delta * self.tol
 
         """
         Step 2, gss to min.
@@ -664,7 +643,7 @@ class Constrained:
             lambda lf: f(lf)[1],
             low,
             high,
-            x_tol=tol,  # variable: load fraction
+            x_tol=self.tol,  # variable: load fraction
             findMin=True,
         )
 
