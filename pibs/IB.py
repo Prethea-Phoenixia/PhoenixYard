@@ -1978,7 +1978,14 @@ class InteriorBallisticsFrame(Frame):
                     self.ax.plot(xs, etas, "crimson", label=self.getLocStr("figBleed"))
 
             if self.plotAvgP.get():
-                self.axP.plot(xs, Pas, "tab:green", label=self.getLocStr("figAvgP"))
+                self.axP.plot(
+                    xs,
+                    Pas,
+                    "tab:green",
+                    label=self.getLocStr("figLowAvgP")
+                    if gunType == HIGHLOW
+                    else self.getLocStr("figAvgP"),
+                )
 
             if self.plotBaseP.get():
                 self.axP.plot(
@@ -2532,10 +2539,12 @@ class InteriorBallisticsFrame(Frame):
             self.evL.restore()
             self.bstMPa.restore()
             self.perf.restore()
+            self.plotAvgP.reLocalize("plotLowAvgP")
         else:
             self.evL.remove()
             self.bstMPa.remove()
             self.perf.remove()
+            self.plotAvgP.reLocalize("plotAvgP")
 
         if gunType == CONVENTIONAL or gunType == RECOILESS:
             self.ammoOptn.enable()
@@ -2578,7 +2587,7 @@ class InteriorBallisticsFrame(Frame):
             )
 
         elif gunType == HIGHLOW:
-            self.plotBreechP.reLocalize("plotLowP")
+            self.plotBreechP.reLocalize("plotLowBldP")
             self.bm.reLocalize("", "")
 
             self.plotStagP.restore()
