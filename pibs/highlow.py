@@ -13,6 +13,9 @@ from gun import (
     POINT_EXIT,
 )
 
+POINT_PEAK_HIGH = "PEAK_HIGH_P"
+POINT_PEAK_BLEED = "PEAK_BLEED_P"
+
 from gun import minTol
 
 
@@ -961,7 +964,7 @@ class Highlow:
         to point e, i.e. inside the barrel.
         """
 
-        def f(t, m="a"):
+        def g(t, m="a"):
             Z, l_bar, v_bar, eta, tau_1, tau_2 = RKF78(
                 self._ode_t,
                 (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1),
@@ -971,19 +974,20 @@ class Highlow:
                 absTol=tol**2,
                 minTol=minTol,
             )[1]
-            p_bar = self._f_p_1_bar(Z, eta, tau_1)
 
+            if m == "h":
+                p_bar_high = self._f_p_1_bar(Z, eta, tau_1)
+                return p_bar_high * pScale
+            p_bar_low = self._f_p_2_bar(l_bar, eta, tau_2)
             if m == "a":
-                return p_bar
-
-            p_s, p_b = self.toPsPb(l_bar * self.l_1, p_bar * pScale, eta)
-
+                return p_bar_low * pScale
+            p_s, p_b = self.toPsPb(l_bar * self.l_1, p_bar_low * pScale, eta)
             if m == "s":
                 return p_s
             elif m == "b":
                 return p_b
 
-        def findPeak(f, tag):
+        def findPeak(g, tag):
             """
             tolerance is specified a bit differently for gold section search
             GSS tol is the length between the upper bound and lower bound
@@ -997,7 +1001,7 @@ class Highlow:
 
             t_bar = 0.5 * sum(
                 gss(
-                    f,
+                    g,
                     t_bar_1,
                     t_bar_e if t_bar_b is None else t_bar_b,
                     x_tol=t_bar_tol,
@@ -1040,9 +1044,10 @@ class Highlow:
                 tau_2_err=tau_2_err,
             )
 
-        findPeak(lambda x: f(x, "a"), POINT_PEAK_AVG)
-        findPeak(lambda x: f(x, "s"), POINT_PEAK_SHOT)
-        findPeak(lambda x: f(x, "b"), POINT_PEAK_BREECH)
+        findPeak(lambda x: g(x, "a"), POINT_PEAK_AVG)
+        findPeak(lambda x: g(x, "s"), POINT_PEAK_SHOT)
+        findPeak(lambda x: g(x, "b"), POINT_PEAK_BLEED)
+        findPeak(lambda x: g(x, "h"), POINT_PEAK_HIGH)
 
         """
         populate data for output purposes

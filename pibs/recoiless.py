@@ -13,6 +13,8 @@ from gun import (
     POINT_EXIT,
 )
 
+POINT_PEAK_STAG = "PEAK_STAG_P"
+
 from gun import Gun
 
 from gun import minTol
@@ -742,7 +744,7 @@ class Recoiless:
         to point e, i.e. inside the barrel.
         """
 
-        def f(t, m="a"):
+        def g(t, m="a"):
             Z, l_bar, v_bar, eta, tau = RKF78(
                 self._ode_t,
                 (Z_0, 0, 0, 0, 1),
@@ -769,8 +771,10 @@ class Recoiless:
                 return Pb / pScale
             elif m == "s":
                 return Ps / pScale
+            elif m == "0":
+                return P0 / pScale
 
-        def findPeak(f, tag):
+        def findPeak(g, tag):
             """
             tolerance is specified a bit differently for gold section search
             GSS tol is the length between the upper bound and lower bound
@@ -783,7 +787,7 @@ class Recoiless:
             )
 
             t_bar_1, t_bar_2 = gss(
-                f,
+                g,
                 0,
                 t_bar_e if t_bar_b is None else t_bar_b,
                 x_tol=t_bar_tol,
@@ -829,9 +833,9 @@ class Recoiless:
                 tau_err=tau_err,
             )
 
-        findPeak(lambda x: f(x, "a"), POINT_PEAK_AVG)
-        findPeak(lambda x: f(x, "s"), POINT_PEAK_SHOT)
-        findPeak(lambda x: f(x, "b"), POINT_PEAK_BREECH)
+        findPeak(lambda x: g(x, "a"), POINT_PEAK_AVG)
+        findPeak(lambda x: g(x, "s"), POINT_PEAK_SHOT)
+        findPeak(lambda x: g(x, "b"), POINT_PEAK_BREECH)
 
         """
         populate data for output purposes

@@ -4,7 +4,6 @@ from random import uniform
 from math import pi, inf
 from recoiless import Recoiless
 from opt import MAX_GUESSES
-from bisect import bisect
 from gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
 
 
@@ -21,6 +20,12 @@ class ConstrainedRecoiless:
         nozzleExpansion,
         nozzleEfficiency,
         chambrage,
+        control,
+        minWeb,
+        maxLength,
+        ambientRho=1.204,
+        ambientP=101.325e3,
+        ambientGamma=1.4,
         **_,
     ):
         # constants for constrained designs
@@ -64,6 +69,13 @@ class ConstrainedRecoiless:
 
         self.chi_k = chambrage
 
+        self.control = control
+        self.minWeb = minWeb
+        self.maxLength = maxLength
+        self.ambientRho = ambientRho
+        self.ambientP = ambientP
+        self.ambientGamma = ambientGamma
+
     def __getattr__(self, attrName):
         if "propellant" in vars(self) and not (
             attrName.startswith("__") and attrName.endswith("__")
@@ -83,12 +95,6 @@ class ConstrainedRecoiless:
         loadFraction,
         chargeMassRatio,
         tol,
-        minWeb=1e-6,
-        maxLength=1e3,
-        ambientRho=1.204,
-        ambientP=101.325e3,
-        ambientGamma=1.4,
-        control=POINT_PEAK_AVG,
         lengthGun=None,
         known_bore=False,
         suppress=False,  # suppress design velocity exceeded before peak pressure check
@@ -96,20 +102,13 @@ class ConstrainedRecoiless:
     ):
         if any(
             (
-                minWeb <= 0,
                 tol <= 0,
                 chargeMassRatio <= 0,
                 loadFraction <= 0,
                 loadFraction > 1,
-                maxLength <= 0,
-                ambientRho < 0,
-                ambientP < 0,
-                ambientGamma < 1,
             )
         ):
-            raise ValueError(
-                "Invalid parameters to solve constrained design problem"
-            )
+            raise ValueError("Invalid parameters to solve constrained design problem")
         """
         minWeb  : represents minimum possible grain size
         """
@@ -142,9 +141,7 @@ class ConstrainedRecoiless:
         Sb = S * chi_k
 
         if loadFraction > maxLF:
-            raise ValueError(
-                "Specified Load Fraction Violates Geometrical Constraint"
-            )
+            raise ValueError("Specified Load Fraction Violates Geometrical Constraint")
 
         omega = m * chargeMassRatio
         V_0 = omega / (rho_p * loadFraction)
@@ -164,14 +161,10 @@ class ConstrainedRecoiless:
             )
         S_j = S_j_bar * S
 
-        K_0 = (2 / (gamma + 1)) ** (
-            (gamma + 1) / (2 * (gamma - 1))
-        ) * gamma**0.5
+        K_0 = (2 / (gamma + 1)) ** ((gamma + 1) / (2 * (gamma - 1))) * gamma**0.5
 
         phi_2 = 1
-        C_A = (
-            (0.5 * theta * phi * m / omega) ** 0.5 * K_0 * phi_2
-        )  # flow rate value
+        C_A = (0.5 * theta * phi * m / omega) ** 0.5 * K_0 * phi_2  # flow rate value
 
         """
         it is impossible to account for the chambrage effect given unspecified
@@ -179,14 +172,14 @@ class ConstrainedRecoiless:
         """
         v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
 
-        if ambientRho != 0:
-            c_a_bar = (ambientGamma * ambientP / ambientRho) ** 0.5 / v_j
-            p_a_bar = ambientP / (f * Delta)
+        if self.ambientRho != 0:
+            c_a_bar = (self.ambientGamma * self.ambientP / self.ambientRho) ** 0.5 / v_j
+            p_a_bar = self.ambientP / (f * Delta)
         else:
             c_a_bar = 0
             p_a_bar = 0
 
-        gamma_1 = ambientGamma
+        gamma_1 = self.ambientGamma
 
         if v_j < v_d and not known_bore:
             raise ValueError(
@@ -206,9 +199,7 @@ class ConstrainedRecoiless:
         )
         # pick a valid solution between 0 and 1
         Zs = tuple(
-            Z
-            for Z in Zs
-            if not isinstance(Z, complex) and (Z > 0.0 and Z < 1.0)
+            Z for Z in Zs if not isinstance(Z, complex) and (Z > 0.0 and Z < 1.0)
         )  # evaluated from left to right, guards against complex >/< float
         if len(Zs) < 1:
             raise ValueError(
@@ -224,7 +215,7 @@ class ConstrainedRecoiless:
             l_psi_bar = 1 - Delta * ((1 - psi) / rho_p + alpha * (psi - eta))
             p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
-            if control == POINT_PEAK_AVG:
+            if self.control == POINT_PEAK_AVG:
                 return p_bar
 
             else:
@@ -239,12 +230,10 @@ class ConstrainedRecoiless:
 
                 H = min(H_1, H_2)
 
-                p_s_bar = p_bar / (
-                    1 + (omega - y) / (3 * phi_1 * m) * (1 - 0.5 * H)
-                )
-                if control == POINT_PEAK_SHOT:
+                p_s_bar = p_bar / (1 + (omega - y) / (3 * phi_1 * m) * (1 - 0.5 * H))
+                if self.control == POINT_PEAK_SHOT:
                     return p_s_bar
-                elif control == POINT_PEAK_BREECH:
+                elif self.control == POINT_PEAK_BREECH:
                     return (
                         p_s_bar * (1 + (omega - y) / (2 * phi_1 * m) * (1 - H))
                         if H == H_1
@@ -252,7 +241,7 @@ class ConstrainedRecoiless:
                     )
 
         p_bar_d = p_d / (f * Delta)  # convert to unitless
-        l_bar_d = maxLength / l_0
+        l_bar_d = self.maxLength / l_0
         """
         if p_bar_d < p_bar_s:
             raise ValueError("Pressure constraint lower than starting value.")
@@ -288,9 +277,7 @@ class ConstrainedRecoiless:
                 psi = f_psi_Z(Z)
                 dpsi = f_sigma_Z(Z)  # dpsi/dZ
 
-                l_psi_bar = 1 - Delta * (
-                    (1 - psi) / rho_p + alpha * (psi - eta)
-                )
+                l_psi_bar = 1 - Delta * ((1 - psi) / rho_p + alpha * (psi - eta))
                 p_bar = tau / (l_bar + l_psi_bar) * (psi - eta)
 
                 if c_a_bar != 0 and v_bar > 0:
@@ -317,9 +304,7 @@ class ConstrainedRecoiless:
 
                 deta = C_A * S_j_bar * p_bar / tau**0.5 * dt_bar  # deta / dZ
                 dtau = (
-                    (1 - tau) * (dpsi)
-                    - 2 * v_bar * (dv_bar)
-                    - theta * tau * (deta)
+                    (1 - tau) * (dpsi) - 2 * v_bar * (dv_bar) - theta * tau * (deta)
                 ) / (psi - eta)
 
                 return (dt_bar, dl_bar, dv_bar, deta, dtau)
@@ -344,9 +329,7 @@ class ConstrainedRecoiless:
                 )
 
                 if Z_j not in [line[0] for line in record]:
-                    record.append(
-                        [Z_j, [t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j]]
-                    )
+                    record.append([Z_j, [t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j]])
             except ValueError:
                 Z_j, (t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j) = record[-1]
                 # stepVanished = True
@@ -431,8 +414,8 @@ class ConstrainedRecoiless:
                 else:
                     return (p_bar_j - p_bar_d, record[-1][0], *record[-1][-1])
 
-        dp_bar_probe, Z, *_ = _f_p_e_1(minWeb)
-        probeWeb = minWeb
+        dp_bar_probe, Z, *_ = _f_p_e_1(self.minWeb)
+        probeWeb = self.minWeb
 
         if dp_bar_probe < 0:
             raise ValueError(
@@ -476,9 +459,7 @@ class ConstrainedRecoiless:
                     (dp_bar_j + p_bar_d) * (f * Delta * 1e-6),
                     dp_bar_j / p_bar_d * 100,
                 )
-                + " with a web difference of {:.4g} mm.".format(
-                    (e_1 - e_1_2) * 1e3
-                )
+                + " with a web difference of {:.4g} mm.".format((e_1 - e_1_2) * 1e3)
                 + " If the pressures are too disparate this may indicate desired"
                 + " solution lies at the edge or outside of solution space."
             )
@@ -621,13 +602,6 @@ class ConstrainedRecoiless:
         self,
         chargeMassRatio,
         tol,
-        minWeb,
-        maxLength,
-        ambientRho=1.204,
-        ambientP=101.325e3,
-        ambientGamma=1.4,
-        loadFraction=None,  # hint
-        control=POINT_PEAK_AVG,
         **_,
     ):
         """
@@ -654,12 +628,6 @@ class ConstrainedRecoiless:
                 loadFraction=lf,
                 chargeMassRatio=chargeMassRatio,
                 tol=tol,  # this is to ensure unimodality up to ~tol
-                minWeb=minWeb,
-                maxLength=maxLength,
-                ambientP=ambientP,
-                ambientRho=ambientRho,
-                ambientGamma=ambientGamma,
-                control=control,
                 known_bore=False,
                 suppress=True,
             )
@@ -668,11 +636,8 @@ class ConstrainedRecoiless:
         records = []
 
         for i in range(MAX_GUESSES):
-            startProbe = (
-                loadFraction
-                if (i == 1 and loadFraction is not None)
-                else uniform(tol, 1 - tol)
-            )
+            startProbe = uniform(tol, 1 - tol)
+
             try:
                 _, lt_i, lg_i = f(startProbe)
                 records.append((startProbe, lt_i))
@@ -743,9 +708,7 @@ class ConstrainedRecoiless:
         """
         Step 2, gss to min.
         """
-        lf_low, lf_high = gss(
-            lambda lf: f(lf)[1], low, high, x_tol=tol, findMin=True
-        )
+        lf_low, lf_high = gss(lambda lf: f(lf)[1], low, high, x_tol=tol, findMin=True)
         lf = 0.5 * (lf_high + lf_low)
 
         e_1, l_t, l_g = f(lf)
@@ -775,27 +738,17 @@ if __name__ == "__main__":
         nozzleExpansion=4,
         nozzleEfficiency=0.92,
         chambrage=1.5,
+        control=POINT_PEAK_AVG,
+        minWeb=1e-6,
+        maxLength=100,
     )
-    """
-    print(
-        test.solve(
-            loadFraction=0.5,
-            chargeMassRatio=0.309 / 4,
-            tol=1e-3,
-            minWeb=1e-6,
-            maxLength=100,
-            control=POINT_PEAK_BREECH,
-        )
-    )
-    """
+
     datas = []
     for i in range(10):
         datas.append(
             test.findMinV(
                 chargeMassRatio=0.309 / 4,
                 tol=1e-3,
-                minWeb=1e-6,
-                maxLength=100,
             )
         )
 
@@ -809,8 +762,4 @@ if __name__ == "__main__":
 
     print(tabulate(datas, headers=("load fract.", "web", "length")))
     print(*means)
-    print(
-        tabulate(
-            delta, headers=("load fract.", "web", "length"), floatfmt=".3e"
-        )
-    )
+    print(tabulate(delta, headers=("load fract.", "web", "length"), floatfmt=".3e"))

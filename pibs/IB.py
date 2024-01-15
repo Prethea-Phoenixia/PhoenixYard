@@ -7,12 +7,13 @@ import traceback
 from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
 from gun import POINT_START, POINT_BURNOUT, POINT_FRACTURE, POINT_EXIT
 from gun import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_PEAK_BREECH
+from highlow import POINT_PEAK_HIGH, POINT_PEAK_BLEED
 from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
 from recoiless import Recoiless
 from highlow import Highlow
 
 from prop import Propellant, GrainComp, GEOMETRIES, SimpleGeometry
-from opt import Constrained
+from optGun import Constrained
 from optRecoiless import ConstrainedRecoiless
 from tip import CreateToolTip
 from lang import STRING
@@ -259,9 +260,7 @@ class InteriorBallisticsFrame(Frame):
             w = kwargs["shotMass"]
             return (
                 "{:} {:.3g}x{:.4g}mm L{:.0f} ".format(
-                    "{:.4g} g".format(w * 1e3)
-                    if w < 1
-                    else "{:.4g} kg".format(w),
+                    "{:.4g} g".format(w * 1e3) if w < 1 else "{:.4g} kg".format(w),
                     cal * 1e3,
                     car_len * 1e3,
                     blr,
@@ -272,9 +271,7 @@ class InteriorBallisticsFrame(Frame):
     def save(self):
         gun = self.gun
         if gun is None:
-            messagebox.showinfo(
-                self.getLocStr("excTitle"), self.getLocStr("noDataMsg")
-            )
+            messagebox.showinfo(self.getLocStr("excTitle"), self.getLocStr("noDataMsg"))
             return
 
         fileName = filedialog.asksaveasfilename(
@@ -285,9 +282,7 @@ class InteriorBallisticsFrame(Frame):
         )
 
         if fileName == "":
-            messagebox.showinfo(
-                self.getLocStr("excTitle"), self.getLocStr("cancelMsg")
-            )
+            messagebox.showinfo(self.getLocStr("excTitle"), self.getLocStr("cancelMsg"))
             return
 
         try:
@@ -356,9 +351,7 @@ class InteriorBallisticsFrame(Frame):
 
             if self.DEBUG.get() == 1:
                 errMsg = "".join(
-                    traceback.format_exception(
-                        exc_type, exc_value, exc_traceback
-                    )
+                    traceback.format_exception(exc_type, exc_value, exc_traceback)
                 )
             else:
                 errMsg = str(e)
@@ -367,9 +360,7 @@ class InteriorBallisticsFrame(Frame):
     def export(self):
         gun = self.gun
         if gun is None:
-            messagebox.showinfo(
-                self.getLocStr("excTitle"), self.getLocStr("noDataMsg")
-            )
+            messagebox.showinfo(self.getLocStr("excTitle"), self.getLocStr("noDataMsg"))
             return
 
         fileName = filedialog.asksaveasfilename(
@@ -382,9 +373,7 @@ class InteriorBallisticsFrame(Frame):
         columnList = self.getLocStr("columnList")[gunType]
 
         if fileName == "":
-            messagebox.showinfo(
-                self.getLocStr("excTitle"), self.getLocStr("cancelMsg")
-            )
+            messagebox.showinfo(self.getLocStr("excTitle"), self.getLocStr("cancelMsg"))
             return
         try:
             with open(fileName, "w", encoding="utf-8", newline="") as csvFile:
@@ -575,9 +564,7 @@ class InteriorBallisticsFrame(Frame):
             locFunc=self.getLocStr,
             allLLF=self.locs,
         )
-        errorFrm.grid(
-            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
-        )
+        errorFrm.grid(row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
         errorFrm.columnconfigure(0, weight=1)
         errorFrm.rowconfigure(0, weight=1)
 
@@ -619,9 +606,7 @@ class InteriorBallisticsFrame(Frame):
             dropdowns=self.locs,
             descLabelKey="matFrmLabel",
         )
-        self.dropMat.grid(
-            row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
-        )
+        self.dropMat.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2)
 
         self.dropMatTemp = LocDropdown(
             parent=mecFrm,
@@ -636,9 +621,7 @@ class InteriorBallisticsFrame(Frame):
 
         self.dropMat.trace_add(
             "write",
-            lambda *args: self.dropMatTemp.reset(
-                self.dropMat.getObj().getTdict()
-            ),
+            lambda *args: self.dropMatTemp.reset(self.dropMat.getObj().getTdict()),
         )
 
         self.ssf = Loc2Input(
@@ -677,15 +660,10 @@ class InteriorBallisticsFrame(Frame):
             dropdowns=self.locs,
             descLabelKey="solFrmLabel",
         )
-        self.dropSoln.grid(
-            row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
-        )
+        self.dropSoln.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2)
 
         envFrm = LocLabelFrame(
-            rightFrm,
-            locKey="envFrmLabel",
-            locFunc=self.getLocStr,
-            allLLF=self.locs,
+            rightFrm, locKey="envFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
         )
         envFrm.grid(row=3, column=0, sticky="nsew")
         envFrm.columnconfigure(0, weight=1)
@@ -755,9 +733,7 @@ class InteriorBallisticsFrame(Frame):
             locFunc=self.getLocStr,
             allLLF=self.locs,
         )
-        consFrm.grid(
-            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
-        )
+        consFrm.grid(row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
         consFrm.columnconfigure(0, weight=1)
 
         j = 0
@@ -843,9 +819,7 @@ class InteriorBallisticsFrame(Frame):
             descLabelKey="Pressure Constraint",
         )
 
-        self.pControl.grid(
-            row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
-        )
+        self.pControl.grid(row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
 
         j += 1
         self.minWeb = Loc3Input(
@@ -884,9 +858,7 @@ class InteriorBallisticsFrame(Frame):
             locFunc=self.getLocStr,
             allLLF=self.locs,
         )
-        sampleFrm.grid(
-            row=i, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
-        )
+        sampleFrm.grid(row=i, column=0, columnspan=2, sticky="nsew", padx=2, pady=2)
         sampleFrm.columnconfigure(1, weight=1)
 
         self.dropDomain = LocDropdown(
@@ -932,9 +904,7 @@ class InteriorBallisticsFrame(Frame):
         )
         i += 1
         self.pbar = ttk.Progressbar(opFrm, mode="indeterminate", maximum=100)
-        self.pbar.grid(
-            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
-        )
+        self.pbar.grid(row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
 
         i += 1
 
@@ -1027,9 +997,7 @@ class InteriorBallisticsFrame(Frame):
                 "propellant": self.prop,
                 "grainSize": float(self.arcmm.get()) * 1e-3,
                 "chargeMass": chargeMass,
-                "chargeMassRatio": (
-                    float(self.chgkg.get()) / float(self.shtkg.get())
-                ),
+                "chargeMassRatio": (float(self.chgkg.get()) / float(self.shtkg.get())),
                 "chamberVolume": chamberVolume,
                 "expansionVolume": float(self.evL.get()) * 1e-3,
                 "portArea": breechS * float(self.perf.get()) * 1e-2,
@@ -1037,15 +1005,11 @@ class InteriorBallisticsFrame(Frame):
                 "burstPressure": float(self.bstMPa.get()) * 1e6,
                 "lengthGun": gunLength,
                 "chambrage": chambrage,  # chamber expansion
-                "nozzleExpansion": float(
-                    self.nozzExp.get()
-                ),  # nozzle expansion
+                "nozzleExpansion": float(self.nozzExp.get()),  # nozzle expansion
                 "nozzleEfficiency": float(self.nozzEff.get())
                 * 1e-2,  # nozzle efficiency
-                "dragCoefficient": float(self.dgc.get())
-                * 1e-2,  # drag coefficient
-                "designPressure": float(self.pTgt.get())
-                * 1e6,  # design pressure
+                "dragCoefficient": float(self.dgc.get()) * 1e-2,  # drag coefficient
+                "designPressure": float(self.pTgt.get()) * 1e6,  # design pressure
                 "designVelocity": float(self.vTgt.get()),  # design velocity
                 "tol": 10 ** -int(self.accExp.get()),
                 "minWeb": 1e-6 * float(self.minWeb.get()),
@@ -1065,13 +1029,9 @@ class InteriorBallisticsFrame(Frame):
                     }
                 )
             else:
-                self.kwargs.update(
-                    {"ambientP": 0, "ambientRho": 0, "ambientGamma": 1}
-                )
+                self.kwargs.update({"ambientP": 0, "ambientRho": 0, "ambientGamma": 1})
 
-            self.process = Process(
-                target=calculate, args=(self.queue, self.kwargs)
-            )
+            self.process = Process(target=calculate, args=(self.queue, self.kwargs))
             # self.pos = 0
             self.calButton.config(state="disabled")
             self.pbar.start(interval=10)
@@ -1084,9 +1044,7 @@ class InteriorBallisticsFrame(Frame):
             if self.DEBUG.get():
                 self.errorLst.append(
                     "".join(
-                        traceback.format_exception(
-                            exc_type, exc_value, exc_traceback
-                        )
+                        traceback.format_exception(exc_type, exc_value, exc_traceback)
                     )
                 )
             else:
@@ -1161,17 +1119,13 @@ class InteriorBallisticsFrame(Frame):
 
                 if optimize:
                     if self.useCv.getObj() == USE_CV:
-                        self.cvL.set(
-                            roundSig(kwargs["chamberVolume"] * 1e3, n=sigfig)
-                        )
+                        self.cvL.set(roundSig(kwargs["chamberVolume"] * 1e3, n=sigfig))
                     else:
                         self.ldf.set(
                             roundSig(kwargs["loadFraction"] * 100, n=sigfig)
                         )  # corrected "bulk" load fraction
 
-            self.ld.set(
-                toSI(trueLF * self.prop.rho_p, useSN=False).strip() + " kg/m³"
-            )
+            self.ld.set(toSI(trueLF * self.prop.rho_p, useSN=False).strip() + " kg/m³")
             # true load density
 
             _, _, _, _, vg, *_ = self.readTable(POINT_EXIT)
@@ -1213,16 +1167,12 @@ class InteriorBallisticsFrame(Frame):
 
             bore_mass = self.structure[0]
 
-            self.gm.set(
-                formatMass(bore_mass) if bore_mass is not None else "N/A"
-            )
+            self.gm.set(formatMass(bore_mass) if bore_mass is not None else "N/A")
 
             breech_nozzle_mass = self.structure[2]
 
             self.bm.set(
-                "N/A"
-                if breech_nozzle_mass is None
-                else formatMass(breech_nozzle_mass)
+                "N/A" if breech_nozzle_mass is None else formatMass(breech_nozzle_mass)
             )
 
         self.updateTable()
@@ -1263,9 +1213,7 @@ class InteriorBallisticsFrame(Frame):
             descLabelKey="typeLabel",
         )
 
-        self.typeOptn.grid(
-            row=i, column=0, sticky="nsew", padx=2, pady=2, columnspan=3
-        )
+        self.typeOptn.grid(row=i, column=0, sticky="nsew", padx=2, pady=2, columnspan=3)
         i += 1
 
         self.calmm = Loc3Input(
@@ -1310,9 +1258,7 @@ class InteriorBallisticsFrame(Frame):
             descLabelKey="ammoLabel",
         )
 
-        self.ammoOptn.grid(
-            row=i, column=0, sticky="nsew", padx=2, pady=2, columnspan=3
-        )
+        self.ammoOptn.grid(row=i, column=0, sticky="nsew", padx=2, pady=2, columnspan=3)
         i += 1
 
         self.insetmm = Loc3Input(
@@ -1348,9 +1294,7 @@ class InteriorBallisticsFrame(Frame):
             tooltipLocKey="specsText",
             allLLF=self.locs,
         )
-        propFrm.grid(
-            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
-        )
+        propFrm.grid(row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
         specFrm.rowconfigure(i, weight=1)
 
         propFrm.rowconfigure(1, weight=1)
@@ -1365,9 +1309,7 @@ class InteriorBallisticsFrame(Frame):
             dropdowns=self.locs,
             descLabelKey="propFrmLabel",
         )
-        self.dropProp.grid(
-            row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2
-        )
+        self.dropProp.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2)
 
         specScroll = ttk.Scrollbar(propFrm, orient="vertical")
         specScroll.grid(
@@ -1406,9 +1348,7 @@ class InteriorBallisticsFrame(Frame):
             locFunc=self.getLocStr,
             allLLF=self.locs,
         )
-        grainFrm.grid(
-            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
-        )
+        grainFrm.grid(row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
         grainFrm.columnconfigure(0, weight=1)
         grainFrm.rowconfigure(0, weight=1, minsize=100)
 
@@ -1423,9 +1363,7 @@ class InteriorBallisticsFrame(Frame):
         )
 
         j = 0
-        geomPlotFrm.grid(
-            row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
-        )
+        geomPlotFrm.grid(row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
 
         self.geomParentFrm = grainFrm
         self.geomPlotFrm = geomPlotFrm
@@ -1438,9 +1376,7 @@ class InteriorBallisticsFrame(Frame):
         )
 
         j += 1
-        self.dropGeom.grid(
-            row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
-        )
+        self.dropGeom.grid(row=j, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
         j += 1
         self.arcmm = Loc3Input(
             parent=grainFrm,
@@ -1502,9 +1438,7 @@ class InteriorBallisticsFrame(Frame):
             dropdowns=self.locs,
             descLabelKey="cvlfLabel",
         )
-        self.useCv.grid(
-            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
-        )
+        self.useCv.grid(row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
 
         i += 1
         self.ldf = Loc3Input(
@@ -2041,14 +1975,10 @@ class InteriorBallisticsFrame(Frame):
                     )
 
                 if self.plotEta.get():
-                    self.ax.plot(
-                        xs, etas, "crimson", label=self.getLocStr("figBleed")
-                    )
+                    self.ax.plot(xs, etas, "crimson", label=self.getLocStr("figBleed"))
 
             if self.plotAvgP.get():
-                self.axP.plot(
-                    xs, Pas, "tab:green", label=self.getLocStr("figAvgP")
-                )
+                self.axP.plot(xs, Pas, "tab:green", label=self.getLocStr("figAvgP"))
 
             if self.plotBaseP.get():
                 self.axP.plot(
@@ -2078,9 +2008,7 @@ class InteriorBallisticsFrame(Frame):
             )
 
             if self.plotBurnup.get():
-                self.ax.plot(
-                    xs, psis, c="tab:red", label=self.getLocStr("figPsi")
-                )
+                self.ax.plot(xs, psis, c="tab:red", label=self.getLocStr("figPsi"))
 
             # if self.plotRecoil.get():
             #     if gunType == CONVENTIONAL or gunType == HIGHLOW:
@@ -2288,9 +2216,7 @@ class InteriorBallisticsFrame(Frame):
         )  # this set the nbr. of values
         self.tv.grid(row=0, column=0, sticky="nsew")
 
-        vertscroll = ttk.Scrollbar(
-            tblFrm, orient="vertical"
-        )  # create a scrollbar
+        vertscroll = ttk.Scrollbar(tblFrm, orient="vertical")  # create a scrollbar
         vertscroll.configure(command=self.tv.yview)  # make it vertical
         vertscroll.grid(row=0, rowspan=2, column=1, sticky="nsew")
 
@@ -2318,9 +2244,7 @@ class InteriorBallisticsFrame(Frame):
 
         self.specs.insert(
             "end",
-            "{:}: {:>4.0f} kg/m³\n".format(
-                self.getLocStr("densityDesc"), compo.rho_p
-            ),
+            "{:}: {:>4.0f} kg/m³\n".format(self.getLocStr("densityDesc"), compo.rho_p),
         )
         isp = compo.getIsp()
         self.specs.insert(
@@ -2420,9 +2344,7 @@ class InteriorBallisticsFrame(Frame):
                 ys.append(0)
 
                 self.geomAx.plot(xs, ys)
-                self.geomAx.grid(
-                    which="major", color="grey", linestyle="dotted"
-                )
+                self.geomAx.grid(which="major", color="grey", linestyle="dotted")
                 self.geomAx.minorticks_on()
                 self.geomAx.set_xlim(left=0, right=min(prop.Z_b, 2))
                 self.geomAx.xaxis.set_ticks(
@@ -2500,25 +2422,17 @@ class InteriorBallisticsFrame(Frame):
         self.tv["columns"] = columnList
         self.tv["show"] = "headings"
 
-        self.tv.tag_configure(
-            self.getLocStr(POINT_PEAK_AVG), foreground="#2ca02c"
-        )
-        self.tv.tag_configure(
-            self.getLocStr(POINT_PEAK_BREECH), foreground="orange"
-        )
+        self.tv.tag_configure(self.getLocStr(POINT_PEAK_HIGH), foreground="cyan")
+        self.tv.tag_configure(self.getLocStr(POINT_PEAK_AVG), foreground="#2ca02c")
+        self.tv.tag_configure(self.getLocStr(POINT_PEAK_BREECH), foreground="orange")
+        self.tv.tag_configure(self.getLocStr(POINT_PEAK_BLEED), foreground="orange")
         self.tv.tag_configure(
             self.getLocStr(POINT_PEAK_SHOT), foreground="yellow green"
         )
         self.tv.tag_configure(self.getLocStr(POINT_BURNOUT), foreground="red")
-        self.tv.tag_configure(
-            self.getLocStr(POINT_FRACTURE), foreground="brown"
-        )
-        self.tv.tag_configure(
-            self.getLocStr(POINT_EXIT), foreground="steel blue"
-        )
-        self.tv.tag_configure(
-            self.getLocStr(POINT_START), foreground="steel blue"
-        )
+        self.tv.tag_configure(self.getLocStr(POINT_FRACTURE), foreground="brown")
+        self.tv.tag_configure(self.getLocStr(POINT_EXIT), foreground="steel blue")
+        self.tv.tag_configure(self.getLocStr(POINT_START), foreground="steel blue")
         self.tv.tag_configure("*", foreground="tan")
 
         t_Font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
@@ -2578,8 +2492,7 @@ class InteriorBallisticsFrame(Frame):
                 geom,
                 float(self.grdR.get()),
                 float(self.grlR.get()),
-                float(self.burnRateFudge.get())
-                * 1e-2,  # convert percentage to float
+                float(self.burnRateFudge.get()) * 1e-2,  # convert percentage to float
             )
             self.updateGeomPlot()
 
@@ -2589,9 +2502,7 @@ class InteriorBallisticsFrame(Frame):
             if self.DEBUG.get():
                 self.errorLst.append(
                     "".join(
-                        traceback.format_exception(
-                            exc_type, exc_value, exc_traceback
-                        )
+                        traceback.format_exception(exc_type, exc_value, exc_traceback)
                     )
                 )
             else:
@@ -2742,14 +2653,10 @@ class InteriorBallisticsFrame(Frame):
         # regardless of dpi. on Windows, default is Segoe UI at 9 points
         # so the default row height should be around 12
 
-        style.configure(
-            "Treeview", rowheight=round(12 * (FONTSIZE / 8) * dpi / 72.0)
-        )
+        style.configure("Treeview", rowheight=round(12 * (FONTSIZE / 8) * dpi / 72.0))
         style.configure("Treeview.Heading", font=(FONTNAME, FONTSIZE))
         style.configure("TButton", font=(FONTNAME, FONTSIZE + 2, "bold"))
-        style.configure(
-            "TLabelframe.Label", font=(FONTNAME, FONTSIZE + 2, "bold")
-        )
+        style.configure("TLabelframe.Label", font=(FONTNAME, FONTSIZE + 2, "bold"))
         style.configure(
             "SubLabelFrame.TLabelframe.Label",
             font=(FONTNAME, FONTSIZE + 2),
@@ -2891,11 +2798,7 @@ def calculate(
         exc_type, exc_value, exc_traceback = sys.exc_info()
         if debug:
             errorReport.append(
-                "".join(
-                    traceback.format_exception(
-                        exc_type, exc_value, exc_traceback
-                    )
-                )
+                "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
             )
         else:
             errorReport.append(str(e))
@@ -2945,9 +2848,7 @@ def main():
     root.iconbitmap(resolvepath("ui/logo.ico"))
 
     loadfont(resolvepath("ui/sarasa-fixed-sc-regular.ttf"), False, True)
-    font_manager.fontManager.addfont(
-        resolvepath("ui/sarasa-fixed-sc-regular.ttf")
-    )
+    font_manager.fontManager.addfont(resolvepath("ui/sarasa-fixed-sc-regular.ttf"))
     # from tkinter import font
     # print(font.families())
 

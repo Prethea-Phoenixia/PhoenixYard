@@ -30,6 +30,11 @@ class Constrained:
         designPressure,
         designVelocity,
         chambrage,
+        sol=SOL_LAGRANGE,
+        ambientRho=1.204,
+        ambientP=101.325e3,
+        ambientGamma=1.4,
+        control=POINT_PEAK_AVG,
         **_,
     ):
         # constants for constrained designs
@@ -65,6 +70,12 @@ class Constrained:
         self.v_d = designVelocity
         self.chi_k = chambrage
 
+        self.sol = sol
+        self.ambientRho = ambientRho
+        self.ambientP = ambientP
+        self.ambientGamma = ambientGamma
+        self.control = control
+
     def __getattr__(self, attrName):
         if "propellant" in vars(self) and not (
             attrName.startswith("__") and attrName.endswith("__")
@@ -91,11 +102,6 @@ class Constrained:
         cc=None,
         it=0,
         lengthGun=None,
-        sol=SOL_LAGRANGE,
-        ambientRho=1.204,
-        ambientP=101.325e3,
-        ambientGamma=1.4,
-        control=POINT_PEAK_AVG,
         known_bore=False,
         suppress=False,  # suppress design velocity exceeded before peak pressure check
         **_,
@@ -108,14 +114,9 @@ class Constrained:
                 loadFraction <= 0,
                 loadFraction > 1,
                 maxLength <= 0,
-                ambientRho < 0,
-                ambientP < 0,
-                ambientGamma < 1,
             )
         ):
-            raise ValueError(
-                "Invalid parameters to solve constrained design problem"
-            )
+            raise ValueError("Invalid parameters to solve constrained design problem")
 
         """
         minWeb  : represents minimum possible grain size
@@ -141,9 +142,7 @@ class Constrained:
         f_psi_Z = self.f_psi_Z
 
         if loadFraction > maxLF:
-            raise ValueError(
-                "Specified Load Fraction Violates Geometrical Constraint"
-            )
+            raise ValueError("Specified Load Fraction Violates Geometrical Constraint")
 
         omega = m * chargeMassRatio
         V_0 = omega / (rho_p * loadFraction)
@@ -160,11 +159,11 @@ class Constrained:
             cc = 1 - (1 - 1 / chi_k) * log(l_bar_g_0 + 1) / l_bar_g_0
 
         if any((labda_1 is None, labda_2 is None)):
-            if sol == SOL_LAGRANGE:
+            if self.sol == SOL_LAGRANGE:
                 labda_1, labda_2 = 1 / 2, 1 / 3
-            elif sol == SOL_PIDDUCK:
+            elif self.sol == SOL_PIDDUCK:
                 labda_1, labda_2 = pidduck(omega / (phi_1 * m), gamma, tol)
-            elif sol == SOL_MAMONTOV:
+            elif self.sol == SOL_MAMONTOV:
                 labda_1, labda_2 = pidduck(omega / (phi_1 * m), 1, tol)
             else:
                 raise ValueError("Unknown Solution")
@@ -173,14 +172,14 @@ class Constrained:
         v_j = (2 * f * omega / (theta * phi * m)) ** 0.5
         v_bar_d = v_d / v_j
 
-        if ambientRho != 0:
-            c_a_bar = (ambientGamma * ambientP / ambientRho) ** 0.5 / v_j
-            p_a_bar = ambientP / (f * Delta)
+        if self.ambientRho != 0:
+            c_a_bar = (self.ambientGamma * self.ambientP / self.ambientRho) ** 0.5 / v_j
+            p_a_bar = self.ambientP / (f * Delta)
         else:
             c_a_bar = 0
             p_a_bar = 0
 
-        gamma_1 = ambientGamma
+        gamma_1 = self.ambientGamma
 
         if v_j < v_d and not known_bore:
             raise ValueError(
@@ -193,9 +192,7 @@ class Constrained:
         Zs = cubic(a=chi * mu, b=chi * labda, c=chi, d=-psi_0)
         # pick a valid solution between 0 and 1
         Zs = tuple(
-            Z
-            for Z in Zs
-            if not isinstance(Z, complex) and (Z > 0.0 and Z < 1.0)
+            Z for Z in Zs if not isinstance(Z, complex) and (Z > 0.0 and Z < 1.0)
         )  # evaluated from left to right, guards against complex >/< float
         if len(Zs) < 1:
             raise ValueError(
@@ -209,7 +206,7 @@ class Constrained:
             l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
             p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
-            if control == POINT_PEAK_AVG:
+            if self.control == POINT_PEAK_AVG:
                 return p_bar
 
             else:
@@ -222,9 +219,9 @@ class Constrained:
                     phi_1 * m + labda_1_prime * omega
                 )
 
-                if control == POINT_PEAK_SHOT:
+                if self.control == POINT_PEAK_SHOT:
                     return p_bar / factor_s
-                elif control == POINT_PEAK_BREECH:
+                elif self.control == POINT_PEAK_BREECH:
                     return p_bar / factor_b
 
         """
@@ -269,9 +266,7 @@ class Constrained:
             def _ode_Z(Z, t_bar, l_bar, v_bar, _):
                 """burnup domain ode of internal ballistics"""
                 psi = f_psi_Z(Z)
-                l_psi_bar = (
-                    1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
-                )
+                l_psi_bar = 1 - Delta / rho_p - Delta * (alpha - 1 / rho_p) * psi
 
                 p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
                 if c_a_bar != 0 and v_bar > 0:
@@ -313,9 +308,7 @@ class Constrained:
 
             p_bar_j = _f_p_bar(Z_j, l_bar_j, v_bar_j)
 
-            if (
-                p_bar_j >= 2 * p_bar_d
-            ):  # case for abort due to excessive pressure
+            if p_bar_j >= 2 * p_bar_d:  # case for abort due to excessive pressure
                 return p_bar_j - p_bar_d, Z_j, t_bar_j, l_bar_j, v_bar_j
 
             # case for abort due to decreasing pressure
@@ -362,8 +355,7 @@ class Constrained:
 
         if dp_bar_probe < 0:
             raise ValueError(
-                "Design pressure cannot be achieved by varying"
-                + " web down to minimum"
+                "Design pressure cannot be achieved by varying" + " web down to minimum"
             )
 
         while dp_bar_probe > 0:
@@ -514,14 +506,9 @@ class Constrained:
                 maxLength=maxLength,
                 labda_1=labda_1,
                 labda_2=labda_2,
-                sol=sol,
                 cc=cc_n,
                 it=it + 1,
                 lengthGun=l_bar_g * l_0,
-                ambientRho=ambientRho,
-                ambientP=ambientP,
-                ambientGamma=ambientGamma,
-                control=control,
                 known_bore=known_bore,
                 suppress=suppress,
             )
@@ -542,7 +529,6 @@ class Constrained:
         ambientRho=1.204,
         ambientP=101.325e3,
         ambientGamma=1.4,
-        loadFraction=None,  # if a load fraction value is passed, it is used as a hint
         control=POINT_PEAK_AVG,
         **_,
     ):
@@ -601,11 +587,7 @@ class Constrained:
         records = []
 
         for i in range(MAX_GUESSES):
-            startProbe = (
-                loadFraction
-                if (i == 1 and loadFraction is not None)
-                else uniform(tol, 1 - tol)
-            )
+            startProbe = uniform(tol, 1 - tol)
             try:
                 _, lt_i, lg_i = f(startProbe)
                 records.append((startProbe, lt_i))
