@@ -1004,7 +1004,7 @@ CHINESE = {
     "figPsi": "燃去比例",
     "figRecoil": "后坐力\nMN",
     "figHighChamber": "高压室压强\nMPa",
-    "figBleedP": "低压室膛底\nMPa",
+    "figBleedP": "低压室膛底压强\nMPa",
     "figBleed": "流出比例",
     "solLabel": "计算选项",
     "atmosLabel": "计算弹前空气阻力",

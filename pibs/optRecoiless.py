@@ -71,14 +71,13 @@ class ConstrainedRecoiless:
 
         self.chi_k = chambrage
 
-        self.control = control
+        self.tol = tol
         self.minWeb = minWeb
         self.maxLength = maxLength
         self.ambientRho = ambientRho
         self.ambientP = ambientP
         self.ambientGamma = ambientGamma
-
-        self.tol = tol
+        self.control = control
 
     def __getattr__(self, attrName):
         if "propellant" in vars(self) and not (
@@ -103,14 +102,7 @@ class ConstrainedRecoiless:
         suppress=False,  # suppress design velocity exceeded before peak pressure check
         **_,
     ):
-        if any(
-            (
-                self.tol <= 0,
-                chargeMassRatio <= 0,
-                loadFraction <= 0,
-                loadFraction > 1,
-            )
-        ):
+        if any((chargeMassRatio <= 0, loadFraction <= 0, loadFraction > 1)):
             raise ValueError("Invalid parameters to solve constrained design problem")
         """
         minWeb  : represents minimum possible grain size
@@ -236,8 +228,10 @@ class ConstrainedRecoiless:
                 p_s_bar = p_bar / (1 + (omega - y) / (3 * phi_1 * m) * (1 - 0.5 * H))
                 if self.control == POINT_PEAK_SHOT:
                     return p_s_bar
+
                 elif self.control == POINT_PEAK_STAG:
                     return p_s_bar * (1 + (omega - y) / (2 * phi_1 * m) * (1 + H) ** -1)
+
                 elif self.control == POINT_PEAK_BREECH:
                     return (
                         p_s_bar * (1 + (omega - y) / (2 * phi_1 * m) * (1 - H))
@@ -247,11 +241,7 @@ class ConstrainedRecoiless:
 
         p_bar_d = p_d / (f * Delta)  # convert to unitless
         l_bar_d = self.maxLength / l_0
-        # print(l_bar_d)
-        """
-        if p_bar_d < p_bar_s:
-            raise ValueError("Pressure constraint lower than starting value.")
-        """
+
         """
         step 1, find grain size that satisifies design pressure
         """
@@ -259,12 +249,7 @@ class ConstrainedRecoiless:
         def abort_Z(x, ys, record):
             Z, _, l_bar, v_bar, eta, tau = x, *ys
             p_bar = _f_p_bar(Z, l_bar, v_bar, eta, tau)
-
-            oZ, (_, ol_bar, ov_bar, oeta, otau) = record[-1]
-            op_bar = _f_p_bar(oZ, ol_bar, ov_bar, oeta, otau)
-
-            # print(x, ys)
-            return (p_bar > 2 * p_bar_d) or (p_bar < op_bar) or (l_bar > l_bar_d)
+            return (p_bar > 2 * p_bar_d) or l_bar > l_bar_d
 
         def _f_p_e_1(e_1):
             """
@@ -314,72 +299,96 @@ class ConstrainedRecoiless:
                     dv_bar = 0  # dv_bar/dZ
 
                 deta = C_A * S_j_bar * p_bar / tau**0.5 * dt_bar  # deta / dZ
-                dtau = ((1 - tau) * dpsi - 2 * v_bar * dv_bar - theta * tau * deta) / (
-                    psi - eta
-                )
+                dtau = (
+                    (1 - tau) * (dpsi) - 2 * v_bar * (dv_bar) - theta * tau * (deta)
+                ) / (psi - eta)
+
                 return dt_bar, dl_bar, dv_bar, deta, dtau
 
+            # stepVanished = False
             record = [[Z_0, [0, 0, 0, 0, 1]]]
-            Z_j, (t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j), _ = RKF78(
-                dFunc=_ode_Z,
-                iniVal=(0, 0, 0, 0, 1),
-                x_0=Z_0,
-                x_1=Z_b,
-                relTol=self.tol,
-                absTol=self.tol**2,
-                abortFunc=abort_Z,
-                record=record,
-                # debug=True,
-            )
-
-            p_bar_j = _f_p_bar(Z_j, l_bar_j, v_bar_j, eta_j, tau_j)
-            if l_bar_j > l_bar_d:
-                raise ValueError("Solution requires excessive tube length")
-            if p_bar_j >= 2 * p_bar_d:  # case for abort due to excessive pressure
-                return p_bar_j - p_bar_d, Z_j, t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j
-
-            def _f_p_Z(Z):
-                i = record.index([v for v in record if v[0] <= Z][-1])
-                x = record[i][0]
-                ys = record[i][1]
-
-                r = []
-                _, (t_bar, l_bar, v_bar, eta, tau), _ = RKF78(
+            try:
+                (Z_j, (t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j), _) = RKF78(
                     dFunc=_ode_Z,
-                    iniVal=ys,
-                    x_0=x,
-                    x_1=Z,
+                    iniVal=(0, 0, 0, 0, 1),
+                    x_0=Z_0,
+                    x_1=Z_b,
                     relTol=self.tol,
                     absTol=self.tol**2,
-                    record=r,
+                    abortFunc=abort_Z,
+                    record=record,
                 )
 
-                xs = [v[0] for v in record]
-                record.extend(v for v in r if v[0] not in xs)
-                record.sort()
-                p_bar = _f_p_bar(Z, l_bar, v_bar, eta, tau)
-                return p_bar, Z, t_bar, l_bar, v_bar, eta, tau
+                if Z_j not in [line[0] for line in record]:
+                    record.append([Z_j, [t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j]])
+            except ValueError:
+                Z_j, (t_bar_j, l_bar_j, v_bar_j, eta_j, tau_j) = record[-1]
 
-            if len(record) > 1:
-                Z_i = record[-2][0]
-            else:
-                Z_i = Z_0
+            p_bar_j = _f_p_bar(Z_j, l_bar_j, v_bar_j, eta_j, tau_j)
 
-            Z_1, Z_2 = gss(
-                lambda Z: _f_p_Z(Z)[0],
-                Z_i,
-                Z_j,
-                y_rel_tol=0.5 * self.tol,  # 0.5 as safety factor
-                findMin=False,
-            )
-            Z_p = 0.5 * (Z_1 + Z_2)
+            Z_i = Z_0
+            peak = None
 
-            if abs(Z_p - Z_b) < self.tol:
-                Z_p = Z_b
+            # find the last peak
+            if len(record) > 2:
+                p_bars = [
+                    _f_p_bar(Z, l_bar, v_bar, eta, tau)
+                    for (Z, (t_bar, l_bar, v_bar, eta, tau)) in record
+                ]
 
-            p_bar_p, *vals = _f_p_Z(Z_p)
+                for i, (l, c, r) in enumerate(
+                    zip(p_bars[:-2], p_bars[1:-1], p_bars[2:])
+                ):
+                    if l < c and c > r:
+                        peak = i + 1
 
-            return p_bar_p - p_bar_d, *vals
+            if peak is None:
+                # no peak, so it suffice to compare the end points.
+                if p_bar_j == 0:
+                    p_bar_j = inf
+                return (p_bar_j - p_bar_d, record[-1][0], *record[-1][-1])
+            else:  # peak exist, must compare the peak and the two end points.
+                Z_i = record[peak - 1][0]
+                Z_j = record[peak + 1][0]
+
+                def _f_p_Z(Z):
+                    i = record.index([v for v in record if v[0] <= Z][-1])
+                    x = record[i][0]
+                    ys = record[i][1]
+
+                    r = []
+                    _, (t_bar, l_bar, v_bar, eta, tau), _ = RKF78(
+                        dFunc=_ode_Z,
+                        iniVal=ys,
+                        x_0=x,
+                        x_1=Z,
+                        relTol=self.tol,
+                        absTol=self.tol**2,
+                        record=r,
+                    )
+
+                    xs = [v[0] for v in record]
+                    record.extend(v for v in r if v[0] not in xs)
+                    record.sort()
+                    return _f_p_bar(Z, l_bar, v_bar, eta, tau)
+
+                Z_1, Z_2 = gss(
+                    _f_p_Z, Z_i, Z_j, y_rel_tol=0.5 * self.tol, findMin=False
+                )
+                Z_p = 0.5 * (Z_1 + Z_2)
+
+                if abs(Z_p - Z_b) < self.tol:
+                    Z_p = Z_b
+
+                p_bar_p = _f_p_Z(Z_p)
+                i = [line[0] for line in record].index(Z_p)
+
+                return p_bar_p - p_bar_d, record[i][0], *record[i][-1]
+                # p_bar_max = max((p_bar_p, p_bar_j))
+                # if p_bar_p == p_bar_max:
+                #     return (p_bar_p - p_bar_d, record[i][0], *record[i][-1])
+                # else:
+                #     return (p_bar_j - p_bar_d, record[-1][0], *record[-1][-1])
 
         dp_bar_probe, Z, *_ = _f_p_e_1(self.minWeb)
         probeWeb = self.minWeb
@@ -394,15 +403,13 @@ class ConstrainedRecoiless:
 
         while dp_bar_probe > 0:
             probeWeb *= 2
-            dp_bar_probe_next = _f_p_e_1(probeWeb)[0]
-            dp_bar_probe = dp_bar_probe_next
+            dp_bar_probe = _f_p_e_1(probeWeb)[0]
 
         e_1, e_1_2 = dekker(
             lambda web: _f_p_e_1(web)[0],
-            probeWeb,  # >0
-            0.5 * probeWeb,  # ?0
+            probeWeb,
+            0.5 * probeWeb,
             y_abs_tol=p_bar_d * self.tol,
-            # debug=True,
         )  # this is the e_1 that satisifies the pressure specification.
 
         """
@@ -502,8 +509,9 @@ class ConstrainedRecoiless:
         def abort_v(x, ys, record):
             # v_bar = x
             t_bar, _, l_bar, _, _ = ys
-            # ot_bar, *_ = record[-1][-1]
-            return l_bar > l_bar_d
+
+            ot_bar, *_ = record[-1][-1]
+            return l_bar > l_bar_d or t_bar < ot_bar
 
         try:
             vtzlet_record = [[v_bar_i, (t_bar_i, Z_i, l_bar_i, eta_i, tau_i)]]
@@ -596,7 +604,6 @@ class ConstrainedRecoiless:
 
         for i in range(MAX_GUESSES):
             startProbe = uniform(self.tol, 1 - self.tol)
-
             try:
                 _, lt_i, lg_i = f(startProbe)
                 records.append((startProbe, lt_i))
@@ -699,10 +706,9 @@ if __name__ == "__main__":
         nozzleExpansion=4,
         nozzleEfficiency=0.92,
         chambrage=1.5,
-        control=POINT_PEAK_AVG,
-        minWeb=1e-6,
-        maxLength=150,
         tol=1e-3,
+        maxLength=100,
+        minWeb=1e-6,
     )
 
     datas = []
