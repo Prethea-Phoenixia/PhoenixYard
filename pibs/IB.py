@@ -2540,11 +2540,17 @@ class InteriorBallisticsFrame(Frame):
             self.bstMPa.restore()
             self.perf.restore()
             self.plotAvgP.reLocalize("plotLowAvgP")
+
+            self.solve_W_Lg.set(0)
+            self.solve_W_Lg.disable()
+
         else:
             self.evL.remove()
             self.bstMPa.remove()
             self.perf.remove()
             self.plotAvgP.reLocalize("plotAvgP")
+
+            self.solve_W_Lg.enable()
 
         if gunType == CONVENTIONAL or gunType == RECOILESS:
             self.ammoOptn.enable()
