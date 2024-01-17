@@ -158,6 +158,7 @@ def RKF78(
         adaptTo = [True] * len(iniVal)
 
     sig = inspect.signature(dFunc)
+
     params = len(
         [
             param
@@ -165,6 +166,7 @@ def RKF78(
             if param.kind == param.POSITIONAL_OR_KEYWORD
         ]
     )
+
     if debug:
         paramstr = [
             str(param)
