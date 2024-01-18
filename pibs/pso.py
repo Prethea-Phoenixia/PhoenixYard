@@ -6,7 +6,7 @@ pso.py: Particle Swarm Optimization
 import inspect
 from random import random  # random [0, 1)
 from multiprocessing import Pool
-from math import inf
+from math import inf, isinf
 
 
 def pso(
@@ -16,6 +16,7 @@ def pso(
     iw=0.8,
     cog=0.1,
     soc=0.1,
+    x_rel_tol=0,
     y_rel_tol=0,
     y_abs_tol=1e-14,
     consecutive=100,
@@ -53,9 +54,6 @@ def pso(
             + " and search space constraint."
         )
 
-    ps = [
-        [] for _ in range(n)
-    ]  # initialize positional vector of the searching particles.
     for s in ss:
         """
         generate initial position vector using random distribution,
@@ -66,58 +64,85 @@ def pso(
             and len(s) == 2
             and s[0] != s[1]
         ):
-            s_min, s_max = min(s), max(s)
-            delta = s_max - s_min
-            for p in ps:
-                p.append(random() * delta + s_min)
+            pass
         else:
             raise ValueError(
                 f"Each element wise constraint must be of form (min, max), not {str(s)}."
             )
 
-    pbs = [None for _ in range(n)]  # location of particle best
-    fpbs = [inf for _ in range(n)]  # value of particle best
-    vs = [[0 for _ in ss] for _ in range(n)]
-
-    fgb = inf
-    gb = None  # initialize global best
-
     itc = 0  # iterations counter
-    n = 0
     with Pool() as pool:
-        while True:
-            fs = pool.starmap(f, ps)
+        print("pool started")
+        vps = []
+        vfps = []
+        while len(vps) < n:
+            ps = []
+            for _ in range(n):
+                p = []
+                for s in ss:
+                    s_min, s_max = min(s), max(s)
+                    delta = s_max - s_min
+                    p.append(random() * delta + s_min)
 
+                ps.append(p)
+
+            fps = pool.starmap(f, ps)
+
+            for p, fp in zip(ps, fps):
+                if not isinf(fp):
+                    vps.append(p)
+                    vfps.append(fp)
+
+        ps = vps[:n]
+        fps = vfps[:n]
+        pbs = [v for v in ps]
+        fpbs = [v for v in fps]
+        # pbs = [None for _ in range(n)]  # location of particle best
+        # fpbs = [inf for _ in range(n)]  # value of particle best
+        vs = [[0 for _ in ss] for _ in range(n)]
+
+        fgb = inf
+        gb = None  # initialize global best
+        print("generated valid initial guesses")
+
+        while True:
             # updates global best
-            minfs = min(fs)
+            minfs = min(fps)
             if minfs < fgb:
                 fgb = minfs
-                gb = ps[fs.index(fgb)]
+                gb = ps[fps.index(fgb)]
                 itc = 0
 
-            maxfs = max(fs)
+            print("val", minfs, fgb)
+
+            maxfs = max(fps)
             if abs(maxfs - minfs) < min(abs(maxfs), abs(minfs)) * y_rel_tol:
-                print("broken via rel", n)
+                print("broken via rel")
                 break
             elif abs(maxfs - minfs) < y_abs_tol:
-                print("broken via abs", n)
+                print("broken via abs")
                 break
             elif itc > consecutive:
-                print("broken via cons", n)
+                print("broken via cons")
                 break
+            else:
+                components = [*zip(*ps)]
+                delta = 0
+                for component in components:
+                    delta += (max(component) - min(component)) / min(
+                        abs(v) for v in component
+                    )
+                print("delta", delta)
+                if delta < x_rel_tol:
+                    print("broken via x rel tol")
+                    break
 
             new_ps = []
             new_pbs = []
             new_fpbs = []
             new_vs = []
 
-            for p, fp, pb, fpb, v in zip(ps, fs, pbs, fpbs, vs):
-                if fp < fpb:
-                    pb = p
-                    fpb = fp
-
-                new_pbs.append(pb)
-                new_fpbs.append(fpb)
+            for p, fp, pb, fpb, v in zip(ps, fps, pbs, fpbs, vs):
                 new_ps.append([p_i + v_i for p_i, v_i in zip(p, v)])
 
                 new_v = []
@@ -131,14 +156,29 @@ def pso(
 
                 new_vs.append(new_v)
 
+                if fp < fpb:
+                    new_pbs.append(p)
+                    new_fpbs.append(fp)
+                else:
+                    new_pbs.append(pb)
+                    new_fpbs.append(fpb)
+
+            # print(new_pbs)
+
             ps = new_ps
             pbs = new_pbs
             fpbs = new_fpbs
             vs = new_vs
 
+            fps = pool.starmap(f, ps)
+
             itc += 1
 
-            n += 1
+        for (s_min, s_max), p in zip(ss, gb):
+            print(s_min, p, s_max)
+
+        for p, fp in zip(ps, fps):
+            print(p, ":", fp)
 
         return gb, fgb
 

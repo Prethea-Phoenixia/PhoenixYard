@@ -1,22 +1,20 @@
 from math import pi, log
 from num import gss, RKF78, cubic, bisect
-from prop import GrainComp, Propellant
+
 
 from gun import DOMAIN_TIME, DOMAIN_LENG
 from gun import (
     POINT_START,
     POINT_PEAK_AVG,
     POINT_PEAK_SHOT,
-    POINT_PEAK_BREECH,
     POINT_FRACTURE,
     POINT_BURNOUT,
     POINT_EXIT,
 )
+from gun import minTol
 
 POINT_PEAK_HIGH = "PEAK_HIGH_P"
 POINT_PEAK_BLEED = "PEAK_BLEED_P"
-
-from gun import minTol
 
 
 class Highlow:
@@ -34,7 +32,6 @@ class Highlow:
         portArea,
         chambrage,
         lengthGun,
-        nozzleExpansion,
         dragCoefficient=0,
         **_,
     ):
@@ -72,7 +69,6 @@ class Highlow:
         self.p_0_s = startPressure
 
         self.l_g = lengthGun
-        self.A_bar = nozzleExpansion
         self.chi_k = chambrage
 
         self.Delta = self.omega / self.V_0
@@ -1295,6 +1291,7 @@ if __name__ == "__main__":
     d_0 = 4*2e_1+3*d_0 = 11 * e_1
     """
     from tabulate import tabulate
+    from prop import GrainComp, Propellant
 
     compositions = GrainComp.readFile("data/propellants.csv")
 
@@ -1309,7 +1306,7 @@ if __name__ == "__main__":
     test = Highlow(
         caliber=0.082,
         shotMass=5,
-        propellant=M17C,
+        propellant=M1C,
         grainSize=5e-3,
         chargeMass=0.3,
         chamberVolume=0.3 / M1C.rho_p / lf,
@@ -1317,7 +1314,6 @@ if __name__ == "__main__":
         startPressure=5e6,
         burstPressure=10e6,
         lengthGun=3.5,
-        nozzleExpansion=2.0,
         portArea=0.5 * (pi * 0.082**2 * 0.25),
         chambrage=1,
     )
