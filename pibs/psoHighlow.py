@@ -80,15 +80,16 @@ class psoHighlow:
 
         self.show = False
 
+        constraints = [
+            (minWeb, maxWeb),
+            (minCV, maxCV),
+            (minEV, maxEV),
+            (minPortA, maxPortA),
+            (minLength, maxLength),
+        ]
         solution, dev = pso(
             self._f,
-            [
-                (minWeb, maxWeb),
-                (minCV, maxCV),
-                (minEV, maxEV),
-                (minPortA, maxPortA),
-                (minLength, maxLength),
-            ],
+            constraints,
             # y_rel_tol=self.tol,
             # y_abs_tol=self.tol,
             x_rel_tol=self.tol,
@@ -98,8 +99,12 @@ class psoHighlow:
             soc=soc,
         )
         self.show = True
-        print(solution, dev)
         self._f(*solution)
+
+        for (s_min, s_max), p in zip(constraints, solution):
+            print(s_min, p, s_max)
+
+        print(dev)
 
     def _f(self, grainSize, chamberVolume, expansionVolume, portArea, lengthGun):
         try:
@@ -150,12 +155,16 @@ class psoHighlow:
         if self.show:
             print(p_high, p_low, v_g)
 
-        dev = sum(
-            (
-                (abs(p_high - self.designHighPressure) / self.designHighPressure),
-                (abs(p_low - self.designLowPressure) / self.designLowPressure),
-                (abs(v_g - self.designVelocity) / self.designVelocity),
+        dev = (
+            sum(
+                v**2
+                for v in (
+                    abs(p_high - self.designHighPressure) / self.designHighPressure,
+                    abs(p_low - self.designLowPressure) / self.designLowPressure,
+                    abs(v_g - self.designVelocity) / self.designVelocity,
+                )
             )
+            ** 0.5
         )
 
         return dev
@@ -196,12 +205,12 @@ if __name__ == "__main__":
         maxCV=1e-2,
         minEV=1e-4,
         maxEV=1e-2,
-        minPortA=1e-4,
+        minPortA=1e-6,
         maxPortA=1e-2,
         minLength=0.01,
         maxLength=0.5,
         control=POINT_PEAK_AVG,  # targeted pressure
-        designHighPressure=100e6,
-        designLowPressure=10e6,
+        designHighPressure=50e6,
+        designLowPressure=7.5e6,
         designVelocity=50,
     )

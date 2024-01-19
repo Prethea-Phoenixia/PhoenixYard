@@ -72,7 +72,7 @@ def pso(
 
     itc = 0  # iterations counter
     with Pool() as pool:
-        print("pool started")
+        # print("pool started")
         vps = []
         vfps = []
         while len(vps) < n:
@@ -97,13 +97,11 @@ def pso(
         fps = vfps[:n]
         pbs = [v for v in ps]
         fpbs = [v for v in fps]
-        # pbs = [None for _ in range(n)]  # location of particle best
-        # fpbs = [inf for _ in range(n)]  # value of particle best
         vs = [[0 for _ in ss] for _ in range(n)]
 
         fgb = inf
         gb = None  # initialize global best
-        print("generated valid initial guesses")
+        # print("generated valid initial guesses")
 
         while True:
             # updates global best
@@ -113,17 +111,17 @@ def pso(
                 gb = ps[fps.index(fgb)]
                 itc = 0
 
-            print("val", minfs, fgb)
+            # print("val", minfs, fgb)
 
             maxfs = max(fps)
             if abs(maxfs - minfs) < min(abs(maxfs), abs(minfs)) * y_rel_tol:
-                print("broken via rel")
+                # print("broken via rel")
                 break
             elif abs(maxfs - minfs) < y_abs_tol:
-                print("broken via abs")
+                # print("broken via abs")
                 break
             elif itc > consecutive:
-                print("broken via cons")
+                # print("broken via cons")
                 break
             else:
                 components = [*zip(*ps)]
@@ -132,9 +130,9 @@ def pso(
                     delta += (max(component) - min(component)) / min(
                         abs(v) for v in component
                     )
-                print("delta", delta)
+                # print("delta", delta)
                 if delta < x_rel_tol:
-                    print("broken via x rel tol")
+                    # print("broken via x rel tol")
                     break
 
             new_ps = []
@@ -174,11 +172,8 @@ def pso(
 
             itc += 1
 
-        for (s_min, s_max), p in zip(ss, gb):
-            print(s_min, p, s_max)
-
-        for p, fp in zip(ps, fps):
-            print(p, ":", fp)
+        # for (s_min, s_max), p in zip(ss, gb):
+        #     print(s_min, p, s_max)
 
         return gb, fgb
 
