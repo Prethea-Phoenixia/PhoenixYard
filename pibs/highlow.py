@@ -267,8 +267,6 @@ class Highlow:
 
         dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar) / eta
 
-        # print(dt_bar, dZ, dv_bar, deta, dtau_1, dtau_2)
-
         return dt_bar, dZ, dv_bar, deta, dtau_1, dtau_2
 
     def _ode_Z(self, Z, t_bar, l_bar, v_bar, eta, tau_1, tau_2, delta):

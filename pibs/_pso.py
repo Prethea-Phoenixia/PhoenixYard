@@ -99,7 +99,10 @@ def pso(
         fps = vfps[:n]
         pbs = [v for v in ps]
         fpbs = [v for v in fps]
-        vs = [[random() * (max(s) - min(s)) + min(s) for s in ss] for _ in range(n)]
+        vs = [
+            [random() * max(cog, soc) * (max(s) - min(s)) + min(s) for s in ss]
+            for _ in range(n)
+        ]
 
         fgb = min(fpbs)
         gb = pbs[fpbs.index(fgb)]  # initialize global best
@@ -115,11 +118,12 @@ def pso(
 
             for p, pb, v in zip(ps, pbs, vs):
                 new_v = []
-                for p_i, v_i, pb_i, gb_i in zip(p, v, pb, gb):
+                for p_i, v_i, pb_i, gb_i, s_i in zip(p, v, pb, gb, ss):
+                    delta = max(s_i) - min(s_i)
                     new_v.append(
                         iw * v_i
-                        + r_cog * cog * (pb_i - p_i)
-                        + r_soc * soc * (gb_i - p_i)
+                        + r_cog * cog * delta * (pb_i - p_i)
+                        + r_soc * soc * delta * (gb_i - p_i)
                     )
                 new_vs.append(new_v)
                 new_ps.append([p_i + v_i for p_i, v_i in zip(p, new_v)])

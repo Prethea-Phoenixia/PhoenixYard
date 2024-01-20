@@ -68,8 +68,8 @@ class psoHighlow:
         designLowPressure,
         designVelocity,
         iw=0.8,
-        cog=0.1,
-        soc=0.1,
+        cog=0.5,
+        soc=0.5,
         n=50,
     ):
         self.control = control
