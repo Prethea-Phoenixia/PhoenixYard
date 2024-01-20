@@ -171,37 +171,24 @@ class Highlow:
     def _ode_t(self, t_bar, Z, l_bar, v_bar, eta, tau_1, tau_2, delta):
         psi = self.f_psi_Z(Z)
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
-        p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
 
-        # COMBUSTION OF POWDER
         if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_1_bar**self.n
         else:
-            dZ = 0  # dZ/dt_bar
+            dZ = 0
 
-        dpsi = self.f_sigma_Z(Z) * dZ  # dpsi/dt_bar
-
-        # FLOW INTO LOW PRESSURE CHAMBER
+        p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
         pr = p_2_bar / p_1_bar
         if pr < self.cfpr:
-            deta = self.C_A * self.S_j_bar * p_1_bar  # deta / dt_bar
+            deta = self.C_A
         else:
             gamma = self.theta + 1
-            deta = (
-                self.C_B
-                * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
-                * self.S_j_bar
-                * p_1_bar
-            )
+            deta = self.C_B * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
+        deta *= self.S_j_bar * p_1_bar * tau_1**-0.5
 
-        deta /= tau_1**0.5
+        dpsi = self.f_sigma_Z(Z) * dZ
+        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (psi - eta)
 
-        # CHANGE IN HIGH PRESSURE CHAMBER
-        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (
-            psi - eta
-        )  # dtau/dt_bar
-
-        # ATMOSPHERIC DRAG
         if self.c_a_bar != 0 and v_bar > 0:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_a_bar
@@ -212,104 +199,59 @@ class Highlow:
         else:
             p_d_bar = 0
 
-        # PROJECTILE MOTION
         dv_bar = self.theta * 0.5 * (p_2_bar - p_d_bar)
         dl_bar = v_bar
 
-        # CHANGE IN LOW PRESSURE CHAMBER
-
-        eta += deta * delta
-
-        # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
         dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar) / eta
 
-        return (dZ, dl_bar, dv_bar, deta, dtau_1, dtau_2)
+        return dZ, dl_bar, dv_bar, deta, dtau_1, dtau_2
 
     def _ode_ts(self, t_bar, Z, eta, tau_1, tau_2, delta):
-        # VALUES FOR HIGH PRESSURE CHAMBER
         psi = self.f_psi_Z(Z)
-
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
-        # VALUES FOR LOW PRESSURE CHAMBER
-        p_2_bar = self._f_p_2_bar(0, eta, tau_2)
 
-        # COMBUSTION OF POWDER
         if Z <= self.Z_b:
             dZ = (0.5 * self.theta / self.B) ** 0.5 * p_1_bar**self.n
         else:
             dZ = 0  # dZ/dt_bar
 
-        dpsi = self.f_sigma_Z(Z) * dZ  # dpsi/dZ
-
-        # FLOW INTO LOW PRESSURE CHAMBER
+        p_2_bar = self._f_p_2_bar(0, eta, tau_2)
         pr = p_2_bar / p_1_bar
-
         if pr < self.cfpr:
-            # FLOW IS CRITICAL
-            deta = self.C_A * self.S_j_bar * p_1_bar  # deta / dt_bar
+            deta = self.C_A
         else:
-            # FLOW IS SUB CRITICAL
             gamma = self.theta + 1
-            deta = (
-                self.C_B
-                * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
-                * self.S_j_bar
-                * p_1_bar
-            )
+            deta = self.C_B * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
+        deta *= self.S_j_bar * p_1_bar * tau_1**-0.5
 
-        deta /= tau_1**0.5
-
-        # CHANGE IN HIGH PRESSURE CHAMBER
-        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (
-            psi - eta
-        )  # dtau/dt_bar
-
-        eta += deta * delta
-
-        # CHANGE IN LOW PRESSURE CHAMBER
+        dpsi = self.f_sigma_Z(Z) * dZ  # dpsi/dZ
+        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (psi - eta)
         dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
 
-        return (dZ, deta, dtau_1, dtau_2)
+        return dZ, deta, dtau_1, dtau_2
 
-    def _ode_l(self, l_bar, t_bar, Z, v_bar, eta, tau_1, tau_2, delta):
-        # VALUES FOR HIGH PRESSURE CHAMBER
+    def _ode_l(self, l_bar, t_bar, Z, v_bar, eta, tau_1, tau_2, _):
+        # print(l_bar, t_bar, Z, v_bar, eta, tau_1, tau_2)
         psi = self.f_psi_Z(Z)
-
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
 
-        # VALUES FOR LOW PRESSURE CHAMBER
-        p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
-
-        # COMBUSTION OF POWDER
         if Z <= self.Z_b:
-            dZ = (0.5 * self.theta / self.B) ** 0.5 * p_1_bar**self.n / v_bar
+            dZ = (0.5 * self.theta / self.B) ** 0.5 * p_1_bar**self.n * v_bar**-1
         else:
-            dZ = 0  # dZ /dl_bar
+            dZ = 0
 
-        # FLOW INTO LOW PRESSURE CHAMBER
+        p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
         pr = p_2_bar / p_1_bar
         if pr < self.cfpr:
-            # FLOW IS CRITICAL
-            deta = self.C_A * self.S_j_bar * p_1_bar / v_bar  # deta / dl_bar
+            deta = self.C_A
         else:
-            # FLOW IS SUBCRITICAL
             gamma = self.theta + 1
-            deta = (
-                self.C_B
-                * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
-                * self.S_j_bar
-                * p_1_bar
-            ) / v_bar
+            deta = self.C_B * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
+        deta *= self.S_j_bar * p_1_bar * tau_1**-0.5 * v_bar**-1
 
-        deta /= tau_1**0.5
-
-        # PROPELLANT BURNUP
         dpsi = self.f_sigma_Z(Z) * dZ
-
-        # CHANGE IN HIGH PRESSURE CHAMBER  dtau/dl_bar
         dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (psi - eta)
 
-        # ATMOSPHERIC DRAG
         if self.c_a_bar != 0 and v_bar > 0:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_a_bar
@@ -320,52 +262,32 @@ class Highlow:
         else:
             p_d_bar = 0
 
-        # PROJECTILE MOTION
         dt_bar = 1 / v_bar  # dt_bar / dl_bar
         dv_bar = self.theta * 0.5 * (p_2_bar - p_d_bar) * dt_bar  # dv_bar/dl_bar
 
-        # CHANGE IN LOW PRESSURE CHAMBER
-        # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
+        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar) / eta
 
-        eta += deta * delta
+        # print(dt_bar, dZ, dv_bar, deta, dtau_1, dtau_2)
 
-        dtau_2 = (
-            ((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar
-        ) / eta  # dtau_2/dl_bar
-
-        return (dt_bar, dZ, dv_bar, deta, dtau_1, dtau_2)
+        return dt_bar, dZ, dv_bar, deta, dtau_1, dtau_2
 
     def _ode_Z(self, Z, t_bar, l_bar, v_bar, eta, tau_1, tau_2, delta):
         psi = self.f_psi_Z(Z)
-        dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
-        p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
-
-        # PASSAGE OF TIME, dt_bar/dZ
         dt_bar = (2 * self.B / self.theta) ** 0.5 * p_1_bar**-self.n
 
-        # FLOW INTO LOW PRESSURE CHAMBER
+        p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
         pr = p_2_bar / p_1_bar
         if pr < self.cfpr:
-            # FLOW IS CRITICAL
-            deta = self.C_A * self.S_j_bar * p_1_bar * dt_bar  # deta / dZ
+            deta = self.C_A  # deta / dZ
         else:
-            # FLOW IS SUB CRITICAL
             gamma = self.theta + 1
-            deta = (
-                self.C_B
-                * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
-                * self.S_j_bar
-                * p_1_bar
-            ) * dt_bar
+            deta = self.C_B * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
+        deta *= self.S_j_bar * p_1_bar * tau_1**-0.5 * dt_bar
 
-        deta /= tau_1**0.5
-
-        # CHANGE IN HIGH PRESSURE CHAMBER  dtau_1 / dZ
-
+        dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (psi - eta)
 
-        # ATMOSPHERIC DRAG
         if self.c_a_bar != 0 and v_bar > 0:
             k = self.k_1  # gamma
             v_r = v_bar / self.c_a_bar
@@ -376,63 +298,35 @@ class Highlow:
         else:
             p_d_bar = 0
 
-        # PROJECTILE MOTION
-
         dl_bar = v_bar * dt_bar
-        dv_bar = 0.5 * self.theta * (p_2_bar - p_d_bar) * dt_bar  # dv_bar / dZ
+        dv_bar = 0.5 * self.theta * (p_2_bar - p_d_bar) * dt_bar
+        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar) / eta
 
-        # CHANGE IN LOW PRESSURE CHAMBER
-
-        eta += deta * delta
-
-        # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
-        dtau_2 = (
-            ((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar
-        ) / eta  # dtau_2/dZ
-
-        return (dt_bar, dl_bar, dv_bar, deta, dtau_1, dtau_2)
+        return dt_bar, dl_bar, dv_bar, deta, dtau_1, dtau_2
 
     def _ode_Zs(self, Z, t_bar, eta, tau_1, tau_2, delta):
         psi = self.f_psi_Z(Z)
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
-        dt_bar = (2 * self.B / self.theta) ** 0.5 * p_1_bar**-self.n  # dt_bar/dZ
-        dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
+        dt_bar = (2 * self.B / self.theta) ** 0.5 * p_1_bar**-self.n
 
         p_2_bar = self._f_p_2_bar(0, eta, tau_2)
-
-        # print(p_1_bar, p_2_bar)
-        # FLOW INTO LOW PRESSURE CHAMBER
         pr = p_2_bar / p_1_bar
         if pr < self.cfpr:
-            # FLOW IS CRITICAL
-            deta = (
-                self.C_A * self.S_j_bar * p_1_bar * dt_bar
-            )  # deta/dt_bar * dt_bar/dZ = deta/dZ
+            deta = self.C_A  # deta / dZ
         else:
-            # FLOW IS SUB CRITICAL
             gamma = self.theta + 1
-            deta = (
-                self.C_B
-                * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
-                * self.S_j_bar
-                * p_1_bar
-            ) * dt_bar
+            deta = self.C_B * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
+        deta *= self.S_j_bar * p_1_bar * tau_1**-0.5 * dt_bar
 
-        deta /= tau_1**0.5
+        dpsi = self.f_sigma_Z(Z)
+        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (psi - eta)
 
-        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (
-            psi - eta
-        )  # dtau_1 / dZ
-        eta += deta * delta
+        if eta != 0:
+            dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
+        else:
+            dtau_2 = None
 
-        # CHANGE IN LOW PRESSURE CHAMBER
-
-        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta  # dtau_2/dZ
-
-        # print("->", Z, t_bar, eta, tau_1, tau_2)
-        # print(dt_bar, deta, dtau_1, dtau_2, "->")
-
-        return (dt_bar, deta, dtau_1, dtau_2)
+        return dt_bar, deta, dtau_1, dtau_2
 
     def integrate(
         self,
@@ -531,25 +425,19 @@ class Highlow:
             tau_2=1 + self.theta,
         )
 
-        t_bar_0 = 0
-        eta_0 = 0
-        tau_1_0 = 1
-        tau_2_0 = 1 + self.theta
+        t_bar_0, eta_0, tau_1_0, tau_2_0 = 0, 0, 1, 1 + self.theta
 
-        # dt_bar_0, deta_0, dtau_1_0, dtau_2_0 = self._ode_Zs(
-        #     Z_0, t_bar_0, eta_0, tau_1_0, tau_2_0, _
-        # )
+        dt_bar_0, deta_0, dtau_1_0, dtau_2_0 = self._ode_Zs(
+            Z_0, t_bar_0, eta_0, tau_1_0, tau_2_0, _
+        )
 
-        # dZ = Z_0 * tol
-        # Z_0 += dZ
-        # t_bar_0 += dt_bar_0 * dZ
-        # eta_0 += deta_0 * dZ
-        # tau_1_0 += dtau_1_0 * dZ
-        # tau_2_0 += dtau_2_0 * dZ
+        dZ = Z_0 * tol
+        Z_0 += dZ
+        t_bar_0 += dt_bar_0 * dZ
+        eta_0 += deta_0 * dZ
+        tau_1_0 += dtau_1_0 * dZ
 
-        tett_record = [
-            [Z_0, [t_bar_0, eta_0, tau_1_0, tau_2_0]]
-        ]  # record for the function f
+        tett_record = [[Z_0, [t_bar_0, eta_0, tau_1_0, tau_2_0]]]
 
         def abort(x, ys, record):
             Z = x
@@ -597,8 +485,6 @@ class Highlow:
 
             tett_record[-1]
             return p_2_bar
-
-        # p_bar_m = f(Z_b)
 
         Z, (t_bar, eta, tau_1, tau_2), _ = RKF78(
             self._ode_Zs,
@@ -1106,6 +992,7 @@ class Highlow:
                  of value by subscipt i will not guarantee burning is still
                  ongoing).
                 """
+
                 t_bar_j = 0.5 * (t_bar_i - t_bar_1) + t_bar_1
                 Z_j, l_bar_j, v_bar_j, eta_j, tau_1_j, tau_2_j = RKF78(
                     self._ode_t,
@@ -1119,7 +1006,6 @@ class Highlow:
 
                 for j in range(step):
                     l_bar_k = l_g_bar / (step + 1) * (j + 1)
-
                     # fmt: off
                     (
                         _,
@@ -1133,6 +1019,7 @@ class Highlow:
                         relTol=tol,
                         absTol=tol**2,
                         minTol=minTol,
+                        record=[]
                     )  # fmt: on
 
                     l_bar_j = l_bar_k
@@ -1313,14 +1200,14 @@ if __name__ == "__main__":
     M1 = compositions["M1"]
     from prop import SimpleGeometry
 
-    M17C = Propellant(M17, SimpleGeometry.CYLINDER, None, 2.5)
+    M17C = Propellant(M17, SimpleGeometry.CYLINDER, None, 25)
     M1C = Propellant(M1, SimpleGeometry.CYLINDER, None, 10)
     lf = 0.5
     print("DELTA/rho:", lf)
     test = Highlow(
         caliber=0.082,
         shotMass=5,
-        propellant=M1C,
+        propellant=M17C,
         grainSize=5e-3,
         chargeMass=0.3,
         chamberVolume=0.3 / M1C.rho_p / lf,
@@ -1359,7 +1246,7 @@ if __name__ == "__main__":
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(0, 1e-3, dom=DOMAIN_LENG)[0],
+            test.integrate(9, 1e-3, dom=DOMAIN_LENG)[0],
             headers=(
                 "tag",
                 "t",

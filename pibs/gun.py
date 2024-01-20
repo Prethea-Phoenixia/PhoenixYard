@@ -108,9 +108,7 @@ class Gun:
             raise ValueError("Invalid gun parameters")
 
         if chargeMass > (propellant.maxLF * propellant.rho_p * chamberVolume):
-            raise ValueError(
-                "Specified Load Fraction Violates Geometrical Constraint"
-            )
+            raise ValueError("Specified Load Fraction Violates Geometrical Constraint")
 
         self.propellant = propellant
         self.caliber = caliber
@@ -148,14 +146,10 @@ class Gun:
                     + " will likely occur."
                 )
 
-        Zs = cubic(
-            self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0
-        )
+        Zs = cubic(self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0)
         # pick a valid solution between 0 and 1
         Zs = sorted(
-            Z
-            for Z in Zs
-            if not isinstance(Z, complex) and (Z > 0.0 and Z < 1.0)
+            Z for Z in Zs if not isinstance(Z, complex) and (Z > 0.0 and Z < 1.0)
         )  # evaluated from left to right, guards against complex >/< float
         if len(Zs) < 1:
             raise ValueError(
@@ -182,9 +176,7 @@ class Gun:
     def _f_p_bar(self, Z, l_bar, v_bar):
         psi = self.f_psi_Z(Z)
 
-        l_psi_bar = 1 - self.Delta * (
-            (1 - psi) / self.rho_p + (self.alpha * psi)
-        )
+        l_psi_bar = 1 - self.Delta * ((1 - psi) / self.rho_p + (self.alpha * psi))
 
         p_bar = (psi - v_bar**2) / (l_bar + l_psi_bar)
 
@@ -276,9 +268,7 @@ class Gun:
             p_d_bar = 0
 
         if Z <= self.Z_b:
-            dt_bar = (
-                2 * self.B / self.theta
-            ) ** 0.5 * p_bar**-self.n  # dt_bar/dZ
+            dt_bar = (2 * self.B / self.theta) ** 0.5 * p_bar**-self.n  # dt_bar/dZ
             dl_bar = v_bar * dt_bar  # dv_bar/dZ
             dv_bar = 0.5 * self.theta * (p_bar - p_d_bar) * dt_bar
         else:
@@ -310,9 +300,7 @@ class Gun:
         else:
             return 0
 
-        l_psi_bar = 1 - self.Delta * (
-            (1 - psi) / self.rho_p + (self.alpha * psi)
-        )
+        l_psi_bar = 1 - self.Delta * ((1 - psi) / self.rho_p + (self.alpha * psi))
         dp_bar = (
             (
                 (1 + p_bar * self.Delta * (self.alpha - 1 / self.rho_p))
@@ -373,9 +361,7 @@ class Gun:
                 self.omega / (self.phi_1 * self.m), self.theta + 1, tol
             )
         elif sol == SOL_MAMONTOV:
-            labda_1, labda_2 = pidduck(
-                self.omega / (self.phi_1 * self.m), 1, tol
-            )
+            labda_1, labda_2 = pidduck(self.omega / (self.phi_1 * self.m), 1, tol)
         else:
             raise ValueError("Unknown Solution")
 
@@ -397,9 +383,7 @@ class Gun:
             * (self.f * self.Delta) ** (2 * (1 - self.n))
         )
 
-        self.v_j = (
-            2 * self.f * self.omega / (self.theta * self.phi * self.m)
-        ) ** 0.5
+        self.v_j = (2 * self.f * self.omega / (self.theta * self.phi * self.m)) ** 0.5
 
         tScale = self.l_0 / self.v_j
         pScale = self.f * self.Delta
@@ -407,9 +391,7 @@ class Gun:
         # ambient conditions
         self.p_a_bar = ambientP / pScale
         if ambientRho != 0:
-            self.c_a_bar = (
-                ambientGamma * ambientP / ambientRho
-            ) ** 0.5 / self.v_j
+            self.c_a_bar = (ambientGamma * ambientP / ambientRho) ** 0.5 / self.v_j
         else:
             self.c_a_bar = 0
 
@@ -439,9 +421,7 @@ class Gun:
 
             p_bar_err = abs(self._dPdZ(Z, l_bar, v_bar) * Z_err)
 
-            bar_err.append(
-                ("L", t_bar_err, l_bar_err, Z_err, v_bar_err, p_bar_err)
-            )
+            bar_err.append(("L", t_bar_err, l_bar_err, Z_err, v_bar_err, p_bar_err))
 
         updBarData(
             tag=POINT_START,
@@ -964,10 +944,7 @@ class Gun:
             error.append(errLine)
 
         data, error = zip(
-            *(
-                (a, b)
-                for a, b in sorted(zip(data, error), key=lambda x: x[0][1])
-            )
+            *((a, b) for a, b in sorted(zip(data, error), key=lambda x: x[0][1]))
         )
 
         # calculate a pressure and flow velcoity tracing.
@@ -1023,12 +1000,8 @@ class Gun:
         Pb: pressure at breech
         """
         Labda_g = l / self.l_0
-        labda_1_prime = (
-            self.labda_1 * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
-        )
-        labda_2_prime = (
-            self.labda_2 * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
-        )
+        labda_1_prime = self.labda_1 * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
+        labda_2_prime = self.labda_2 * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
 
         factor_s = 1 + labda_2_prime * (
             self.omega / (self.phi_1 * self.m)
@@ -1186,9 +1159,7 @@ class Gun:
                         f"Limit to conventional construction ({sigma * 3*1e-6:.3f} MPa)"
                         + " exceeded in section."
                     )
-                rho = (
-                    (1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)
-                ) ** 0.5
+                rho = ((1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)) ** 0.5
 
                 rho_probes.append(rho)
 
@@ -1223,9 +1194,7 @@ class Gun:
             else:
                 bore.append((x, rho * r))
 
-        bore_mass = (
-            V + (R2__rb**2 - R1__rb**2) * S_b * L
-        ) * self.material.rho
+        bore_mass = (V + (R2__rb**2 - R1__rb**2) * S_b * L) * self.material.rho
 
         breech = [(-L, R1), (0.0, R1)]
 
@@ -1234,9 +1203,7 @@ class Gun:
         return bore_mass, bore, breech_mass, breech
 
     @staticmethod
-    def _Vrho_k(
-        x_s, p_s, S_s, sigma, tol, k_max=None, k_min=None, index=0, p_ref=None
-    ):
+    def _Vrho_k(x_s, p_s, S_s, sigma, tol, k_max=None, k_min=None, index=0, p_ref=None):
         def f(m):
             rho_s = []
             V = 0
@@ -1281,9 +1248,9 @@ class Gun:
             p_max = max(p_s)
 
         def sigma_min(m):
-            return (
-                sigma * (1 - (1 + 2 * log(m)) / m**2) + 2 * p_max / m**2
-            ) * (3**0.5 * 0.5)
+            return (sigma * (1 - (1 + 2 * log(m)) / m**2) + 2 * p_max / m**2) * (
+                3**0.5 * 0.5
+            )
 
         m_opt = exp(max(p_s) / sigma * 3**0.5 * 0.5)
         # optimal autofrettage for this pressure
@@ -1363,9 +1330,7 @@ class Gun:
 
         # print("m_min", m_min, "m_max", m_max)
 
-        m_best, _ = gss(
-            lambda m: f(m)[0], m_min, m_max, y_rel_tol=tol, findMin=True
-        )
+        m_best, _ = gss(lambda m: f(m)[0], m_min, m_max, y_rel_tol=tol, findMin=True)
 
         # print("m_best", m_best)
 
@@ -1446,7 +1411,7 @@ if __name__ == "__main__":
         )
     )
     """
-    result = test.integrate(100, 1e-3, dom=DOMAIN_TIME, sol=SOL_LAGRANGE)
+    result = test.integrate(0, 1e-3, dom=DOMAIN_TIME, sol=SOL_LAGRANGE)
     print(
         tabulate(
             result[0],

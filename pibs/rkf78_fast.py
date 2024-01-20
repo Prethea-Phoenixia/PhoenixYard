@@ -438,6 +438,7 @@ def RKF78(
                 x=x, ys=y_this, record=record
             ):  # premature terminating cond. is met
                 if debug:
+                    print("exiting via debug")
                     print("record")
                     for line in record:
                         x, yval = line
@@ -463,6 +464,7 @@ def RKF78(
         #     print(x, *y_this)
 
     if debug:
+        print("exiting main loop normally")
         print("record")
         for line in record:
             x, yval = line
