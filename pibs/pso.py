@@ -19,7 +19,9 @@ def pso(
     x_rel_tol=0,
     y_rel_tol=0,
     y_abs_tol=1e-14,
-    consecutive=100,
+    y=None,
+    consecutive=25,
+    its=1000,
 ):
     """
     Arguments:
@@ -97,63 +99,40 @@ def pso(
         fps = vfps[:n]
         pbs = [v for v in ps]
         fpbs = [v for v in fps]
-        vs = [[0 for _ in ss] for _ in range(n)]
+        vs = [[random() * (max(s) - min(s)) + min(s) for s in ss] for _ in range(n)]
 
-        fgb = inf
-        gb = None  # initialize global best
+        fgb = min(fpbs)
+        gb = pbs[fpbs.index(fgb)]  # initialize global best
         # print("generated valid initial guesses")
 
-        while True:
+        it = 0
+        while it < its:
             # updates global best
-            minfs = min(fps)
-            if minfs < fgb:
-                fgb = minfs
-                gb = ps[fps.index(fgb)]
-                itc = 0
-
-            # print("val", minfs, fgb)
-
-            maxfs = max(fps)
-            if abs(maxfs - minfs) < min(abs(maxfs), abs(minfs)) * y_rel_tol:
-                # print("broken via rel")
-                break
-            elif abs(maxfs - minfs) < y_abs_tol:
-                # print("broken via abs")
-                break
-            elif itc > consecutive:
-                # print("broken via cons")
-                break
-            else:
-                components = [*zip(*ps)]
-                delta = 0
-                for component in components:
-                    delta += (max(component) - min(component)) / min(
-                        abs(v) for v in component
-                    )
-                # print("delta", delta)
-                if delta < x_rel_tol:
-                    # print("broken via x rel tol")
-                    break
-
             new_ps = []
-            new_pbs = []
-            new_fpbs = []
             new_vs = []
 
-            for p, fp, pb, fpb, v in zip(ps, fps, pbs, fpbs, vs):
-                new_ps.append([p_i + v_i for p_i, v_i in zip(p, v)])
+            r_cog, r_soc = random(), random()
 
+            for p, pb, v in zip(ps, pbs, vs):
                 new_v = []
                 for p_i, v_i, pb_i, gb_i in zip(p, v, pb, gb):
-                    r_cog, r_soc = random(), random()
                     new_v.append(
                         iw * v_i
                         + r_cog * cog * (pb_i - p_i)
                         + r_soc * soc * (gb_i - p_i)
                     )
-
                 new_vs.append(new_v)
+                new_ps.append([p_i + v_i for p_i, v_i in zip(p, new_v)])
 
+            ps = new_ps
+            vs = new_vs
+
+            fps = pool.starmap(f, ps)
+
+            new_pbs = []
+            new_fpbs = []
+
+            for p, pb, fp, fpb in zip(ps, pbs, fps, fpbs):
                 if fp < fpb:
                     new_pbs.append(p)
                     new_fpbs.append(fp)
@@ -161,19 +140,44 @@ def pso(
                     new_pbs.append(pb)
                     new_fpbs.append(fpb)
 
-            # print(new_pbs)
-
-            ps = new_ps
             pbs = new_pbs
             fpbs = new_fpbs
-            vs = new_vs
 
-            fps = pool.starmap(f, ps)
+            minfs = min(fps)
+            if minfs < fgb:
+                fgb = minfs
+                gb = ps[fps.index(fgb)]
+                itc = 0
+
+            print("val", minfs, fgb)
+
+            if y is not None:
+                if abs(fgb - y) < y * y_rel_tol:
+                    print("broken via rel", it)
+                    break
+                elif abs(fgb - y) < y_abs_tol:
+                    print("broken via abs", it)
+                    break
+
+            if itc > consecutive:
+                print("broken via cons", it)
+                break
+            else:
+                components = [*zip(*ps)]
+                delta = 0
+                for component in components:
+                    delta = max(
+                        (max(component) - min(component))
+                        / min(abs(v) for v in component),
+                        delta,
+                    )
+                # print("delta", delta)
+                if delta < x_rel_tol:
+                    print("broken via x rel tol", it)
+                    break
 
             itc += 1
-
-        # for (s_min, s_max), p in zip(ss, gb):
-        #     print(s_min, p, s_max)
+            it += 1
 
         return gb, fgb
 

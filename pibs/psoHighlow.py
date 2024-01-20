@@ -70,7 +70,7 @@ class psoHighlow:
         iw=0.8,
         cog=0.1,
         soc=0.1,
-        n=20,
+        n=50,
     ):
         self.control = control
 
@@ -91,8 +91,9 @@ class psoHighlow:
             self._f,
             constraints,
             # y_rel_tol=self.tol,
-            # y_abs_tol=self.tol,
-            x_rel_tol=self.tol,
+            # x_rel_tol=self.tol,
+            y=0,
+            y_abs_tol=self.tol,
             iw=iw,
             n=n,
             cog=cog,
@@ -131,6 +132,7 @@ class psoHighlow:
                 ambientRho=self.ambientRho,
                 ambientP=self.ambientP,
                 ambientGamma=self.ambientGamma,
+                peaks=[self.control, POINT_PEAK_HIGH],
             )
         except Exception:
             return inf
@@ -159,9 +161,9 @@ class psoHighlow:
             sum(
                 v**2
                 for v in (
-                    abs(p_high - self.designHighPressure) / self.designHighPressure,
-                    abs(p_low - self.designLowPressure) / self.designLowPressure,
-                    abs(v_g - self.designVelocity) / self.designVelocity,
+                    (p_high - self.designHighPressure) / self.designHighPressure,
+                    (p_low - self.designLowPressure) / self.designLowPressure,
+                    (v_g - self.designVelocity) / self.designVelocity,
                 )
             )
             ** 0.5
@@ -194,7 +196,7 @@ if __name__ == "__main__":
         burstPressure=10e6,
         startPressure=5e6,
         dragCoefficient=3e-3,
-        chambrage=1,
+        chambrage=1.5,
         tol=1e-3,
     )
 
@@ -210,7 +212,7 @@ if __name__ == "__main__":
         minLength=0.01,
         maxLength=0.5,
         control=POINT_PEAK_AVG,  # targeted pressure
-        designHighPressure=50e6,
-        designLowPressure=7.5e6,
-        designVelocity=50,
+        designHighPressure=150e6,
+        designLowPressure=50e6,
+        designVelocity=75,
     )

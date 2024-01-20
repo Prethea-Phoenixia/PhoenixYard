@@ -1,4 +1,4 @@
-from math import pi, log
+from math import pi, log, inf
 from num import gss, RKF78, cubic, bisect
 
 
@@ -15,6 +15,8 @@ from gun import minTol
 
 POINT_PEAK_HIGH = "PEAK_HIGH_P"
 POINT_PEAK_BLEED = "PEAK_BLEED_P"
+
+HIGHLOW_PEAKS = [POINT_PEAK_HIGH, POINT_PEAK_BLEED, POINT_PEAK_AVG, POINT_PEAK_SHOT]
 
 
 class Highlow:
@@ -166,7 +168,7 @@ class Highlow:
     def _f_p_2_bar(self, l_bar, eta, tau_2):
         return tau_2 * eta / (l_bar + self.V_bar - self.alpha * self.Delta * eta)
 
-    def _ode_t(self, t_bar, Z, l_bar, v_bar, eta, tau_1, tau_2, _):
+    def _ode_t(self, t_bar, Z, l_bar, v_bar, eta, tau_1, tau_2, delta):
         psi = self.f_psi_Z(Z)
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
         p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
@@ -216,12 +218,14 @@ class Highlow:
 
         # CHANGE IN LOW PRESSURE CHAMBER
 
+        eta += deta * delta
+
         # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
         dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar) / eta
 
         return (dZ, dl_bar, dv_bar, deta, dtau_1, dtau_2)
 
-    def _ode_ts(self, t_bar, Z, eta, tau_1, tau_2, _):
+    def _ode_ts(self, t_bar, Z, eta, tau_1, tau_2, delta):
         # VALUES FOR HIGH PRESSURE CHAMBER
         psi = self.f_psi_Z(Z)
 
@@ -260,15 +264,14 @@ class Highlow:
             psi - eta
         )  # dtau/dt_bar
 
+        eta += deta * delta
+
         # CHANGE IN LOW PRESSURE CHAMBER
-        if eta != 0:
-            dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
-        else:
-            dtau_2 = 0
+        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
 
         return (dZ, deta, dtau_1, dtau_2)
 
-    def _ode_l(self, l_bar, t_bar, Z, v_bar, eta, tau_1, tau_2, _):
+    def _ode_l(self, l_bar, t_bar, Z, v_bar, eta, tau_1, tau_2, delta):
         # VALUES FOR HIGH PRESSURE CHAMBER
         psi = self.f_psi_Z(Z)
 
@@ -323,13 +326,16 @@ class Highlow:
 
         # CHANGE IN LOW PRESSURE CHAMBER
         # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
+
+        eta += deta * delta
+
         dtau_2 = (
             ((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar
         ) / eta  # dtau_2/dl_bar
 
         return (dt_bar, dZ, dv_bar, deta, dtau_1, dtau_2)
 
-    def _ode_Z(self, Z, t_bar, l_bar, v_bar, eta, tau_1, tau_2, _):
+    def _ode_Z(self, Z, t_bar, l_bar, v_bar, eta, tau_1, tau_2, delta):
         psi = self.f_psi_Z(Z)
         dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
@@ -377,6 +383,8 @@ class Highlow:
 
         # CHANGE IN LOW PRESSURE CHAMBER
 
+        eta += deta * delta
+
         # dtau_2 = (self.theta * tau_1 * deta - 2 * v_bar * dv_bar) / eta
         dtau_2 = (
             ((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar
@@ -384,7 +392,7 @@ class Highlow:
 
         return (dt_bar, dl_bar, dv_bar, deta, dtau_1, dtau_2)
 
-    def _ode_Zs(self, Z, t_bar, eta, tau_1, tau_2, _):
+    def _ode_Zs(self, Z, t_bar, eta, tau_1, tau_2, delta):
         psi = self.f_psi_Z(Z)
         p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
         dt_bar = (2 * self.B / self.theta) ** 0.5 * p_1_bar**-self.n  # dt_bar/dZ
@@ -415,12 +423,11 @@ class Highlow:
         dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (
             psi - eta
         )  # dtau_1 / dZ
+        eta += deta * delta
 
         # CHANGE IN LOW PRESSURE CHAMBER
-        if eta != 0:
-            dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta  # dtau_2/dZ
-        else:
-            dtau_2 = 0
+
+        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta  # dtau_2/dZ
 
         # print("->", Z, t_bar, eta, tau_1, tau_2)
         # print(dt_bar, deta, dtau_1, dtau_2, "->")
@@ -435,6 +442,7 @@ class Highlow:
         ambientRho=1.204,
         ambientP=101.325e3,
         ambientGamma=1.4,
+        peaks=HIGHLOW_PEAKS,
         **_,
     ):
         """
@@ -528,15 +536,16 @@ class Highlow:
         tau_1_0 = 1
         tau_2_0 = 1 + self.theta
 
-        dt_bar_0, deta_0, dtau_1_0, dtau_2_0 = self._ode_Zs(
-            Z_0, t_bar_0, eta_0, tau_1_0, tau_2_0, _
-        )
-        dZ = Z_0 * tol / dt_bar_0
-        Z_0 += dZ
-        t_bar_0 += dt_bar_0 * dZ
-        eta_0 += deta_0 * dZ
-        tau_1_0 += dtau_1_0 * dZ
-        tau_2_0 += dtau_2_0 * dZ
+        # dt_bar_0, deta_0, dtau_1_0, dtau_2_0 = self._ode_Zs(
+        #     Z_0, t_bar_0, eta_0, tau_1_0, tau_2_0, _
+        # )
+
+        # dZ = Z_0 * tol
+        # Z_0 += dZ
+        # t_bar_0 += dt_bar_0 * dZ
+        # eta_0 += deta_0 * dZ
+        # tau_1_0 += dtau_1_0 * dZ
+        # tau_2_0 += dtau_2_0 * dZ
 
         tett_record = [
             [Z_0, [t_bar_0, eta_0, tau_1_0, tau_2_0]]
@@ -605,14 +614,21 @@ class Highlow:
         p_1_bar_sm = self._f_p_1_bar(Z, eta, tau_1)
         p_2_bar_sm = self._f_p_2_bar(0, eta, tau_2)
 
-        if abs(p_1_bar_sm - p_2_bar_sm) / p_1_bar_sm < tol:
+        if abs(p_1_bar_sm - p_2_bar_sm) < tol * p_1_bar_sm:
             raise ValueError(
                 "Equilibrium between high and low chamber achieved "
                 + "before shot has started, "
                 + f"at ({p_2_bar_sm * pScale * 1e-6:.6f} MPa)."
             )
 
-        if p_2_bar_sm < self.p_0_s_bar:
+        elif p_1_bar_sm > p_bar_max:
+            raise ValueError(
+                "Nobel-Abel EoS is generally accurate enough below 600MPa. However,"
+                + f" Unreasonably high pressure (>{p_1_bar_sm * pScale / 1e6:.0f} MPa)"
+                + " was encountered in the high pressure chamber."
+            )  # in practice most of the pressure-realted spikes are captured here.
+
+        elif p_2_bar_sm < self.p_0_s_bar:
             raise ValueError(
                 f"Maximum pressure developed in low-chamber ({p_2_bar_sm * pScale * 1e-6:.6f} MPa) "
                 + "not enough to start the shot."
@@ -934,7 +950,7 @@ class Highlow:
         to point e, i.e. inside the barrel.
         """
 
-        def g(t, m="a"):
+        def g(t, m=POINT_PEAK_AVG):
             Z, l_bar, v_bar, eta, tau_1, tau_2 = RKF78(
                 self._ode_t,
                 (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1),
@@ -945,16 +961,16 @@ class Highlow:
                 minTol=minTol,
             )[1]
 
-            if m == "h":
+            if m == POINT_PEAK_HIGH:
                 p_bar_high = self._f_p_1_bar(Z, eta, tau_1)
                 return p_bar_high
             p_bar_low = self._f_p_2_bar(l_bar, eta, tau_2)
-            if m == "a":
+            if m == POINT_PEAK_AVG:
                 return p_bar_low
             p_s, p_b = self.toPsPb(l_bar * self.l_1, p_bar_low * pScale, eta)
-            if m == "s":
+            if m == POINT_PEAK_SHOT:
                 return p_s / pScale
-            elif m == "b":
+            elif m == POINT_PEAK_BLEED:
                 return p_b / pScale
 
         def findPeak(g, tag):
@@ -1014,10 +1030,8 @@ class Highlow:
                 tau_2_err=tau_2_err,
             )
 
-        findPeak(lambda x: g(x, "a"), POINT_PEAK_AVG)
-        findPeak(lambda x: g(x, "s"), POINT_PEAK_SHOT)
-        findPeak(lambda x: g(x, "b"), POINT_PEAK_BLEED)
-        findPeak(lambda x: g(x, "h"), POINT_PEAK_HIGH)
+        for peak in peaks:
+            findPeak(lambda x: g(x, peak), peak)
 
         """
         populate data for output purposes
