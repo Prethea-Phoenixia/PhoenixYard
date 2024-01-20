@@ -923,8 +923,16 @@ class Highlow:
         try:
             if dom == DOMAIN_TIME:
                 # fmt: off
+                (
+                    t_bar_j, Z_j, eta_j, tau_1_j, tau_2_j
+                ) = (
+                    t_bar_0, Z_0, eta_0, tau_1_0, tau_2_0
+                )
+
+                l_bar_j, v_bar_j = 0, 0
+                l_bar_err, v_bar_err = 0, 0
                 for j in range(step):
-                    t_bar_j = t_bar_e / (step + 1) * (j + 1)
+                    t_bar_k = t_bar_e / (step + 1) * (j + 1)
                     if t_bar_j < t_bar_1:
                         (
                             _,
@@ -932,33 +940,38 @@ class Highlow:
                             (Z_err, eta_err, tau_1_err, tau_2_err),
                         ) = RKF78(
                             self._ode_ts,
-                            (Z_0, eta_0, tau_1_0, tau_2_0),
-                            t_bar_0,
+                            (Z_j, eta_j, tau_1_j, tau_2_j),
                             t_bar_j,
+                            t_bar_k,
                             relTol=tol,
                             absTol=tol**2,
                             minTol=minTol,
                         )
-                        # fmt: on
-                        # print(self._f_p_2_bar(l_bar_j, eta_j, tau_2_j) * pScale)
-                        l_bar_j, v_bar_j = 0, 0
-                        l_bar_err, v_bar_err = 0, 0
 
                     else:
+                        if (l_bar_j == 0) and (v_bar_j == 0):
+                            (
+                                t_bar_j, Z_j, eta_j, tau_1_j, tau_2_j
+                            ) = (
+                                t_bar_1, Z_1, eta_1, tau_1_1, tau_2_1
+                            )
+
                         (
                             _,
                             (Z_j, l_bar_j, v_bar_j, eta_j, tau_1_j, tau_2_j),
                             (Z_err, l_bar_err, v_bar_err, eta_err, tau_1_err, tau_2_err),
                         ) = RKF78(
                             self._ode_t,
-                            (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1),
-                            t_bar_1,
+                            (Z_j, l_bar_j, v_bar_j, eta_j, tau_1_j, tau_2_j),
                             t_bar_j,
+                            t_bar_k,
                             relTol=tol,
                             absTol=tol**2,
                             minTol=minTol,
                         )
                         # fmt: on
+
+                    t_bar_j = t_bar_k
 
                     updBarData(
                         tag="",
