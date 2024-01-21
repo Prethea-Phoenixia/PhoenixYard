@@ -928,11 +928,13 @@ class Highlow:
                 ) = (
                     t_bar_0, Z_0, eta_0, tau_1_0, tau_2_0
                 )
-
                 l_bar_j, v_bar_j = 0, 0
                 l_bar_err, v_bar_err = 0, 0
+
+                hasStarted = False
                 for j in range(step):
                     t_bar_k = t_bar_e / (step + 1) * (j + 1)
+
                     if t_bar_j < t_bar_1:
                         (
                             _,
@@ -949,12 +951,13 @@ class Highlow:
                         )
 
                     else:
-                        if (l_bar_j == 0) and (v_bar_j == 0):
+                        if not hasStarted:
                             (
                                 t_bar_j, Z_j, eta_j, tau_1_j, tau_2_j
                             ) = (
                                 t_bar_1, Z_1, eta_1, tau_1_1, tau_2_1
                             )
+                            hasStarted = True
 
                         (
                             _,
