@@ -3,14 +3,7 @@ from pso import pso
 from math import inf
 
 # from gun import
-from gun import (
-    POINT_START,
-    POINT_PEAK_AVG,
-    POINT_PEAK_SHOT,
-    POINT_FRACTURE,
-    POINT_BURNOUT,
-    POINT_EXIT,
-)
+from gun import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_EXIT
 from highlow import POINT_PEAK_HIGH, POINT_PEAK_BLEED
 
 
@@ -21,9 +14,8 @@ class psoHighlow:
         propellant,
         shotMass,
         chargeMass,
-        # chamberVolume,
-        burstPressure,  # low pressure chamber starting pressure
-        startPressure,  # shot start pressure
+        burstPressure,
+        startPressure,
         dragCoefficient,
         chambrage,
         tol,
@@ -37,7 +29,6 @@ class psoHighlow:
         self.propellant = propellant
         self.shotMass = shotMass
         self.chargeMass = chargeMass
-        # self.chamberVolume = chamberVolume
         self.burstPressure = burstPressure
         self.startPressure = startPressure
 
@@ -68,8 +59,8 @@ class psoHighlow:
         designLowPressure,
         designVelocity,
         iw=0.8,
-        cog=0.5,
-        soc=0.5,
+        cog=0.1,
+        soc=0.1,
         n=50,
     ):
         self.control = control
@@ -90,8 +81,6 @@ class psoHighlow:
         solution, dev = pso(
             self._f,
             constraints,
-            # y_rel_tol=self.tol,
-            # x_rel_tol=self.tol,
             y=0,
             y_abs_tol=self.tol,
             iw=iw,
@@ -115,7 +104,6 @@ class psoHighlow:
                 propellant=self.propellant,
                 grainSize=grainSize,
                 chargeMass=self.chargeMass,
-                # chamberVolume=self.chamberVolume,
                 chamberVolume=chamberVolume,
                 expansionVolume=expansionVolume,
                 burstPressure=self.burstPressure,
@@ -185,14 +173,11 @@ if __name__ == "__main__":
 
     M17C = Propellant(M17, SimpleGeometry.CYLINDER, None, 2.5)
     M1C = Propellant(M1, SimpleGeometry.CYLINDER, None, 10)
-    lf = 0.5
-    print("DELTA/rho:", lf)
     test = psoHighlow(
         caliber=0.082,
         propellant=M1C,
         shotMass=5,
         chargeMass=0.3,
-        # chamberVolume=0.3 / M1C.rho_p / lf,
         burstPressure=10e6,
         startPressure=5e6,
         dragCoefficient=3e-3,

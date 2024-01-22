@@ -1,8 +1,6 @@
 from tkinter import Frame, Menu, Text, filedialog, messagebox, StringVar, IntVar
 from tkinter import Tk, ttk
-
 import tkinter.font as tkFont
-import traceback
 
 from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
 from gun import POINT_START, POINT_BURNOUT, POINT_FRACTURE, POINT_EXIT
@@ -26,23 +24,22 @@ from misc import loadfont, resolvepath
 
 from math import ceil, pi, log10
 
+from matplotlib import font_manager
 import matplotlib.pyplot as mpl
 from matplotlib.figure import Figure
-from labellines import labelLines
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from labellines import labelLines
 
 from multiprocessing import Process, Queue, freeze_support
 from queue import Empty
 
 import sys
 import csv
-
 import json
+import platform
+import traceback
 
 from ctypes import windll
-import platform
-
-from matplotlib import font_manager
 
 from locWidget import Loc12Disp, Loc122Disp
 from locWidget import Loc2Input, Loc3Input
@@ -2568,9 +2565,9 @@ class InteriorBallisticsFrame(Frame):
 
             self.pControl.reset(
                 {
+                    POINT_PEAK_SHOT: POINT_PEAK_SHOT,
                     POINT_PEAK_AVG: POINT_PEAK_AVG,
                     POINT_PEAK_BREECH: POINT_PEAK_BREECH,
-                    POINT_PEAK_SHOT: POINT_PEAK_SHOT,
                 }
             )
         elif gunType == RECOILESS:
@@ -2585,10 +2582,10 @@ class InteriorBallisticsFrame(Frame):
 
             self.pControl.reset(
                 {
+                    POINT_PEAK_SHOT: POINT_PEAK_SHOT,
                     POINT_PEAK_STAG: POINT_PEAK_STAG,
                     POINT_PEAK_AVG: POINT_PEAK_AVG,
                     POINT_PEAK_BREECH: POINT_PEAK_BREECH,
-                    POINT_PEAK_SHOT: POINT_PEAK_SHOT,
                 }
             )
 
@@ -2601,6 +2598,15 @@ class InteriorBallisticsFrame(Frame):
 
             self.plotEta.restore()
             self.plotEta.reLocalize("plotEtaBld")
+
+            self.pControl.reset(
+                {
+                    POINT_PEAK_HIGH: POINT_PEAK_HIGH,
+                    POINT_PEAK_SHOT: POINT_PEAK_SHOT,
+                    POINT_PEAK_AVG: POINT_PEAK_AVG,
+                    POINT_PEAK_BLEED: POINT_PEAK_BLEED,
+                }
+            )
 
     def ctrlCallback(self, *args):
         if self.solve_W_Lg.get() == 0:
