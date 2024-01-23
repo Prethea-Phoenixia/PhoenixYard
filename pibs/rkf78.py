@@ -257,9 +257,7 @@ def RKF78(
             by zero in the case of a both a supplied absolute tolerance of zero
             and an integrand at zero point.
             """
-            Ry = abs(r) / (
-                minTol + max((relTol * min(abs(y1), abs(y2))), absTol)
-            )
+            Ry = abs(r) / (minTol + max((relTol * min(abs(y1), abs(y2))), absTol))
             if adapt:
                 R = max(R, Ry)
             else:
@@ -278,6 +276,16 @@ def RKF78(
             if abortFunc is not None and abortFunc(
                 x=x, ys=y_this, record=record
             ):  # premature terminating cond. is met
+                if debug:
+                    print("exiting via debug")
+                    print("record")
+                    for line in record:
+                        x, yval = line
+                        print("{:^12.8g}|".format(x), end="")
+                        for i, y in enumerate(yval):
+                            print("{:^12.8g}|".format(y), end="")
+                        print()
+
                 return x, y_this, Rm
 
             record.append([x, [*y_this]])
@@ -303,6 +311,7 @@ def RKF78(
         h *= min(max(delta, 0.125), 2)
 
     if debug:
+        print("exiting main loop normally")
         print("record")
         for line in record:
             x, yval = line
@@ -312,8 +321,6 @@ def RKF78(
             print()
 
     if abs(x - x_1) > abs(x_1 - x_0) * relTol:
-        # debug cod
-
         raise ValueError(
             "Premature Termination of Integration due to vanishing step size,"
             + " x at {}, h at {}.".format(x, h)
@@ -326,9 +333,7 @@ def main():
     def df1(x, y, _):
         return (7 * y**2 * x**3,)
 
-    _, v, e = RKF78(
-        df1, (3,), 2, 0, relTol=1e-4, absTol=1e-4, minTol=1e-14, debug=True
-    )
+    _, v, e = RKF78(df1, (3,), 2, 0, relTol=1e-4, absTol=1e-4, minTol=1e-14, debug=True)
 
     print(v)
     print(e)
