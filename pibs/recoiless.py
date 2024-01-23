@@ -383,14 +383,7 @@ class Recoiless:
         N = 1
         Delta_Z = Z_b - Z_0
 
-        t_bar_i, l_bar_i, v_bar_i, p_bar_i, eta_i, tau_i = (
-            0,
-            0,
-            0,
-            p_bar_0,
-            0,
-            1,
-        )
+        t_bar_i, l_bar_i, v_bar_i, p_bar_i, eta_i, tau_i = 0, 0, 0, p_bar_0, 0, 1
 
         isBurnOutContained = True
 

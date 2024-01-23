@@ -178,7 +178,7 @@ class Highlow:
         else:
             gamma = self.theta + 1
             deta = (
-                (self.phi_2 * p_1 * (self.S * self.chi_k))
+                (self.phi_2 * p_1 * self.S_j)
                 / ((self.f * tau_1) ** 0.5 * self.omega)
                 * (
                     (2 * gamma / self.theta)
@@ -229,7 +229,7 @@ class Highlow:
         else:
             gamma = self.theta + 1
             deta = (
-                (self.phi_2 * p_1 * (self.S * self.chi_k))
+                (self.phi_2 * p_1 * self.S_j)
                 / ((self.f * tau_1) ** 0.5 * self.omega)
                 * (
                     (2 * gamma / self.theta)
@@ -266,7 +266,7 @@ class Highlow:
         else:
             gamma = self.theta + 1
             deta = (
-                (self.phi_2 * p_1 * (self.S * self.chi_k))
+                (self.phi_2 * p_1 * self.S_j)
                 / ((self.f * tau_1) ** 0.5 * self.omega)
                 * (
                     (2 * gamma / self.theta)
@@ -314,7 +314,7 @@ class Highlow:
         else:
             gamma = self.theta + 1
             deta = (
-                (self.phi_2 * p_1 * (self.S * self.chi_k))
+                (self.phi_2 * p_1 * self.S_j)
                 / ((self.f * tau_1) ** 0.5 * self.omega)
                 * (
                     (2 * gamma / self.theta)
@@ -366,7 +366,7 @@ class Highlow:
         else:
             gamma = self.theta + 1
             deta = (
-                (self.phi_2 * p_1 * (self.S * self.chi_k))
+                (self.phi_2 * p_1 * self.S_j)
                 / ((self.f * tau_1) ** 0.5 * self.omega)
                 * (
                     (2 * gamma / self.theta)
@@ -553,11 +553,7 @@ class Highlow:
         # fmt: on
 
         t_1, eta_1, tau_1_1, tau_2_1 = RKF78(
-            self._ode_Zs,
-            (t_0, eta_0, tau_1_0, tau_2_0),
-            Z_0,
-            Z_1,
-            relTol=tol,
+            self._ode_Zs, (t_0, eta_0, tau_1_0, tau_2_0), Z_0, Z_1, relTol=tol
         )[1]
 
         # fmt: off
