@@ -452,9 +452,9 @@ class Highlow:
             )
         # fmt: on
 
-        updBarData(t=0, l=0, Z=Z_0, v=0, eta=0, tau_1=1, tau_2=1 + self.theta)
+        t_0, eta_0, tau_1_0, tau_2_0 = 0, 0, 1, 1
 
-        t_0, eta_0, tau_1_0, tau_2_0 = 0, 0, 1, 1 + self.theta
+        updBarData(t=t_0, l=0, Z=Z_0, v=0, eta=eta_0, tau_1=tau_1_0, tau_2=tau_2_0)
 
         dt_0, deta_0, dtau_1_0, dtau_2_0 = self._ode_Zs(
             Z_0, t_0, eta_0, tau_1_0, tau_2_0, _
@@ -484,7 +484,9 @@ class Highlow:
 
             delta = abs(p_2 - p_1) / p_1
 
-            return p_2 > 2 * self.p_0_s or p_2 < o_p_2 or p_1 > p_max or delta < tol
+            return (
+                p_2 > 2 * self.p_0_s or p_2 < o_p_2 or p_1 > p_max or delta < tol**2
+            )
 
         def f(Z):
             i = tett_record.index([v for v in tett_record if v[0] <= Z][-1])
@@ -510,11 +512,12 @@ class Highlow:
             relTol=tol,
             abortFunc=abort,
             record=tett_record,
+            # debug=True,
         )
         p_1_sm = self._f_p_1(Z, eta, tau_1)
         p_2_sm = self._f_p_2(0, eta, tau_2)
 
-        if abs(p_1_sm - p_2_sm) < tol * p_1_sm and p_2_sm < self.p_0_s:
+        if abs(p_1_sm - p_2_sm) < tol**2 * p_1_sm and p_2_sm < self.p_0_s:
             raise ValueError(
                 "Equilibrium between high and low chamber achieved "
                 + "before shot has started, "
@@ -1019,14 +1022,15 @@ class Highlow:
 
         for line in data:
             tag, t, l, psi, v, p_h, p_b, p, p_s, T_1, T_2, eta = line
-            p_line = [(0, p_h), (L_h * (1 - tol), p_h)]
-            for i in range(step):
+            p_line = []
+            for i in range(step + 1):
                 x = i / step * (l + L_l) + L_h
                 p_x = self.toPx(l, p_h, p_b, p_s, x)
                 p_line.append((x, p_x))
 
-            p_line.append((l + (self.V_0 + self.V_1) / self.S / self.chi_k, p_s))
+            # p_line.append((l + (self.V_0 + self.V_1) / self.S / self.chi_k, p_s))
             p_trace.append((tag, psi, T_2, p_line))
+            p_trace.append((tag, psi, T_1, [(0, p_h), (L_h * (1 - tol), p_h)]))
 
         return data, error, p_trace, [None, None, None, None]
 
@@ -1070,7 +1074,7 @@ class Highlow:
         L_h = self.l_0 / self.chi_k  # physical length of the high pressure chamber
         L_l = self.l_1 / self.chi_k  # low pressure chamber
 
-        if x < L_l:
+        if x < L_h:
             p_x = p_h
         else:
             r = (
