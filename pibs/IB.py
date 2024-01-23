@@ -977,6 +977,7 @@ class InteriorBallisticsFrame(Frame):
             else:
                 maxInset = 0
 
+            # fmt: off
             self.kwargs = {
                 "opt": optimize,
                 "con": constrain,
@@ -995,7 +996,7 @@ class InteriorBallisticsFrame(Frame):
                 "propellant": self.prop,
                 "grainSize": float(self.arcmm.get()) * 1e-3,
                 "chargeMass": chargeMass,
-                "chargeMassRatio": (float(self.chgkg.get()) / float(self.shtkg.get())),
+                "chargeMassRatio": float(self.chgkg.get()) / float(self.shtkg.get()),
                 "chamberVolume": chamberVolume,
                 "expansionVolume": float(self.evL.get()) * 1e-3,
                 "portArea": breechS * float(self.perf.get()) * 1e-2,
@@ -1004,8 +1005,7 @@ class InteriorBallisticsFrame(Frame):
                 "lengthGun": gunLength,
                 "chambrage": chambrage,  # chamber expansion
                 "nozzleExpansion": float(self.nozzExp.get()),  # nozzle expansion
-                "nozzleEfficiency": float(self.nozzEff.get())
-                * 1e-2,  # nozzle efficiency
+                "nozzleEfficiency": float(self.nozzEff.get())* 1e-2,  # nozzle efficiency
                 "dragCoefficient": float(self.dgc.get()) * 1e-2,  # drag coefficient
                 "designPressure": float(self.pTgt.get()) * 1e6,  # design pressure
                 "designVelocity": float(self.vTgt.get()),  # design velocity
@@ -1017,7 +1017,7 @@ class InteriorBallisticsFrame(Frame):
                 "maxInset": maxInset,
                 "autofrettage": autofrettage,
             }
-
+            # fmt: on
             if atmosphere:
                 self.kwargs.update(
                     {

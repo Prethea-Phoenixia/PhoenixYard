@@ -59,7 +59,7 @@ class Highlow:
 
         self.propellant = propellant
 
-        e_1 = 0.5 * grainSize
+        self.e_1 = 0.5 * grainSize
         self.S = (caliber / 2) ** 2 * pi
         self.m = shotMass
         self.omega = chargeMass
@@ -73,7 +73,6 @@ class Highlow:
         self.l_g = lengthGun
         self.chi_k = chambrage
 
-        self.Delta = self.omega / self.V_0
         self.l_0 = self.V_0 / self.S
         self.l_1 = self.V_1 / self.S
 
@@ -85,16 +84,19 @@ class Highlow:
         self.phi_1 = 1 / (1 - dragCoefficient)  # drag work coefficient
         self.phi = self.phi_1 + self.omega / (3 * self.m) * cc
 
-        self.v_j = (2 * self.f * self.omega / (self.theta * self.phi * self.m)) ** 0.5
-
         if self.p_0_e == 0:
             raise NotImplementedError(
                 "Current implementation use exponential burn rate and does not"
                 + " allow for solving the case with 0 shot start pressure."
             )
         else:
-            self.psi_0 = (1 / self.Delta - 1 / self.rho_p) / (
-                self.f / self.p_0_e + self.alpha - 1 / self.rho_p
+            self.psi_0 = (
+                self.p_0_e
+                * (self.V_0 - self.omega / self.rho_p)
+                / (
+                    self.f * self.omega
+                    - self.p_0_e * (self.omega / self.rho_p - self.alpha * self.omega)
+                )
             )
             if self.psi_0 <= 0:
                 raise ValueError(
@@ -102,13 +104,6 @@ class Highlow:
                     + " In practice this implies a detonation of the gun breech"
                     + " will likely occur."
                 )
-
-        self.B = (
-            self.S**2
-            * e_1**2
-            / (self.f * self.phi * self.omega * self.m * self.u_1**2)
-            * (self.f * self.Delta) ** (2 * (1 - self.n))
-        )
 
         Zs = cubic(self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0)
         # pick a valid solution between 0 and 1
@@ -127,23 +122,13 @@ class Highlow:
         self.S_j_bar = portArea / self.S
 
         gamma = self.theta + 1
-        phi_2 = 0.15  # for small ports 1.5mm to 2mm in size
-        self.C_A = (
-            phi_2
-            * (0.5 * self.theta * self.phi * self.m / self.omega) ** 0.5
-            * gamma**0.5
-            * (2 / (gamma + 1)) ** (0.5 * (gamma + 1) / self.theta)
-        )
-        self.C_B = (
-            phi_2
-            * (0.5 * self.theta * self.phi * self.m / self.omega) ** 0.5
-            * ((2 * gamma) / self.theta) ** 0.5
-        )
+        self.phi_2 = 0.15  # for small ports 1.5mm to 2mm in size
 
-        self.cfpr = (2 / (gamma + 1)) ** (
-            gamma / self.theta
-        )  # pressure ratio threshold for critical flow
-        self.V_bar = self.V_1 / self.V_0
+        self.cfpr = (2 / (gamma + 1)) ** (gamma / self.theta)
+        self.K_0 = gamma**0.5 * (2 / (gamma + 1)) ** ((gamma + 1) / (2 * self.theta))
+
+        # pressure ratio threshold for critical flow
+        self.v_j = (2 * self.f * self.omega / (self.theta * self.phi * self.m)) ** 0.5
 
     def __getattr__(self, attrName):
         if "propellant" in vars(self) and not (
@@ -159,172 +144,246 @@ class Highlow:
         else:
             raise AttributeError
 
-    def _f_p_1_bar(self, Z, eta, tau_1, psi=None):
+    def _f_p_1(self, Z, eta, tau_1, psi=None):
         psi = psi if psi else self.f_psi_Z(Z)
-        l_psi_bar = 1 - self.Delta * ((1 - psi) / self.rho_p + self.alpha * (psi - eta))
+        V_psi = (
+            self.V_0
+            - self.omega / self.rho_p * (1 - psi)
+            - self.alpha * self.omega * (psi - eta)
+        )
 
-        return tau_1 / l_psi_bar * (psi - eta)
+        return self.f * self.omega * tau_1 / V_psi * (psi - eta)
 
-    def _f_p_2_bar(self, l_bar, eta, tau_2):
-        return tau_2 * eta / (l_bar + self.V_bar - self.alpha * self.Delta * eta)
+    def _f_p_2(self, l, eta, tau_2):
+        l_0 = (self.V_1 - self.alpha * self.omega * eta) / self.S
 
-    def _ode_t(self, t_bar, Z, l_bar, v_bar, eta, tau_1, tau_2, delta):
+        return self.f * self.omega * tau_2 * eta / (self.S * (l_0 + l))
+
+    def _ode_t(self, t, Z, l, v, eta, tau_1, tau_2, _):
         psi = self.f_psi_Z(Z)
-        p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
+        p_1 = self._f_p_1(Z, eta, tau_1, psi)
 
         if Z <= self.Z_b:
-            dZ = (0.5 * self.theta / self.B) ** 0.5 * p_1_bar**self.n
+            dZ = self.u_1 / self.e_1 * p_1**self.n
         else:
             dZ = 0
 
-        p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
-        pr = p_2_bar / p_1_bar
-        if pr < self.cfpr:
-            deta = self.C_A
+        p_2 = self._f_p_2(l, eta, tau_2)
+
+        pr = p_2 / p_1
+        if pr <= self.cfpr:
+            deta = (self.phi_2 * self.K_0 * p_1 * self.S_j) / (
+                (self.f * tau_1) ** 0.5 * self.omega
+            )
         else:
             gamma = self.theta + 1
-            deta = self.C_B * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
-        deta *= self.S_j_bar * p_1_bar * tau_1**-0.5
+            deta = (
+                (self.phi_2 * p_1 * (self.S * self.chi_k))
+                / ((self.f * tau_1) ** 0.5 * self.omega)
+                * (
+                    (2 * gamma / self.theta)
+                    * (pr ** (2 / gamma) - pr ** ((gamma + 1) / (gamma)))
+                )
+                ** 0.5
+            )
 
         dpsi = self.f_sigma_Z(Z) * dZ
         dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (psi - eta)
 
-        if self.c_a_bar != 0 and v_bar > 0:
+        if self.c_a != 0 and v > 0:
             k = self.k_1  # gamma
-            v_r = v_bar / self.c_a_bar
-            p_d_bar = (
-                +0.25 * k * (k + 1) * v_r**2
+            v_r = v / self.c_a
+            p_d = (
+                0.25 * k * (k + 1) * v_r**2
                 + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
-            ) * self.p_a_bar
+            ) * self.p_a
         else:
-            p_d_bar = 0
+            p_d = 0
 
-        dv_bar = self.theta * 0.5 * (p_2_bar - p_d_bar)
-        dl_bar = v_bar
+        dv = self.S / (self.phi * self.m) * (p_2 - p_d)
+        dl = v
 
-        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar) / eta
+        dtau_2 = (
+            ((1 + self.theta) * tau_1 - tau_2) * deta
+            - (self.theta * self.phi * self.m) / (self.f * self.omega) * v * dv
+        ) / eta
 
-        return dZ, dl_bar, dv_bar, deta, dtau_1, dtau_2
+        return dZ, dl, dv, deta, dtau_1, dtau_2
 
-    def _ode_ts(self, t_bar, Z, eta, tau_1, tau_2, delta):
+    def _ode_ts(self, t, Z, eta, tau_1, tau_2, _):
         psi = self.f_psi_Z(Z)
-        p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
+        p_1 = self._f_p_1(Z, eta, tau_1, psi)
 
         if Z <= self.Z_b:
-            dZ = (0.5 * self.theta / self.B) ** 0.5 * p_1_bar**self.n
+            dZ = self.u_1 / self.e_1 * p_1**self.n
         else:
-            dZ = 0  # dZ/dt_bar
+            dZ = 0
 
-        p_2_bar = self._f_p_2_bar(0, eta, tau_2)
-        pr = p_2_bar / p_1_bar
-        if pr < self.cfpr:
-            deta = self.C_A
+        p_2 = self._f_p_2(0, eta, tau_2)
+
+        pr = p_2 / p_1
+        if pr <= self.cfpr:
+            deta = (self.phi_2 * self.K_0 * p_1 * self.S_j) / (
+                (self.f * tau_1) ** 0.5 * self.omega
+            )
         else:
             gamma = self.theta + 1
-            deta = self.C_B * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
-        deta *= self.S_j_bar * p_1_bar * tau_1**-0.5
+            deta = (
+                (self.phi_2 * p_1 * (self.S * self.chi_k))
+                / ((self.f * tau_1) ** 0.5 * self.omega)
+                * (
+                    (2 * gamma / self.theta)
+                    * (pr ** (2 / gamma) - pr ** ((gamma + 1) / (gamma)))
+                )
+                ** 0.5
+            )
 
-        dpsi = self.f_sigma_Z(Z) * dZ  # dpsi/dZ
+        dpsi = self.f_sigma_Z(Z) * dZ
         dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (psi - eta)
-        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
 
+        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
         return dZ, deta, dtau_1, dtau_2
 
-    def _ode_l(self, l_bar, t_bar, Z, v_bar, eta, tau_1, tau_2, _):
-        # print(l_bar, t_bar, Z, v_bar, eta, tau_1, tau_2)
+    def _ode_l(self, l, t, Z, v, eta, tau_1, tau_2, _):
+        dt = 1 / v  # dt / dl
+
         psi = self.f_psi_Z(Z)
-        p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
+        p_1 = self._f_p_1(Z, eta, tau_1, psi)
 
         if Z <= self.Z_b:
-            dZ = (0.5 * self.theta / self.B) ** 0.5 * p_1_bar**self.n * v_bar**-1
+            dZ = self.u_1 / self.e_1 * p_1**self.n * dt  # dZ / dl
         else:
             dZ = 0
 
-        p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
-        pr = p_2_bar / p_1_bar
-        if pr < self.cfpr:
-            deta = self.C_A
+        p_2 = self._f_p_2(l, eta, tau_2)
+
+        pr = p_2 / p_1
+        if pr <= self.cfpr:
+            deta = (
+                (self.phi_2 * self.K_0 * p_1 * self.S_j)
+                / ((self.f * tau_1) ** 0.5 * self.omega)
+            ) * dt  # deta / dl
         else:
             gamma = self.theta + 1
-            deta = self.C_B * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
-        deta *= self.S_j_bar * p_1_bar * tau_1**-0.5 * v_bar**-1
+            deta = (
+                (self.phi_2 * p_1 * (self.S * self.chi_k))
+                / ((self.f * tau_1) ** 0.5 * self.omega)
+                * (
+                    (2 * gamma / self.theta)
+                    * (pr ** (2 / gamma) - pr ** ((gamma + 1) / (gamma)))
+                )
+                ** 0.5
+            ) * dt  # deta / dl
 
-        dpsi = self.f_sigma_Z(Z) * dZ
+        dpsi = self.f_sigma_Z(Z) * dZ  # dpsi / dl
         dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (psi - eta)
 
-        if self.c_a_bar != 0 and v_bar > 0:
+        if self.c_a != 0 and v > 0:
             k = self.k_1  # gamma
-            v_r = v_bar / self.c_a_bar
-            p_d_bar = (
-                +0.25 * k * (k + 1) * v_r**2
-                + k * v_r * (1 + (0.25 * (k + 1) * v_r) ** 2) ** 0.5
-            ) * self.p_a_bar
-        else:
-            p_d_bar = 0
-
-        dt_bar = 1 / v_bar  # dt_bar / dl_bar
-        dv_bar = self.theta * 0.5 * (p_2_bar - p_d_bar) * dt_bar  # dv_bar/dl_bar
-
-        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar) / eta
-
-        return dt_bar, dZ, dv_bar, deta, dtau_1, dtau_2
-
-    def _ode_Z(self, Z, t_bar, l_bar, v_bar, eta, tau_1, tau_2, delta):
-        psi = self.f_psi_Z(Z)
-        p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
-        dt_bar = (2 * self.B / self.theta) ** 0.5 * p_1_bar**-self.n
-
-        p_2_bar = self._f_p_2_bar(l_bar, eta, tau_2)
-        pr = p_2_bar / p_1_bar
-        if pr < self.cfpr:
-            deta = self.C_A  # deta / dZ
-        else:
-            gamma = self.theta + 1
-            deta = self.C_B * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
-        deta *= self.S_j_bar * p_1_bar * tau_1**-0.5 * dt_bar
-
-        dpsi = self.f_sigma_Z(Z)  # dpsi/dZ
-        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (psi - eta)
-
-        if self.c_a_bar != 0 and v_bar > 0:
-            k = self.k_1  # gamma
-            v_r = v_bar / self.c_a_bar
-            p_d_bar = (
-                +0.25 * k * (k + 1) * v_r**2
+            v_r = v / self.c_a
+            p_d = (
+                0.25 * k * (k + 1) * v_r**2
                 + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
-            ) * self.p_a_bar
+            ) * self.p_a
         else:
-            p_d_bar = 0
+            p_d = 0
 
-        dl_bar = v_bar * dt_bar
-        dv_bar = 0.5 * self.theta * (p_2_bar - p_d_bar) * dt_bar
-        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta - 2 * v_bar * dv_bar) / eta
+        dv = self.S / (self.phi * self.m) * (p_2 - p_d) * dt
 
-        return dt_bar, dl_bar, dv_bar, deta, dtau_1, dtau_2
+        dtau_2 = (
+            ((1 + self.theta) * tau_1 - tau_2) * deta
+            - (self.theta * self.phi * self.m) / (self.f * self.omega) * v * dv
+        ) / eta
 
-    def _ode_Zs(self, Z, t_bar, eta, tau_1, tau_2, delta):
+        return dt, dZ, dv, deta, dtau_1, dtau_2
+
+    def _ode_Z(self, Z, t, l, v, eta, tau_1, tau_2, _):
         psi = self.f_psi_Z(Z)
-        p_1_bar = self._f_p_1_bar(Z, eta, tau_1, psi)
-        dt_bar = (2 * self.B / self.theta) ** 0.5 * p_1_bar**-self.n
+        p_1 = self._f_p_1(Z, eta, tau_1, psi)
 
-        p_2_bar = self._f_p_2_bar(0, eta, tau_2)
-        pr = p_2_bar / p_1_bar
-        if pr < self.cfpr:
-            deta = self.C_A  # deta / dZ
+        dt = 1 / (self.u_1 / self.e_1 * p_1**self.n)  # dt / dZ
+
+        p_2 = self._f_p_2(l, eta, tau_2)
+
+        pr = p_2 / p_1
+        if pr <= self.cfpr:
+            deta = (
+                (self.phi_2 * self.K_0 * p_1 * self.S_j)
+                / ((self.f * tau_1) ** 0.5 * self.omega)
+            ) * dt
         else:
             gamma = self.theta + 1
-            deta = self.C_B * (pr ** (2 / gamma) - pr ** ((gamma + 1) / gamma)) ** 0.5
-        deta *= self.S_j_bar * p_1_bar * tau_1**-0.5 * dt_bar
+            deta = (
+                (self.phi_2 * p_1 * (self.S * self.chi_k))
+                / ((self.f * tau_1) ** 0.5 * self.omega)
+                * (
+                    (2 * gamma / self.theta)
+                    * (pr ** (2 / gamma) - pr ** ((gamma + 1) / (gamma)))
+                )
+                ** 0.5
+            ) * dt
 
-        dpsi = self.f_sigma_Z(Z)
+        dpsi = self.f_sigma_Z(Z)  # dpsi / dZ
         dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (psi - eta)
 
-        if eta != 0:
-            dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
+        if self.c_a != 0 and v > 0:
+            k = self.k_1  # gamma
+            v_r = v / self.c_a
+            p_d = (
+                0.25 * k * (k + 1) * v_r**2
+                + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
+            ) * self.p_a
         else:
-            dtau_2 = None
+            p_d = 0
 
-        return dt_bar, deta, dtau_1, dtau_2
+        dv = self.S / (self.phi * self.m) * (p_2 - p_d) * dt
+        dl = v * dt
+
+        dtau_2 = (
+            ((1 + self.theta) * tau_1 - tau_2) * deta
+            - (self.theta * self.phi * self.m) / (self.f * self.omega) * v * dv
+        ) / eta
+
+        return dt, dl, dv, deta, dtau_1, dtau_2
+
+    def _ode_Zs(self, Z, t, eta, tau_1, tau_2, _):
+        psi = self.f_psi_Z(Z)
+        p_1 = self._f_p_1(Z, eta, tau_1, psi)
+
+        dt = 1 / (self.u_1 / self.e_1 * p_1**self.n)  # dt / dZ
+
+        p_2 = self._f_p_2(0, eta, tau_2)
+
+        pr = p_2 / p_1
+        if pr <= self.cfpr:
+            deta = (
+                self.phi_2
+                * self.K_0
+                * p_1
+                * self.S_j
+                / ((self.f * tau_1) ** 0.5 * self.omega)
+            ) * dt
+        else:
+            gamma = self.theta + 1
+            deta = (
+                (self.phi_2 * p_1 * (self.S * self.chi_k))
+                / ((self.f * tau_1) ** 0.5 * self.omega)
+                * (
+                    (2 * gamma / self.theta)
+                    * (pr ** (2 / gamma) - pr ** ((gamma + 1) / (gamma)))
+                )
+                ** 0.5
+            ) * dt
+
+        dpsi = self.f_sigma_Z(Z)  # dpsi / dZ
+        dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (psi - eta)
+
+        if eta == 0:
+            dtau_2 = None
+        else:
+            dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
+
+        return dt, deta, dtau_1, dtau_2
 
     def integrate(
         self,
@@ -358,107 +417,74 @@ class Highlow:
         if any((ambientP < 0, ambientRho < 0, ambientGamma < 1)):
             raise ValueError("Invalid ambient condition")
 
-        tScale = self.l_1 / self.v_j
-        pScale = self.f * self.Delta
-
         p_max = 1e9  # 1GPa
-        p_bar_max = p_max / pScale
-
-        self.p_0_e_bar = self.p_0_e / pScale
-        self.p_0_s_bar = self.p_0_s / pScale
-
         # ambient conditions
-        self.p_a_bar = ambientP / pScale
+        self.p_a = ambientP
 
         if ambientRho != 0:
-            self.c_a_bar = (ambientGamma * ambientP / ambientRho) ** 0.5 / self.v_j
+            self.c_a = (ambientGamma * ambientP / ambientRho) ** 0.5
         else:
-            self.c_a_bar = 0
+            self.c_a = 0
 
         self.k_1 = ambientGamma
 
-        l_g_bar = self.l_g / self.l_1
-        p_bar_0 = self.p_0_e / pScale
-
-        if p_bar_0 > p_bar_max:
-            raise ValueError("Starting Pressure is Unreasonably High.")
-
         Z_b = self.Z_b
         Z_0 = self.Z_0
+
+        l_g = self.l_g
 
         bar_data = []
         bar_err = []
 
         # fmt: off
         def updBarData(
-            tag="*", t_bar=0, l_bar=0, Z=0, v_bar=0, eta=0, tau_1=0, tau_2=0,
-            t_bar_err=0, l_bar_err=0, Z_err=0, v_bar_err=0, eta_err=0,
-            tau_1_err=0, tau_2_err=0,
+            tag="*", t=0, l=0, Z=0, v=0, eta=0, tau_1=0, tau_2=0,
+            t_err=0, l_err=0, Z_err=0, v_err=0, eta_err=0, tau_1_err=0, tau_2_err=0,
         ):
-            p_1_bar, p_2_bar = (
-                self._f_p_1_bar(Z, eta, tau_1),
-                self._f_p_2_bar(l_bar, eta, tau_2),
-            )
-            p_bar_err = "N/A"
-            bar_data.append(
-                (
-                    tag, t_bar, l_bar, Z, v_bar, p_1_bar, p_2_bar, eta, tau_1,
-                    tau_2,
-                )
-            )
+            p_1, p_2 = (self._f_p_1(Z, eta, tau_1), self._f_p_2(l, eta, tau_2))
+            p_err = "N/A"
+            bar_data.append((tag, t, l, Z, v, p_1, p_2, eta, tau_1, tau_2))
             bar_err.append(
                 (
-                    "L", t_bar_err, l_bar_err, Z_err, v_bar_err, p_bar_err,
-                    p_bar_err, eta_err, tau_1_err, tau_2_err
+                    "L", t_err, l_err, Z_err, v_err, p_err, p_err, eta_err,
+                    tau_1_err, tau_2_err
                 )
             )
         # fmt: on
-        updBarData(
-            t_bar=0,
-            l_bar=0,
-            Z=Z_0,
-            v_bar=0,
-            eta=0,
-            tau_1=1,
-            tau_2=1 + self.theta,
-        )
 
-        t_bar_0, eta_0, tau_1_0, tau_2_0 = 0, 0, 1, 1 + self.theta
+        updBarData(t=0, l=0, Z=Z_0, v=0, eta=0, tau_1=1, tau_2=1 + self.theta)
 
-        dt_bar_0, deta_0, dtau_1_0, dtau_2_0 = self._ode_Zs(
-            Z_0, t_bar_0, eta_0, tau_1_0, tau_2_0, _
+        t_0, eta_0, tau_1_0, tau_2_0 = 0, 0, 1, 1 + self.theta
+
+        dt_0, deta_0, dtau_1_0, dtau_2_0 = self._ode_Zs(
+            Z_0, t_0, eta_0, tau_1_0, tau_2_0, _
         )
 
         dZ = Z_0 * tol
         Z_0 += dZ
-        t_bar_0 += dt_bar_0 * dZ
+        t_0 += dt_0 * dZ
         eta_0 += deta_0 * dZ
         tau_1_0 += dtau_1_0 * dZ
 
-        tett_record = [[Z_0, [t_bar_0, eta_0, tau_1_0, tau_2_0]]]
+        tett_record = [[Z_0, [t_0, eta_0, tau_1_0, tau_2_0]]]
 
         def abort(x, ys, record):
             Z = x
-            t_bar, eta, tau_1, tau_2 = ys
-            p_2_bar = self._f_p_2_bar(0, eta, tau_2)
+            t, eta, tau_1, tau_2 = ys
+            p_2 = self._f_p_2(0, eta, tau_2)
 
             if len(record) < 1:
                 return False
             o_x, o_ys = record[-1]
 
             _, o_eta, _, o_tau_2 = o_ys
-            o_p_2_bar = self._f_p_2_bar(0, o_eta, o_tau_2)
+            o_p_2 = self._f_p_2(0, o_eta, o_tau_2)
 
-            p_1_bar = self._f_p_1_bar(Z, eta, tau_1)
+            p_1 = self._f_p_1(Z, eta, tau_1)
 
-            delta = abs(p_2_bar - p_1_bar) / p_1_bar
+            delta = abs(p_2 - p_1) / p_1
 
-            return (
-                p_2_bar > 2 * self.p_0_s_bar
-                or p_2_bar < o_p_2_bar
-                or p_1_bar > p_bar_max
-                or delta < tol  # TODO: CATCH THIS!!!
-            )
+            return p_2 > 2 * self.p_0_s or p_2 < o_p_2 or p_1 > p_max or delta < tol
 
         def f(Z):
             i = tett_record.index([v for v in tett_record if v[0] <= Z][-1])
@@ -466,107 +492,86 @@ class Highlow:
             x = tett_record[i][0]
             ys = tett_record[i][1]
 
-            _, (t_bar, eta, tau_1, tau_2), _ = RKF78(
-                self._ode_Zs,
-                ys,
-                x,
-                Z,
-                relTol=tol,
-                absTol=tol**2,
-                minTol=minTol,
-                abortFunc=abort,
-                record=tett_record,
+            _, (t, eta, tau_1, tau_2), _ = RKF78(
+                self._ode_Zs, ys, x, Z, relTol=tol, abortFunc=abort, record=tett_record
             )
 
             tett_record.extend(v for v in tett_record if v[0] > tett_record[-1][0])
-            p_2_bar = self._f_p_2_bar(0, eta, tau_2)
+            p_2 = self._f_p_2(0, eta, tau_2)
 
             tett_record[-1]
-            return p_2_bar
+            return p_2
 
-        Z, (t_bar, eta, tau_1, tau_2), _ = RKF78(
+        Z, (t, eta, tau_1, tau_2), _ = RKF78(
             self._ode_Zs,
             tett_record[0][1],
             tett_record[0][0],
             Z_b,
             relTol=tol,
-            absTol=tol**2,
-            minTol=minTol,
             abortFunc=abort,
             record=tett_record,
         )
-        p_1_bar_sm = self._f_p_1_bar(Z, eta, tau_1)
-        p_2_bar_sm = self._f_p_2_bar(0, eta, tau_2)
+        p_1_sm = self._f_p_1(Z, eta, tau_1)
+        p_2_sm = self._f_p_2(0, eta, tau_2)
 
-        if abs(p_1_bar_sm - p_2_bar_sm) < tol * p_1_bar_sm:
+        if abs(p_1_sm - p_2_sm) < tol * p_1_sm and p_2_sm < self.p_0_s:
             raise ValueError(
                 "Equilibrium between high and low chamber achieved "
                 + "before shot has started, "
-                + f"at ({p_2_bar_sm * pScale * 1e-6:.6f} MPa)."
+                + f"at ({p_2_sm * 1e-6:.6f} MPa)."
             )
 
-        elif p_1_bar_sm > p_bar_max:
+        elif p_1_sm > p_max:
             raise ValueError(
                 "Nobel-Abel EoS is generally accurate enough below 600MPa. However,"
-                + f" Unreasonably high pressure (>{p_1_bar_sm * pScale / 1e6:.0f} MPa)"
+                + f" Unreasonably high pressure (>{p_1_sm * 1e-6:.0f} MPa)"
                 + " was encountered in the high pressure chamber."
             )  # in practice most of the pressure-realted spikes are captured here.
 
-        elif p_2_bar_sm < self.p_0_s_bar:
+        elif p_2_sm < self.p_0_s:
             raise ValueError(
-                f"Maximum pressure developed in low-chamber ({p_2_bar_sm * pScale * 1e-6:.6f} MPa) "
+                f"Maximum pressure developed in low-chamber ({p_2_sm * 1e-6:.6f} MPa) "
                 + "not enough to start the shot."
             )
 
         Z_1 = 0.5 * sum(
-            bisect(
-                lambda x: f(x) - self.p_0_s_bar,
-                Z_0,
-                Z_b,
-                y_abs_tol=self.p_0_s_bar * tol,
-            )
+            bisect(lambda x: f(x) - self.p_0_s, Z_0, Z_b, y_abs_tol=self.p_0_s * tol)
         )
 
         # fmt: off
         record.extend(
-            (t_bar, (0, self.f_psi_Z(Z), 0,
-                     self._f_p_1_bar(Z, eta, tau_1),
-                     self._f_p_2_bar(0, eta, tau_2), eta, tau_1, tau_2))
-            for (Z, (t_bar, eta, tau_1, tau_2)) in tett_record if Z < Z_1
+            (
+                t,
+                (
+                    0, self.f_psi_Z(Z), 0, self._f_p_1(Z, eta, tau_1),
+                    self._f_p_2(0, eta, tau_2), eta, tau_1, tau_2
+                ),
+            )
+            for (Z, (t, eta, tau_1, tau_2)) in tett_record
+            if Z < Z_1
         )
         # fmt: on
 
-        t_bar_1, eta_1, tau_1_1, tau_2_1 = RKF78(
+        t_1, eta_1, tau_1_1, tau_2_1 = RKF78(
             self._ode_Zs,
-            (t_bar_0, eta_0, tau_1_0, tau_2_0),
+            (t_0, eta_0, tau_1_0, tau_2_0),
             Z_0,
             Z_1,
             relTol=tol,
-            absTol=tol**2,
-            minTol=minTol,
         )[1]
 
+        # fmt: off
         updBarData(
-            tag=POINT_START,
-            t_bar=t_bar_1,
-            l_bar=0,
-            Z=Z_1,
-            v_bar=0,
-            eta=eta_1,
-            tau_1=tau_1_1,
-            tau_2=tau_2_1,
+            tag=POINT_START, t=t_1, l=0, Z=Z_1, v=0, eta=eta_1, tau_1=tau_1_1, tau_2=tau_2_1
         )
+        # fmt: on
 
         Z_i = Z_1
         Z_j = Z_b
         N = 1
         Delta_Z = Z_b - Z_0
 
-        # fmt: off
-        t_bar_i, l_bar_i, v_bar_i, _, eta_i, tau_1_i, tau_2_i = (
-            t_bar_1, 0, 0, self.p_0_s_bar, eta_1, tau_1_1, tau_2_1
-        )
-        # fmt: on
+        t_i, l_i, v_i, eta_i, tau_1_i, tau_2_i = t_1, 0, 0, eta_1, tau_1_1, tau_2_1
 
         isBurnOutContained = True
 
@@ -578,13 +583,13 @@ class Highlow:
         i within or on the muzzle, with the propellant either still
         burning or right on the burnout point..
         """
-        ztlvett_record = [(Z_1, (t_bar_1, 0, 0, eta_1, tau_1_1, tau_2_1))]
+        ztlvett_record = [(Z_1, (t_1, 0, 0, eta_1, tau_1_1, tau_2_1))]
 
         def abort(x, ys, record):
-            Z, _, l_bar, v_bar, eta, tau_1, _ = x, *ys
-            p_1_bar = self._f_p_1_bar(Z, eta, tau_1)
+            Z, _, l, v, eta, tau_1, _ = x, *ys
+            p_1 = self._f_p_1(Z, eta, tau_1)
 
-            return any((l_bar > l_g_bar, p_1_bar > p_bar_max, v_bar <= 0, p_1_bar < 0))
+            return any((l > l_g, p_1 > p_max, v <= 0, p_1 < 0))
 
         while Z_i < Z_b:  # terminates if burnout is achieved
             ztlvett_record_i = []
@@ -596,47 +601,41 @@ class Highlow:
                 if Z_j > Z_b:
                     Z_j = Z_b
 
-                (
-                    Z,
-                    (t_bar_j, l_bar_j, v_bar_j, eta_j, tau_1_j, tau_2_j),
-                    _,
-                ) = RKF78(
+                (Z, (t_j, l_j, v_j, eta_j, tau_1_j, tau_2_j), _) = RKF78(
                     self._ode_Z,
-                    (t_bar_i, l_bar_i, v_bar_i, eta_i, tau_1_i, tau_2_i),
+                    (t_i, l_i, v_i, eta_i, tau_1_i, tau_2_i),
                     Z_i,
                     Z_j,
                     relTol=tol,
-                    absTol=tol**2,
-                    minTol=minTol,
                     abortFunc=abort,
                     record=ztlvett_record_i,
                 )
 
-                p_bar_1_j = self._f_p_1_bar(Z_j, eta_j, tau_1_j)
+                p_1_j = self._f_p_1(Z_j, eta_j, tau_1_j)
 
             except ValueError as e:
                 raise e
 
-            if l_bar_j >= l_g_bar:
-                if abs(l_bar_i - l_g_bar) / (l_g_bar) > tol or l_bar_i == 0:
+            if l_j >= l_g:
+                if abs(l_i - l_g) / (l_g) > tol or l_i == 0:
                     N *= 2
                     Z_j = Z_i + Delta_Z / N
                 else:
                     isBurnOutContained = False
-                    break  # l_bar_i is solved to within a tol of l_bar_g
+                    break  # l_i is solved to within a tol of l_g
 
             else:
                 ztlvett_record.extend(ztlvett_record_i)
-                if p_bar_1_j > p_bar_max:
+                if p_1_j > p_max:
                     raise ValueError(
                         "Nobel-Abel EoS is generally accurate enough below 600MPa. However,"
                         + " Unreasonably high pressure (>{:.0f} MPa) was encountered.".format(
-                            p_max / 1e6
+                            p_max * 1e-6
                         )  # in practice most of the pressure-realted spikes are captured here.
                     )
 
-                if v_bar_j <= 0:
-                    Z, t_bar, l_bar, v_bar, eta, tau_1, tau_2 = (
+                if v_j <= 0:
+                    Z, t, l, v, eta, tau_1, tau_2 = (
                         ztlvett_record[-1][0],
                         *ztlvett_record[-1][1],
                     )
@@ -644,28 +643,26 @@ class Highlow:
                     raise ValueError(
                         "Squib load condition detected: Shot stopped in bore.\n"
                         + "Shot is last calculated at {:.0f} mm at {:.0f} mm/s after {:.0f} ms".format(
-                            l_bar * self.l_1 * 1e3,
-                            v_bar * self.v_j * 1e3,
-                            t_bar * tScale * 1e3,
+                            l * 1e3, v * 1e3, t * 1e3
                         )
                     )
 
-                if any(v < 0 for v in (t_bar_j, l_bar_j, p_bar_1_j)):
+                if any(v < 0 for v in (t_j, l_j, p_1_j)):
                     raise ValueError(
                         "Numerical Integration diverged: negative"
                         + " values encountered in results.\n"
-                        + "{:.0f} ms, {:.0f} mm, {:.0f} m/s, {:.0f} MPa".format(
-                            t_bar_j * tScale * 1e3,
-                            l_bar_j * self.l_1 * 1e3,
-                            v_bar_j * self.v_j,
-                            p_bar_1_j * pScale / 1e6,
+                        + "{:.0f} ms, {:.0f} mm, {:.0f} mm/s, {:.0f} MPa".format(
+                            t_j * 1e3, l_j * 1e3, v_j * 1e3, p_1_j * 1e-6
                         )
                     )  # this will catch any case where t, l, p are negative
 
                 # fmt: off
-                t_bar_i, l_bar_i, v_bar_i, eta_i, tau_1_i, tau_2_i = (
-                    t_bar_j, l_bar_j, v_bar_j, eta_j, tau_1_j, tau_2_j
-                )  # fmt: on
+                (
+                    t_i, l_i, v_i, eta_i, tau_1_i, tau_2_i
+                ) = (
+                    t_j, l_j, v_j, eta_j, tau_1_j, tau_2_j
+                )
+                # fmt: on
                 Z_i = Z_j
                 """
                 this way the group of values denoted by _i is always updated
@@ -673,10 +670,9 @@ class Highlow:
                 """
                 Z_j += Delta_Z / N
 
-        if t_bar_i == 0:
+        if t_i == 0:
             raise ValueError("burnout point found to be at the origin.")
 
-        # input()
         """
         Cludge code to force the SoE past the discontinuity at Z = Z_b, since
         we wrote the SoE to be be piecewise continous from (0, Z_b] and (Z_b, +inf)
@@ -688,12 +684,17 @@ class Highlow:
 
         # fmt: off
         record.extend(
-            (t_bar, (l_bar, self.f_psi_Z(Z), v_bar,
-                     self._f_p_1_bar(Z, eta, tau_1),
-                     self._f_p_2_bar(l_bar, eta, tau_2), eta, tau_1, tau_2))
-            for (Z, (t_bar, l_bar, v_bar, eta, tau_1, tau_2)) in ztlvett_record
+            (
+                t,
+                (
+                    l, self.f_psi_Z(Z), v, self._f_p_1(Z, eta, tau_1),
+                    self._f_p_2(l, eta, tau_2), eta, tau_1, tau_2
+                ),
+            )
+            for (Z, (t, l, v, eta, tau_1, tau_2)) in ztlvett_record
         )
         # fmt: on
+
         """
         Subscript e indicate exit condition.
         At this point, since its guaranteed that point i will be further
@@ -705,123 +706,79 @@ class Highlow:
         ltzvett_record = []
         (
             _,
-            (t_bar_e, Z_e, v_bar_e, eta_e, tau_1_e, tau_2_e),
-            (t_bar_err, Z_err, v_bar_err, eta_err, tau_1_err, tau_2_err),
+            (t_e, Z_e, v_e, eta_e, tau_1_e, tau_2_e),
+            (t_err, Z_err, v_err, eta_err, tau_1_err, tau_2_err),
         ) = RKF78(
             self._ode_l,
-            (t_bar_i, Z_i, v_bar_i, eta_i, tau_1_i, tau_2_i),
-            l_bar_i,
-            l_g_bar,
+            (t_i, Z_i, v_i, eta_i, tau_1_i, tau_2_i),
+            l_i,
+            l_g,
             relTol=tol,
-            absTol=tol**2,
-            minTol=minTol,
             record=ltzvett_record,
         )
         # fmt: off
         record.extend(
-            (t_bar, (l_bar, self.f_psi_Z(Z), v_bar,
-                     self._f_p_1_bar(Z, eta, tau_1),
-                     self._f_p_2_bar(l_bar, eta, tau_2), eta, tau_1, tau_2))
-            for (l_bar, (t_bar, Z, v_bar, eta, tau_1, tau_2)) in ltzvett_record
-        )
-        # fmt: on
-        updBarData(
-            tag=POINT_EXIT,
-            t_bar=t_bar_e,
-            l_bar=l_g_bar,
-            Z=Z_e,
-            v_bar=v_bar_e,
-            eta=eta_e,
-            tau_1=tau_1_e,
-            tau_2=tau_2_e,
-            t_bar_err=t_bar_err,
-            l_bar_err=0,
-            Z_err=Z_err,
-            v_bar_err=v_bar_err,
-            eta_err=eta_err,
-            tau_1_err=tau_1_err,
-            tau_2_err=tau_2_err,
+            (
+                t,
+                (
+                    l, self.f_psi_Z(Z), v, self._f_p_1(Z, eta, tau_1),
+                    self._f_p_2(l, eta, tau_2), eta, tau_1, tau_2
+                ),
+            )
+            for (l, (t, Z, v, eta, tau_1, tau_2)) in ltzvett_record
         )
 
-        t_bar_f = None
+        updBarData(
+            tag=POINT_EXIT, t=t_e, l=l_g, Z=Z_e, v=v_e, eta=eta_e, tau_1=tau_1_e,
+            tau_2=tau_2_e, t_err=t_err, l_err=0, Z_err=Z_err, v_err=v_err, eta_err=eta_err,
+            tau_1_err=tau_1_err, tau_2_err=tau_2_err
+        )
+        # fmt: on
+
+        t_f = None
         if Z_b > 1.0 and Z_e >= 1.0:  # fracture point exist and is contained
             """
             Subscript f indicate fracture condition
             ODE w.r.t Z is integrated from Z_0 to 1, from onset of projectile
             movement to charge fracture
             """
-            # fmt: off
+
             (
                 _,
-                (t_bar_f, l_bar_f, v_bar_f, eta_f, tau_1_f, tau_2_f),
-                (t_bar_err, l_bar_err, v_bar_err, eta_err_f, tau_1_err, tau_2_err),
+                (t_f, l_f, v_f, eta_f, tau_1_f, tau_2_f),
+                (t_err, l_err, v_err, eta_err, tau_1_err, tau_2_err),
             ) = RKF78(
-                self._ode_Z,
-                (t_bar_1, 0, 0, eta_1, tau_1_1, tau_2_1),
-                Z_1,
-                1,
-                relTol=tol,
-                absTol=tol**2,
-                minTol=minTol,
+                self._ode_Z, (t_1, 0, 0, eta_1, tau_1_1, tau_2_1), Z_1, 1, relTol=tol
+            )
+            # fmt: off
+            updBarData(
+                tag=POINT_FRACTURE, t=t_f, l=l_f, Z=1, v=v_f, eta=eta_f,
+                tau_1=tau_1_f, tau_2=tau_2_f, t_err=t_err,
+                l_err=l_err, Z_err=0, v_err=v_err, eta_err=eta_err,
+                tau_1_err=tau_1_err, tau_2_err=tau_2_err,
             )
             # fmt: on
-            updBarData(
-                tag=POINT_FRACTURE,
-                t_bar=t_bar_f,
-                l_bar=l_bar_f,
-                Z=1,
-                v_bar=v_bar_f,
-                eta=eta_f,
-                tau_1=tau_1_f,
-                tau_2=tau_2_f,
-                t_bar_err=t_bar_err,
-                l_bar_err=l_bar_err,
-                Z_err=0,
-                v_bar_err=v_bar_err,
-                eta_err=eta_err,
-                tau_1_err=tau_1_err,
-                tau_2_err=tau_2_err,
-            )
 
-        t_bar_b = None
+        t_b = None
         if isBurnOutContained:
             """
             Subscript b indicated burnout condition
             ODE w.r.t Z is integrated from Z_0 to Z_b, from onset of projectile
             movement to charge burnout.
             """
-            # fmt:off
 
             (
                 _,
-                (t_bar_b, l_bar_b, v_bar_b, eta_b, tau_1_b, tau_2_b),
-                (t_bar_err, l_bar_err, v_bar_err, eta_err, tau_1_err, tau_2_err),
+                (t_b, l_b, v_b, eta_b, tau_1_b, tau_2_b),
+                (t_err, l_err, v_err, eta_err, tau_1_err, tau_2_err),
             ) = RKF78(
-                self._ode_Z,
-                (t_bar_1, 0, 0, eta_1, tau_1_1, tau_2_1),
-                Z_1,
-                Z_b,
-                relTol=tol,
-                absTol=tol**2,
-                minTol=minTol,
+                self._ode_Z, (t_1, 0, 0, eta_1, tau_1_1, tau_2_1), Z_1, Z_b, relTol=tol
             )
-
+            # fmt:off
             updBarData(
-                tag=POINT_BURNOUT,
-                t_bar=t_bar_b,
-                l_bar=l_bar_b,
-                Z=Z_b,
-                v_bar=v_bar_b,
-                eta=eta_b,
-                tau_1=tau_1_b,
-                tau_2=tau_2_b,
-                t_bar_err=t_bar_err,
-                l_bar_err=l_bar_err,
-                Z_err=0,
-                v_bar_err=v_bar_err,
-                eta_err=eta_err,
-                tau_1_err=tau_1_err,
-                tau_2_err=tau_2_err
+                tag=POINT_BURNOUT, t=t_b, l=l_b, Z=Z_b, v=v_b, eta=eta_b,
+                tau_1=tau_1_b, tau_2=tau_2_b, t_err=t_err, l_err=l_err, Z_err=0,
+                v_err=v_err, eta_err=eta_err, tau_1_err=tau_1_err, tau_2_err=tau_2_err
             )
             # fmt: on
 
@@ -835,27 +792,21 @@ class Highlow:
         """
 
         def g(t, m=POINT_PEAK_AVG):
-            Z, l_bar, v_bar, eta, tau_1, tau_2 = RKF78(
-                self._ode_t,
-                (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1),
-                t_bar_1,
-                t,
-                relTol=tol,
-                absTol=tol**2,
-                minTol=minTol,
+            Z, l, v, eta, tau_1, tau_2 = RKF78(
+                self._ode_t, (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1), t_1, t, relTol=tol
             )[1]
 
             if m == POINT_PEAK_HIGH:
-                p_bar_high = self._f_p_1_bar(Z, eta, tau_1)
-                return p_bar_high
-            p_bar_low = self._f_p_2_bar(l_bar, eta, tau_2)
+                p_high = self._f_p_1(Z, eta, tau_1)
+                return p_high
+            p_low = self._f_p_2(l, eta, tau_2)
             if m == POINT_PEAK_AVG:
-                return p_bar_low
-            p_s, p_b = self.toPsPb(l_bar * self.l_1, p_bar_low * pScale, eta)
+                return p_low
+            p_s, p_b = self.toPsPb(l, p_low, eta)
             if m == POINT_PEAK_SHOT:
-                return p_s / pScale
+                return p_s
             elif m == POINT_PEAK_BLEED:
-                return p_b / pScale
+                return p_b
 
         def findPeak(g, tag):
             """
@@ -865,54 +816,30 @@ class Highlow:
             we take the median value.
             """
 
-            t_bar_tol = tol * min(
-                t for t in (t_bar_e, t_bar_b, t_bar_f) if t is not None
-            )
+            t_tol = tol * min(t for t in (t_e, t_b, t_f) if t is not None)
 
-            t_bar = 0.5 * sum(
-                gss(
-                    g,
-                    t_bar_1,
-                    t_bar_e if t_bar_b is None else t_bar_b,
-                    x_tol=t_bar_tol,
-                    findMin=False,
-                )
+            t = 0.5 * sum(
+                gss(g, t_1, t_e if t_b is None else t_b, x_tol=t_tol, findMin=False)
             )
 
             # fmt: off
             (
                 _,
-                (Z, l_bar, v_bar, eta, tau_1, tau_2),
-                (Z_err, l_bar_err, v_bar_err, eta_err, tau_1_err, tau_2_err),
+                (Z, l, v, eta, tau_1, tau_2),
+                (Z_err, l_err, v_err, eta_err, tau_1_err, tau_2_err),
             ) = RKF78(
                 self._ode_t,
-                (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1),
-                t_bar_1,
-                t_bar,
-                relTol=tol,
-                absTol=tol**2,
-                minTol=minTol,
+                (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1), t_1, t, relTol=tol
             )
             # fmt: on
-            t_bar_err = 0.5 * t_bar_tol
+            t_err = 0.5 * t_tol
 
+            # fmt: off
             updBarData(
-                tag=tag,
-                t_bar=t_bar,
-                l_bar=l_bar,
-                Z=Z,
-                v_bar=v_bar,
-                eta=eta,
-                tau_1=tau_1,
-                tau_2=tau_2,
-                t_bar_err=t_bar_err,
-                l_bar_err=l_bar_err,
-                Z_err=Z_err,
-                v_bar_err=v_bar_err,
-                eta_err=eta_err,
-                tau_1_err=tau_1_err,
-                tau_2_err=tau_2_err,
-            )
+                tag=tag, t=t, l=l, Z=Z, v=v, eta=eta, tau_1=tau_1, tau_2=tau_2,
+                t_err=t_err, l_err=l_err, Z_err=Z_err, v_err=v_err, eta_err=eta_err,
+                tau_1_err=tau_1_err, tau_2_err=tau_2_err
+            )  # fmt:on
 
         for peak in peaks:
             findPeak(lambda x: g(x, peak), peak)
@@ -924,18 +851,19 @@ class Highlow:
             if dom == DOMAIN_TIME:
                 # fmt: off
                 (
-                    t_bar_j, Z_j, eta_j, tau_1_j, tau_2_j
+                    t_j, Z_j, eta_j, tau_1_j, tau_2_j
                 ) = (
-                    t_bar_0, Z_0, eta_0, tau_1_0, tau_2_0
+                    t_0, Z_0, eta_0, tau_1_0, tau_2_0
                 )
-                l_bar_j, v_bar_j = 0, 0
-                l_bar_err, v_bar_err = 0, 0
+                # fmt: on
+                l_j, v_j = 0, 0
+                l_err, v_err = 0, 0
 
                 hasStarted = False
                 for j in range(step):
-                    t_bar_k = t_bar_e / (step + 1) * (j + 1)
+                    t_k = t_e / (step + 1) * (j + 1)
 
-                    if t_bar_j < t_bar_1:
+                    if t_k < t_1:
                         (
                             _,
                             (Z_j, eta_j, tau_1_j, tau_2_j),
@@ -943,56 +871,43 @@ class Highlow:
                         ) = RKF78(
                             self._ode_ts,
                             (Z_j, eta_j, tau_1_j, tau_2_j),
-                            t_bar_j,
-                            t_bar_k,
+                            t_j,
+                            t_k,
                             relTol=tol,
-                            absTol=tol**2,
-                            minTol=minTol,
                         )
 
                     else:
                         if not hasStarted:
+                            # fmt: off
                             (
-                                t_bar_j, Z_j, eta_j, tau_1_j, tau_2_j
+                                t_j, Z_j, eta_j, tau_1_j, tau_2_j
                             ) = (
-                                t_bar_1, Z_1, eta_1, tau_1_1, tau_2_1
+                                t_1, Z_1, eta_1, tau_1_1, tau_2_1
                             )
                             hasStarted = True
+                            # fmt: on
 
                         (
                             _,
-                            (Z_j, l_bar_j, v_bar_j, eta_j, tau_1_j, tau_2_j),
-                            (Z_err, l_bar_err, v_bar_err, eta_err, tau_1_err, tau_2_err),
+                            (Z_j, l_j, v_j, eta_j, tau_1_j, tau_2_j),
+                            (Z_err, l_err, v_err, eta_err, tau_1_err, tau_2_err),
                         ) = RKF78(
                             self._ode_t,
-                            (Z_j, l_bar_j, v_bar_j, eta_j, tau_1_j, tau_2_j),
-                            t_bar_j,
-                            t_bar_k,
+                            (Z_j, l_j, v_j, eta_j, tau_1_j, tau_2_j),
+                            t_j,
+                            t_k,
                             relTol=tol,
-                            absTol=tol**2,
-                            minTol=minTol,
                         )
-                        # fmt: on
 
-                    t_bar_j = t_bar_k
+                    t_j = t_k
 
+                    # fmt: off
                     updBarData(
-                        tag="",
-                        t_bar=t_bar_j,
-                        l_bar=l_bar_j,
-                        Z=Z_j,
-                        v_bar=v_bar_j,
-                        eta=eta_j,
-                        tau_1=tau_1_j,
-                        tau_2=tau_2_j,
-                        t_bar_err=0,
-                        l_bar_err=l_bar_err,
-                        Z_err=Z_err,
-                        v_bar_err=v_bar_err,
-                        eta_err=eta_err,
-                        tau_1_err=tau_1_err,
-                        tau_2_err=tau_2_err,
+                        tag="", t=t_j, l=l_j, Z=Z_j, v=v_j, eta=eta_j, tau_1=tau_1_j,
+                        tau_2=tau_2_j, t_err=t_err, l_err=0, Z_err=Z_err, v_err=v_err,
+                        eta_err=eta_err, tau_1_err=tau_1_err, tau_2_err=tau_2_err
                     )
+                    # fmt: on
 
             elif dom == DOMAIN_LENG:
                 """
@@ -1007,54 +922,40 @@ class Highlow:
                  ongoing).
                 """
 
-                t_bar_j = 0.5 * (t_bar_i - t_bar_1) + t_bar_1
-                Z_j, l_bar_j, v_bar_j, eta_j, tau_1_j, tau_2_j = RKF78(
+                t_j = 0.5 * (t_i - t_1) + t_1
+                Z_j, l_j, v_j, eta_j, tau_1_j, tau_2_j = RKF78(
                     self._ode_t,
                     (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1),
-                    t_bar_1,
-                    t_bar_j,
+                    t_1,
+                    t_j,
                     relTol=tol,
-                    absTol=tol**2,
-                    minTol=minTol,
                 )[1]
 
                 for j in range(step):
-                    l_bar_k = l_g_bar / (step + 1) * (j + 1)
-                    # fmt: off
+                    l_k = l_g / (step + 1) * (j + 1)
+
                     (
                         _,
-                        (t_bar_j, Z_j, v_bar_j, eta_j, tau_1_j, tau_2_j),
-                        (t_bar_err, Z_err, v_bar_err, eta_err, tau_1_err, tau_2_err),
+                        (t_j, Z_j, v_j, eta_j, tau_1_j, tau_2_j),
+                        (t_err, Z_err, v_err, eta_err, tau_1_err, tau_2_err),
                     ) = RKF78(
                         self._ode_l,
-                        (t_bar_j, Z_j, v_bar_j, eta_j, tau_1_j, tau_2_j),
-                        l_bar_j,
-                        l_bar_k,
+                        (t_j, Z_j, v_j, eta_j, tau_1_j, tau_2_j),
+                        l_j,
+                        l_k,
                         relTol=tol,
-                        absTol=tol**2,
-                        minTol=minTol,
-                        record=[]
-                    )  # fmt: on
-
-                    l_bar_j = l_bar_k
-
-                    updBarData(
-                        tag="",
-                        t_bar=t_bar_j,
-                        l_bar=l_bar_j,
-                        Z=Z_j,
-                        v_bar=v_bar_j,
-                        eta=eta_j,
-                        tau_1=tau_1_j,
-                        tau_2=tau_2_j,
-                        t_bar_err=t_bar_err,
-                        l_bar_err=0,
-                        Z_err=Z_err,
-                        v_bar_err=v_bar_err,
-                        eta_err=eta_err,
-                        tau_1_err=tau_1_err,
-                        tau_2_err=tau_2_err,
+                        record=[],
                     )
+
+                    l_j = l_k
+
+                    # fmt: off
+                    updBarData(
+                        tag="", t=t_j, l=l_j, Z=Z_j, v=v_j, eta=eta_j, tau_1=tau_1_j,
+                        tau_2=tau_2_j, t_err=t_err, l_err=0, Z_err=Z_err, v_err=v_err,
+                        eta_err=eta_err, tau_1_err=tau_1_err, tau_2_err=tau_2_err
+                    )
+                    # fmt: on
             else:
                 raise ValueError("Unknown domain")
 
@@ -1071,22 +972,11 @@ class Highlow:
 
         for bar_dataLine, bar_errorLine in zip(bar_data, bar_err):
             # fmt: off
-            dtag, t_bar, l_bar, Z, v_bar, p_1_bar, p_2_bar, eta, tau_1, tau_2 = bar_dataLine
-            (etag, t_bar_err, l_bar_err, Z_err, v_bar_err, p_1_bar_err, p_2_bar_err, eta_err,
+            dtag, t, l, Z, v, p_1, p_2, eta, tau_1, tau_2 = bar_dataLine
+            (etag, t_err, l_err, Z_err, v_err, p_1_err, p_2_err, eta_err,
              tau_1_err, tau_2_err) = bar_errorLine
             # fmt: on
-            t, t_err = (t_bar * tScale, t_bar_err * tScale)
-            l, l_err = (l_bar * self.l_1, l_bar_err * self.l_1)
-            psi, psi_err = (self.f_psi_Z(Z), abs(self.f_sigma_Z(Z) * Z_err))
-            v, v_err = v_bar * self.v_j, v_bar_err * self.v_j
-
-            p_1, p_1_err = p_1_bar * pScale, (
-                p_1_bar_err if isinstance(p_1_bar_err, str) else p_1_bar_err * pScale
-            )
-            p_2, p_2_err = p_2_bar * pScale, (
-                p_2_bar_err if isinstance(p_2_bar_err, str) else p_2_bar_err * pScale
-            )
-
+            psi, psi_err = self.f_psi_Z(Z), abs(self.f_sigma_Z(Z) * Z_err)
             p_s, p_b = self.toPsPb(l, p_2, eta)
 
             T_1 = tau_1 * self.T_v
@@ -1104,25 +994,23 @@ class Highlow:
         """
         scale the records too
         """
-        # fmt: off
-        for t_bar, (l_bar, psi, v_bar, p_1_bar, p_2_bar, eta, tau_1, tau_2) in record:
-            t = t_bar * tScale
+
+        for t, (l, psi, v, p_1, p_2, eta, tau_1, tau_2) in record:
             if t in [line[1] for line in data]:
                 continue
-
-            p_2 = p_2_bar * pScale
-
-            p_s, p_b = self.toPsPb(l_bar * self.l_1, p_2, eta)
-
-            data.append((
-                "*", t, l_bar * self.l_1, psi, v_bar * self.v_j,
-                p_1_bar * pScale, p_b, p_2, p_s,
-                tau_1 * self.T_v, tau_2 * self.T_v, eta
-            ))
+            p_s, p_b = self.toPsPb(l, p_2, eta)
+            # fmt: off
+            data.append(
+                (
+                    "*", t, l, psi, v, p_1, p_b, p_2, p_s, tau_1 * self.T_v,
+                    tau_2 * self.T_v, eta
+                )
+            )
+            # fmt: on
 
             errLine = ("L", *("--" for _ in range(11)))
             error.append(errLine)
-        # fmt: on
+
         data, error = zip(
             *((a, b) for a, b in sorted(zip(data, error), key=lambda x: x[0][1]))
         )

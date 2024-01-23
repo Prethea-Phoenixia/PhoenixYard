@@ -314,7 +314,6 @@ class ConstrainedRecoiless:
                     x_0=Z_0,
                     x_1=Z_b,
                     relTol=self.tol,
-                    absTol=self.tol**2,
                     abortFunc=abort_Z,
                     record=record,
                 )
@@ -363,7 +362,6 @@ class ConstrainedRecoiless:
                         x_0=x,
                         x_1=Z,
                         relTol=self.tol,
-                        absTol=self.tol**2,
                         record=r,
                     )
 
@@ -525,9 +523,8 @@ class ConstrainedRecoiless:
                 x_0=v_bar_i,
                 x_1=v_bar_d,
                 relTol=self.tol,
-                absTol=self.tol**2,
                 abortFunc=abort_v,
-                record=vtzlet_record,  # debug
+                record=vtzlet_record,
             )
 
         except ValueError:

@@ -1,5 +1,5 @@
-from math import pi, inf, exp, log, tan
-from num import gss, RKF78, cubic, secant, dekker
+from math import pi, inf, tan
+from num import gss, RKF78, cubic, dekker
 from prop import GrainComp, Propellant
 
 from gun import DOMAIN_TIME, DOMAIN_LENG
@@ -14,10 +14,6 @@ from gun import (
 )
 
 POINT_PEAK_STAG = "PEAK_STAG_P"
-
-from gun import Gun
-
-from gun import minTol
 
 
 class Recoiless:
@@ -186,7 +182,7 @@ class Recoiless:
         dl_bar = v_bar
         dv_bar = self.theta * 0.5 * (p_bar - p_d_bar)
 
-        deta = self.C_A * self.S_j_bar * p_bar / tau**0.5  # deta / dt_bar
+        deta = self.C_A * self.S_j_bar * p_bar * tau**-0.5  # deta / dt_bar
         dtau = (
             (1 - tau) * (dpsi * dZ) - 2 * v_bar * dv_bar - self.theta * tau * deta
         ) / (
@@ -225,7 +221,7 @@ class Recoiless:
         dv_bar = self.theta * 0.5 * (p_bar - p_d_bar) / v_bar  # dv_bar/dl_bar
         dt_bar = 1 / v_bar  # dt_bar / dl_bar
 
-        deta = self.C_A * self.S_j_bar * p_bar / tau**0.5 * dt_bar  # deta / dl_bar
+        deta = self.C_A * self.S_j_bar * p_bar * tau**-0.5 * dt_bar  # deta / dl_bar
 
         dtau = (
             (1 - tau) * (dpsi * dZ) - 2 * v_bar * (dv_bar) - self.theta * tau * (deta)
@@ -250,18 +246,11 @@ class Recoiless:
         else:
             p_d_bar = 0
 
-        if Z <= self.Z_b:
-            dt_bar = (2 * self.B / self.theta) ** 0.5 * p_bar**-self.n
-            dl_bar = v_bar * dt_bar
-            dv_bar = 0.5 * self.theta * (p_bar - p_d_bar) * dt_bar
+        dt_bar = (2 * self.B / self.theta) ** 0.5 * p_bar**-self.n
+        dl_bar = v_bar * dt_bar
+        dv_bar = 0.5 * self.theta * (p_bar - p_d_bar) * dt_bar
 
-        else:
-            # technically speaking it is undefined in this area
-            dt_bar = 0  # dt_bar/dZ
-            dl_bar = 0  # dl_bar/dZ
-            dv_bar = 0  # dv_bar/dZ
-
-        deta = self.C_A * self.S_j_bar * p_bar / tau**0.5 * dt_bar  # deta / dZ
+        deta = self.C_A * self.S_j_bar * p_bar * tau**-0.5 * dt_bar  # deta / dZ
 
         dtau = (
             (1 - tau) * (dpsi) - 2 * v_bar * (dv_bar) - self.theta * tau * (deta)
@@ -439,8 +428,6 @@ class Recoiless:
                     Z_i,
                     Z_j,
                     relTol=tol,
-                    absTol=tol**2,
-                    minTol=minTol,
                     abortFunc=abort,
                     record=ztlvet_record_i,
                 )
@@ -585,8 +572,6 @@ class Recoiless:
             l_bar_i,
             l_g_bar,
             relTol=tol,
-            absTol=tol**2,
-            minTol=minTol,
             record=ltzvet_record,
         )
 
@@ -641,15 +626,7 @@ class Recoiless:
                     eta_err_f,
                     tau_err_f,
                 ),
-            ) = RKF78(
-                self._ode_Z,
-                (0, 0, 0, 0, 1),
-                Z_0,
-                1,
-                relTol=tol,
-                absTol=tol**2,
-                minTol=minTol,
-            )
+            ) = RKF78(self._ode_Z, (0, 0, 0, 0, 1), Z_0, 1, relTol=tol)
 
             updBarData(
                 tag=POINT_FRACTURE,
@@ -685,15 +662,7 @@ class Recoiless:
                     eta_err_b,
                     tau_err_b,
                 ),
-            ) = RKF78(
-                self._ode_Z,
-                (0, 0, 0, 0, 1),
-                Z_0,
-                Z_b,
-                relTol=tol,
-                absTol=tol**2,
-                minTol=minTol,
-            )
+            ) = RKF78(self._ode_Z, (0, 0, 0, 0, 1), Z_0, Z_b, relTol=tol)
 
             updBarData(
                 tag=POINT_BURNOUT,
@@ -722,13 +691,7 @@ class Recoiless:
 
         def g(t, m="a"):
             Z, l_bar, v_bar, eta, tau = RKF78(
-                self._ode_t,
-                (Z_0, 0, 0, 0, 1),
-                0,
-                t,
-                relTol=tol,
-                absTol=tol**2,
-                minTol=minTol,
+                self._ode_t, (Z_0, 0, 0, 0, 1), 0, t, relTol=tol
             )[1]
             p_bar = self._f_p_bar(Z, l_bar, eta, tau)
 
@@ -782,15 +745,7 @@ class Recoiless:
                     eta_err,
                     tau_err,
                 ),
-            ) = RKF78(
-                self._ode_t,
-                (Z_0, 0, 0, 0, 1),
-                0,
-                t_bar,
-                relTol=tol,
-                absTol=tol**2,
-                minTol=minTol,
-            )
+            ) = RKF78(self._ode_t, (Z_0, 0, 0, 0, 1), 0, t_bar, relTol=tol)
             t_bar_err = 0.5 * t_bar_tol
 
             updBarData(
@@ -836,8 +791,6 @@ class Recoiless:
                         t_bar_j,
                         t_bar_k,
                         relTol=tol,
-                        absTol=tol**2,
-                        minTol=minTol,
                     )
                     t_bar_j = t_bar_k
 
@@ -871,13 +824,7 @@ class Recoiless:
                 """
                 t_bar_j = 0.5 * t_bar_i
                 Z_j, l_bar_j, v_bar_j, eta_j, tau_j = RKF78(
-                    self._ode_t,
-                    (Z_0, 0, 0, 0, 1),
-                    0,
-                    t_bar_j,
-                    relTol=tol,
-                    absTol=tol**2,
-                    minTol=minTol,
+                    self._ode_t, (Z_0, 0, 0, 0, 1), 0, t_bar_j, relTol=tol
                 )[1]
 
                 for j in range(step):
@@ -899,8 +846,6 @@ class Recoiless:
                         l_bar_j,
                         l_bar_k,
                         relTol=tol,
-                        absTol=tol**2,
-                        minTol=minTol,
                     )
 
                     l_bar_j = l_bar_k

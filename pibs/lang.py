@@ -542,7 +542,7 @@ ENGLISH = {
     "figBleed": "Bleed Frac.",
     "figBleedP": "Bleed P.\nMPa",
     "figAvgP": "Space Mean P.\nMPa",
-    "figLowAvgP": "L.C. Mean P.\nMpa",
+    "figLowAvgP": "Low Chamber\nMean Pressure\nMpa",
     "figShotBase": "Shot Base P.\nMPa",
     "figTgtV": "Velocity Target",
     "figTgtP": "Pressure Target",

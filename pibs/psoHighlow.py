@@ -122,6 +122,7 @@ class psoHighlow:
                 ambientGamma=self.ambientGamma,
                 peaks=[self.control, POINT_PEAK_HIGH],
             )
+
         except Exception:
             return inf
 
