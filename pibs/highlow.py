@@ -452,7 +452,7 @@ class Highlow:
             )
         # fmt: on
 
-        t_0, eta_0, tau_1_0, tau_2_0 = 0, 0, 1, 1
+        t_0, eta_0, tau_1_0, tau_2_0 = 0, 0, 1, 1 + self.theta
 
         updBarData(t=t_0, l=0, Z=Z_0, v=0, eta=eta_0, tau_1=tau_1_0, tau_2=tau_2_0)
 
