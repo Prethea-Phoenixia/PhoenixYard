@@ -323,6 +323,7 @@ class Gun:
         ambientRho=1.204,
         ambientP=101.325e3,
         ambientGamma=1.4,
+        progressQueue=None,
         **_,
     ):
         """
@@ -346,6 +347,10 @@ class Gun:
         at breech face and shot velocity at shot base.
 
         """
+
+        if progressQueue is not None:
+            progressQueue.put(1)
+
         record = []
 
         if any((step < 0, tol < 0)):
@@ -406,15 +411,7 @@ class Gun:
         bar_err = []
 
         def updBarData(
-            tag,
-            t_bar,
-            l_bar,
-            Z,
-            v_bar,
-            t_bar_err,
-            l_bar_err,
-            Z_err,
-            v_bar_err,
+            tag, t_bar, l_bar, Z, v_bar, t_bar_err, l_bar_err, Z_err, v_bar_err
         ):
             p_bar = self._f_p_bar(Z, l_bar, v_bar)
             bar_data.append((tag, t_bar, l_bar, Z, v_bar, p_bar))
@@ -571,6 +568,9 @@ class Gun:
             if t_bar != 0
         )
 
+        if progressQueue is not None:
+            progressQueue.put(10)
+
         """
         Subscript e indicate exit condition.
         At this point, since its guaranteed that point i will be further
@@ -624,6 +624,9 @@ class Gun:
             Z_err=Z_err,
             v_bar_err=v_bar_err,
         )
+
+        if progressQueue is not None:
+            progressQueue.put(20)
 
         t_bar_f = None
         if Z_b > 1.0 and Z_e >= 1.0:  # fracture point exist and is contained
@@ -688,6 +691,9 @@ class Gun:
                 v_bar_err=v_bar_err_b,
             )
 
+        if progressQueue is not None:
+            progressQueue.put(30)
+
         """
         Subscript p indicate peak pressure
         In theory the time-domain equations should be flatter around the
@@ -737,23 +743,23 @@ class Gun:
                 v_bar_err=v_bar_err,
             )
 
-        def f(t, m="a"):
+        def g(t, tag):
             Z, l_bar, v_bar = RKF78(self._ode_t, (Z_0, 0, 0), 0, t, relTol=tol)[1]
 
             p_bar = self._f_p_bar(Z, l_bar, v_bar)
 
-            if m == "a":
+            if tag == POINT_PEAK_AVG:
                 return p_bar
-
             Ps, Pb = self.toPsPb(l_bar * self.l_0, p_bar * pScale)
-            if m == "s":
+            if tag == POINT_PEAK_SHOT:
                 return Ps / pScale
-            elif m == "b":
+            elif tag == POINT_PEAK_BREECH:
                 return Pb / pScale
 
-        findPeak(lambda x: f(x, "a"), POINT_PEAK_AVG)
-        findPeak(lambda x: f(x, "s"), POINT_PEAK_SHOT)
-        findPeak(lambda x: f(x, "b"), POINT_PEAK_BREECH)
+        for i, peak in enumerate([POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_PEAK_BREECH]):
+            findPeak(lambda x: g(x, peak), peak)
+            if progressQueue is not None:
+                progressQueue.put(40 + i * 20)  # 40.60.80
 
         """
         populate data for output purposes
@@ -763,11 +769,7 @@ class Gun:
                 (Z_j, l_bar_j, v_bar_j, t_bar_j) = (Z_0, 0, 0, 0)
                 for j in range(step):
                     t_bar_k = t_bar_e / (step + 1) * (j + 1)
-                    (
-                        _,
-                        (Z_j, l_bar_j, v_bar_j),
-                        (Z_err, l_bar_err, v_bar_err),
-                    ) = RKF78(
+                    (_, (Z_j, l_bar_j, v_bar_j), (Z_err, l_bar_err, v_bar_err)) = RKF78(
                         self._ode_t,
                         (Z_j, l_bar_j, v_bar_j),
                         t_bar_j,
@@ -840,6 +842,9 @@ class Gun:
         finally:
             pass
 
+        if progressQueue is not None:
+            progressQueue.put(100)
+
         """
         sort the data points
         """
@@ -868,17 +873,7 @@ class Gun:
 
             data.append((dtag, t, l, psi, v, pb, p, ps, T))
             error.append(
-                (
-                    etag,
-                    t_err,
-                    l_err,
-                    psi_err,
-                    v_err,
-                    "---",
-                    p_err,
-                    "---",
-                    "---",
-                )
+                (etag, t_err, l_err, psi_err, v_err, "---", p_err, "---", "---")
             )
 
         """

@@ -11,7 +11,6 @@ from gun import (
     POINT_BURNOUT,
     POINT_EXIT,
 )
-from gun import minTol
 
 POINT_PEAK_HIGH = "PEAK_HIGH_P"
 POINT_PEAK_BLEED = "PEAK_BLEED_P"
@@ -394,8 +393,11 @@ class Highlow:
         ambientP=101.325e3,
         ambientGamma=1.4,
         peaks=HIGHLOW_PEAKS,
+        progressQueue=None,
         **_,
     ):
+        if progressQueue is not None:
+            progressQueue.put(1)
         """
         Runs a full numerical solution for the gun in the specified domain sampled
         evenly at specified number of steps, using a scaled numerical tolerance as
@@ -512,7 +514,6 @@ class Highlow:
             relTol=tol,
             abortFunc=abort,
             record=tett_record,
-            # debug=True,
         )
         p_1_sm = self._f_p_1(Z, eta, tau_1)
         p_2_sm = self._f_p_2(0, eta, tau_2)
@@ -523,13 +524,6 @@ class Highlow:
                 + "before shot has started, "
                 + f"at ({p_2_sm * 1e-6:.6f} MPa)."
             )
-
-        elif p_1_sm > p_max:
-            raise ValueError(
-                "Nobel-Abel EoS is generally accurate enough below 600MPa. However,"
-                + f" Unreasonably high pressure (>{p_1_sm * 1e-6:.0f} MPa)"
-                + " was encountered in the high pressure chamber."
-            )  # in practice most of the pressure-realted spikes are captured here.
 
         elif p_2_sm < self.p_0_s:
             raise ValueError(
@@ -548,7 +542,7 @@ class Highlow:
                 (
                     0, self.f_psi_Z(Z), 0, self._f_p_1(Z, eta, tau_1),
                     self._f_p_2(0, eta, tau_2), eta, tau_1, tau_2
-                ),
+                )
             )
             for (Z, (t, eta, tau_1, tau_2)) in tett_record
             if Z < Z_1
@@ -564,6 +558,9 @@ class Highlow:
             tag=POINT_START, t=t_1, l=0, Z=Z_1, v=0, eta=eta_1, tau_1=tau_1_1, tau_2=tau_2_1
         )
         # fmt: on
+
+        if progressQueue is not None:
+            progressQueue.put(5)
 
         Z_i = Z_1
         Z_j = Z_b
@@ -694,6 +691,9 @@ class Highlow:
         )
         # fmt: on
 
+        if progressQueue is not None:
+            progressQueue.put(10)
+
         """
         Subscript e indicate exit condition.
         At this point, since its guaranteed that point i will be further
@@ -701,7 +701,6 @@ class Highlow:
         to worry about the dependency of the correct behaviour of this ODE
         on the positive direction of integration.
         """
-
         ltzvett_record = []
         (
             _,
@@ -733,6 +732,9 @@ class Highlow:
             tau_1_err=tau_1_err, tau_2_err=tau_2_err
         )
         # fmt: on
+
+        if progressQueue is not None:
+            progressQueue.put(20)
 
         t_f = None
         if Z_b > 1.0 and Z_e >= 1.0:  # fracture point exist and is contained
@@ -780,6 +782,9 @@ class Highlow:
                 v_err=v_err, eta_err=eta_err, tau_1_err=tau_1_err, tau_2_err=tau_2_err
             )
             # fmt: on
+
+        if progressQueue is not None:
+            progressQueue.put(30)
 
         """
         Subscript p indicate peak pressure
@@ -840,8 +845,11 @@ class Highlow:
                 tau_1_err=tau_1_err, tau_2_err=tau_2_err
             )  # fmt:on
 
-        for peak in peaks:
+        for i, peak in enumerate(peaks):
             findPeak(lambda x: g(x, peak), peak)
+
+            if progressQueue is not None:
+                progressQueue.put(30 + i / (len(peaks) - 1) * 50)
 
         """
         populate data for output purposes
@@ -963,6 +971,9 @@ class Highlow:
         finally:
             pass
 
+        if progressQueue is not None:
+            progressQueue.put(100)
+
         """
         sort the data points
         """
@@ -1023,8 +1034,8 @@ class Highlow:
         for line in data:
             tag, t, l, psi, v, p_h, p_b, p, p_s, T_1, T_2, eta = line
             p_line = []
-            for i in range(step + 1):
-                x = i / step * (l + L_l) + L_h
+            for i in range(step):
+                x = (i + 1) / step * (l + L_l) + L_h
                 p_x = self.toPx(l, p_h, p_b, p_s, x)
                 p_line.append((x, p_x))
 

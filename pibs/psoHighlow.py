@@ -1,6 +1,6 @@
 from highlow import Highlow
 from pso import pso
-from math import inf
+from math import inf, pi
 
 # from gun import
 from gun import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_EXIT
@@ -46,12 +46,11 @@ class psoHighlow:
         self,
         minWeb,
         maxWeb,
-        minCV,
-        maxCV,
+        minLF,
         minEV,
         maxEV,
-        minPortA,
-        maxPortA,
+        minPortRatio,
+        maxPortRatio,
         minLength,
         maxLength,
         control,  # targeted pressure
@@ -70,6 +69,16 @@ class psoHighlow:
         self.designVelocity = designVelocity
 
         self.show = False
+
+        if self.propellant.maxLF < minLF:
+            raise ValueError
+
+        minCV = self.shotMass / self.propellant.rho_p / self.propellant.maxLF
+        maxCV = self.shotMass / self.propellant.rho_p / minLF
+
+        S = self.caliber**2 * pi * 0.25
+        minPortA = S * minPortRatio
+        maxPortA = S * maxPortRatio
 
         constraints = [
             (minWeb, maxWeb),
@@ -189,12 +198,9 @@ if __name__ == "__main__":
     result = test.constrained(
         minWeb=1e-6,
         maxWeb=1e-2,
-        minCV=1e-4,
-        maxCV=1e-2,
-        minEV=1e-4,
-        maxEV=1e-2,
-        minPortA=1e-6,
-        maxPortA=1e-2,
+        minLF=0.3,
+        minPortRatio=0.1,
+        maxPortRatio=1,
         minLength=0.01,
         maxLength=0.5,
         control=POINT_PEAK_AVG,  # targeted pressure

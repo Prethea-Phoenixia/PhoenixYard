@@ -34,7 +34,7 @@ ENGLISH = {
     "consFrmLabel": "Constraints",
     "consButton": "Constrain Design",
     "lockButton": "Lock Tube Length",
-    "minTVButton": "Minimize Tube Volume",
+    "minTVButton": "Minimize Total Volume",
     "sampleFrmLabel": "Sampling",
     "pltOptnFrm": "Plot Option",
     "lxLabel": "Length Ratio",
@@ -426,7 +426,7 @@ ENGLISH = {
     "optLFText": " ".join(
         (
             "Find the optimum load fraction for this charge mass, minimizing",
-            "tube volume (including chamber), under the constraint set out",
+            "the total volume of the bore and chamber, under the constraint set out",
             "above. The all-burnt point is usually solved to be close, or",
             "outside of the muzzle, tending to cause large muzzle velcoity",
             "disperson, as propellant burn rates can be heavily influenced",

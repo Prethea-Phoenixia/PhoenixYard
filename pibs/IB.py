@@ -125,6 +125,7 @@ class InteriorBallisticsFrame(Frame):
         self.option_add("*Font", default_font)
 
         self.queue = Queue()
+        self.progressQueue = Queue()
         self.process = None
 
         self.dpi = dpi
@@ -901,8 +902,10 @@ class InteriorBallisticsFrame(Frame):
             allInputs=self.locs,
         )
         i += 1
-        self.pbar = ttk.Progressbar(opFrm, mode="indeterminate", maximum=100)
-        self.pbar.grid(row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
+        self.progress = IntVar()
+        ttk.Progressbar(opFrm, maximum=100, variable=self.progress).grid(
+            row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
+        )
 
         i += 1
 
@@ -1029,10 +1032,11 @@ class InteriorBallisticsFrame(Frame):
             else:
                 self.kwargs.update({"ambientP": 0, "ambientRho": 0, "ambientGamma": 1})
 
-            self.process = Process(target=calculate, args=(self.queue, self.kwargs))
-            # self.pos = 0
+            self.process = Process(
+                target=calculate, args=(self.queue, self.progressQueue, self.kwargs)
+            )
             self.calButton.config(state="disabled")
-            self.pbar.start(interval=10)
+            # self.progressbar.start(interval=10)
             self.process.start()
 
         except Exception as e:
@@ -1055,6 +1059,15 @@ class InteriorBallisticsFrame(Frame):
 
     def getValue(self):
         queue = self.queue
+        progressQueue = self.progressQueue
+        try:
+            p = None
+            while not self.progressQueue.empty():
+                p = progressQueue.get_nowait()
+            if p is not None:
+                self.progress.set(p)
+        except Empty:
+            pass
 
         try:
             (
@@ -1178,7 +1191,7 @@ class InteriorBallisticsFrame(Frame):
         self.updateFigPlot()
         self.updateAuxPlot()
 
-        self.pbar.stop()
+        # self.progressbar.stop()
         self.calButton.config(state="normal")
 
         for loc in self.locs:
@@ -1814,10 +1827,11 @@ class InteriorBallisticsFrame(Frame):
             self.auxCanvas.draw_idle()
 
     def timedLoop(self):
+        # polling function for the calculation subprocess
         if self.process is not None:
             self.getValue()
 
-        self.tLid = self.after(100, self.timedLoop)
+        self.tLid = self.after(10, self.timedLoop)
 
     def quit(self):
         root = self.parent
@@ -2779,10 +2793,7 @@ class InteriorBallisticsFrame(Frame):
         self.update_idletasks()
 
 
-def calculate(
-    queue,
-    kwargs,
-):
+def calculate(queue, progressQueue, kwargs):
     gunType = kwargs["typ"]
     constrain = kwargs["con"]
     optimize = kwargs["opt"]
@@ -2821,8 +2832,12 @@ def calculate(
         elif gunType == HIGHLOW:
             gun = Highlow(**kwargs)
 
-        tableData, errorData, pressureTrace, structure = gun.integrate(**kwargs)
+        tableData, errorData, pressureTrace, structure = gun.integrate(
+            **kwargs, progressQueue=progressQueue
+        )
         errorReport = []
+
+        progressQueue.put(100)
 
     except Exception as e:
         gun = None
@@ -2903,17 +2918,10 @@ def main():
     root.title("PIBS v0.4.8")
     menubar = Menu(root)
     root.config(menu=menubar)
-    """
-    tabControl = ttk.Notebook(root)
-    tabControl.pack(expand=1, fill="both", side="left")
-    ibFrame = IB(tabControl, menubar, dpi, scale)
-    tabControl.add(ibFrame, text="INTERIOR")
-    """
+
     root.columnconfigure(0, weight=1)
     root.rowconfigure(0, weight=1)
     InteriorBallisticsFrame(root, menubar, dpi)
-    # root.update()
-    # center(root)
 
     root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
     root.state("zoomed")  # maximize window

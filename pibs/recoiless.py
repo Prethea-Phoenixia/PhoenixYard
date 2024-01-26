@@ -12,6 +12,7 @@ from gun import (
     POINT_BURNOUT,
     POINT_EXIT,
 )
+from gun import Gun
 
 POINT_PEAK_STAG = "PEAK_STAG_P"
 
@@ -266,6 +267,7 @@ class Recoiless:
         ambientRho=1.204,
         ambientP=101.325e3,
         ambientGamma=1.4,
+        progressQueue=None,
         **_,
     ):
         """
@@ -281,6 +283,10 @@ class Recoiless:
         usually on the order of 1e-16 - 1e-14 as compared to much larger for component
         errors.
         """
+
+        if progressQueue is not None:
+            progressQueue.put(1)
+
         record = []
         if any((step < 0, tol < 0)):
             raise ValueError("Invalid integration specification")
@@ -540,11 +546,11 @@ class Recoiless:
                     tau,
                 ),
             )
-            for (
-                Z,
-                (t_bar, l_bar, v_bar, eta, tau),
-            ) in ztlvet_record
+            for (Z, (t_bar, l_bar, v_bar, eta, tau)) in ztlvet_record
         )
+
+        if progressQueue is not None:
+            progressQueue.put(10)
 
         """
         Subscript e indicate exit condition.
@@ -601,6 +607,9 @@ class Recoiless:
             eta_err=eta_err,
             tau_err=tau_err,
         )
+
+        if progressQueue is not None:
+            progressQueue.put(20)
 
         t_bar_f = None
         if Z_b > 1.0 and Z_e >= 1.0:  # fracture point exist and is contained
@@ -673,6 +682,9 @@ class Recoiless:
                 tau_err=tau_err_b,
             )
 
+        if progressQueue is not None:
+            progressQueue.put(30)
+
         """
         Subscript p indicate peak pressure
         In theory the time-domain equations should be flatter around the
@@ -682,13 +694,13 @@ class Recoiless:
         to point e, i.e. inside the barrel.
         """
 
-        def g(t, m="a"):
+        def g(t, tag):
             Z, l_bar, v_bar, eta, tau = RKF78(
                 self._ode_t, (Z_0, 0, 0, 0, 1), 0, t, relTol=tol
             )[1]
             p_bar = self._f_p_bar(Z, l_bar, eta, tau)
 
-            if m == "a":
+            if tag == POINT_PEAK_AVG:
                 return p_bar
 
             Ps, P0, Pb, Vb = self.toPsP0PbVb(
@@ -699,11 +711,11 @@ class Recoiless:
                 eta,
             )
 
-            if m == "b":
+            if tag == POINT_PEAK_BREECH:
                 return Pb / pScale
-            elif m == "0":
+            elif tag == POINT_PEAK_STAG:
                 return P0 / pScale
-            elif m == "s":
+            elif tag == POINT_PEAK_SHOT:
                 return Ps / pScale
 
         def findPeak(g, tag):
@@ -757,10 +769,17 @@ class Recoiless:
                 tau_err=tau_err,
             )
 
-        findPeak(lambda x: g(x, "a"), POINT_PEAK_AVG)
-        findPeak(lambda x: g(x, "s"), POINT_PEAK_SHOT)
-        findPeak(lambda x: g(x, "b"), POINT_PEAK_BREECH)
-        findPeak(lambda x: g(x, "0"), POINT_PEAK_STAG)
+        for i, peak in enumerate(
+            [
+                POINT_PEAK_AVG,
+                POINT_PEAK_SHOT,
+                POINT_PEAK_BREECH,
+                POINT_PEAK_STAG,
+            ]
+        ):
+            findPeak(lambda x: g(x, peak), peak)
+            if progressQueue is not None:
+                progressQueue.put(30 + (i + 1) * 12.5)  # 42.5, 55, 67.5, 80
 
         """
         populate data for output purposes
@@ -865,6 +884,9 @@ class Recoiless:
             raise e
         finally:
             pass
+
+        if progressQueue is not None:
+            progressQueue.put(100)
 
         """
         sort the data points
