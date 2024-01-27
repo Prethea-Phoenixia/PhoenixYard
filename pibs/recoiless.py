@@ -704,11 +704,7 @@ class Recoiless:
                 return p_bar
 
             Ps, P0, Pb, Vb = self.toPsP0PbVb(
-                l_bar * self.l_0,
-                v_bar * self.v_j,
-                p_bar * pScale,
-                tau * self.T_v,
-                eta,
+                l_bar * self.l_0, v_bar * self.v_j, p_bar * pScale, tau * self.T_v, eta
             )
 
             if tag == POINT_PEAK_BREECH:

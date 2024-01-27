@@ -2812,7 +2812,9 @@ def calculate(queue, progressQueue, kwargs):
                 constrained = ConstrainedRecoiless(**kwargs)
 
             if optimize:
-                l_f, e_1, l_g = constrained.findMinV(**kwargs)
+                l_f, e_1, l_g = constrained.findMinV(
+                    **kwargs, progressQueue=progressQueue
+                )
                 kwargs.update({"loadFraction": l_f})
             else:
                 e_1, l_g = constrained.solve(**kwargs, known_bore=lock)
@@ -2878,12 +2880,10 @@ def main():
     if sys.modules["__main__"].__file__ == cProfile.__file__:
         import IB  # Imports you again (does *not* use cache or execute as __main__)
 
-        globals().update(
-            vars(IB)
-        )  # Replaces current contents with newly imported stuff
-        sys.modules[
-            "__main__"
-        ] = IB  # Ensures pickle lookups on __main__ find matching version
+        globals().update(vars(IB))
+        # Replaces current contents with newly imported stuff
+        sys.modules["__main__"] = IB
+        # Ensures pickle lookups on __main__ find matching version
 
     # this tells windows that our program will handle scaling ourselves
     winRelease = platform.release()

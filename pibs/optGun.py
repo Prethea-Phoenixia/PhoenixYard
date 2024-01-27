@@ -523,11 +523,10 @@ class Constrained:
             #    print("Return on maximum iteration.", abs(cc_n - cc))
             return e_1, l_bar_g * l_0
 
-    def findMinV(self, chargeMassRatio, **_):
+    def findMinV(self, chargeMassRatio, progressQueue=None, **_):
         """
         find the minimum volume solution.
         """
-
         """
         Step 1, find a valid range of values for load fraction,
         using psuedo-bisection.
@@ -569,21 +568,25 @@ class Constrained:
             return e_1, (l_g + l_0), l_g
 
         records = []
-
         for i in range(MAX_GUESSES):
             startProbe = uniform(self.tol, 1 - self.tol)
+
             try:
                 _, lt_i, lg_i = f(startProbe)
                 records.append((startProbe, lt_i))
                 break
             except ValueError:
-                pass
+                if progressQueue is not None:
+                    progressQueue.put(round(i / MAX_GUESSES * 33))
 
         if i == MAX_GUESSES - 1:
             raise ValueError(
                 "Unable to find any valid load fraction"
                 + " with {:d} random samples.".format(MAX_GUESSES)
             )
+
+        if progressQueue is not None:
+            progressQueue.put(33)
 
         low = self.tol
         probe = startProbe
@@ -621,6 +624,9 @@ class Constrained:
 
         high = probe
 
+        if progressQueue is not None:
+            progressQueue.put(66)
+
         if abs(high - low) < self.tol:
             raise ValueError("No range of values satisfying constraint.")
 
@@ -648,13 +654,18 @@ class Constrained:
             lambda lf: f(lf)[1],
             low,
             high,
-            x_tol=self.tol,  # variable: load fraction
+            x_tol=self.tol,
             findMin=True,
+            f_report=lambda x: progressQueue.put(round(x * 33) + 66)
+            if progressQueue is not None
+            else None,
         )
 
         lf = 0.5 * (lf_high + lf_low)
-
         e_1, l_t, l_g = f(lf)
+
+        if progressQueue is not None:
+            progressQueue.put(100)
 
         return lf, e_1, l_g
 

@@ -54,11 +54,10 @@ invphi2 = (3 - math.sqrt(5)) / 2  # 1 / phi^2
 
 FLOAT_MIN = 1e-16
 
-
 # fmt: off
 def gss(
     f, a, b, x_tol=FLOAT_MIN, y_rel_tol=0, y_abs_tol=FLOAT_MIN,
-    findMin=True, it=1e4, debug=False
+    findMin=True, it=1e4, debug=False, f_report=None,
 ):
     """Golden-section search. improved from the example
     given on wikipedia. Reuse half the evaluatins.
@@ -84,7 +83,7 @@ def gss(
 
     # Required steps to achieve tolerance
     if x_tol != 0:
-        n = int(math.ceil(math.log(x_tol / h) / math.log(invphi)))
+        n = int(math.ceil(math.log(x_tol / h, 2) / math.log(invphi, 2))) - 1
     else:
         n = math.inf
     n = min(n, it)
@@ -96,6 +95,9 @@ def gss(
 
     k = 0
     while k < n:
+        if f_report is not None:
+            f_report(k / n)
+
         if (yc < yd and findMin) or (yc > yd and not findMin):
             # a---c---d  b
             b = d
@@ -133,7 +135,11 @@ def gss(
                 or (abs(yc - yd) < y_abs_tol)
             ):
                 break
+
         k += 1
+
+    if f_report is not None:
+        f_report((k + 1) / n)
 
     if debug:
         print("GSS")
@@ -150,8 +156,8 @@ def gss(
 
 # fmt: off
 def secant(
-    f, x_0, x_1, y=0, x_min=None, x_max=None,
-        x_tol=FLOAT_MIN, y_rel_tol=0, y_abs_tol=FLOAT_MIN, it=100, debug=False):
+    f, x_0, x_1, y=0, x_min=None, x_max=None, x_tol=FLOAT_MIN,
+        y_rel_tol=0, y_abs_tol=FLOAT_MIN, it=100, debug=False):
     # fmt: on
     fx_0 = f(x_0) - y
     fx_1 = f(x_1) - y

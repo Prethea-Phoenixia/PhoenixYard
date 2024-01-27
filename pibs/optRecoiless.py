@@ -568,11 +568,10 @@ class ConstrainedRecoiless:
 
         return e_1, l_bar_g * l_0
 
-    def findMinV(self, chargeMassRatio, **_):
+    def findMinV(self, chargeMassRatio, progressQueue=None, **_):
         """
         find the minimum volume solution.
         """
-
         """
         Step 1, find a valid range of values for load fraction,
         using psuedo-bisection.
@@ -606,13 +605,17 @@ class ConstrainedRecoiless:
                 records.append((startProbe, lt_i))
                 break
             except ValueError:
-                pass
+                if progressQueue is not None:
+                    progressQueue.put(round(i / MAX_GUESSES * 33))
 
         if i == MAX_GUESSES - 1:
             raise ValueError(
                 "Unable to find any valid load"
                 + " fraction with {:d} random samples.".format(MAX_GUESSES)
             )
+
+        if progressQueue is not None:
+            progressQueue.put(33)
 
         low = self.tol
         probe = startProbe
@@ -649,6 +652,9 @@ class ConstrainedRecoiless:
 
         high = probe
 
+        if progressQueue is not None:
+            progressQueue.put(66)
+
         if abs(high - low) < self.tol:
             raise ValueError("No range of values satisfying constraint.")
 
@@ -672,11 +678,19 @@ class ConstrainedRecoiless:
         Step 2, gss to min.
         """
         lf_low, lf_high = gss(
-            lambda lf: f(lf)[1], low, high, x_tol=self.tol, findMin=True
+            lambda lf: f(lf)[1],
+            low,
+            high,
+            x_tol=self.tol,
+            findMin=True,
+            f_report=lambda x: progressQueue.put(round(x * 33) + 66),
         )
-        lf = 0.5 * (lf_high + lf_low)
 
+        lf = 0.5 * (lf_high + lf_low)
         e_1, l_t, l_g = f(lf)
+
+        if progressQueue is not None:
+            progressQueue.put(100)
 
         return lf, e_1, l_g
 
