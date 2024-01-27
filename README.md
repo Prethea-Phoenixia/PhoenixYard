@@ -31,12 +31,12 @@ A series of Python scripts (with a tkinter Graphical User Interface) for solving
     From a desired system performance specification, the optimum loading fraction is searched and the one that minimizes total bore volume (the sum of chamber and bore volume) is found via varying the load fraction, with option `Minimize Tube Volume`, for both conventional and recoiless gun.
 
 ## How-To
-* Use the calculator:
-  - download the latest executable at [latest release](https://github.com/octo-org/octo-repo/releases/latest)
-* Development setup:
-  - Install Python (Developed and tested on 3.8.18, for Windows 7 compatibility)
-  - Install packages via pip: matplotlib, matplotlib-label-lines
-  - entry point is IB.py in /src
+- Use the calculator:
+    - download the latest executable at [latest release](https://github.com/octo-org/octo-repo/releases/latest)
+- Development setup:
+    - Install Python (Developed and tested on 3.8.18, for Windows 7 compatibility)
+    - Install packages via pip: `matplotlib`, `matplotlib-label-lines`
+    - entry point is IB.py in `/src`
 
 ## Resources Used
 * tcl/tk themes used include "awdark" & "awlight" from awthemes: https://wiki.tcl-lang.org/page/awthemes
@@ -55,7 +55,7 @@ A series of Python scripts (with a tkinter Graphical User Interface) for solving
 
 * 高效的积分及求解方法
     
-    在参考了前人工作（如王连荣，张佩勤《火炮内弹道计算手册》（1987年）中适用于MZ-80B型微机的BASIC程序，及其他以matlab编写的内弹道计算程序）的基础上，并考虑到Python作为解释性语言固有的计算速度相对较慢，本程序在编写过程中着重优化了内弹道求解的数值算法。对常微分方程的数值求解，采用了自适应的7（8）阶龙格-库塔-费尔伯格（Runge-Kutta-Fehlberg）法。相较于常规的4阶龙格-库塔法，在对方程求解的同时生成残差估计，结合精度需求动态、自控地选取符合要求的步长，克服了固定步长算法中步长选择的盲目性，节约计算步数，实现以较小的计算量快速得出结果。此外，对于一元方程的求零点问题，程序的实现中采用二分与正切混用的德克（Dekker）法。
+    在参考了前人工作（如王连荣，张佩勤《火炮内弹道计算手册》（1987年）中适用于MZ-80B型微机的BASIC程序，及其他在matlab中编写的内弹道计算程序）的基础上，本程序在编写过程中关注到Python作为解释性语言固有的计算速度相对较慢的特点，着重优化了内弹道求解的数值算法。对常微分方程的数值求解，采用了自适应的7（8）阶龙格-库塔-费尔伯格（Runge-Kutta-Fehlberg）法。相较于常规的4阶龙格-库塔法，在对方程求解的同时生成残差估计，结合精度需求动态、自控地选取符合要求的步长，克服了固定步长算法中步长选择的盲目性，节约计算步数，实现以较小的计算量快速得出结果。此外，对于一元方程的求零点问题，程序的实现中采用二分与正切混用的德克（Dekker）法。
 
 * 支持不同形状火药
     
@@ -63,6 +63,30 @@ A series of Python scripts (with a tkinter Graphical User Interface) for solving
 
 * 预设常见火药类型
 
-    对于见于公开文献的火药数据，已将其预制在程序中，若需补充其他火药，可在`data/propellant.csv`表格中自行添加，程序运行时会按数据定义对应的对象，便于通过图形用户界面直接选择。此外，考虑到内弹道工作实际情况，图形界面另可自定火药燃速修正系数，以便修正批次，药温等因素的影响，使计算结果符合实验。
+    程序中收录不少有公开文献的火药燃速，爆温，火药力等数据，并支持用户（在从代码运行时，由于Python打包限制暂不支持可执行文件）补充其他火药，可在`data/propellant.csv`表格中自行添加，程序运行时会按数据定义对应的对象，便于通过图形用户界面直接选择。此外，考虑到内弹道工作实际情况，图形界面另可自定火药燃速修正系数，以便修正批次，药温等因素的影响，使计算结果符合实验。
 
 ### 按性能指标反算、优化
+* 反算弹道性能对应的设计参数
+    
+    对于常规火炮及无坐力炮，程序支持按照压强需求反算火药弧厚，以及同时满足弹速要求反算身管长度。
+
+* 优化计算最小膛容解
+    
+    对于常规火炮以及无座力炮，程序支持计算满足一定压强、弹速性能的最小膛容（炮管+药室容积）解。
+
+## 使用说明
+- 下载预先打包为Windows可执行文件的Python代码及运行环境
+    - 从[Github发行版直接下载](https://github.com/octo-org/octo-repo/releases/latest)单文件`PIBSva.b.c.d.exe`。
+    - 在Gitee侧边栏点击“发行版”，选择对应的版本下载。
+
+    该版本打包Python 3.8.18运行环境及其它脚本依赖库，以及脚本全部内容。目前无法添加火药。单文件为自解压压缩包，每次运行时会解压在系统临时目录，大小约为50MB。
+
+- 在本地Python环境运行代码或对代码进行再开发
+    - 安装[Python运行环境](https://www.python.org/downloads/)。 
+    - 从pip安装依赖库`matplotlib`, `matplotlib-label-lines`。
+    - 从[Github仓库下载代码](https://codeload.github.com/Prethea-Phoenixia/Phoenix-s-Interior-Ballistic-Solver-PIBS/zip/refs/heads/main)后打开`pibs/`文件夹。
+    - 或从[Gitee镜像代码仓库下载](https://gitee.com/phoenixZix/pibs/repository/archive/main.zip)后打开`pibs/`文件夹。
+
+    本程序在Python 3.8.18环境下开发以兼容Windows7，在更高版本下运行由于tkinter版本不同可能有一些显示问题。
+    
+ 
