@@ -47,6 +47,8 @@ from locWidget import LocLabelFrame, LocLabelCheck, LocDropdown
 
 from material import MATERIALS
 
+import locale
+
 
 RECOILESS = "RECOILESS"
 CONVENTIONAL = "CONVENTIONAL"
@@ -114,10 +116,12 @@ FIG_CONTEXT = {
 
 
 class InteriorBallisticsFrame(Frame):
-    def __init__(self, parent, menubar, dpi):
+    def __init__(self, parent, menubar, dpi, defaultLang=None):
         ttk.Frame.__init__(self, parent)
         self.grid(row=0, column=0, sticky="nsew")
-        self.LANG = StringVar(value=list(STRING.keys())[0])
+        self.LANG = StringVar(
+            value=list(STRING.keys())[0] if defaultLang is None else defaultLang
+        )
 
         self.locs = []
 
@@ -2890,6 +2894,8 @@ def main():
     else:
         print("Unknown release: ", winRelease, ", skipping DPI handling")
 
+    loc = locale.windows_locale[windll.kernel32.GetUserDefaultUILanguage()]
+
     # this allows us to set our own taskbar icon
     # "mycompany.myproduct.subproduct.version"
     myappid = "Phoenix.Interior.Ballistics.Solver"  # arbitrary string
@@ -2921,7 +2927,9 @@ def main():
 
     root.columnconfigure(0, weight=1)
     root.rowconfigure(0, weight=1)
-    InteriorBallisticsFrame(root, menubar, dpi)
+    InteriorBallisticsFrame(
+        root, menubar, dpi, defaultLang="English" if loc != "zh_CN" else "中文"
+    )
 
     root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
     root.state("zoomed")  # maximize window

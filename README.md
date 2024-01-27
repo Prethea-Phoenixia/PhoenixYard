@@ -77,7 +77,7 @@ A series of Python scripts (with a tkinter Graphical User Interface) for solving
 ## 使用说明
 - 下载预先打包为Windows可执行文件的Python代码及运行环境
     - 从[Github发行版直接下载](https://github.com/octo-org/octo-repo/releases/latest)单文件`PIBSva.b.c.d.exe`。
-    - 在Gitee侧边栏点击“发行版”，选择对应的版本下载。
+    - 在[Gitee发行版](https://gitee.com/phoenixZix/pibs/release/latest)，选择对应的版本下载。
 
     该版本打包Python 3.8.18运行环境及其它脚本依赖库，以及脚本全部内容。目前无法添加火药。单文件为自解压压缩包，每次运行时会解压在系统临时目录，大小约为50MB。
 
