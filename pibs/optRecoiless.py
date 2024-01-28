@@ -1,7 +1,7 @@
 from num import gss, RKF78, cubic, dekker
 from prop import Propellant
 from random import uniform
-from math import pi, inf
+from math import pi, log, floor, inf
 from recoiless import Recoiless
 from optGun import MAX_GUESSES
 from gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
@@ -620,9 +620,9 @@ class ConstrainedRecoiless:
         low = self.tol
         probe = startProbe
         delta_low = low - probe
-
         new_low = probe + delta_low
 
+        k, n = 0, floor(log(abs(delta_low) / self.tol, 2)) + 1
         while abs(2 * delta_low) > self.tol:
             try:
                 _, lt_i, lg_i = f(new_low)
@@ -630,6 +630,9 @@ class ConstrainedRecoiless:
                 probe = new_low
             except ValueError:
                 delta_low *= 0.5
+                if progressQueue is not None:
+                    progressQueue.put(round(k / n * 17) + 33)
+                k += 1
             finally:
                 new_low = probe + delta_low
 
@@ -638,8 +641,9 @@ class ConstrainedRecoiless:
         high = 1 - self.tol
         probe = startProbe
         delta_high = high - probe
-
         new_high = probe + delta_high
+
+        k, n = 0, floor(log(abs(delta_high) / self.tol, 2)) + 1
         while abs(2 * delta_high) > self.tol and new_high < 1:
             try:
                 _, lt_i, lg_i = f(new_high)
@@ -647,13 +651,13 @@ class ConstrainedRecoiless:
                 probe = new_high
             except ValueError:
                 delta_high *= 0.5
+                if progressQueue is not None:
+                    progressQueue.put(round(k / n * 16) + 50)
+                k += 1
             finally:
                 new_high = probe + delta_high
 
         high = probe
-
-        if progressQueue is not None:
-            progressQueue.put(66)
 
         if abs(high - low) < self.tol:
             raise ValueError("No range of values satisfying constraint.")
@@ -683,7 +687,9 @@ class ConstrainedRecoiless:
             high,
             x_tol=self.tol,
             findMin=True,
-            f_report=lambda x: progressQueue.put(round(x * 33) + 66),
+            f_report=lambda x: progressQueue.put(round(x * 33) + 66)
+            if progressQueue is not None
+            else None,
         )
 
         lf = 0.5 * (lf_high + lf_low)
@@ -724,11 +730,7 @@ if __name__ == "__main__":
 
     datas = []
     for i in range(10):
-        datas.append(
-            test.findMinV(
-                chargeMassRatio=0.309 / 4,
-            )
-        )
+        datas.append(test.findMinV(chargeMassRatio=0.309 / 4))
 
     from tabulate import tabulate
 

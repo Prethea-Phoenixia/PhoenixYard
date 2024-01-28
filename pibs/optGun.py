@@ -1,7 +1,7 @@
 from num import gss, RKF78, cubic, dekker
 
 from random import uniform
-from math import pi, log
+from math import pi, log, floor
 from gun import pidduck
 from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
 from gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
@@ -591,9 +591,9 @@ class Constrained:
         low = self.tol
         probe = startProbe
         delta_low = low - probe
-
         new_low = probe + delta_low
 
+        k, n = 0, floor(log(abs(delta_low) / self.tol, 2)) + 1
         while abs(2 * delta_low) > self.tol:
             try:
                 _, lt_i, lg_i = f(new_low)
@@ -601,6 +601,9 @@ class Constrained:
                 probe = new_low
             except ValueError:
                 delta_low *= 0.5
+                if progressQueue is not None:
+                    progressQueue.put(round(k / n * 17) + 33)
+                k += 1
             finally:
                 new_low = probe + delta_low
 
@@ -609,9 +612,9 @@ class Constrained:
         high = 1 - self.tol
         probe = startProbe
         delta_high = high - probe
-
         new_high = probe + delta_high
 
+        k, n = 0, floor(log(abs(delta_high) / self.tol, 2)) + 1
         while abs(2 * delta_high) > self.tol and new_high < 1:
             try:
                 _, lt_i, lg_i = f(new_high)
@@ -619,13 +622,13 @@ class Constrained:
                 probe = new_high
             except ValueError:
                 delta_high *= 0.5
+                if progressQueue is not None:
+                    progressQueue.put(round(k / n * 16) + 50)
+                k += 1
             finally:
                 new_high = probe + delta_high
 
         high = probe
-
-        if progressQueue is not None:
-            progressQueue.put(66)
 
         if abs(high - low) < self.tol:
             raise ValueError("No range of values satisfying constraint.")
