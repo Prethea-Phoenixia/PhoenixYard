@@ -231,7 +231,7 @@ def secant(
 # fmt: off
 def dekker(
     f, x_0, x_1, y=0,
-        x_tol=1e-16, y_rel_tol=0, y_abs_tol=1e-16, it=100, debug=False
+        x_tol=1e-16, y_rel_tol=0, y_abs_tol=1e-16, it=100, debug=False, f_report=None
 ):
     # fmt: on
     fx_0 = f(x_0) - y
@@ -289,6 +289,12 @@ def dekker(
         if abs(fa_k) < abs(fb_k):  # ensure b is still the best guess
             a_k, b_k = b_k, a_k
             fa_k, fb_k = fb_k, fa_k
+
+        if f_report is not None:
+            log_ini = math.log(max(abs(fx_0), abs(fx_1)))
+            log_eps = math.log(abs(fb_k))
+            log_fin = math.log(y_abs_tol)
+            f_report(min((log_ini - log_eps), 1) / (log_ini - log_fin))
 
         if debug:
             record.append((i, b_k, fb_k))

@@ -1067,7 +1067,8 @@ class InteriorBallisticsFrame(Frame):
         try:
             p = None
             while not self.progressQueue.empty():
-                p = progressQueue.get_nowait()
+                pg = progressQueue.get_nowait()
+                p = pg if p is None else max(p, pg)
             if p is not None:
                 self.progress.set(p)
         except Empty:
@@ -2817,7 +2818,9 @@ def calculate(queue, progressQueue, kwargs):
                 )
                 kwargs.update({"loadFraction": l_f})
             else:
-                e_1, l_g = constrained.solve(**kwargs, known_bore=lock)
+                e_1, l_g = constrained.solve(
+                    **kwargs, known_bore=lock, progressQueue=progressQueue
+                )
 
             kwargs.update({"grainSize": 2 * e_1})
 

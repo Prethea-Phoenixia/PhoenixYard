@@ -100,6 +100,7 @@ class ConstrainedRecoiless:
         lengthGun=None,
         known_bore=False,
         suppress=False,  # suppress design velocity exceeded before peak pressure check
+        progressQueue=None,
         **_,
     ):
         if any((chargeMassRatio <= 0, loadFraction <= 0, loadFraction > 1)):
@@ -107,6 +108,8 @@ class ConstrainedRecoiless:
         """
         minWeb  : represents minimum possible grain size
         """
+        if progressQueue is not None:
+            progressQueue.put(1)
 
         m = self.m
         rho_p = self.rho_p
@@ -408,6 +411,9 @@ class ConstrainedRecoiless:
             probeWeb,
             0.5 * probeWeb,
             y_abs_tol=p_bar_d * self.tol,
+            f_report=lambda x: progressQueue.put(round(x * 100))
+            if progressQueue is not None
+            else None,
         )  # this is the e_1 that satisifies the pressure specification.
 
         """
@@ -444,6 +450,8 @@ class ConstrainedRecoiless:
             Z_i = Z_b + self.tol
 
         if known_bore:
+            if progressQueue is not None:
+                progressQueue.put(100)
             return e_1, lengthGun
 
         """
@@ -565,6 +573,9 @@ class ConstrainedRecoiless:
                     v_g, (v_bar_g - v_bar_d) / v_bar_d * 1e2, l_g, p_g * 1e-6
                 )
             )
+
+        if progressQueue is not None:
+            progressQueue.put(100)
 
         return e_1, l_bar_g * l_0
 

@@ -109,16 +109,14 @@ class Constrained:
         lengthGun=None,
         known_bore=False,
         suppress=False,  # suppress design velocity exceeded before peak pressure check
+        progressQueue=None,
         **_,
     ):
-        if any(
-            (
-                chargeMassRatio <= 0,
-                loadFraction <= 0,
-                loadFraction > 1,
-            )
-        ):
+        if any((chargeMassRatio <= 0, loadFraction <= 0, loadFraction > 1)):
             raise ValueError("Invalid parameters to solve constrained design problem")
+
+        if progressQueue is not None:
+            progressQueue.put(1)
 
         """
         minWeb  : represents minimum possible grain size
@@ -376,6 +374,9 @@ class Constrained:
             0.5 * probeWeb,  # ?0
             # x_tol=1e-14,
             y_abs_tol=p_bar_d * self.tol,
+            f_report=lambda x: progressQueue.put(round(x * 100))
+            if progressQueue is not None
+            else None,
         )  # this is the e_1 that satisifies the pressure specification.
 
         (p_bar_dev, Z_i, t_bar_i, l_bar_i, v_bar_i) = _f_p_e_1(e_1)
@@ -395,6 +396,8 @@ class Constrained:
             )
 
         if known_bore:
+            if progressQueue is not None:
+                progressQueue.put(100)
             return e_1, lengthGun
 
         if v_j * v_bar_i > v_d and not suppress:
@@ -500,6 +503,9 @@ class Constrained:
         cc_n = 1 - (1 - 1 / chi_k) * log(l_bar_g_prime + 1) / l_bar_g_prime
         # cc_n = cc * kappa + cc_n * (1 - kappa)
 
+        if progressQueue is not None:
+            progressQueue.put(100)
+
         # if abs(cc_n - cc) > tol and it < MAX_ITER:
         if abs((l_bar_g - l_bar_g_0) / l_bar_g_prime) > self.tol and it < MAX_ITER:
             # successive better approximations will eventually
@@ -515,6 +521,7 @@ class Constrained:
                 lengthGun=l_bar_g * l_0,
                 known_bore=known_bore,
                 suppress=suppress,
+                progressQueue=progressQueue,
             )
             # TODO: Maximum recursion depth exceeded in comparison is
             # occasionally thrown here. Investigate why.
