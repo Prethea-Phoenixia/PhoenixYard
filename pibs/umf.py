@@ -294,7 +294,7 @@ def dekker(
             log_ini = math.log(max(abs(fx_0), abs(fx_1)))
             log_eps = math.log(abs(fb_k))
             log_fin = math.log(y_abs_tol)
-            f_report(min((log_ini - log_eps), 1) / (log_ini - log_fin))
+            f_report(min((log_ini - log_eps) / (log_ini - log_fin), 1))
 
         if debug:
             record.append((i, b_k, fb_k))
