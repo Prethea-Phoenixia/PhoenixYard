@@ -427,6 +427,7 @@ class Recoiless:
                     Z_i,
                     Z_j,
                     relTol=tol,
+                    absTol=tol**2,
                     abortFunc=abort,
                     record=ztlvet_record_i,
                 )
@@ -571,6 +572,7 @@ class Recoiless:
             l_bar_i,
             l_g_bar,
             relTol=tol,
+            absTol=tol**2,
             record=ltzvet_record,
         )
 
@@ -628,7 +630,7 @@ class Recoiless:
                     eta_err_f,
                     tau_err_f,
                 ),
-            ) = RKF78(self._ode_Z, (0, 0, 0, 0, 1), Z_0, 1, relTol=tol)
+            ) = RKF78(self._ode_Z, (0, 0, 0, 0, 1), Z_0, 1, relTol=tol, absTol=tol**2)
 
             updBarData(
                 tag=POINT_FRACTURE,
@@ -664,7 +666,9 @@ class Recoiless:
                     eta_err_b,
                     tau_err_b,
                 ),
-            ) = RKF78(self._ode_Z, (0, 0, 0, 0, 1), Z_0, Z_b, relTol=tol)
+            ) = RKF78(
+                self._ode_Z, (0, 0, 0, 0, 1), Z_0, Z_b, relTol=tol, absTol=tol**2
+            )
 
             updBarData(
                 tag=POINT_BURNOUT,
@@ -696,7 +700,7 @@ class Recoiless:
 
         def g(t, tag):
             Z, l_bar, v_bar, eta, tau = RKF78(
-                self._ode_t, (Z_0, 0, 0, 0, 1), 0, t, relTol=tol
+                self._ode_t, (Z_0, 0, 0, 0, 1), 0, t, relTol=tol, absTol=tol**2
             )[1]
             p_bar = self._f_p_bar(Z, l_bar, eta, tau)
 
@@ -746,7 +750,9 @@ class Recoiless:
                     eta_err,
                     tau_err,
                 ),
-            ) = RKF78(self._ode_t, (Z_0, 0, 0, 0, 1), 0, t_bar, relTol=tol)
+            ) = RKF78(
+                self._ode_t, (Z_0, 0, 0, 0, 1), 0, t_bar, relTol=tol, absTol=tol**2
+            )
             t_bar_err = 0.5 * t_bar_tol
 
             updBarData(
@@ -799,6 +805,7 @@ class Recoiless:
                         t_bar_j,
                         t_bar_k,
                         relTol=tol,
+                        absTol=tol**2,
                     )
                     t_bar_j = t_bar_k
 
@@ -832,7 +839,12 @@ class Recoiless:
                 """
                 t_bar_j = 0.5 * t_bar_i
                 Z_j, l_bar_j, v_bar_j, eta_j, tau_j = RKF78(
-                    self._ode_t, (Z_0, 0, 0, 0, 1), 0, t_bar_j, relTol=tol
+                    self._ode_t,
+                    (Z_0, 0, 0, 0, 1),
+                    0,
+                    t_bar_j,
+                    relTol=tol,
+                    absTol=tol**2,
                 )[1]
 
                 for j in range(step):
@@ -854,6 +866,7 @@ class Recoiless:
                         l_bar_j,
                         l_bar_k,
                         relTol=tol,
+                        absTol=tol**2,
                     )
 
                     l_bar_j = l_bar_k

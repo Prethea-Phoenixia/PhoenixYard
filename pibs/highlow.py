@@ -479,16 +479,14 @@ class Highlow:
                 return False
             o_x, o_ys = record[-1]
 
-            _, o_eta, _, o_tau_2 = o_ys
-            o_p_2 = self._f_p_2(0, o_eta, o_tau_2)
+            # _, o_eta, _, o_tau_2 = o_ys
+            # o_p_2 = self._f_p_2(0, o_eta, o_tau_2)
 
             p_1 = self._f_p_1(Z, eta, tau_1)
 
             delta = abs(p_2 - p_1) / p_1
 
-            return (
-                p_2 > 2 * self.p_0_s or p_2 < o_p_2 or p_1 > p_max or delta < tol**2
-            )
+            return p_2 > 2 * self.p_0_s or p_1 > p_max or delta < tol
 
         def f(Z):
             i = tett_record.index([v for v in tett_record if v[0] <= Z][-1])
@@ -497,7 +495,14 @@ class Highlow:
             ys = tett_record[i][1]
 
             _, (t, eta, tau_1, tau_2), _ = RKF78(
-                self._ode_Zs, ys, x, Z, relTol=tol, abortFunc=abort, record=tett_record
+                self._ode_Zs,
+                ys,
+                x,
+                Z,
+                relTol=tol,
+                absTol=tol**2,
+                abortFunc=abort,
+                record=tett_record,
             )
 
             tett_record.extend(v for v in tett_record if v[0] > tett_record[-1][0])
@@ -512,13 +517,14 @@ class Highlow:
             tett_record[0][0],
             Z_b,
             relTol=tol,
+            absTol=tol**2,
             abortFunc=abort,
             record=tett_record,
         )
         p_1_sm = self._f_p_1(Z, eta, tau_1)
         p_2_sm = self._f_p_2(0, eta, tau_2)
 
-        if abs(p_1_sm - p_2_sm) < tol**2 * p_1_sm and p_2_sm < self.p_0_s:
+        if abs(p_1_sm - p_2_sm) < tol * p_1_sm and p_2_sm < self.p_0_s:
             raise ValueError(
                 "Equilibrium between high and low chamber achieved "
                 + "before shot has started, "
@@ -532,7 +538,7 @@ class Highlow:
             )
 
         Z_1 = 0.5 * sum(
-            bisect(lambda x: f(x) - self.p_0_s, Z_0, Z_b, y_abs_tol=self.p_0_s * tol)
+            bisect(lambda x: f(x) - self.p_0_s, Z_0, Z, y_abs_tol=self.p_0_s * tol)
         )
 
         # fmt: off
@@ -550,7 +556,12 @@ class Highlow:
         # fmt: on
 
         t_1, eta_1, tau_1_1, tau_2_1 = RKF78(
-            self._ode_Zs, (t_0, eta_0, tau_1_0, tau_2_0), Z_0, Z_1, relTol=tol
+            self._ode_Zs,
+            (t_0, eta_0, tau_1_0, tau_2_0),
+            Z_0,
+            Z_1,
+            relTol=tol,
+            absTol=tol**2,
         )[1]
 
         # fmt: off
@@ -597,12 +608,13 @@ class Highlow:
                 if Z_j > Z_b:
                     Z_j = Z_b
 
-                (Z, (t_j, l_j, v_j, eta_j, tau_1_j, tau_2_j), _) = RKF78(
+                Z, (t_j, l_j, v_j, eta_j, tau_1_j, tau_2_j), _ = RKF78(
                     self._ode_Z,
                     (t_i, l_i, v_i, eta_i, tau_1_i, tau_2_i),
                     Z_i,
                     Z_j,
                     relTol=tol,
+                    absTol=tol**2,
                     abortFunc=abort,
                     record=ztlvett_record_i,
                 )
@@ -712,6 +724,7 @@ class Highlow:
             l_i,
             l_g,
             relTol=tol,
+            absTol=tol**2,
             record=ltzvett_record,
         )
         # fmt: off
@@ -749,7 +762,12 @@ class Highlow:
                 (t_f, l_f, v_f, eta_f, tau_1_f, tau_2_f),
                 (t_err, l_err, v_err, eta_err, tau_1_err, tau_2_err),
             ) = RKF78(
-                self._ode_Z, (t_1, 0, 0, eta_1, tau_1_1, tau_2_1), Z_1, 1, relTol=tol
+                self._ode_Z,
+                (t_1, 0, 0, eta_1, tau_1_1, tau_2_1),
+                Z_1,
+                1,
+                relTol=tol,
+                absTol=tol**2,
             )
             # fmt: off
             updBarData(
@@ -773,7 +791,12 @@ class Highlow:
                 (t_b, l_b, v_b, eta_b, tau_1_b, tau_2_b),
                 (t_err, l_err, v_err, eta_err, tau_1_err, tau_2_err),
             ) = RKF78(
-                self._ode_Z, (t_1, 0, 0, eta_1, tau_1_1, tau_2_1), Z_1, Z_b, relTol=tol
+                self._ode_Z,
+                (t_1, 0, 0, eta_1, tau_1_1, tau_2_1),
+                Z_1,
+                Z_b,
+                relTol=tol,
+                absTol=tol**2,
             )
             # fmt:off
             updBarData(
@@ -797,7 +820,12 @@ class Highlow:
 
         def g(t, m=POINT_PEAK_AVG):
             Z, l, v, eta, tau_1, tau_2 = RKF78(
-                self._ode_t, (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1), t_1, t, relTol=tol
+                self._ode_t,
+                (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1),
+                t_1,
+                t,
+                relTol=tol,
+                absTol=tol**2,
             )[1]
 
             if m == POINT_PEAK_HIGH:
@@ -833,7 +861,7 @@ class Highlow:
                 (Z_err, l_err, v_err, eta_err, tau_1_err, tau_2_err),
             ) = RKF78(
                 self._ode_t,
-                (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1), t_1, t, relTol=tol
+                (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1), t_1, t, relTol=tol, absTol=tol**2
             )
             # fmt: on
             t_err = 0.5 * t_tol
@@ -847,7 +875,6 @@ class Highlow:
 
         for i, peak in enumerate(peaks):
             findPeak(lambda x: g(x, peak), peak)
-
             if progressQueue is not None:
                 progressQueue.put(30 + i / (len(peaks) - 1) * 50)
 
@@ -881,6 +908,7 @@ class Highlow:
                             t_j,
                             t_k,
                             relTol=tol,
+                            absTol=tol**2,
                         )
 
                     else:
@@ -904,6 +932,7 @@ class Highlow:
                             t_j,
                             t_k,
                             relTol=tol,
+                            absTol=tol**2,
                         )
 
                     t_j = t_k
@@ -936,6 +965,7 @@ class Highlow:
                     t_1,
                     t_j,
                     relTol=tol,
+                    absTol=tol**2,
                 )[1]
 
                 for j in range(step):
@@ -951,6 +981,7 @@ class Highlow:
                         l_j,
                         l_k,
                         relTol=tol,
+                        absTol=tol**2,
                         record=[],
                     )
 
@@ -1122,7 +1153,7 @@ if __name__ == "__main__":
         shotMass=5,
         propellant=M17C,
         grainSize=5e-3,
-        chargeMass=0.3,
+        chargeMass=0.31,
         chamberVolume=0.3 / M1C.rho_p / lf,
         expansionVolume=0.9 / M1C.rho_p / lf,
         startPressure=5e6,

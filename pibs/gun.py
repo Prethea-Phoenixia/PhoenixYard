@@ -478,6 +478,7 @@ class Gun:
                     Z_i,
                     Z_j,
                     relTol=tol,
+                    absTol=tol**2,
                     abortFunc=abort,
                     record=ztlv_record_i,
                 )
@@ -590,6 +591,7 @@ class Gun:
             l_bar_i,
             l_g_bar,
             relTol=tol,
+            absTol=tol**2,
             record=ltzv_record,
         )
 
@@ -639,13 +641,7 @@ class Gun:
                 _,
                 (t_bar_f, l_bar_f, v_bar_f),
                 (t_bar_err_f, l_bar_err_f, v_bar_err_f),
-            ) = RKF78(
-                self._ode_Z,
-                (0, 0, 0),
-                Z_0,
-                1,
-                relTol=tol,
-            )
+            ) = RKF78(self._ode_Z, (0, 0, 0), Z_0, 1, relTol=tol, absTol=tol**2)
 
             updBarData(
                 tag=POINT_FRACTURE,
@@ -671,13 +667,7 @@ class Gun:
                 _,
                 (t_bar_b, l_bar_b, v_bar_b),
                 (t_bar_err_b, l_bar_err_b, v_bar_err_b),
-            ) = RKF78(
-                self._ode_Z,
-                (0, 0, 0),
-                Z_0,
-                Z_b,
-                relTol=tol,
-            )
+            ) = RKF78(self._ode_Z, (0, 0, 0), Z_0, Z_b, relTol=tol, absTol=tol**2)
 
             updBarData(
                 tag=POINT_BURNOUT,
@@ -728,7 +718,7 @@ class Gun:
                 _,
                 (Z, l_bar, v_bar),
                 (Z_err, l_bar_err, v_bar_err),
-            ) = RKF78(self._ode_t, (Z_0, 0, 0), 0, t_bar, relTol=tol)
+            ) = RKF78(self._ode_t, (Z_0, 0, 0), 0, t_bar, relTol=tol, absTol=tol**2)
             t_bar_err = 0.5 * t_bar_tol
 
             updBarData(
@@ -744,7 +734,9 @@ class Gun:
             )
 
         def g(t, tag):
-            Z, l_bar, v_bar = RKF78(self._ode_t, (Z_0, 0, 0), 0, t, relTol=tol)[1]
+            Z, l_bar, v_bar = RKF78(
+                self._ode_t, (Z_0, 0, 0), 0, t, relTol=tol, absTol=tol**2
+            )[1]
 
             p_bar = self._f_p_bar(Z, l_bar, v_bar)
 
@@ -775,6 +767,7 @@ class Gun:
                         t_bar_j,
                         t_bar_k,
                         relTol=tol,
+                        absTol=tol**2,
                     )
                     t_bar_j = t_bar_k
 
@@ -804,7 +797,7 @@ class Gun:
                 """
                 t_bar_j = 0.5 * t_bar_i
                 Z_j, l_bar_j, v_bar_j = RKF78(
-                    self._ode_t, (Z_0, 0, 0), 0, t_bar_j, relTol=tol
+                    self._ode_t, (Z_0, 0, 0), 0, t_bar_j, relTol=tol, absTol=tol**2
                 )[1]
 
                 for j in range(step):
@@ -820,6 +813,7 @@ class Gun:
                         l_bar_j,
                         l_bar_k,
                         relTol=tol,
+                        absTol=tol**2,
                     )
                     l_bar_j = l_bar_k
 

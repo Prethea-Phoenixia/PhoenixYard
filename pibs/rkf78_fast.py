@@ -107,43 +107,6 @@ def RKF78(
     rasieError=True,
     debug=False,
 ):
-    """
-    use Runge Kutta Fehlberg of 7(8)th power to solve system of equation
-    as defined by dFunc
-
-    Arguments:
-        dFunc   : d/dx|x=x(y1, y2, y3....) = dFunc(x, y1, y2, y3..., dx)
-        iniVal  : initial values for (y1, y2, y3...)
-        x_0, x_1: integration limits
-        relTol  : relative tolerance, per component
-        absTol  : absolute tolerance, per component
-        minTol  : minimum tolerance, per component. This is added to the error
-                estimation, to encourage conservatism in the integrator, and to
-                guard against division by 0 if functional value tends to 0
-
-        abortFunc
-                : optional, accepts following arguments:
-                x   : current value of integrand
-                ys  : current value of the SoE
-                record : record of value up to that point
-                    and terminates the integrator on a boolean value of True
-
-        adaptTo : optional, values used to control error
-                : = True
-                    adapt to control error in every component
-                : = [Boolean] * nbr. of components
-                    adapt to component where True.
-
-        minTol  : optional, minimum magnitude of error
-        record  : optional, if supplied will record all committed steps
-
-
-    Returns:
-        (y1, y2, y3...)|x = x_1, (e1, e2, e3....)
-        where e1, e2, e3...
-        are the estimated maximum deviation (in absolute) for that individual
-        component
-    """
     n = 0
     y_this = iniVal
     x = x_0
@@ -397,15 +360,13 @@ def RKF78(
             ZeroDivisionError,
             OverflowError,
         ) as e:
-            # if debug:
-            #     exc_type, exc_value, exc_traceback = sys.exc_info()
-            #     errMsg = "".join(
-            #         traceback.format_exception(
-            #             exc_type, exc_value, exc_traceback
-            #         )
-            #     )
-            #     print(f"Error encountered at x={x:.8g}")
-            #     print(str(errMsg))
+            if debug:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                errMsg = "".join(
+                    traceback.format_exception(exc_type, exc_value, exc_traceback)
+                )
+                print(f"Error encountered at x={x:.8g}")
+                print(str(errMsg))
             h *= beta
             continue
 

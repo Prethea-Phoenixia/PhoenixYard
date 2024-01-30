@@ -137,6 +137,7 @@ class ConstrainedRecoiless:
         A_bar = self.A_bar
 
         Sb = S * chi_k
+        tol = self.tol
 
         if loadFraction > maxLF:
             raise ValueError("Specified Load Fraction Violates Geometrical Constraint")
@@ -150,7 +151,7 @@ class ConstrainedRecoiless:
 
         phi = phi_1 + omega / (3 * m)
 
-        S_j_bar = 1 / (Recoiless.getCf(gamma, A_bar, self.tol) * chi_0)
+        S_j_bar = 1 / (Recoiless.getCf(gamma, A_bar, tol) * chi_0)
         if S_j_bar > chi_k:
             raise ValueError(
                 "Achieving recoiless condition necessitates"
@@ -316,7 +317,8 @@ class ConstrainedRecoiless:
                     iniVal=(0, 0, 0, 0, 1),
                     x_0=Z_0,
                     x_1=Z_b,
-                    relTol=self.tol,
+                    relTol=tol,
+                    absTol=tol**2,
                     abortFunc=abort_Z,
                     record=record,
                 )
@@ -364,7 +366,8 @@ class ConstrainedRecoiless:
                         iniVal=ys,
                         x_0=x,
                         x_1=Z,
-                        relTol=self.tol,
+                        relTol=tol,
+                        absTol=tol**2,
                         record=r,
                     )
 
@@ -373,12 +376,10 @@ class ConstrainedRecoiless:
                     record.sort()
                     return _f_p_bar(Z, l_bar, v_bar, eta, tau)
 
-                Z_1, Z_2 = gss(
-                    _f_p_Z, Z_i, Z_j, y_rel_tol=0.5 * self.tol, findMin=False
-                )
+                Z_1, Z_2 = gss(_f_p_Z, Z_i, Z_j, y_rel_tol=0.5 * tol, findMin=False)
                 Z_p = 0.5 * (Z_1 + Z_2)
 
-                if abs(Z_p - Z_b) < self.tol:
+                if abs(Z_p - Z_b) < tol:
                     Z_p = Z_b
 
                 p_bar_p = _f_p_Z(Z_p)
@@ -410,7 +411,7 @@ class ConstrainedRecoiless:
             lambda web: _f_p_e_1(web)[0],
             probeWeb,
             0.5 * probeWeb,
-            y_abs_tol=p_bar_d * self.tol,
+            y_abs_tol=p_bar_d * tol,
             f_report=lambda x: progressQueue.put(round(x * 100))
             if progressQueue is not None
             else None,
@@ -424,7 +425,7 @@ class ConstrainedRecoiless:
 
         Z_i, t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i = vals_1
 
-        if abs(dp_bar_i) > self.tol * p_bar_d:
+        if abs(dp_bar_i) > tol * p_bar_d:
             dp_bar_j, *vals_2 = _f_p_e_1(e_1_2)
             raise ValueError(
                 "Design pressure is not met, current best solution peaked at "
@@ -442,12 +443,12 @@ class ConstrainedRecoiless:
                 + " solution lies at the edge or outside of solution space."
             )
 
-        if abs(Z_i - Z_b) < self.tol:
+        if abs(Z_i - Z_b) < tol:
             """
             fudging the starting Z value for velocity integration to prevent
             driving integrator to 0 at the transition point.
             """
-            Z_i = Z_b + self.tol
+            Z_i = Z_b + tol
 
         if known_bore:
             if progressQueue is not None:
@@ -530,7 +531,8 @@ class ConstrainedRecoiless:
                 iniVal=(t_bar_i, Z_i, l_bar_i, eta_i, tau_i),
                 x_0=v_bar_i,
                 x_1=v_bar_d,
-                relTol=self.tol,
+                relTol=tol,
+                absTol=tol**2,
                 abortFunc=abort_v,
                 record=vtzlet_record,
             )
@@ -566,7 +568,7 @@ class ConstrainedRecoiless:
                 + "last calculated at v = {:.4g} m/s,".format(v_g)
                 + "x = {:.4g} m, p = {:.4g} MPa. ".format(l_g, p_g * 1e-6)
             )
-        if abs(v_bar_g - v_bar_d) > (self.tol * v_bar_d):
+        if abs(v_bar_g - v_bar_d) > (tol * v_bar_d):
             raise ValueError(
                 "Velocity target is not met, last calculated to "
                 + "v = {:.4g} m/s ({:+.3g} %), x = {:.4g} m, p = {:.4g} MPa".format(
@@ -594,6 +596,7 @@ class ConstrainedRecoiless:
         rho_p = self.rho_p
         S = self.S
         solve = self.solve
+        tol = self.tol
 
         def f(lf):
             V_0 = omega / (rho_p * lf)
@@ -610,7 +613,7 @@ class ConstrainedRecoiless:
         records = []
 
         for i in range(MAX_GUESSES):
-            startProbe = uniform(self.tol, 1 - self.tol)
+            startProbe = uniform(tol, 1 - tol)
             try:
                 _, lt_i, lg_i = f(startProbe)
                 records.append((startProbe, lt_i))
@@ -628,13 +631,13 @@ class ConstrainedRecoiless:
         if progressQueue is not None:
             progressQueue.put(33)
 
-        low = self.tol
+        low = tol
         probe = startProbe
         delta_low = low - probe
         new_low = probe + delta_low
 
-        k, n = 0, floor(log(abs(delta_low) / self.tol, 2)) + 1
-        while abs(2 * delta_low) > self.tol:
+        k, n = 0, floor(log(abs(delta_low) / tol, 2)) + 1
+        while abs(2 * delta_low) > tol:
             try:
                 _, lt_i, lg_i = f(new_low)
                 records.append((new_low, lt_i))
@@ -649,13 +652,13 @@ class ConstrainedRecoiless:
 
         low = probe
 
-        high = 1 - self.tol
+        high = 1 - tol
         probe = startProbe
         delta_high = high - probe
         new_high = probe + delta_high
 
-        k, n = 0, floor(log(abs(delta_high) / self.tol, 2)) + 1
-        while abs(2 * delta_high) > self.tol and new_high < 1:
+        k, n = 0, floor(log(abs(delta_high) / tol, 2)) + 1
+        while abs(2 * delta_high) > tol and new_high < 1:
             try:
                 _, lt_i, lg_i = f(new_high)
                 records.append((new_high, lt_i))
@@ -670,7 +673,7 @@ class ConstrainedRecoiless:
 
         high = probe
 
-        if abs(high - low) < self.tol:
+        if abs(high - low) < tol:
             raise ValueError("No range of values satisfying constraint.")
 
         if len(records) > 2:
@@ -686,8 +689,8 @@ class ConstrainedRecoiless:
         # f() with the same value will spuriously raise value errors. Therefore
         # we conservatively shrink the range by tolerance to avoid this issue.
 
-        low += delta * self.tol
-        high -= delta * self.tol
+        low += delta * tol
+        high -= delta * tol
 
         """
         Step 2, gss to min.
@@ -696,7 +699,7 @@ class ConstrainedRecoiless:
             lambda lf: f(lf)[1],
             low,
             high,
-            x_tol=self.tol,
+            x_tol=tol,
             findMin=True,
             f_report=lambda x: progressQueue.put(round(x * 33) + 66)
             if progressQueue is not None

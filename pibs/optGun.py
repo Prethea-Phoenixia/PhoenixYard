@@ -141,6 +141,8 @@ class Constrained:
         chi_k = self.chi_k
         f_psi_Z = self.f_psi_Z
 
+        tol = self.tol
+
         if loadFraction > maxLF:
             raise ValueError("Specified Load Fraction Violates Geometrical Constraint")
 
@@ -300,7 +302,8 @@ class Constrained:
                 iniVal=(0, 0, 0),
                 x_0=Z_0,
                 x_1=Z_b,
-                relTol=self.tol,
+                relTol=tol,
+                absTol=tol**2,
                 abortFunc=abort_Z,
                 record=record,
             )
@@ -323,7 +326,8 @@ class Constrained:
                     iniVal=ys,
                     x_0=x,
                     x_1=Z,
-                    relTol=self.tol,
+                    relTol=tol,
+                    absTol=tol**2,
                     record=r,
                 )
                 xs = [v[0] for v in record]
@@ -458,7 +462,8 @@ class Constrained:
                 iniVal=(t_bar_i, Z_i, l_bar_i),
                 x_0=v_bar_i,
                 x_1=v_bar_d,
-                relTol=self.tol,
+                relTol=tol,
+                absTol=tol**2,
                 abortFunc=abort_v,
                 record=vtzl_record,
             )

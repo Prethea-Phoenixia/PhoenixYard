@@ -75,9 +75,10 @@ def RKF78(
 
         adaptTo : optional, values used to control error
                 : = True
-                    adapt to control error in every component
+                    adapt stepsize to error estimation in every component
                 : = [Boolean] * nbr. of components
-                    adapt to component where True.
+                    adapt stepsize to error estimation in component that is true in
+                    adaptTo
 
         minTol  : optional, minimum magnitude of error
         record  : optional, if supplied will record all committed steps
