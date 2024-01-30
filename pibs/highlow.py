@@ -1,5 +1,5 @@
 from math import pi, log, inf
-from num import gss, RKF78, cubic, bisect
+from num import gss, RKF78, cubic, bisect, dekker
 
 
 from gun import DOMAIN_TIME, DOMAIN_LENG
@@ -154,9 +154,8 @@ class Highlow:
         return self.f * self.omega * tau_1 / V_psi * (psi - eta)
 
     def _f_p_2(self, l, eta, tau_2):
-        l_0 = (self.V_1 - self.alpha * self.omega * eta) / self.S
-
-        return self.f * self.omega * tau_2 * eta / (self.S * (l_0 + l))
+        l_star = (self.V_1 - self.alpha * self.omega * eta) / self.S
+        return self.f * self.omega * tau_2 * eta / (self.S * (l_star + l))
 
     def _ode_t(self, t, Z, l, v, eta, tau_1, tau_2, _):
         psi = self.f_psi_Z(Z)
@@ -479,9 +478,6 @@ class Highlow:
                 return False
             o_x, o_ys = record[-1]
 
-            # _, o_eta, _, o_tau_2 = o_ys
-            # o_p_2 = self._f_p_2(0, o_eta, o_tau_2)
-
             p_1 = self._f_p_1(Z, eta, tau_1)
 
             delta = abs(p_2 - p_1) / p_1
@@ -508,7 +504,6 @@ class Highlow:
             tett_record.extend(v for v in tett_record if v[0] > tett_record[-1][0])
             p_2 = self._f_p_2(0, eta, tau_2)
 
-            tett_record[-1]
             return p_2
 
         Z, (t, eta, tau_1, tau_2), _ = RKF78(
@@ -538,7 +533,7 @@ class Highlow:
             )
 
         Z_1 = 0.5 * sum(
-            bisect(lambda x: f(x) - self.p_0_s, Z_0, Z, y_abs_tol=self.p_0_s * tol)
+            dekker(lambda x: f(x) - self.p_0_s, Z_0, Z, y_abs_tol=self.p_0_s * tol)
         )
 
         # fmt: off
@@ -1153,9 +1148,9 @@ if __name__ == "__main__":
         shotMass=5,
         propellant=M17C,
         grainSize=5e-3,
-        chargeMass=0.31,
-        chamberVolume=0.3 / M1C.rho_p / lf,
-        expansionVolume=0.9 / M1C.rho_p / lf,
+        chargeMass=0.5,
+        chamberVolume=0.5 / M1C.rho_p / lf,
+        expansionVolume=0.5 / M1C.rho_p / lf,
         startPressure=5e6,
         burstPressure=10e6,
         lengthGun=3.5,
@@ -1163,6 +1158,11 @@ if __name__ == "__main__":
         chambrage=1,
     )
     record = []
+
+    print(
+        1 / M1C.rho_p / lf,
+        1 / M1C.rho_p / lf,
+    )
 
     print("\nnumerical: time")
     print(
