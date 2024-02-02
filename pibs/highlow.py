@@ -814,14 +814,26 @@ class Highlow:
         """
 
         def g(t, m=POINT_PEAK_AVG):
-            Z, l, v, eta, tau_1, tau_2 = RKF78(
-                self._ode_t,
-                (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1),
-                t_1,
-                t,
-                relTol=tol,
-                absTol=tol**2,
-            )[1]
+            if t < t_1:
+                Z, eta, tau_1, tau_2 = RKF78(
+                    self._ode_ts,
+                    (Z_0, eta_0, tau_1_0, tau_2_0),
+                    t_0,
+                    t,
+                    relTol=tol,
+                    absTol=tol**2,
+                )[1]
+
+                l, v = 0, 0
+            else:
+                Z, l, v, eta, tau_1, tau_2 = RKF78(
+                    self._ode_t,
+                    (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1),
+                    t_1,
+                    t,
+                    relTol=tol,
+                    absTol=tol**2,
+                )[1]
 
             if m == POINT_PEAK_HIGH:
                 p_high = self._f_p_1(Z, eta, tau_1)
@@ -846,19 +858,37 @@ class Highlow:
             t_tol = tol * min(t for t in (t_e, t_b, t_f) if t is not None)
 
             t = 0.5 * sum(
-                gss(g, t_1, t_e if t_b is None else t_b, x_tol=t_tol, findMin=False)
+                gss(g, t_0, t_e if t_b is None else t_b, x_tol=t_tol, findMin=False)
             )
 
-            # fmt: off
-            (
-                _,
-                (Z, l, v, eta, tau_1, tau_2),
-                (Z_err, l_err, v_err, eta_err, tau_1_err, tau_2_err),
-            ) = RKF78(
-                self._ode_t,
-                (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1), t_1, t, relTol=tol, absTol=tol**2
-            )
-            # fmt: on
+            if t < t_1:
+                l, v = 0, 0
+                l_err, v_err = 0, 0
+                (
+                    _,
+                    (Z, eta, tau_1, tau_2),
+                    (Z_err, eta_err, tau_1_err, tau_2_err),
+                ) = RKF78(
+                    self._ode_ts,
+                    (Z_0, eta_0, tau_1_0, tau_2_0),
+                    t_0,
+                    t,
+                    relTol=tol,
+                    absTol=tol**2,
+                )
+
+            else:
+                # fmt: off
+                (
+                    _,
+                    (Z, l, v, eta, tau_1, tau_2),
+                    (Z_err, l_err, v_err, eta_err, tau_1_err, tau_2_err),
+                ) = RKF78(
+                    self._ode_t,
+                    (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1), t_1, t, relTol=tol, absTol=tol**2
+                )
+                # fmt: on
+
             t_err = 0.5 * t_tol
 
             # fmt: off

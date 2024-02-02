@@ -1026,9 +1026,9 @@ CHINESE = {
     "PEAK_AVG_P": "最大平均压强",
     "PEAK_BREECH_P": "最大膛底压强",
     "PEAK_SHOT_P": "最大弹底压强",
-    "PEAK_BLEED_P": "低压室膛底压强",
-    "PEAK_HIGH_P": "高压室压强",
-    "PEAK_STAG_P": "滞流点压强",
+    "PEAK_BLEED_P": "最大低压室膛底压强",
+    "PEAK_HIGH_P": "最大高压室压强",
+    "PEAK_STAG_P": "最大滞流点压强",
     "auxFrmLabel": "膛底距曲线",
     "auxText": "".join(
         (

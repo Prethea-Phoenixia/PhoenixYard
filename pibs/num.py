@@ -30,12 +30,8 @@ def cubic(a, b, c, d):
     Delta_0 = b**2 - 3 * a * c
     Delta_1 = 2 * b**3 - 9 * a * b * c + 27 * a**2 * d
 
-    C_1 = (0.5 * (Delta_1 + (Delta_1**2 - 4 * Delta_0**3) ** 0.5)) ** (
-        1 / 3
-    )
-    C_2 = (0.5 * (Delta_1 - (Delta_1**2 - 4 * Delta_0**3) ** 0.5)) ** (
-        1 / 3
-    )
+    C_1 = (0.5 * (Delta_1 + (Delta_1**2 - 4 * Delta_0**3) ** 0.5)) ** (1 / 3)
+    C_2 = (0.5 * (Delta_1 - (Delta_1**2 - 4 * Delta_0**3) ** 0.5)) ** (1 / 3)
 
     xs = []
     if any(C != 0 for C in (C_1, C_2)):
@@ -57,8 +53,7 @@ def cubic(a, b, c, d):
     else:
         # one real and 2 imaginary roots.
         xs = list(
-            z.real if abs(z.imag) == min(abs(z.imag) for z in xs) else z
-            for z in xs
+            z.real if abs(z.imag) == min(abs(z.imag) for z in xs) else z for z in xs
         )
     # put the first real solution at first.
     xs.sort(key=lambda z: 1 if isinstance(z, complex) else 0)
@@ -342,9 +337,7 @@ if __name__ == "__main__":
 
     # create a Trace object, telling it what to ignore, and whether to
     # do tracing or line-counting or both.
-    tracer = trace.Trace(
-        ignoredirs=[sys.prefix, sys.exec_prefix], trace=0, count=1
-    )
+    tracer = trace.Trace(ignoredirs=[sys.prefix, sys.exec_prefix], trace=0, count=1)
 
     # run the new command using the given tracer
     tracer.run("main()")

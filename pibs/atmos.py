@@ -97,6 +97,8 @@ def atmosphere(h):
     kappa = 1.4
     a = (kappa * R * T) ** 0.5
     rho = P / (R * T)
+
+    mu = 1.458e-6 * T**1.5 / (T + 110.4)
     """
     # Return values:
         T : Temperature in K
@@ -104,8 +106,9 @@ def atmosphere(h):
         a : Speed of sound in m/s
       rho : Density in kg m^-3
         g : Acceleration due gravity.
+       mu : dynamic viscosity, Pa-s
     """
-    return T, P, a, rho, g
+    return T, P, a, rho, g, mu
 
 
 if __name__ == "__main__":

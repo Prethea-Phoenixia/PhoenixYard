@@ -28,7 +28,7 @@ class optHighlow:
         maxWeb=10e-3,
         maxLength=1e3,
         minEV=0.1e-3,
-        maxEV=10e-3,
+        maxEV=100e-3,
         ambientRho=1.204,
         ambientP=101.325e3,
         ambientGamma=1.4,
@@ -93,8 +93,6 @@ class optHighlow:
     ):
         if any((chargeMassRatio <= 0, loadFraction <= 0, loadFraction > 1)):
             raise ValueError("Invalid parameters to solve constrained design problem")
-
-        p_max = 1e9  # 1GPa
 
         m = self.m
         rho_p = self.rho_p
@@ -254,7 +252,7 @@ class optHighlow:
                 eta_0 += deta_0 * dZ
                 tau_1_0 += dtau_1_0 * dZ
 
-                tett_record = [[Z_0, [t_0, eta_0, tau_1_0, tau_2_0]]]
+                record_0 = [[Z_0, [t_0, eta_0, tau_1_0, tau_2_0]]]
 
                 def abort(x, ys, record):
                     Z, _, eta, tau_1, tau_2 = x, *ys
@@ -264,13 +262,13 @@ class optHighlow:
                     o_x, o_ys = record[-1]
                     p_1 = _f_p_1(Z, eta, tau_1)
                     delta = abs(p_2 - p_1) / p_1
-                    return p_2 > 2 * p_0_s or p_1 > p_max or delta < tol
+                    return p_2 > 2 * p_0_s or delta < tol
 
                 def g(Z):
-                    i = tett_record.index([v for v in tett_record if v[0] <= Z][-1])
+                    i = record_0.index([v for v in record_0 if v[0] <= Z][-1])
 
-                    x = tett_record[i][0]
-                    ys = tett_record[i][1]
+                    x = record_0[i][0]
+                    ys = record_0[i][1]
 
                     _, (t, eta, tau_1, tau_2), _ = RKF78(
                         _ode_Zs,
@@ -280,25 +278,23 @@ class optHighlow:
                         relTol=tol,
                         absTol=tol**2,
                         abortFunc=abort,
-                        record=tett_record,
+                        record=record_0,
                     )
 
-                    tett_record.extend(
-                        v for v in tett_record if v[0] > tett_record[-1][0]
-                    )
+                    record_0.extend(v for v in record_0 if v[0] > record_0[-1][0])
                     p_2 = _f_p_2(0, eta, tau_2)
 
                     return p_2
 
                 Z_sm, (t, eta, tau_1, tau_2), _ = RKF78(
                     _ode_Zs,
-                    tett_record[0][1],
-                    tett_record[0][0],
+                    record_0[0][1],
+                    record_0[0][0],
                     Z_b,
                     relTol=tol,
                     absTol=tol**2,
                     abortFunc=abort,
-                    record=tett_record,
+                    record=record_0,
                     # debug=True,
                 )
                 p_1_sm = _f_p_1(Z_sm, eta, tau_1)
@@ -321,6 +317,7 @@ class optHighlow:
                     dekker(lambda x: g(x) - p_0_s, Z_0, Z_sm, y_abs_tol=p_0_s * tol)
                 )
 
+                record_1 = [[Z_0, (t_0, eta_0, tau_1_0, tau_2_0)]]
                 t_1, eta_1, tau_1_1, tau_2_1 = RKF78(
                     _ode_Zs,
                     (t_0, eta_0, tau_1_0, tau_2_0),
@@ -328,6 +325,7 @@ class optHighlow:
                     Z_1,
                     relTol=tol,
                     absTol=tol**2,
+                    record=record_1,
                 )[1]
 
                 def abort_Z(x, ys, record):
@@ -390,8 +388,7 @@ class optHighlow:
 
                     return dt, dl, dv, deta, dtau_1, dtau_2
 
-                record = [[Z_1, (t_1, 0, 0, eta_1, tau_1_1, tau_2_1)]]
-
+                record_2 = [[Z_1, (t_1, 0, 0, eta_1, tau_1_1, tau_2_1)]]
                 Z_j, (t_j, l_j, v_j, eta_j, tau_1_j, tau_2_j), _ = RKF78(
                     _ode_Z,
                     (t_1, 0, 0, eta_1, tau_1_1, tau_2_1),
@@ -400,12 +397,12 @@ class optHighlow:
                     relTol=tol,
                     absTol=tol**2,
                     abortFunc=abort_Z,
-                    record=record,
+                    record=record_2,
                 )
 
-                def _f_p_Z(Z):
-                    i = record.index([v for v in record if v[0] <= Z][-1])
-                    x, ys = record[i]
+                def _f_p_2_Z(Z):
+                    i = record_2.index([v for v in record_2 if v[0] <= Z][-1])
+                    x, ys = record_2[i]
 
                     r = []
                     _, (t, l, v, eta, tau_1, tau_2), _ = RKF78(
@@ -417,15 +414,67 @@ class optHighlow:
                         absTol=tol**2,
                         record=r,
                     )
-                    xs = [v[0] for v in record]
-                    record.extend(v for v in r if v[0] not in xs)
-                    record.sort()
-                    return _f_p_1(Z, eta, tau_1), _f_p_2(l, eta, tau_2)
+                    xs = [v[0] for v in record_2]
+                    record_2.extend(v for v in r if v[0] not in xs)
+                    record_2.sort()
+                    return _f_p_2(l, eta, tau_2)
 
-                Z_p_h = (
+                def _f_p_1_Z(Z):
+                    if Z < Z_1:
+                        i = record_1.index([v for v in record_1 if v[0] <= Z][-1])
+                        x, ys = record_1[i]
+
+                        r = []
+                        _, (t, eta, tau_1, tau_2), _ = RKF78(
+                            dFunc=_ode_Zs,
+                            iniVal=ys,
+                            x_0=x,
+                            x_1=Z,
+                            relTol=tol,
+                            absTol=tol**2,
+                            record=r,
+                        )
+                        xs = [v[0] for v in record_1]
+                        record_1.extend(v for v in r if v[0] not in xs)
+                        record_1.sort()
+
+                    else:
+                        i = record_2.index([v for v in record_2 if v[0] <= Z][-1])
+                        x, ys = record_2[i]
+
+                        r = []
+                        _, (t, l, v, eta, tau_1, tau_2), _ = RKF78(
+                            dFunc=_ode_Z,
+                            iniVal=ys,
+                            x_0=x,
+                            x_1=Z,
+                            relTol=tol,
+                            absTol=tol**2,
+                            record=r,
+                        )
+                        xs = [v[0] for v in record_2]
+                        record_2.extend(v for v in r if v[0] not in xs)
+                        record_2.sort()
+
+                    return _f_p_1(Z, eta, tau_1)
+
+                Z_p_1 = (
                     sum(
                         gss(
-                            lambda Z: _f_p_Z(Z)[0],
+                            lambda Z: _f_p_1_Z(Z),
+                            Z_0,
+                            Z_j,
+                            y_rel_tol=0.5 * tol,
+                            findMin=False,
+                        )
+                    )
+                    * 0.5
+                )
+
+                Z_p_2 = (
+                    sum(
+                        gss(
+                            lambda Z: _f_p_2_Z(Z),
                             Z_1,
                             Z_j,
                             y_rel_tol=0.5 * tol,
@@ -435,31 +484,12 @@ class optHighlow:
                     * 0.5
                 )
 
-                Z_p_l = (
-                    sum(
-                        gss(
-                            lambda Z: _f_p_Z(Z)[1],
-                            Z_1,
-                            Z_j,
-                            y_rel_tol=0.5 * tol,
-                            findMin=False,
-                        )
-                    )
-                    * 0.5
-                )
+                p_p_h = _f_p_1_Z(Z_p_1)
 
-                p_p_h, _ = _f_p_Z(Z_p_h)
-                _, p_p_l = _f_p_Z(Z_p_l)
+                p_p_l = _f_p_2_Z(Z_p_2)
 
-                return (
-                    sum(
-                        v**2
-                        for v in (
-                            abs(p_p_h - p_d_h) / p_d_h,
-                            abs(p_p_l - p_d_l) / p_d_l,
-                        )
-                    )
-                    ** 0.5
+                return sum(
+                    abs(v) for v in (p_p_h - p_d_h / p_d_h, p_p_l - p_d_l / p_d_l)
                 )
 
             best, dev = coordesc(
@@ -502,7 +532,7 @@ if __name__ == "__main__":
         chambrage=1,
         tol=1e-3,
         designHighPressure=50e6,
-        designLowPressure=25e6,
+        designLowPressure=20e6,
         designVelocity=75,
     )
 

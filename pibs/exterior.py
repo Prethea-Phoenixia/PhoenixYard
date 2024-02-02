@@ -44,7 +44,7 @@ class Bullet:
         dx = vx
         dy = vy
 
-        _, _, c, rho, g = self.f_env(h)
+        _, _, c, rho, g, _ = self.f_env(h)
 
         M = v / c  # mach
         Kd = self.f_Kd.Kd(M)  # drag coefficient
@@ -154,9 +154,9 @@ class Bullet:
                 l = (
                     (x - x_0) ** 2 + (y - y_0) ** 2
                 ) ** 0.5  # line of sight distance to target,
-                drop = acos(
-                    ((x - x_0) * cos(theta) + (y - y_0) * sin(theta)) / l
-                ) * (180 / pi)
+                drop = acos(((x - x_0) * cos(theta) + (y - y_0) * sin(theta)) / l) * (
+                    180 / pi
+                )
 
                 lTable.append(
                     (
@@ -278,8 +278,6 @@ class Bullet:
 
         elev_max = bisect_serach(elev_max)
         elev_min = bisect_serach(elev_min)
-
-        print(elev_min, elev_max)
 
         def f_r(elev, r=0, DESCEND=True):
             try:
@@ -468,10 +466,7 @@ class Bullet:
             return (
                 (h < 0 and ((-x * vx + y * vy) < 0))
                 if DESCEND  # abort the calculation on downward crossing of target plane
-                else (
-                    (h > 0 and ((-x * vx + y * vy) > 0))
-                    or ((-x * vx + y * vy) < 0)
-                )
+                else ((h > 0 and ((-x * vx + y * vy) > 0)) or ((-x * vx + y * vy) < 0))
             )
 
         vx_0 = vel * cos(theta)
@@ -579,9 +574,7 @@ class Bullet:
             else:
                 # even the new peak point found cannot crest the target plane.
                 raise ValueError(
-                    "Projectile Cresting Below Target at {:.3f} m".format(
-                        h_prime
-                    )
+                    "Projectile Cresting Below Target at {:.3f} m".format(h_prime)
                 )
 
         else:
@@ -679,9 +672,7 @@ def calc_for_R(
 
 
 if __name__ == "__main__":
-    test = Bullet(
-        "test", mass=4.6, diam=27e-3, Kd_curve=KdCurve["M829"], form=1
-    )
+    test = Bullet("test", mass=4.6, diam=27e-3, Kd_curve=KdCurve["M829"], form=1)
     # print(dec_to_dms(1 / 3600))
     """
     test.record_to_data(
@@ -705,9 +696,7 @@ if __name__ == "__main__":
         sep="\n"
     )
     """
-    test.rangeTable(
-        tol=1e-3, vel=2000, minR=0, maxR=200000, deltaR=2000, tgtH=0.1
-    )
+    test.rangeTable(tol=1e-3, vel=2000, minR=0, maxR=200000, deltaR=2000, tgtH=0.1)
 
     """
     test = Bullet(
