@@ -473,9 +473,9 @@ class Highlow:
             if len(record) < 1:
                 return False
 
-            o_x, o_ys = record[-1]
+            ox, oys = record[-1]
 
-            oZ, _, oeta, otau_1, otau_2 = x, *ys
+            oZ, _, oeta, otau_1, _ = ox, *oys
 
             op_1 = self._f_p_1(oZ, oeta, otau_1)
             # op_2 = self._f_p_2(0, oeta, otau_2)

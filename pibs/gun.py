@@ -379,7 +379,7 @@ class Gun:
             1 - (1 - 1 / self.chi_k) * log(Labda + 1) / Labda
         )  # chambrage correction factor
 
-        self.phi = self.phi_1 + labda_2 * self.omega / self.m * cc  # per ref.
+        self.phi = (self.phi_1 + labda_2 * self.omega / self.m) * cc  # per ref.
 
         self.B = (
             self.S**2
