@@ -248,7 +248,7 @@ class optHighlow:
                 * 0.5
             )
 
-            print(g(Z_p_i))
+            # print(g(Z_p_i))
 
             return g(Z_p_i) - p_d_h
 
@@ -587,50 +587,54 @@ class optHighlow:
 
             p_p_l = _f_p_2_Z(Z_p_2)
 
-            print(p_p_h, p_p_l)
+            # print(p_p_h, p_p_l)
 
             return p_p_h - p_d_h, p_p_l - p_d_l
 
         print("assumed maximum", self.maxEV)
         probeEV = self.maxEV
-        dp_bar_probe = None
-        while dp_bar_probe is None:
+        lastEV = probeEV
+        while True:
             try:
                 dp_bar_probe = f_ev(probeEV)[1]
+                break
             except ValueError:
+                lastEV = probeEV
                 probeEV *= 0.5
 
         # actual maximum lies somewhere between probeEV and 2x probeEV
 
         def findBound(func, x_probe, x_bound, tol, record=[]):
-            x_valid = x_probe
-            delta = x_bound - x_probe
-            up = x_bound > x_probe
+            try:
+                record.append((x_bound, func(x_bound)))
+                return x_bound
+            except ValueError:
+                x_valid = x_probe
 
-            while abs(2 * delta) > tol and (
-                x_probe <= x_bound if up else x_probe >= x_bound
-            ):
-                try:
-                    record.append((x_probe, func(x_probe)))
-                    x_valid = x_probe
-                except ValueError:
-                    delta *= 0.5
-                finally:
-                    x_probe = x_valid + delta
+                delta = x_bound - x_probe
+                up = x_bound > x_probe
 
-                # print("x_valid", x_valid)
-                # print("x_probe", x_probe)
-                # print("x_bound", x_bound)
-                # print("delta", delta, "tol", tol)
-                # print()
-                # input()
+                while abs(2 * delta) > tol and (
+                    x_probe <= x_bound if up else x_probe >= x_bound
+                ):
+                    try:
+                        record.append((x_probe, func(x_probe)))
+                        x_valid = x_probe
+                    except ValueError:
+                        delta *= 0.5
+                    finally:
+                        x_probe = x_valid + delta
 
-            return x_valid
+                    # print("x_valid", x_valid)
+                    # print("x_probe", x_probe)
+                    # print("x_bound", x_bound)
+                    # print("delta", delta, "tol", tol)
+                    # print()
+                    # input()
 
-        evUpperBound = findBound(f_ev, probeEV, 2 * probeEV, tol * V_0)
+                return x_valid
 
-        print(evUpperBound)
-        print(f_ev(evUpperBound * (1 - tol)))
+        evUpperBound = findBound(f_ev, probeEV, lastEV, tol * V_0)
 
         if f_ev(evUpperBound)[1] > 0:
             raise ValueError(
