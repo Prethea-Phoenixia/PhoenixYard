@@ -1515,7 +1515,7 @@ class InteriorBallisticsFrame(Frame):
             row=i,
             labelLocKey="dgcLabel",
             unitText="%",
-            default="5.0",
+            default="3.0",
             validation=validationNN,
             tooltipLocKey="dgcText",
             locFunc=self.getLocStr,
@@ -2935,6 +2935,7 @@ def main():
     )
 
     root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
+    root.wm_state("iconic")
     root.state("zoomed")  # maximize window
     root.mainloop()
 

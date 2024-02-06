@@ -75,13 +75,8 @@ class Highlow:
         self.l_0 = self.V_0 / self.S
         self.l_1 = self.V_1 / self.S
 
-        Labda = self.l_g / self.l_1
-        cc = (
-            1 - (1 - 1 / self.chi_k) * log(Labda + 1) / Labda
-        )  # chambrage correction factor
-
         self.phi_1 = 1 / (1 - dragCoefficient)  # drag work coefficient
-        self.phi = self.phi_1 + self.omega / (3 * self.m) * cc
+        self.phi = self.phi_1 + self.omega / (3 * self.m)
 
         if self.p_0_e == 0:
             raise NotImplementedError(
@@ -470,19 +465,26 @@ class Highlow:
         tett_record = [[Z_0, [t_0, eta_0, tau_1_0, tau_2_0]]]
 
         def abort(x, ys, record):
-            Z = x
-            t, eta, tau_1, tau_2 = ys
+            Z, _, eta, tau_1, tau_2 = x, *ys
+
+            p_1 = self._f_p_1(Z, eta, tau_1)
             p_2 = self._f_p_2(0, eta, tau_2)
 
             if len(record) < 1:
                 return False
+
             o_x, o_ys = record[-1]
 
-            p_1 = self._f_p_1(Z, eta, tau_1)
+            oZ, _, oeta, otau_1, otau_2 = x, *ys
 
-            delta = abs(p_2 - p_1) / p_1
+            op_1 = self._f_p_1(oZ, oeta, otau_1)
+            # op_2 = self._f_p_2(0, oeta, otau_2)
 
-            return p_2 > 2 * self.p_0_s or p_1 > p_max or delta < tol
+            return (
+                p_2 > self.p_0_s
+                or p_1 > p_max
+                or (p_1 - p_2 < tol * p_1 and p_1 < op_1)
+            )
 
         def f(Z):
             i = tett_record.index([v for v in tett_record if v[0] <= Z][-1])
@@ -490,6 +492,7 @@ class Highlow:
             x = tett_record[i][0]
             ys = tett_record[i][1]
 
+            r = []
             _, (t, eta, tau_1, tau_2), _ = RKF78(
                 self._ode_Zs,
                 ys,
@@ -498,10 +501,12 @@ class Highlow:
                 relTol=tol,
                 absTol=tol**2,
                 abortFunc=abort,
-                record=tett_record,
+                record=r,
             )
 
-            tett_record.extend(v for v in tett_record if v[0] > tett_record[-1][0])
+            xs = [v[0] for v in tett_record]
+            tett_record.extend(v for v in r if v[0] not in xs)
+            tett_record.sort()
             p_2 = self._f_p_2(0, eta, tau_2)
 
             return p_2
@@ -524,6 +529,13 @@ class Highlow:
                 "Equilibrium between high and low chamber achieved "
                 + "before shot has started, "
                 + f"at ({p_2_sm * 1e-6:.6f} MPa)."
+            )
+
+        elif p_1_sm > p_max:
+            raise ValueError(
+                "Nobel-Abel EoS is generally accurate enough below 600MPa. However, "
+                + f"Unreasonably high pressure ({p_1_sm * 1e-6:.0f}>{p_max * 1e-6:.0f}"
+                + " MPa) was encountered.",  # in practice most of the pressure-realted spikes are captured here.
             )
 
         elif p_2_sm < self.p_0_s:
@@ -1091,11 +1103,11 @@ class Highlow:
             tag, t, l, psi, v, p_h, p_b, p, p_s, T_1, T_2, eta = line
             p_line = []
             for i in range(step):
-                x = (i + 1) / step * (l + L_l) + L_h
+                x = i / step * (l + L_l) + L_h
                 p_x = self.toPx(l, p_h, p_b, p_s, x)
                 p_line.append((x, p_x))
 
-            # p_line.append((l + (self.V_0 + self.V_1) / self.S / self.chi_k, p_s))
+            p_line.append((l + L_l + L_h, p_s))
             p_trace.append((tag, psi, T_2, p_line))
             p_trace.append((tag, psi, T_1, [(0, p_h), (L_h * (1 - tol), p_h)]))
 
@@ -1122,14 +1134,20 @@ class Highlow:
         Ps: pressure at shot
         Pb: pressure at breech
         """
-        Labda_g = l / self.l_1
-        labda_1_prime = (1 / 2) * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
-        labda_2_prime = (1 / 3) * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
+        # Labda_g = l / self.l_1
+        # labda_1_prime = (1 / 2) * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
+        # labda_2_prime = (1 / 3) * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
+        # factor_s = 1 + labda_2_prime * (self.omega * eta / (self.phi_1 * self.m))
 
-        factor_s = 1 + labda_2_prime * (self.omega * eta / (self.phi_1 * self.m))
+        # factor_b = (self.phi_1 * self.m + labda_2_prime * self.omega * eta) / (
+        #     self.phi_1 * self.m + labda_1_prime * self.omega * eta
+        # )
 
-        factor_b = (self.phi_1 * self.m + labda_2_prime * self.omega * eta) / (
-            self.phi_1 * self.m + labda_1_prime * self.omega * eta
+        labda_1, labda_2 = 1 / 2, 1 / 3
+        factor_s = 1 + labda_2 * (self.omega * eta / (self.phi_1 * self.m))
+
+        factor_b = (self.phi_1 * self.m + labda_2 * self.omega * eta) / (
+            self.phi_1 * self.m + labda_1 * self.omega * eta
         )
 
         return p / factor_s, p / factor_b
@@ -1188,11 +1206,6 @@ if __name__ == "__main__":
         chambrage=1,
     )
     record = []
-
-    print(
-        1 / M1C.rho_p / lf,
-        1 / M1C.rho_p / lf,
-    )
 
     print("\nnumerical: time")
     print(
