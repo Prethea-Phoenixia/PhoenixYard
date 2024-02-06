@@ -360,13 +360,13 @@ def RKF78(
             ZeroDivisionError,
             OverflowError,
         ) as e:
-            if debug:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                errMsg = "".join(
-                    traceback.format_exception(exc_type, exc_value, exc_traceback)
-                )
-                print(f"Error encountered at x={x:.8g}")
-                print(str(errMsg))
+            # if debug:
+            #     exc_type, exc_value, exc_traceback = sys.exc_info()
+            #     errMsg = "".join(
+            #         traceback.format_exception(exc_type, exc_value, exc_traceback)
+            #     )
+            #     print(f"Error encountered at x={x:.8g}")
+            #     print(str(errMsg))
             h *= beta
             continue
 

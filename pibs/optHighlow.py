@@ -199,10 +199,10 @@ class optHighlow:
                 if len(record) < 1:
                     return False
                 o_x, o_ys = record[-1]
-                oZ, _, oeta, otau_1 = x, *ys
+                oZ, _, oeta, otau_1 = o_x, *o_ys
                 op_1 = _f_p_1(oZ, oeta, otau_1)
 
-                return p_1 < op_1
+                return p_1 <= op_1
 
             def g(Z):
                 i = record_0.index([v for v in record_0 if v[0] <= Z][-1])
@@ -231,6 +231,8 @@ class optHighlow:
 
                 return _f_p_1(Z, eta, tau_1)
 
+            print("a")
+
             Z_p_i = (
                 sum(
                     gss(
@@ -244,6 +246,8 @@ class optHighlow:
                 * 0.5
             )
 
+            print("Z_p_i found to be", Z_p_i)
+
             return g(Z_p_i) - p_d_h
 
         dp_bar_probe = func_e(self.minWeb)
@@ -254,6 +258,7 @@ class optHighlow:
                 "Design pressure cannot be achieved by varying" + " web down to minimum"
             )
 
+        print("here", probeWeb, dp_bar_probe)
         while dp_bar_probe > 0:
             probeWeb *= 2
             dp_bar_probe = func_e(probeWeb)
@@ -261,7 +266,7 @@ class optHighlow:
 
         print(probeWeb)
         e_1, _ = dekker(
-            lambda web: func_e(web)[0],
+            func_e,
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
             # x_tol=1e-14,
