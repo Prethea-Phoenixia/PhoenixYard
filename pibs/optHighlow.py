@@ -351,11 +351,11 @@ class optHighlow:
 
                 if len(record) < 1:
                     return False
-                ox, oys = record[-1]
-                oZ, _, oeta, otau_1, _ = ox, *oys
-                op_1 = _f_p_1(oZ, oeta, otau_1)
+                # ox, oys = record[-1]
+                # oZ, _, oeta, otau_1, _ = ox, *oys
+                # op_1 = _f_p_1(oZ, oeta, otau_1)
 
-                return p_2 > p_0_s or (p_1 - p_2 < tol * p_1 and p_1 < op_1)
+                return p_2 > p_0_s or (p_1 - p_2 < tol * p_1)
 
             def g(Z):
                 i = record_0.index([v for v in record_0 if v[0] <= Z][-1])
@@ -401,7 +401,7 @@ class optHighlow:
 
             if abs(p_1_sm - p_2_sm) < tol * p_1_sm and p_2_sm < p_0_s:
                 raise ValueError(
-                    "Equilibrium between high and low chamber achieved "
+                    "Pressure levels have coalesced between high and low chamber "
                     + "before shot has started, "
                     + f"at ({p_2_sm * 1e-6:.6f} MPa)."
                 )
@@ -625,13 +625,6 @@ class optHighlow:
                     finally:
                         x_probe = x_valid + delta
 
-                    # print("x_valid", x_valid)
-                    # print("x_probe", x_probe)
-                    # print("x_bound", x_bound)
-                    # print("delta", delta, "tol", tol)
-                    # print()
-                    # input()
-
                 return x_valid
 
         evUpperBound = findBound(f_ev, probeEV, lastEV, tol * V_0)
@@ -641,6 +634,20 @@ class optHighlow:
                 "Low chamber pressure exceeds design pressure at "
                 + f"bounding volume of {evUpperBound * 1e-3:.2f} L."
             )
+
+        probeEV = evUpperBound
+        lastEV = probeEV
+        while True:
+            try:
+                dp_bar_probe = f_ev(probeEV)[1]
+                lastEV = probeEV
+                probeEV *= 0.5
+            except ValueError:
+                break
+
+        evLowerBound = findBound(f_ev, probeEV, lastEV, tol * V_0)
+
+        print(evUpperBound, evLowerBound)
 
 
 if __name__ == "__main__":

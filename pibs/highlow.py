@@ -473,18 +473,14 @@ class Highlow:
             if len(record) < 1:
                 return False
 
-            ox, oys = record[-1]
+            # ox, oys = record[-1]
 
-            oZ, _, oeta, otau_1, _ = ox, *oys
+            # oZ, _, oeta, otau_1, _ = ox, *oys
 
-            op_1 = self._f_p_1(oZ, oeta, otau_1)
+            # op_1 = self._f_p_1(oZ, oeta, otau_1)
             # op_2 = self._f_p_2(0, oeta, otau_2)
 
-            return (
-                p_2 > self.p_0_s
-                or p_1 > p_max
-                or (p_1 - p_2 < tol * p_1 and p_1 < op_1)
-            )
+            return p_2 > self.p_0_s or p_1 > p_max or (p_1 - p_2 < tol * p_1)
 
         def f(Z):
             i = tett_record.index([v for v in tett_record if v[0] <= Z][-1])
@@ -526,7 +522,7 @@ class Highlow:
 
         if abs(p_1_sm - p_2_sm) < tol * p_1_sm and p_2_sm < self.p_0_s:
             raise ValueError(
-                "Equilibrium between high and low chamber achieved "
+                "Pressure levels have coalesced between high and low chamber "
                 + "before shot has started, "
                 + f"at ({p_2_sm * 1e-6:.6f} MPa)."
             )
