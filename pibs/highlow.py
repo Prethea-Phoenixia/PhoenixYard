@@ -474,9 +474,7 @@ class Highlow:
                 return False
 
             # ox, oys = record[-1]
-
             # oZ, _, oeta, otau_1, _ = ox, *oys
-
             # op_1 = self._f_p_1(oZ, oeta, otau_1)
             # op_2 = self._f_p_2(0, oeta, otau_2)
 

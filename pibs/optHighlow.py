@@ -269,9 +269,9 @@ class optHighlow:
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
             y_abs_tol=p_d_h * self.tol,
-            f_report=lambda x: progressQueue.put(round(x * 50))
-            if progressQueue is not None
-            else None,
+            f_report=lambda x: (
+                progressQueue.put(round(x * 50)) if progressQueue is not None else None
+            ),
         )  # this is the e_1 that satisifies the pressure specification.
 
         print("solved e_1 at ", e_1, "with a pressure deviation of ", f_e_1(e_1))
@@ -412,9 +412,7 @@ class optHighlow:
                     + "not enough to start the shot."
                 )
 
-            Z_1 = 0.5 * sum(
-                dekker(lambda x: g(x) - p_0_s, Z_0, Z_sm, y_abs_tol=p_0_s * tol)
-            )
+            Z_1, _ = dekker(lambda x: g(x) - p_0_s, Z_0, Z_sm, y_abs_tol=p_0_s * tol)
 
             record_1 = [[Z_0, (t_0, eta_0, tau_1_0, tau_2_0)]]
             t_1, eta_1, tau_1_1, tau_2_1 = RKF78(
@@ -587,9 +585,7 @@ class optHighlow:
 
             p_p_l = _f_p_2_Z(Z_p_2)
 
-            # print(p_p_h, p_p_l)
-
-            return p_p_h - p_d_h, p_p_l - p_d_l
+            return p_p_h, p_p_l
 
         print("assumed maximum", self.maxEV)
         probeEV = self.maxEV
@@ -629,10 +625,13 @@ class optHighlow:
 
         evUpperBound = findBound(f_ev, probeEV, lastEV, tol * V_0)
 
-        if f_ev(evUpperBound)[1] > 0:
+        p_l_min = f_ev(evUpperBound)[1]
+
+        if p_l_min > p_d_l:
             raise ValueError(
-                "Low chamber pressure exceeds design pressure at "
-                + f"bounding volume of {evUpperBound * 1e-3:.2f} L."
+                "Minimum pressure level in low chamber exceeds design pressure at "
+                + f"{p_l_min * 1e-3:.2f} MPa and "
+                + f"bounding volume of < {evUpperBound * 1e-3:.2f} L.",
             )
 
         probeEV = evUpperBound
@@ -646,8 +645,24 @@ class optHighlow:
                 break
 
         evLowerBound = findBound(f_ev, probeEV, lastEV, tol * V_0)
+        p_l_max = f_ev(evLowerBound)[1]
 
-        print(evUpperBound, evLowerBound)
+        if p_l_max < p_d_l:
+            raise ValueError(
+                "Maximum pressure level in low chamber subceeds design pressure at "
+                + f"{p_l_max * 1e-3:.2f} MPa and "
+                + f"bounding volume of > {evLowerBound * 1e-3:.2f} L.",
+            )
+
+        V_1, _ = dekker(
+            lambda ev: f_ev(ev)[1],
+            evLowerBound,
+            evUpperBound,
+            y=p_d_l,
+            y_rel_tol=tol,
+        )
+
+        p_h_act, p_l_act = f_ev(V_1)
 
 
 if __name__ == "__main__":
