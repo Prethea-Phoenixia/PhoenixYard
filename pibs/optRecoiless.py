@@ -412,9 +412,9 @@ class ConstrainedRecoiless:
             probeWeb,
             0.5 * probeWeb,
             y_abs_tol=p_bar_d * tol,
-            f_report=lambda x: progressQueue.put(round(x * 100))
-            if progressQueue is not None
-            else None,
+            f_report=lambda x: (
+                progressQueue.put(round(x * 100)) if progressQueue is not None else None
+            ),
         )  # this is the e_1 that satisifies the pressure specification.
 
         """
@@ -486,9 +486,7 @@ class ConstrainedRecoiless:
                 v_r = v_bar / c_a_bar
                 p_d_bar = (
                     +0.25 * gamma_1 * (gamma_1 + 1) * v_r**2
-                    + gamma_1
-                    * v_r
-                    * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5
+                    + gamma_1 * v_r * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5
                 ) * p_a_bar
             else:
                 p_d_bar = 0
@@ -701,9 +699,11 @@ class ConstrainedRecoiless:
             high,
             x_tol=tol,
             findMin=True,
-            f_report=lambda x: progressQueue.put(round(x * 33) + 66)
-            if progressQueue is not None
-            else None,
+            f_report=lambda x: (
+                progressQueue.put(round(x * 33) + 66)
+                if progressQueue is not None
+                else None
+            ),
         )
 
         lf = 0.5 * (lf_high + lf_low)

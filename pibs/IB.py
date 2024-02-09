@@ -117,7 +117,7 @@ FIG_CONTEXT = {
 
 class InteriorBallisticsFrame(Frame):
     def __init__(self, parent, menubar, dpi, defaultLang=None):
-        ttk.Frame.__init__(self, parent)
+        super().__init__(parent)
         self.grid(row=0, column=0, sticky="nsew")
         self.LANG = StringVar(
             value=list(STRING.keys())[0] if defaultLang is None else defaultLang
@@ -927,6 +927,8 @@ class InteriorBallisticsFrame(Frame):
         CreateToolTip(self.calButton, self.calcButtonTip)
 
     def onCalculate(self):
+        self.focus()  # remove focus to force widget entry validation
+        self.update()  # and wait for the event to update.
         for loc in self.locs:
             try:
                 loc.inhibit()
@@ -1621,7 +1623,7 @@ class InteriorBallisticsFrame(Frame):
             tooltipLocKey="plotText",
             allLLF=self.locs,
         )
-        plotFrm.grid(row=1, column=1, padx=2, pady=2, sticky="nsew")
+        plotFrm.grid(row=1, column=1, padx=0, pady=0, sticky="nsew")
 
         self.plotFrm = plotFrm
 
@@ -1772,7 +1774,7 @@ class InteriorBallisticsFrame(Frame):
             tooltipLocKey="auxText",
             allLLF=self.locs,
         )
-        auxFrm.grid(row=2, column=1, padx=2, pady=2, sticky="nsew")
+        auxFrm.grid(row=2, column=1, padx=0, pady=0, sticky="nsew")
         self.auxFrm = auxFrm
 
         for i in range(2):
@@ -1955,11 +1957,15 @@ class InteriorBallisticsFrame(Frame):
                     xs,
                     Pbs,
                     c="xkcd:goldenrod",
-                    label=self.getLocStr("figBreech")
-                    if gunType == CONVENTIONAL
-                    else self.getLocStr("figNozzleP")
-                    if gunType == RECOILESS
-                    else self.getLocStr("figBleedP"),
+                    label=(
+                        self.getLocStr("figBreech")
+                        if gunType == CONVENTIONAL
+                        else (
+                            self.getLocStr("figNozzleP")
+                            if gunType == RECOILESS
+                            else self.getLocStr("figBleedP")
+                        )
+                    ),
                 )
 
             if gunType == RECOILESS:
@@ -1998,9 +2004,11 @@ class InteriorBallisticsFrame(Frame):
                     xs,
                     Pas,
                     "tab:green",
-                    label=self.getLocStr("figLowAvgP")
-                    if gunType == HIGHLOW
-                    else self.getLocStr("figAvgP"),
+                    label=(
+                        self.getLocStr("figLowAvgP")
+                        if gunType == HIGHLOW
+                        else self.getLocStr("figAvgP")
+                    ),
                 )
 
             if self.plotBaseP.get():
@@ -2881,6 +2889,7 @@ def main():
     import cProfile
 
     if sys.modules["__main__"].__file__ == cProfile.__file__:
+        # noinspection PyUnresolvedReferences
         import IB  # Imports you again (does *not* use cache or execute as __main__)
 
         globals().update(vars(IB))

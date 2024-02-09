@@ -378,9 +378,9 @@ class Constrained:
             0.5 * probeWeb,  # ?0
             # x_tol=1e-14,
             y_abs_tol=p_bar_d * self.tol,
-            f_report=lambda x: progressQueue.put(round(x * 100))
-            if progressQueue is not None
-            else None,
+            f_report=lambda x: (
+                progressQueue.put(round(x * 100)) if progressQueue is not None else None
+            ),
         )  # this is the e_1 that satisifies the pressure specification.
 
         (p_bar_dev, Z_i, t_bar_i, l_bar_i, v_bar_i) = _f_p_e_1(e_1)
@@ -432,9 +432,7 @@ class Constrained:
                 v_r = v_bar / c_a_bar
                 p_d_bar = (
                     0.25 * gamma_1 * (gamma_1 + 1) * v_r**2
-                    + gamma_1
-                    * v_r
-                    * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5
+                    + gamma_1 * v_r * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5
                 ) * p_a_bar
 
             else:
@@ -671,9 +669,11 @@ class Constrained:
             high,
             x_tol=self.tol,
             findMin=True,
-            f_report=lambda x: progressQueue.put(round(x * 33) + 66)
-            if progressQueue is not None
-            else None,
+            f_report=lambda x: (
+                progressQueue.put(round(x * 33) + 66)
+                if progressQueue is not None
+                else None
+            ),
         )
 
         lf = 0.5 * (lf_high + lf_low)

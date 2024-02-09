@@ -47,11 +47,7 @@ if __name__ == "__main__":
 
     print("oldMMH")
 
-    print(
-        tabulate(
-            MMHTable, headers=["T", *["K_{:}".format(i) for i in range(9)]]
-        )
-    )
+    print(tabulate(MMHTable, headers=["T", *["K_{:}".format(i) for i in range(9)]]))
 
     newMMH = []
 
@@ -64,8 +60,6 @@ if __name__ == "__main__":
         ]
         newMMH.append(newLine)
 
-    print(
-        tabulate(newMMH, headers=["T", *["K_{:}".format(i) for i in range(9)]])
-    )
+    print(tabulate(newMMH, headers=["T", *["K_{:}".format(i) for i in range(9)]]))
 
     print(newMMH)

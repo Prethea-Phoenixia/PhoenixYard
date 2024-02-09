@@ -104,9 +104,7 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
 
 # create formatter
-formatter = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 # add formatter to ch
 ch.setFormatter(formatter)
 # add ch to logger
@@ -178,9 +176,7 @@ class Specie:
         """
         if specieName in cls.allFits:
             specie = cls.allFits[specieName]
-            logger.info(
-                "Returning specie {:} [{:}].".format(specieName, specie.phase)
-            )
+            logger.info("Returning specie {:} [{:}].".format(specieName, specie.phase))
             return specie
         else:
             closeMatch = difflib.get_close_matches(
@@ -251,8 +247,7 @@ class Specie:
             lowT, comT, highT = None, None, None
             try:
                 lowT, comT, highT = [
-                    float(lines[startLine + 1][9 * i : 9 * (i + 1)])
-                    for i in range(3)
+                    float(lines[startLine + 1][9 * i : 9 * (i + 1)]) for i in range(3)
                 ]  # read the lowest, common and highest temperature ranges
             except ValueError:
                 raise ValueError(
@@ -261,9 +256,7 @@ class Specie:
                     + "data line."
                 )
 
-            lines = lines[
-                startLine + 2 : endLine
-            ]  # crop lines to relevant data region
+            lines = lines[startLine + 2 : endLine]  # crop lines to relevant data region
             linesCount = len(lines)
 
             if linesCount % 4 != 0:  # checks for data integrity
@@ -287,9 +280,7 @@ class Specie:
                 formula = {}
                 for i in range(4):
                     group = card[0][24 + 5 * i : 24 + 5 * (i + 1)]
-                    element, count = str(group[:2]).replace(" ", ""), float(
-                        group[2:]
-                    )
+                    element, count = str(group[:2]).replace(" ", ""), float(group[2:])
                     if element != "":
                         formula.update({element: count})
 
@@ -307,11 +298,11 @@ class Specie:
 
                 # second to fourth line: coefficients
                 coes = [
-                    float(card[j][15 * i : 15 * (i + 1)])
-                    if i != 4 or j != 3
-                    else card[j][
-                        15 * i : 15 * (i + 1)
-                    ]  # spcial treatment for last optional entry
+                    (
+                        float(card[j][15 * i : 15 * (i + 1)])
+                        if i != 4 or j != 3
+                        else card[j][15 * i : 15 * (i + 1)]
+                    )  # spcial treatment for last optional entry
                     for j in range(1, 4)  # outer loop
                     for i in range(5)  # inner loop
                 ]
@@ -443,20 +434,10 @@ class Specie:
 
         Cp0__R = a1 + a2 * T + a3 * T**2 + a4 * T**3 + a5 * T**4
         H0_T__RT = (
-            a1
-            + a2 / 2 * T
-            + a3 / 3 * T**2
-            + a4 / 4 * T**3
-            + a5 / 5 * T**4
-            + a6 / T
+            a1 + a2 / 2 * T + a3 / 3 * T**2 + a4 / 4 * T**3 + a5 / 5 * T**4 + a6 / T
         )
         S0_T__R = (
-            a1 * log(T)
-            + a2 * T
-            + a3 / 2 * T**2
-            + a4 / 3 * T**3
-            + a5 / 4 * T**4
-            + a7
+            a1 * log(T) + a2 * T + a3 / 2 * T**2 + a4 / 3 * T**3 + a5 / 4 * T**4 + a7
         )
         if C == "p":
             return Cp0__R * R, H0_T__RT * R * T, S0_T__R * R

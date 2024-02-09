@@ -164,11 +164,7 @@ class Ingredient:
     @classmethod
     def getLine(cls, lineNo):
         if lineNo in cls.lineIngr:
-            print(
-                "Returning line {:} : {:}".format(
-                    lineNo, cls.lineIngr[lineNo].name
-                )
-            )
+            print("Returning line {:} : {:}".format(lineNo, cls.lineIngr[lineNo].name))
             return cls.lineIngr[lineNo]
         else:
             print("No such line as {:}\n".format(lineNo))
@@ -191,9 +187,7 @@ class Ingredient:
 
 
 class Mixture:
-    def __init__(
-        self, name, compoDict, Delta=0.2, tol_z=1e-3, tol_b=1e-9, its=100
-    ):
+    def __init__(self, name, compoDict, Delta=0.2, tol_z=1e-3, tol_b=1e-9, its=100):
         self.name = name
         self.Delta = Delta  # load density in g/cc
         self.tol_z = tol_z  # tolerance for zeta
@@ -239,9 +233,7 @@ class Mixture:
             return zeta
 
         # zeta on the order of 0.5 per degree
-        Tv = 0.5 * sum(
-            secant(f, 2500, 3500, x_min=1600, x_max=4000, x_tol=tol_z)
-        )
+        Tv = 0.5 * sum(secant(f, 2500, 3500, x_min=1600, x_max=4000, x_tol=tol_z))
 
         _, self.speciesList, n, E, self.b, self.p, self.f = balance(
             self.Hf, Tv, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b
@@ -323,11 +315,7 @@ class Mixture:
         print("Calculated Properties:---------------------------")
         print("Density            : {:>8.4g} g/cc".format(self.rho))
         print("Heat of Formation  : {:>8.0f} cal/g".format(self.Hf))
-        print(
-            "Flame Temperature  : {:>8.6g} K (Isochoric Adiabatic)".format(
-                self.Tv
-            )
-        )
+        print("Flame Temperature  : {:>8.6g} K (Isochoric Adiabatic)".format(self.Tv))
         print(" @ Product  %mass  mol/g")
         print(
             *[

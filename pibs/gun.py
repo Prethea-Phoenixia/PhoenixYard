@@ -1138,8 +1138,7 @@ class Gun:
         R1__R2 = max((1 - 1 / R2__rb * (P__sigma) ** 0.5) ** 0.5, R2__rb**-1)
         R1__rb = R1__R2 * R2__rb
         L__rb = 0.5 * (
-            P__sigma**0.5
-            * (R1__rb**2 / P__sigma - R1__R2**2 / (1 - R1__R2**2)) ** -0.5
+            P__sigma**0.5 * (R1__rb**2 / P__sigma - R1__R2**2 / (1 - R1__R2**2)) ** -0.5
         )
 
         L = L__rb * r_b * 2  # *2 to account for screw interruption
@@ -1192,11 +1191,7 @@ class Gun:
                 x_0, x_1 = x_s[i], x_s[i + 1]
                 S_0, S_1 = S_s[i], S_s[i + 1]
                 rho_0, rho_1 = rho_s[i], rho_s[i + 1]
-                dV = (
-                    0.5
-                    * ((rho_0**2 - 1) * S_0 + (rho_1**2 - 1) * S_1)
-                    * (x_1 - x_0)
-                )
+                dV = 0.5 * ((rho_0**2 - 1) * S_0 + (rho_1**2 - 1) * S_1) * (x_1 - x_0)
                 V += dV
             return V, rho_s
 
@@ -1316,9 +1311,7 @@ class Gun:
             * ((m / k) ** 2 - (1 - (m / k) ** 2 + 2 * log(m)) / (k**2 - 1))
             + 2 * p / (k**2 - 1) * (k / m) ** 2
         )
-        return (
-            sigma_tr * 3**0.5 * 0.5
-        )  # convert Tresca to von Misses equivalent stress
+        return sigma_tr * 3**0.5 * 0.5  # convert Tresca to von Misses equivalent stress
 
 
 if __name__ == "__main__":

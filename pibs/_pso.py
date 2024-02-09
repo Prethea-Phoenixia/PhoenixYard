@@ -3,6 +3,7 @@
 Jinpeng Zhai 翟锦鹏
 pso.py: Particle Swarm Optimization
 """
+
 import inspect
 from random import random  # random [0, 1)
 from multiprocessing import Pool

@@ -3,7 +3,7 @@ Jinpeng Zhai 翟锦鹏
 2023 11 16
 Contact: 914962409@qq.com
 
-"Universal Mathematical Functions" that implements various optimizaiton
+"Universal Mathematical Functions" that implements various optimization
 and root-finding techniques. These have a common series of arguments as:
 
 ...(f, x_0, x_1, y, x_tol, y_abs_tol, y_rel_tol, it, debug)
@@ -60,7 +60,7 @@ def gss(
     findMin=True, it=1e4, debug=False, f_report=None,
 ):
     """Golden-section search. improved from the example
-    given on wikipedia. Reuse half the evaluatins.
+    given on wikipedia. Reuse half the evaluations.
 
     Given a function f with a single local extremum in
     the interval [a,b], gss returns a subset interval
@@ -275,7 +275,7 @@ def dekker(
         else:
             b_k = m
 
-        fb_k = f(b_k) - y  # calcualte new value of estimate
+        fb_k = f(b_k) - y  # calculate new value of estimate
 
         if (
             fa_j * fb_k < 0
@@ -283,7 +283,7 @@ def dekker(
             a_k = a_j  # new contrapoint is still the same
             fa_k = fa_j
         else:
-            a_k = b_j  # other wise, new contrapoint should use the the current est.
+            a_k = b_j  # otherwise, new contrapoint should use the current est.
             fa_k = fb_j
 
         if abs(fa_k) < abs(fb_k):  # ensure b is still the best guess
@@ -368,7 +368,7 @@ def bisect(
 
     if debug:
         print("{:>4}{:>24}{:>24}".format("I", "X", "FX"))
-        record.sort(key=lambda line: line[1])
+        record.sort(key=lambda r: r[1])
         for line in record:
             print("{:>4}{:>24}{:>24}".format(*line))
 

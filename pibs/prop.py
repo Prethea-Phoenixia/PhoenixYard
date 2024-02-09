@@ -4,6 +4,7 @@ GEOMETRIES:
     to relevant geometrical object
 
 """
+
 from enum import Enum
 import csv
 from math import pi
@@ -343,9 +344,7 @@ class Propellant:
                 b, a = d_0 + 2 * e_1, d_0 + 2 * e_1
 
             else:
-                raise ValueError(
-                    "unhandled propellant geometry {}".format(propGeom)
-                )
+                raise ValueError("unhandled propellant geometry {}".format(propGeom))
 
             A, B, C, n = propGeom.A, propGeom.B, propGeom.C, propGeom.nHole
             S_T = 0.25 * pi * (C * a**2 + A * b**2 - B * d_0**2)
@@ -385,9 +384,7 @@ class Propellant:
             psi_s = self.chi * (1 + self.labda + self.mu)
 
             # second phase of burning rate parameters, Z from 1 to Z_b
-            self.chi_s = (1 - psi_s * self.Z_b**2) / (
-                self.Z_b - self.Z_b**2
-            )
+            self.chi_s = (1 - psi_s * self.Z_b**2) / (self.Z_b - self.Z_b**2)
             self.labda_s = psi_s / self.chi_s - 1
 
         elif self.geometry in SimpleGeometry:
@@ -428,9 +425,7 @@ class Propellant:
                 self.mu = alpha * beta / self.chi
 
         else:
-            raise ValueError(
-                "unhandled propellant geometry {}".format(propGeom)
-            )
+            raise ValueError("unhandled propellant geometry {}".format(propGeom))
 
     def __getattr__(self, attrName):
         if "composition" in vars(self) and not (
@@ -438,9 +433,7 @@ class Propellant:
         ):
             try:
                 if attrName == "u_1":
-                    return getattr(self.composition, attrName) * (
-                        1 + self.fudge
-                    )
+                    return getattr(self.composition, attrName) * (1 + self.fudge)
                 else:
                     return getattr(self.composition, attrName)
             except AttributeError:

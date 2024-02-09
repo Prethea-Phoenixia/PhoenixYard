@@ -13,9 +13,7 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
 
 # create formatter
-formatter = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 # add formatter to ch
 ch.setFormatter(formatter)
 # add ch to logger
@@ -352,8 +350,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=100, tol=1e-9):
 
     HH = HO = HN = 2.980 * DeltaT  # monoatomic
     HCO2, HH2O, HCO, HH2, HN2, HOH, HNO, HO2, HCH4, HNH3 = (
-        v.getMMH(T) * DeltaT
-        for v in (CO2, H2O, CO, H2, N2, OH, NO, O2, CH4, NH3)
+        v.getMMH(T) * DeltaT for v in (CO2, H2O, CO, H2, N2, OH, NO, O2, CH4, NH3)
     )
 
     E1 = (0 for _ in range(4))
@@ -362,9 +359,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=100, tol=1e-9):
         Thigh, *E1high = E1Table[i + 1]
         if Tlow <= T <= Thigh:
             k = (T - Tlow) / (Thigh - Tlow)
-            E1 = [
-                (vi * (1 - k) + vj * k) * 1e2 for vi, vj in zip(E1low, E1high)
-            ]
+            E1 = [(vi * (1 - k) + vj * k) * 1e2 for vi, vj in zip(E1low, E1high)]
             break
 
     E1H2, E1N2, E1CO2, E1H2O = E1
@@ -399,9 +394,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=100, tol=1e-9):
         K0 = k0(T) * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
     try:
         CO2j = [
-            v
-            for v in quadratic((1 - K0), -(G + H + K0 * I), G * H)
-            if v < Ci and v > 0
+            v for v in quadratic((1 - K0), -(G + H + K0 * I), G * H) if v < Ci and v > 0
         ][0]
         """get a first-order estimate of CO2 concentration assuming
         only major products (CO2, H2O, H2, CO, N2) by solving the
@@ -410,9 +403,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=100, tol=1e-9):
         remains constant throughout), as specified by Corner.
         """
     except IndexError:
-        raise ValueError(
-            "Cannot get a first-estimate for CO2 molar concentration."
-        )
+        raise ValueError("Cannot get a first-estimate for CO2 molar concentration.")
     """
     N2j = 0.5 * Ni
     COj = G - CO2j

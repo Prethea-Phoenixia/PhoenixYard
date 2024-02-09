@@ -123,9 +123,11 @@ if __name__ == "__main__":
             c="black",
             alpha=0.5,
             linestyle="dotted",
-            label=f"{chamberVolume:.0f} L"
-            if chamberVolume != 12.27
-            else f"{chamberVolume:.2f} L",
+            label=(
+                f"{chamberVolume:.0f} L"
+                if chamberVolume != 12.27
+                else f"{chamberVolume:.2f} L"
+            ),
             linewidth=1,
         )
 

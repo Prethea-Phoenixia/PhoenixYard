@@ -42,6 +42,7 @@ Nitrocellulose 12.60% N      ,NC1260      ,0.3454 ,198.9  ,0.04040,  ,  , ,  ,
 Nitrocellulose 13.15% N      ,NC1315      ,0.3421 ,283.1  ,0.03920,  ,  , ,  , 
 
 """
+
 import csv
 import difflib
 from num import quadratic
@@ -90,9 +91,7 @@ class Ingredient:
         self.Ext = Ext if Ext is not None else 0
 
         # accurate molecular mass here to account for natural abundance of isotopes
-        self.A = (
-            M_C * self.C + M_H * self.H + M_N * self.N + M_O * self.O + self.Ext
-        )
+        self.A = M_C * self.C + M_H * self.H + M_N * self.N + M_O * self.O + self.Ext
 
         """
         convert element nbr. (mol/mol) into nbr. mol of element per unit
@@ -137,9 +136,7 @@ class Ingredient:
             else:
                 raise ValueError("Unknown unit ", u)
 
-        elif (
-            Ei is not None
-        ):  # both were not supplied! try to estimate it from E
+        elif Ei is not None:  # both were not supplied! try to estimate it from E
             Hc = -Ei - 132771 * Ci - 40026 * Hi - 6724 * Ni + 51819 * Oi
         else:
             raise ValueError(
@@ -388,9 +385,7 @@ class Ingredient:
 
         print("Hirschfelder-Sherman factors:")
         print("{:>6}  {:>7}  {:>7}".format("Cvi", "Ei", "1/Mi"))
-        print(
-            "{:>6.4f}  {:>7.1f}  {:>7.5f}".format(self.Cvi, self.Ei, self.invMi)
-        )
+        print("{:>6.4f}  {:>7.1f}  {:>7.5f}".format(self.Cvi, self.Ei, self.invMi))
 
         print("Chemical Composition:")
         # print(self.C, self.H, self.N, self.O, self.A)
@@ -459,9 +454,7 @@ class Mixture:
         Tv = 2500 + E / Cv
         if Tv > 3000:
             Tv = 3000 + 6046 * (
-                -Cv
-                - 0.01185
-                + ((Cv + 0.01185) ** 2 + 3.308e-4 * (E - 500 * Cv)) ** 0.5
+                -Cv - 0.01185 + ((Cv + 0.01185) ** 2 + 3.308e-4 * (E - 500 * Cv)) ** 0.5
             )  # in Kelvin
 
         gamma = 1 + 1.987 / (Cv * M)
@@ -507,9 +500,7 @@ class Mixture:
         print("")
         print("Elemental Fractions:-----------------------------")
         print(
-            "C {:.2%} H {:.2%} N {:.2%} O {:.2%}".format(
-                self.C, self.H, self.N, self.O
-            )
+            "C {:.2%} H {:.2%} N {:.2%} O {:.2%}".format(self.C, self.H, self.N, self.O)
         )
 
         print("")
@@ -911,9 +902,7 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
         Thigh, *E1high = E1Table[i + 1]
         if Tlow <= T <= Thigh:
             k = (T - Tlow) / (Thigh - Tlow)
-            E1 = [
-                (vi * (1 - k) + vj * k) * 1e2 for vi, vj in zip(E1low, E1high)
-            ]
+            E1 = [(vi * (1 - k) + vj * k) * 1e2 for vi, vj in zip(E1low, E1high)]
             break
 
     E1H2, E1N2, E1CO2, E1H2O = E1

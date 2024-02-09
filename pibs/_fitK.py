@@ -224,18 +224,14 @@ if __name__ == "__main__":
     newK = []
 
     logK_l = [
-        np.polynomial.polynomial.Polynomial(
-            kp9_l.coef + kp4_l.coef - kp10_l.coef
-        ),
+        np.polynomial.polynomial.Polynomial(kp9_l.coef + kp4_l.coef - kp10_l.coef),
         None,
         None,
         None,
         None,
         None,
         None,
-        np.polynomial.polynomial.Polynomial(
-            kp10_l.coef + kp11.coef - 2 * kp9_l.coef
-        ),
+        np.polynomial.polynomial.Polynomial(kp10_l.coef + kp11.coef - 2 * kp9_l.coef),
         kp16_l,
     ]
 
@@ -243,9 +239,7 @@ if __name__ == "__main__":
     isInvFit_h = [False] * 7 + [True, False]
 
     logK_h = [
-        np.polynomial.polynomial.Polynomial(
-            kp9_h.coef + kp4_h.coef - kp10_h.coef
-        ),
+        np.polynomial.polynomial.Polynomial(kp9_h.coef + kp4_h.coef - kp10_h.coef),
         kp2_h,
         np.polynomial.polynomial.Polynomial(kp3_h.coef - kp4_h.coef),
         np.polynomial.polynomial.Polynomial(kp6_h.coef - kp4_h.coef),
@@ -274,9 +268,7 @@ if __name__ == "__main__":
                     if f is not None:
                         newLine.append(
                             float(
-                                "{:.4g}".format(
-                                    10 ** f(1 / T) if isInv else 10 ** f(T)
-                                )
+                                "{:.4g}".format(10 ** f(1 / T) if isInv else 10 ** f(T))
                             )
                         )
                     else:

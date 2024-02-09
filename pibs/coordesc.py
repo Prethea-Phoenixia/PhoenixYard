@@ -1,6 +1,7 @@
 """
 coordinate descent in multiple dimensions
 """
+
 import inspect
 from num import gss
 from random import random

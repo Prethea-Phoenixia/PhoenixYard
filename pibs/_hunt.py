@@ -270,9 +270,7 @@ def readHuntTable(T):
         Thigh, *E1high = E1Table[i + 1]
         if Tlow <= T <= Thigh:
             k = (T - Tlow) / (Thigh - Tlow)
-            E1 = [
-                (vi * (1 - k) + vj * k) * 1e2 for vi, vj in zip(E1low, E1high)
-            ]
+            E1 = [(vi * (1 - k) + vj * k) * 1e2 for vi, vj in zip(E1low, E1high)]
             break
 
     return negDeltaB, neghalfDeltaC, K, BC, MMH, E1
@@ -431,6 +429,4 @@ def balance(T, Ci, Hi, Oi, Ni, V=1 / 0.1, tol=1e-5):
 
 
 if __name__ == "__main__":
-    print(
-        balance(3100, Ci=0.02232, Hi=0.03010, Ni=0.01046, Oi=0.03469, V=1 / 0.2)
-    )
+    print(balance(3100, Ci=0.02232, Hi=0.03010, Ni=0.01046, Oi=0.03469, V=1 / 0.2))
