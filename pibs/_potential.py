@@ -1,4 +1,4 @@
-from opt import Constrained
+from optGun import Constrained
 from prop import GrainComp, SimpleGeometry
 from prop import Propellant
 from gun import Gun
@@ -40,6 +40,7 @@ def f(shotMass):
         designPressure=457e6,
         designVelocity=1000,
         chambrage=1.25,  # almost exact, 4 * 12.27L/ pi (1.25dm)^2 * 8dm
+        tol=tol,
     )
     chargeMassRatio = 10 / shotMass
     try:
@@ -107,7 +108,7 @@ if __name__ == "__main__":
     with multiprocessing.Pool() as pool:
         results = pool.map(f, parameters)
 
-    ms, es, bos, vs, es = zip(*[v for v in results if v[1] is not None])
+    ms, es, bos, vs, effs = zip(*[v for v in results if v[1] is not None])
 
     fig, axv = plt.subplots(layout="constrained")
 

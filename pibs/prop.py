@@ -1,6 +1,6 @@
 """
 GEOMETRIES:
-    lookup dictionary mapping gemoetrical descriptions
+    lookup dictionary mapping geometrical descriptions
     to relevant geometrical object
 
 """
@@ -136,7 +136,7 @@ class GrainComp:
             f = R * T_v
             R = R_0/M
             R_0 = 8.314... J/(K*mol)
-        where T_v is the temeprature propellants develop when
+        where T_v is the temperature propellants develop when
         burning in an iso-volume chamber, ignoring losses.
         M is the molar mass of the gas developed. (kg/mol)
         """
@@ -277,13 +277,13 @@ class Propellant:
                 Length to "effective diameter" ratio
                 for perforated cylinders, 2*c/(2*e_1)
 
-                teritary length to primary length ratio
+                tertiary length to primary length ratio
                 for rectangular rod shapes, 2*c/(2*e_1)
 
-        fudge: burn rate modifier, uesd to match experiment.
+        fudge: burn rate modifier, used to match experiment.
 
 
-        Requried attributes:
+        Required attributes:
         .maxLF, geometrical volume fraction
 
         for geometries where burning is single phase

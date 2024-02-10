@@ -17,7 +17,7 @@ class Loc12Disp:
         tooltipLocKey=None,
         reverse=False,
         locFunc=None,
-        allDisps=[],
+        allDisps=None,
     ):
         lb = ttk.Label(parent, text=locFunc(labelLocKey))
         lb.grid(
@@ -68,7 +68,8 @@ class Loc12Disp:
         self.entryVar = e
         self.entryWidget = en
 
-        allDisps.append(self)
+        if allDisps is not None:
+            allDisps.append(self)
 
     def reLocalize(self, newLocKey=None, newTooltipKey=None):
         if newLocKey is not None:
@@ -101,7 +102,7 @@ class Loc122Disp(Loc12Disp):
         tooltipLocKey=None,
         reverse=False,
         locFunc=None,
-        allDisps=[],
+        allDisps=None,
     ):
         super().__init__(
             parent=parent,
@@ -145,7 +146,8 @@ class Loc122Disp(Loc12Disp):
         self.auxEntryVar = e2
         self.auxEntryWidget = en2
 
-        allDisps.append(self)
+        if allDisps is not None:
+            allDisps.append(self)
 
     def set(self, val_1, val_2):
         self.entryVar.set(val_1)
@@ -170,7 +172,7 @@ class Loc2Input:
         anchor="w",
         reverse=False,
         locFunc=None,
-        allInputs=[],
+        allInputs=None,
     ):
         lb = ttk.Label(
             parent, text=locFunc(labelLocKey), width=labelWidth, anchor=anchor
@@ -221,7 +223,9 @@ class Loc2Input:
         self.tooltipLocKey = tooltipLocKey
         self.locFunc = locFunc
         self.nominalState = "normal"
-        allInputs.append(self)
+
+        if allInputs is not None:
+            allInputs.append(self)
 
     def reLocalize(self, newLocKey=None, newTooltipKey=None):
         if newLocKey is not None:
@@ -289,7 +293,7 @@ class Loc3Input(Loc2Input):
         anchor="w",
         reverse=False,
         locFunc=None,
-        allInputs=[],
+        allInputs=None,
     ):
         super().__init__(
             parent=parent,
@@ -314,7 +318,8 @@ class Loc3Input(Loc2Input):
         self.unitText = unitText
         self.unitLabel = ulb
 
-        allInputs.append(self)
+        if allInputs is not None:
+            allInputs.append(self)
 
     def remove(self):
         super().remove()
@@ -332,7 +337,7 @@ class Loc3Input(Loc2Input):
 
 
 class LocDropdown:
-    def __init__(self, parent, strObjDict, locFunc, dropdowns=[], descLabelKey=""):
+    def __init__(self, parent, strObjDict, locFunc, dropdowns=None, descLabelKey=""):
         """
         localized key of string type: underlying object
         """
@@ -355,7 +360,8 @@ class LocDropdown:
         self.widget.option_add("*TCombobox*Listbox.Justify", "center")
         self.widget.current(0)
 
-        dropdowns.append(self)
+        if dropdowns is not None:
+            dropdowns.append(self)
 
     def reLocalize(self):
         index = self.widget["values"].index(self.textVar.get())
@@ -422,7 +428,7 @@ class LocLabelFrame(ttk.LabelFrame):
         locKey="",
         tooltipLocKey=None,
         locFunc=None,
-        allLLF=[],
+        allLLF=None,
         **kwargs,
     ):
         self.locKey = locKey
@@ -437,7 +443,8 @@ class LocLabelFrame(ttk.LabelFrame):
 
         self.tooltipLocKey = tooltipLocKey
 
-        allLLF.append(self)
+        if allLLF is not None:
+            allLLF.append(self)
 
     def reLocalize(self):
         self.config(text=self.locFunc(self.locKey))
@@ -458,7 +465,7 @@ class LocLabelCheck:
         tooltipLocKey=None,
         locFunc=None,
         width=20,
-        allLC=[],
+        allLC=None,
     ):
         self.nominalState = "normal"
         self.checkVar = IntVar(value=default)
@@ -487,7 +494,9 @@ class LocLabelCheck:
         self.labelLocKey = labelLocKey
         self.descLabelKey = descLabelKey
         self.tooltipLocKey = tooltipLocKey
-        allLC.append(self)
+
+        if allLC is not None:
+            allLC.append(self)
 
     def reLocalize(self, newLocKey=None):
         if newLocKey is not None:

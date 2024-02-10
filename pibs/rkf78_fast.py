@@ -103,10 +103,11 @@ def RKF78(
     minTol=1e-16,
     adaptTo=True,
     abortFunc=None,
-    record=[],
-    rasieError=True,
+    record=None,
     debug=False,
 ):
+    if record is None:
+        record = []
     n = 0
     y_this = iniVal
     x = x_0

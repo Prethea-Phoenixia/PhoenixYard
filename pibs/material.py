@@ -79,4 +79,4 @@ MATERIALS = {i.desc: i for i in Material}
 
 
 if __name__ == "__main__":
-    print(Material._30SIMN2MOVA.getTidict())
+    print(Material._30SIMN2MOVA.getTdict())

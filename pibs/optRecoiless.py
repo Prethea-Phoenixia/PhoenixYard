@@ -518,8 +518,8 @@ class ConstrainedRecoiless:
             ot_bar, *_ = record[-1][-1]
             return l_bar > l_bar_d or t_bar < ot_bar
 
+        vtzlet_record = [[v_bar_i, (t_bar_i, Z_i, l_bar_i, eta_i, tau_i)]]
         try:
-            vtzlet_record = [[v_bar_i, (t_bar_i, Z_i, l_bar_i, eta_i, tau_i)]]
             (
                 v_bar_g,
                 (t_bar_g, Z_g, l_bar_g, eta_g, tau_g),
@@ -620,7 +620,8 @@ class ConstrainedRecoiless:
                 if progressQueue is not None:
                     progressQueue.put(round(i / MAX_GUESSES * 33))
 
-        if i == MAX_GUESSES - 1:
+        # if i == MAX_GUESSES - 1:
+        else:
             raise ValueError(
                 "Unable to find any valid load"
                 + " fraction with {:d} random samples.".format(MAX_GUESSES)

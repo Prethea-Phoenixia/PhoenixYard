@@ -1,7 +1,7 @@
 from highlow import Highlow
 
 # from pso import pso
-from coordesc import coordesc
+from _coordesc import coordesc
 from math import pi, log, inf
 from num import cubic, RKF78, dekker, gss
 
@@ -600,7 +600,10 @@ class optHighlow:
 
         # actual maximum lies somewhere between probeEV and 2x probeEV
 
-        def findBound(func, x_probe, x_bound, tol, record=[]):
+        def findBound(func, x_probe, x_bound, tol, record=None):
+            if record is None:
+                record = []
+
             try:
                 record.append((x_bound, func(x_bound)))
                 return x_bound

@@ -3,8 +3,6 @@ import difflib
 from corner import balance
 from num import secant
 from periodic import molarMasses
-from math import exp
-
 
 class Ingredient:
     allIngr = {}
@@ -144,8 +142,8 @@ class Ingredient:
         if len(closeIngrs) > 0:
             print("Found candidate:")
             for iname in closeIngrs:
-                if iname in cls.allIngr:
-                    ingr = cls.allIngr[iname]
+                # if iname in cls.allIngr:
+                ingr = cls.allIngr[iname]
                 if ingr not in ingrs:
                     ingrs.append(ingr)
                 if n == 0:

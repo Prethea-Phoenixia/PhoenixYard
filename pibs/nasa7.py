@@ -208,7 +208,6 @@ class Specie:
                 raise ValueError(
                     "No close match can be found for {:}".format(specieName)
                 )
-                return None
 
     @classmethod
     def read(cls, curvePath):
@@ -343,11 +342,10 @@ class Specie:
         substitute numerical value when supplied in
         unit string."""
         if u == "J/(molK)":
-            R = 8.314
+            return 8.314
         elif u == "cal/(molK)":
-            R = 1.987
+            return 1.987
 
-        return R
 
     @classmethod
     def dumpJSON(cls):
@@ -427,10 +425,13 @@ class Specie:
                 )
             )
 
+
         if T < self.fitTmid:  # low range
             a1, a2, a3, a4, a5, a6, a7 = self._coe_l
         elif T < self.fitThigh:  # high range
             a1, a2, a3, a4, a5, a6, a7 = self._coe_h
+        else:
+            a1, a2, a3, a4, a5, a6, a7 = [None] * 7
 
         Cp0__R = a1 + a2 * T + a3 * T**2 + a4 * T**3 + a5 * T**4
         H0_T__RT = (

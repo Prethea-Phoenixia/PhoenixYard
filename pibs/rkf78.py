@@ -48,8 +48,7 @@ def RKF78(
     minTol=1e-16,
     adaptTo=True,
     abortFunc=None,
-    record=[],
-    rasieError=True,
+    record=None,
     debug=False,
 ):
     """
@@ -57,31 +56,28 @@ def RKF78(
     as defined by dFunc
 
     Arguments:
-        dFunc   : d/dx|x=x(y1, y2, y3....) = dFunc(x, y1, y2, y3..., dx)
-        iniVal  : initial values for (y1, y2, y3...)
-        x_0, x_1: integration limits
-        relTol  : relative tolerance, per component
-        absTol  : absolute tolerance, per component
-        minTol  : minimum tolerance, per component. This is added to the error
-                estimation, to encourage conservatism in the integrator, and to
-                guard against division by 0 if functional value tends to 0
+        dFunc       : d/dx|x=x(y1, y2, y3....) = dFunc(x, y1, y2, y3..., dx)
+        iniVal      : initial values for (y1, y2, y3...)
+        x_0         : integration start point
+        x_1         : integration end point
+        relTol      : relative tolerance, per component
+        absTol      : absolute tolerance, per component
+        minTol      : minimum tolerance, per component. This is added to the error
+                    estimation, to encourage conservatism in the integrator, and to
+                    guard against division by 0 if functional value tends to 0
 
-        abortFunc
-                : optional, accepts following arguments:
-                x   : current value of integrand
-                ys  : current value of the SoE
-                record : record of value up to that point
+        abortFunc   : optional, function that accepts arguments of
+                    (x - current value of integrand, ys - current value of the SoE,
+                    record - record of value up to that point)
                     and terminates the integrator on a boolean value of True
 
-        adaptTo : optional, values used to control error
-                : = True
-                    adapt stepsize to error estimation in every component
-                : = [Boolean] * nbr. of components
-                    adapt stepsize to error estimation in component that is true in
-                    adaptTo
+        adaptTo     : optional, values used to control error.
+                    if True, adapt stepsize to error estimation in every component.
+                    if [Boolean] * nbr. of components, adapt stepsize to error estimation in component that is true in adaptTo.
+                    a value of False will cause an exception to be raised.
 
-        minTol  : optional, minimum magnitude of error
-        record  : optional, if supplied will record all committed steps
+        minTol      : optional, minimum magnitude of error
+        record      : optional, if supplied will record all committed steps
 
 
     Returns:
@@ -91,6 +87,8 @@ def RKF78(
         component
     """
     # fmt: on
+    if record is None:
+        record = []
     x, y_this = x_0, iniVal
 
     beta = 0.84  # "safety" factor
@@ -157,7 +155,7 @@ def RKF78(
             supplied to functions defined on positive domain, complex values
             being calculated for parameters, etc etc.,
 
-            In these caess the stepsize will be reduced to salvage the calculation --
+            In these cases the stepsize will be reduced to salvage the calculation --
             very important for unsupervised automated usage! -- at least until
             the point where the step size approaches the limit of floating number
             precision, then we accept that the calculation has likely reached

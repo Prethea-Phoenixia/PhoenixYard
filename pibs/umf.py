@@ -169,6 +169,7 @@ def secant(
         errStr += "\nf({})-{}={}\nf({})-{}={}".format(x_0, y, fx_0, x_1, y, fx_1)
         raise ValueError(errStr)
 
+    i = 0
     for i in range(it):
         x_2 = x_1 - fx_1 * (x_1 - x_0) / (fx_1 - fx_0)
         if x_min is not None and x_2 < x_min:
@@ -212,20 +213,21 @@ def secant(
 
             x_0, x_1, fx_0, fx_1 = x_1, x_2, fx_1, fx_2
 
-    if debug:
-        print("SECANT")
-        print("{:>4}{:>24}{:>24}".format("I", "X", "FX"))
-        record.sort(key=lambda line: line[1])
-        for line in record:
-            print("{:>4}{:>24}{:>24}".format(*line))
+    else:
+        if debug:
+            print("SECANT")
+            print("{:>4}{:>24}{:>24}".format("I", "X", "FX"))
+            record.sort(key=lambda line: line[1])
+            for line in record:
+                print("{:>4}{:>24}{:>24}".format(*line))
 
-    raise ValueError(
-        "Secant method called from {} to {}\n".format(x_min, x_max)
-        + "Maximum iteration exceeded at it = {}/{}".format(i, it)
-        + ",\n[0] f({})-{}={}->\n[1] f({})-{}={}->\n[2] f({})-{}={}".format(
-            x_0, y, fx_0, x_1, y, fx_1, x_2, y, fx_2
+        raise ValueError(
+            f"Secant method called from {x_min} to {x_max}\n"
+            + f"Maximum iteration exceeded at it = {i}/{it}"
+            + ",\n[0] f({})-{}={}->\n[1] f({})-{}={}->\n[2] f({})-{}={}".format(
+                x_0, y, fx_0, x_1, y, fx_1, x_2, y, fx_2
+            )
         )
-    )
 
 
 # fmt: off
@@ -260,6 +262,7 @@ def dekker(
 
     y_abs_tol = max(y_abs_tol, abs(y) * y_rel_tol)
 
+    i = 0
     for i in range(it):
         m = 0.5 * (a_j + b_j)
         if fb_i != fb_j:
@@ -316,17 +319,18 @@ def dekker(
         b_i, b_j = b_j, b_k
         fb_i, fb_j = fb_j, fb_k
 
-    if debug:
-        print("{:>4}{:>24}{:>24}".format("I", "X", "FX"))
-        record.sort(key=lambda line: line[1])
-        for line in record:
-            print("{:>4}{:>24}{:>24}".format(*line))
+    else:
+        if debug:
+            print("{:>4}{:>24}{:>24}".format("I", "X", "FX"))
+            record.sort(key=lambda r: r[1])
+            for line in record:
+                print("{:>4}{:>24}{:>24}".format(*line))
 
-    raise ValueError(
-        "Dekker method called from {} to {}\n".format(x_0, x_1)
-        + "Maximum iteration exceeded at it = {}/{}".format(i, it)
-        + ",\nf({})-{}={}->\nf({})-{}={}".format(b_i, y, fb_i, b_j, y, fb_j)
-    )
+        raise ValueError(
+            "Dekker method called from {} to {}\n".format(x_0, x_1)
+            + "Maximum iteration exceeded at it = {}/{}".format(i, it)
+            + ",\nf({})-{}={}->\nf({})-{}={}".format(b_i, y, fb_i, b_j, y, fb_j)
+        )
 
 
 def bisect(

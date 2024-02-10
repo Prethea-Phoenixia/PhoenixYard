@@ -249,7 +249,8 @@ class Bullet:
             except ValueError:
                 pass
 
-        if i == N - 1:
+        else:
+        # if i == N - 1:
             raise ValueError(
                 "No valid elevation can be found within specified in {:} samples".format(
                     N

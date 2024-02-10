@@ -453,8 +453,8 @@ class Constrained:
             _, _, l_bar = ys
             return l_bar > l_bar_d
 
+        vtzl_record = [[v_bar_i, (t_bar_i, Z_i, l_bar_i)]]
         try:
-            vtzl_record = [[v_bar_i, (t_bar_i, Z_i, l_bar_i)]]
             (v_bar_g, (t_bar_g, Z_g, l_bar_g), _) = RKF78(
                 dFunc=_ode_v,
                 iniVal=(t_bar_i, Z_i, l_bar_i),
@@ -589,7 +589,8 @@ class Constrained:
                 if progressQueue is not None:
                     progressQueue.put(round(i / MAX_GUESSES * 33))
 
-        if i == MAX_GUESSES - 1:
+        else:
+        # if i == MAX_GUESSES - 1:
             raise ValueError(
                 "Unable to find any valid load fraction"
                 + " with {:d} random samples.".format(MAX_GUESSES)
