@@ -1368,23 +1368,20 @@ class Recoiless:
         # pressure ratio of nozzle throat over the upstream pressure
         Pr_c = (2 / (gamma + 1)) ** (gamma / (gamma - 1))
 
-        Pr_sup = 0.5 * sum(
-            dekker(
-                lambda Pr: Recoiless.getAr(gamma, Pr),
-                0,
-                Pr_c,
-                y=Ar,
-                y_rel_tol=tol,
-            )
+        Pr_sup, _ = dekker(
+            lambda Pr: Recoiless.getAr(gamma, Pr),
+            0,
+            Pr_c,
+            y=Ar,
+            y_rel_tol=tol,
         )
-        Pr_sub = 0.5 * sum(
-            dekker(
-                lambda Pr: Recoiless.getAr(gamma, Pr),
-                Pr_c,
-                1,
-                y=Ar,
-                y_rel_tol=tol,
-            )
+
+        Pr_sub, _ = dekker(
+            lambda Pr: Recoiless.getAr(gamma, Pr),
+            Pr_c,
+            1,
+            y=Ar,
+            y_rel_tol=tol,
         )
 
         return Pr_sub, Pr_sup

@@ -563,14 +563,10 @@ class Bullet:
             if h_prime > 0:
                 if DESCEND:
                     # the new peak barely crest the target plane.
-                    t_t = 0.5 * sum(
-                        dekker(f_tgt, t_prime, t_2, x_tol=max(t_2, 1) * tol)
-                    )
+                    t_t, _ = dekker(f_tgt, t_prime, t_2, x_tol=max(t_2, 1) * tol)
 
                 else:
-                    t_t = 0.5 * sum(
-                        dekker(f_tgt, t_1, t_prime, x_tol=max(t_2, 1) * tol)
-                    )
+                    t_t, _ = dekker(f_tgt, t_1, t_prime, x_tol=max(t_2, 1) * tol)
 
             else:
                 # even the new peak point found cannot crest the target plane.
@@ -579,7 +575,7 @@ class Bullet:
                 )
 
         else:
-            t_t = 0.5 * sum(dekker(f_tgt, t_1, t_2, x_tol=max(t_2, 1) * tol))
+            t_t, _ = dekker(f_tgt, t_1, t_2, x_tol=max(t_2, 1) * tol)
 
         _, _, _ = RKF78(
             self._ode_t,
