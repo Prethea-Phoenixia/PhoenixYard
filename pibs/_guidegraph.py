@@ -1,4 +1,4 @@
-from opt import Constrained
+from optGun import Constrained
 from prop import GrainComp, SimpleGeometry
 from prop import Propellant
 from gun import Gun
@@ -25,6 +25,7 @@ dragCoefficient = 2e-2
 control = POINT_PEAK_AVG
 
 target = Constrained(
+    tol=tol,
     caliber=caliber,
     shotMass=5.67,
     propellant=PyTu,

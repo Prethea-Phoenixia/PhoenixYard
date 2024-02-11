@@ -14,6 +14,7 @@ from highlow import Highlow
 from prop import Propellant, GrainComp, GEOMETRIES, SimpleGeometry
 from optGun import Constrained
 from optRecoiless import ConstrainedRecoiless
+from optHighlow import ConstrainedHighlow
 from tip import CreateToolTip
 from lang import STRING
 
@@ -2565,8 +2566,8 @@ class InteriorBallisticsFrame(Frame):
             self.perf.restore()
             self.plotAvgP.reLocalize("plotLowAvgP")
 
-            self.solve_W_Lg.set(0)
-            self.solve_W_Lg.disable()
+            # self.solve_W_Lg.set(0)
+            # self.solve_W_Lg.disable()
 
         else:
             self.evL.remove()
@@ -2574,7 +2575,7 @@ class InteriorBallisticsFrame(Frame):
             self.perf.remove()
             self.plotAvgP.reLocalize("plotAvgP")
 
-            self.solve_W_Lg.enable()
+            # self.solve_W_Lg.enable()
 
         if gunType == CONVENTIONAL or gunType == RECOILESS:
             self.ammoOptn.enable()
@@ -2819,6 +2820,8 @@ def calculate(queue, progressQueue, kwargs):
                 constrained = Constrained(**kwargs)
             elif gunType == RECOILESS:
                 constrained = ConstrainedRecoiless(**kwargs)
+            elif gunType == HIGHLOW:
+                constrained = ConstrainedHighlow(**kwargs)
 
             if optimize:
                 l_f, e_1, l_g = constrained.findMinV(
@@ -2944,7 +2947,7 @@ def main():
     )
 
     root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
-    root.wm_state("iconic")
+    # root.wm_state("iconic")
     root.state("zoomed")  # maximize window
     root.mainloop()
 

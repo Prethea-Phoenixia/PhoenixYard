@@ -346,7 +346,6 @@ class Specie:
         elif u == "cal/(molK)":
             return 1.987
 
-
     @classmethod
     def dumpJSON(cls):
         import json
@@ -424,7 +423,6 @@ class Specie:
                     self.fitThigh
                 )
             )
-
 
         if T < self.fitTmid:  # low range
             a1, a2, a3, a4, a5, a6, a7 = self._coe_l

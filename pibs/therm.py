@@ -4,6 +4,7 @@ from corner import balance
 from num import secant
 from periodic import molarMasses
 
+
 class Ingredient:
     allIngr = {}
     lastLine = 0

@@ -10,7 +10,7 @@ from gun import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_EXIT
 from highlow import POINT_PEAK_HIGH, POINT_PEAK_BLEED
 
 
-class optHighlow:
+class ConstrainedHighlow:
     def __init__(
         self,
         caliber,
@@ -278,7 +278,6 @@ class optHighlow:
 
         def f_ev(expansionVolume):
             V_1 = expansionVolume
-            l_1 = V_1 / S
 
             def _f_p_2(l, eta, tau_2):
                 l_star = (V_1 - alpha * omega * eta) / S
@@ -298,16 +297,14 @@ class optHighlow:
                 if control == POINT_PEAK_BLEED:
                     return p_avg / factor_b
 
-            # l_g = lengthGun
-
             Z_0, t_0, eta_0, tau_1_0, tau_2_0 = Zs[0], 0, 0, 1, 1 + theta
 
             def _ode_Zs(Z, t, eta, tau_1, tau_2, _):
                 psi = f_psi_Z(Z)
-
                 p_1 = _f_p_1(Z, eta, tau_1, psi)
-                dt = 1 / (u_1 / e_1 * p_1**n)  # dt / dZ
                 p_2 = _f_p_2(0, eta, tau_2)
+
+                dt = 1 / (u_1 / e_1 * p_1**n)  # dt / dZ
 
                 pr = p_2 / p_1
                 if pr <= cfpr:
@@ -440,10 +437,9 @@ class optHighlow:
             def _ode_Z(Z, t, l, v, eta, tau_1, tau_2, _):
                 psi = f_psi_Z(Z)
                 p_1 = _f_p_1(Z, eta, tau_1, psi)
+                p_2 = _f_p_2(l, eta, tau_2)
 
                 dt = 1 / (u_1 / e_1 * p_1**n)  # dt / dZ
-
-                p_2 = _f_p_2(l, eta, tau_2)
 
                 pr = p_2 / p_1
                 if pr <= cfpr:
@@ -514,7 +510,7 @@ class optHighlow:
                 xs = [v[0] for v in record_2]
                 record_2.extend(v for v in r if v[0] not in xs)
                 record_2.sort()
-                return _f_p_2(l, eta, tau_2)
+                return _f_p_2(l, eta, tau_2), (Z, t, l, v, eta, tau_1, tau_2)
 
             def _f_p_1_Z(Z):
                 if Z < Z_1:
@@ -558,7 +554,7 @@ class optHighlow:
             Z_p_1 = (
                 sum(
                     gss(
-                        lambda Z: _f_p_1_Z(Z),
+                        _f_p_1_Z,
                         Z_0,
                         Z_j,
                         y_rel_tol=0.5 * tol,
@@ -571,7 +567,7 @@ class optHighlow:
             Z_p_2 = (
                 sum(
                     gss(
-                        lambda Z: _f_p_2_Z(Z),
+                        lambda Z: _f_p_2_Z(Z)[0],
                         Z_1,
                         Z_j,
                         y_rel_tol=0.5 * tol,
@@ -583,11 +579,10 @@ class optHighlow:
 
             p_p_h = _f_p_1_Z(Z_p_1)
 
-            p_p_l = _f_p_2_Z(Z_p_2)
+            p_p_l, vals_2 = _f_p_2_Z(Z_p_2)
 
-            return p_p_h, p_p_l
+            return p_p_h, p_p_l, vals_2
 
-        print("assumed maximum", self.maxEV)
         probeEV = self.maxEV
         lastEV = probeEV
         while True:
@@ -663,9 +658,154 @@ class optHighlow:
             evUpperBound,
             y=p_d_l,
             y_rel_tol=tol,
+            f_report=lambda x: (
+                progressQueue.put(round(x * 50 + 50))
+                if progressQueue is not None
+                else None
+            ),
         )
 
-        p_h_act, p_l_act = f_ev(V_1)
+        p_h_act, p_l_act, (Z_i, t_i, l_i, v_i, eta_i, tau_1_i, tau_2_i) = f_ev(V_1)
+
+        if abs(p_h_act - p_d_h) > tol * p_d_h:
+            raise ValueError(
+                "High and low pressure chamber conditions are insufficiently "
+                + "decorrelated."
+            )
+
+        l_1 = V_1 / S
+
+        def _f_p_2(l, eta, tau_2):
+            l_star = (V_1 - alpha * omega * eta) / S
+            p_avg = f * omega * tau_2 * eta / (S * (l_star + l))
+
+            if control == POINT_PEAK_AVG:
+                return p_avg
+
+            factor_s = 1 + labda_2 * (omega * eta / (phi_1 * m))
+
+            if control == POINT_PEAK_SHOT:
+                return p_avg / factor_s
+
+            factor_b = (phi_1 * m + labda_2 * omega * eta) / (
+                phi_1 * m + labda_1 * omega * eta
+            )
+            if control == POINT_PEAK_BLEED:
+                return p_avg / factor_b
+
+        def _ode_v(v, t, Z, l, eta, tau_1, tau_2, _):
+            psi = f_psi_Z(Z)
+            p_1 = _f_p_1(Z, eta, tau_1, psi)
+            p_2 = _f_p_2(l, eta, tau_2)
+
+            if c_a != 0 and v > 0:
+                k = k_1  # gamma
+                v_r = v / c_a
+                p_d = (
+                    0.25 * k * (k + 1) * v_r**2
+                    + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
+                ) * p_a
+            else:
+                p_d = 0
+
+            # dv = S / (phi * m) * (p_2 - p_d)  # dv / dt
+            dt = (phi * m) / (S * (p_2 - p_d))  # dt / dv
+            # dl = v # dl / dt
+            dl = v * dt  # dl / dv
+
+            if Z <= Z_b:
+                dZ = u_1 / e_1 * p_1**n * dt  # dZ / dv
+            else:
+                dZ = 0
+
+            pr = p_2 / p_1
+            if pr <= cfpr:
+                deta = (phi_2 * K_0 * p_1 * S_j) / ((f * tau_1) ** 0.5 * omega) * dt
+            else:
+                gamma = theta + 1
+                deta = (
+                    (phi_2 * p_1 * S_j)
+                    / ((f * tau_1) ** 0.5 * omega)
+                    * (
+                        (2 * gamma / theta)
+                        * (pr ** (2 / gamma) - pr ** ((gamma + 1) / (gamma)))
+                    )
+                    ** 0.5
+                ) * dt
+
+            dpsi = f_sigma_Z(Z) * dZ  # dpsi / dv
+            dtau_1 = ((1 - tau_1) * dpsi - theta * tau_1 * deta) / (
+                psi - eta
+            )  # dtau_1 / dv
+
+            dtau_2 = (
+                ((1 + theta) * tau_1 - tau_2) * deta
+                - (theta * phi * m) / (f * omega) * v
+            ) / eta  # dtau_2 / dv
+
+            return dt, dZ, dl, deta, dtau_1, dtau_2
+
+        if known_bore:
+            if progressQueue is not None:
+                progressQueue.put(100)
+            return e_1, lengthGun
+
+        v_d = self.v_d
+        if v_i > v_d and not suppress:
+            raise ValueError(
+                f"Design velocity exceeded ({v_i:.4g} m/s > {v_d:.4g} m/s) before peak pressure."
+            )
+
+        l_d = self.maxLength
+
+        def abort_v(x, ys, record):
+            _, _, l, _, _, _ = ys
+            return l > l_d
+
+        vtzlett_record = [v_i, (t_i, Z_i, l_i, eta_i, tau_1_i, tau_2_i)]
+        try:
+            v_g, (t_g, Z_g, l_g, eta_g, tau_1_g, tau_2_g), _ = RKF78(
+                _ode_v,
+                (t_i, Z_i, l_i, eta_i, tau_1_i, tau_2_i),
+                v_i,
+                v_d,
+                relTol=tol,
+                absTol=tol**2,
+                record=vtzlett_record,
+                abortFunc=abort_v,
+            )
+
+            p_1_g, p_2_g = _f_p_1(Z_g, eta_g, tau_1_g), _f_p_2(l_g, eta_g, tau_2_g)
+
+        except ValueError:
+            v_m, (t_m, Z_m, l_m, eta_m, tau_1_m, tau_2_m) = vtzlett_record[-1]
+            p_1_m, p_2_m = _f_p_1(Z_m, eta_m, tau_1_m), _f_p_2(l_m, eta_m, tau_2_m)
+
+            raise ValueError(
+                "Integration appears to be approaching asymptote, "
+                + f"last calculated to v = {v_m:.4g} m/s, "
+                + f"x = {l_m:.4g} m, p = {p_1_m * 1e-6:.4g} MPa (high), {p_2_m * 1e-6:.4g} MPa (low) . "
+                + "This indicates an excessive velocity target relative to pressure developed."
+            )
+
+        if l_g > l_d:
+            raise ValueError(
+                "Solution requires excessive tube length, last calculated to "
+                + f"v = {v_g:.4g} m/s, x = {l_g:.4g} m, "
+                + f"p = {p_1_g * 1e-6:.4g} MPa (high), {p_2_g * 1e-6:.4g} (low)."
+            )
+
+        if abs(v_g - v_d) > (tol * v_d):
+            raise ValueError(
+                "Velocity target is not met, last calculated to "
+                + f"v = {v_g:.4g} m/s ({(v_g - v_d) / v_d:+.3g} %), x = {l_g:.4g} m, "
+                + f"p = {p_1_g * 1e-6:.4g} MPa (high), {p_2_g * 1e-6:.4g} (low)."
+            )
+
+        if progressQueue is not None:
+            progressQueue.put(100)
+
+        return e_1, l_g
 
 
 if __name__ == "__main__":
@@ -681,7 +821,7 @@ if __name__ == "__main__":
 
     M17C = Propellant(M17, SimpleGeometry.CYLINDER, None, 2.5)
     M1C = Propellant(M1, SimpleGeometry.CYLINDER, None, 10)
-    test = optHighlow(
+    test = ConstrainedHighlow(
         caliber=0.082,
         propellant=M1C,
         shotMass=5,
@@ -692,7 +832,7 @@ if __name__ == "__main__":
         tol=1e-3,
         designHighPressure=50e6,
         designLowPressure=20e6,
-        designVelocity=75,
+        designVelocity=150,
     )
 
     # result = test.constrained(

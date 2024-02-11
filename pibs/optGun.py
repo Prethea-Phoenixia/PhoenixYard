@@ -164,9 +164,9 @@ class Constrained:
             if self.sol == SOL_LAGRANGE:
                 labda_1, labda_2 = 1 / 2, 1 / 3
             elif self.sol == SOL_PIDDUCK:
-                labda_1, labda_2 = pidduck(omega / (phi_1 * m), gamma, self.tol)
+                labda_1, labda_2 = pidduck(omega / (phi_1 * m), gamma, tol)
             elif self.sol == SOL_MAMONTOV:
-                labda_1, labda_2 = pidduck(omega / (phi_1 * m), 1, self.tol)
+                labda_1, labda_2 = pidduck(omega / (phi_1 * m), 1, tol)
             else:
                 raise ValueError("Unknown Solution")
 
@@ -348,12 +348,12 @@ class Constrained:
                 lambda Z: _f_p_Z(Z)[0],
                 Z_i,
                 Z_j,
-                y_rel_tol=0.5 * self.tol,
+                y_rel_tol=0.5 * tol,
                 findMin=False,
             )
             Z_p = 0.5 * (Z_1 + Z_2)
 
-            if abs(Z_p - Z_b) < self.tol:
+            if abs(Z_p - Z_b) < tol:
                 Z_p = Z_b
 
             p_bar_p, *vals = _f_p_Z(Z_p)
@@ -377,7 +377,7 @@ class Constrained:
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
             # x_tol=1e-14,
-            y_abs_tol=p_bar_d * self.tol,
+            y_abs_tol=p_bar_d * tol,
             f_report=lambda x: (
                 progressQueue.put(round(x * 100)) if progressQueue is not None else None
             ),
@@ -385,14 +385,14 @@ class Constrained:
 
         (p_bar_dev, Z_i, t_bar_i, l_bar_i, v_bar_i) = _f_p_e_1(e_1)
 
-        if abs(Z_i - Z_b) < self.tol:
+        if abs(Z_i - Z_b) < tol:
             """
             fudging the starting Z value for velocity integration to prevent
             driving integrator to 0 at the transition point.
             """
-            Z_i = Z_b + self.tol
+            Z_i = Z_b + tol
 
-        if abs(p_bar_dev) > self.tol * p_bar_d:
+        if abs(p_bar_dev) > tol * p_bar_d:
             raise ValueError(
                 "Design pressure is not met, delta = {:.3g} Pa".format(
                     p_bar_dev * (f * Delta)
@@ -490,7 +490,7 @@ class Constrained:
                 + "p = {:.4g} MPa.".format(p_g * 1e-6)
             )
 
-        if abs(v_bar_g - v_bar_d) > (self.tol * v_bar_d):
+        if abs(v_bar_g - v_bar_d) > (tol * v_bar_d):
             raise ValueError(
                 "Velocity target is not met, last calculated to "
                 + "v = {:.4g} m/s ({:+.3g} %), x = {:.4g} m, p = {:.4g} MPa".format(
@@ -510,7 +510,7 @@ class Constrained:
             progressQueue.put(100)
 
         # if abs(cc_n - cc) > tol and it < MAX_ITER:
-        if abs((l_bar_g - l_bar_g_0) / l_bar_g_prime) > self.tol and it < MAX_ITER:
+        if abs((l_bar_g - l_bar_g_0) / l_bar_g_prime) > tol and it < MAX_ITER:
             # successive better approximations will eventually
             # result in value within tolerance.
 
@@ -552,13 +552,14 @@ class Constrained:
         phi_1 = self.phi_1
         theta = self.theta
         gamma = theta + 1
+        tol = self.tol
 
         if self.sol == SOL_LAGRANGE:
             labda_1, labda_2 = 1 / 2, 1 / 3
         elif self.sol == SOL_PIDDUCK:
-            labda_1, labda_2 = pidduck(omega / (phi_1 * m), gamma, self.tol)
+            labda_1, labda_2 = pidduck(omega / (phi_1 * m), gamma, tol)
         elif self.sol == SOL_MAMONTOV:
-            labda_1, labda_2 = pidduck(omega / (phi_1 * m), 1, self.tol)
+            labda_1, labda_2 = pidduck(omega / (phi_1 * m), 1, tol)
         else:
             raise ValueError("Unknown Solution")
 
@@ -579,7 +580,7 @@ class Constrained:
 
         records = []
         for i in range(MAX_GUESSES):
-            startProbe = uniform(self.tol, 1 - self.tol)
+            startProbe = uniform(tol, 1 - tol)
 
             try:
                 _, lt_i, lg_i = f(startProbe)
@@ -590,7 +591,7 @@ class Constrained:
                     progressQueue.put(round(i / MAX_GUESSES * 33))
 
         else:
-        # if i == MAX_GUESSES - 1:
+            # if i == MAX_GUESSES - 1:
             raise ValueError(
                 "Unable to find any valid load fraction"
                 + " with {:d} random samples.".format(MAX_GUESSES)
@@ -599,13 +600,13 @@ class Constrained:
         if progressQueue is not None:
             progressQueue.put(33)
 
-        low = self.tol
+        low = tol
         probe = startProbe
         delta_low = low - probe
         new_low = probe + delta_low
 
-        k, n = 0, floor(log(abs(delta_low) / self.tol, 2)) + 1
-        while abs(2 * delta_low) > self.tol:
+        k, n = 0, floor(log(abs(delta_low) / tol, 2)) + 1
+        while abs(2 * delta_low) > tol:
             try:
                 _, lt_i, lg_i = f(new_low)
                 records.append((new_low, lt_i))
@@ -620,13 +621,13 @@ class Constrained:
 
         low = probe
 
-        high = 1 - self.tol
+        high = 1 - tol
         probe = startProbe
         delta_high = high - probe
         new_high = probe + delta_high
 
-        k, n = 0, floor(log(abs(delta_high) / self.tol, 2)) + 1
-        while abs(2 * delta_high) > self.tol and new_high < 1:
+        k, n = 0, floor(log(abs(delta_high) / tol, 2)) + 1
+        while abs(2 * delta_high) > tol and new_high < 1:
             try:
                 _, lt_i, lg_i = f(new_high)
                 records.append((new_high, lt_i))
@@ -641,7 +642,7 @@ class Constrained:
 
         high = probe
 
-        if abs(high - low) < self.tol:
+        if abs(high - low) < tol:
             raise ValueError("No range of values satisfying constraint.")
 
         if len(records) > 2:
@@ -651,10 +652,10 @@ class Constrained:
                     low = l[0]
                     high = h[0]
 
-        delta = high - low
+        # delta = high - low
 
-        low += delta * self.tol
-        high -= delta * self.tol
+        # low += delta * tol
+        # high -= delta * tol
 
         """
         Step 2, gss to min.
@@ -668,7 +669,7 @@ class Constrained:
             lambda lf: f(lf)[1],
             low,
             high,
-            x_tol=self.tol,
+            x_tol=tol,
             findMin=True,
             f_report=lambda x: (
                 progressQueue.put(round(x * 33) + 66)

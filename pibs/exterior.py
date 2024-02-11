@@ -250,7 +250,7 @@ class Bullet:
                 pass
 
         else:
-        # if i == N - 1:
+            # if i == N - 1:
             raise ValueError(
                 "No valid elevation can be found within specified in {:} samples".format(
                     N

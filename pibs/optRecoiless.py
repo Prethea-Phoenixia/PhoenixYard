@@ -682,14 +682,14 @@ class ConstrainedRecoiless:
                     low = l[0]
                     high = h[0]
 
-        delta = high - low
+        # delta = high - low
 
         # Edge values are some times only semi-stable, i.e. when calling
         # f() with the same value will spuriously raise value errors. Therefore
         # we conservatively shrink the range by tolerance to avoid this issue.
 
-        low += delta * tol
-        high -= delta * tol
+        # low += delta * tol
+        # high -= delta * tol
 
         """
         Step 2, gss to min.
