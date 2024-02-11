@@ -414,7 +414,7 @@ class ConstrainedHighlow:
 
             Z_1, _ = dekker(lambda x: g(x) - p_0_s, Z_0, Z_sm, y_abs_tol=p_0_s * tol)
 
-            print("Z_1 according to opt", Z_1)
+            # print("Z_1 according to opt", Z_1)
             record_1 = [[Z_0, (t_0, eta_0, tau_1_0, tau_2_0)]]
             t_1, eta_1, tau_1_1, tau_2_1 = RKF78(
                 _ode_Zs,
@@ -679,7 +679,7 @@ class ConstrainedHighlow:
                 + "decorrelated."
             )
 
-        print("high pressure actual", p_h_act, "low pressure actual", p_l_act)
+        # print("high pressure actual", p_h_act, "low pressure actual", p_l_act)
 
         if known_bore:
             if progressQueue is not None:
