@@ -129,7 +129,7 @@ class InteriorBallisticsFrame(Frame):
         default_font = tkFont.Font(family=FONTNAME, size=FONTSIZE)
         self.option_add("*Font", default_font)
 
-        self.queue = Queue()
+        self.jobQueue = Queue()
         self.progressQueue = Queue()
         self.process = None
 
@@ -813,7 +813,32 @@ class InteriorBallisticsFrame(Frame):
             locFunc=self.getLocStr,
             allInputs=self.locs,
         )
-
+        j += 1
+        self.pHTgt = Loc3Input(
+            parent=consFrm,
+            row=j,
+            col=0,
+            labelLocKey="pHTgtLabel",
+            unitText="MPa",
+            default="100.0",
+            validation=validationNN,
+            tooltipLocKey="pHTgtText",
+            locFunc=self.getLocStr,
+            allInputs=self.locs,
+        )
+        j += 1
+        self.pLTgt = Loc3Input(
+            parent=consFrm,
+            row=j,
+            col=0,
+            labelLocKey="pLTgtLabel",
+            unitText="MPa",
+            default="25.0",
+            validation=validationNN,
+            tooltipLocKey="pLTgtText",
+            locFunc=self.getLocStr,
+            allInputs=self.locs,
+        )
         j += 1
         self.pControl = LocDropdown(
             parent=consFrm,
@@ -1015,9 +1040,11 @@ class InteriorBallisticsFrame(Frame):
                 "lengthGun": gunLength,
                 "chambrage": chambrage,  # chamber expansion
                 "nozzleExpansion": float(self.nozzExp.get()),  # nozzle expansion
-                "nozzleEfficiency": float(self.nozzEff.get())* 1e-2,  # nozzle efficiency
+                "nozzleEfficiency": float(self.nozzEff.get()) * 1e-2,  # nozzle efficiency
                 "dragCoefficient": float(self.dgc.get()) * 1e-2,  # drag coefficient
                 "designPressure": float(self.pTgt.get()) * 1e6,  # design pressure
+                "designHighPressure": float(self.pHTgt.get()) * 1e6,
+                "designLowPressure": float(self.pLTgt.get()) * 1e6,
                 "designVelocity": float(self.vTgt.get()),  # design velocity
                 "tol": 10 ** -int(self.accExp.get()),
                 "minWeb": 1e-6 * float(self.minWeb.get()),
@@ -1025,7 +1052,7 @@ class InteriorBallisticsFrame(Frame):
                 "loadFraction": loadFraction,
                 "step": int(self.step.get()),
                 "maxInset": maxInset,
-                "autofrettage": autofrettage,
+                "autofrettage": autofrettage
             }
             # fmt: on
             if atmosphere:
@@ -1040,7 +1067,7 @@ class InteriorBallisticsFrame(Frame):
                 self.kwargs.update({"ambientP": 0, "ambientRho": 0, "ambientGamma": 1})
 
             self.process = Process(
-                target=calculate, args=(self.queue, self.progressQueue, self.kwargs)
+                target=calculate, args=(self.jobQueue, self.progressQueue, self.kwargs)
             )
             self.calButton.config(state="disabled")
             # self.progressbar.start(interval=10)
@@ -1065,11 +1092,11 @@ class InteriorBallisticsFrame(Frame):
             self.updateAuxPlot()
 
     def getValue(self):
-        queue = self.queue
+        jobQueue = self.jobQueue
         progressQueue = self.progressQueue
         try:
             p = None
-            while not self.progressQueue.empty():
+            while not progressQueue.empty():
                 pg = progressQueue.get_nowait()
                 p = pg if p is None else max(p, pg)
             if p is not None:
@@ -1086,7 +1113,7 @@ class InteriorBallisticsFrame(Frame):
                 self.pressureTrace,
                 self.structure,
                 errorLst,
-            ) = queue.get_nowait()
+            ) = jobQueue.get_nowait()
 
             self.errorLst.extend(errorLst)
 
@@ -1131,6 +1158,9 @@ class InteriorBallisticsFrame(Frame):
             if constrain:
                 webmm = roundSig(kwargs["grainSize"] * 1e3, n=sigfig)
                 self.arcmm.set(webmm)
+
+                evL = roundSig(kwargs["expansionVolume"] * 1e3, n=sigfig)
+                self.evL.set(evL)
 
                 if not lock:
                     lgmm = roundSig(kwargs["lengthGun"] * 1e3, n=sigfig)
@@ -2629,7 +2659,7 @@ class InteriorBallisticsFrame(Frame):
 
             self.pControl.reset(
                 {
-                    POINT_PEAK_HIGH: POINT_PEAK_HIGH,
+                    # POINT_PEAK_HIGH: POINT_PEAK_HIGH,
                     POINT_PEAK_SHOT: POINT_PEAK_SHOT,
                     POINT_PEAK_AVG: POINT_PEAK_AVG,
                     POINT_PEAK_BLEED: POINT_PEAK_BLEED,
@@ -2807,7 +2837,7 @@ class InteriorBallisticsFrame(Frame):
         self.update_idletasks()
 
 
-def calculate(queue, progressQueue, kwargs):
+def calculate(jobQueue, progressQueue, kwargs):
     gunType = kwargs["typ"]
     constrain = kwargs["con"]
     optimize = kwargs["opt"]
@@ -2824,26 +2854,29 @@ def calculate(queue, progressQueue, kwargs):
                 constrained = ConstrainedHighlow(**kwargs)
 
             if optimize:
-                l_f, e_1, l_g = constrained.findMinV(
-                    **kwargs, progressQueue=progressQueue
-                )
+                l_f, e_1, l_g = constrained.findMinV(**kwargs)
                 kwargs.update({"loadFraction": l_f})
-            else:
-                e_1, l_g = constrained.solve(
-                    **kwargs, known_bore=lock, progressQueue=progressQueue
+                chamberVolume = (
+                    kwargs["chargeMass"]
+                    / kwargs["propellant"].rho_p
+                    / kwargs["loadFraction"]
                 )
+                kwargs.update({"chamberVolume": chamberVolume})
+            else:
+                if gunType == CONVENTIONAL or gunType == RECOILESS:
+                    e_1, l_g = constrained.solve(
+                        **kwargs, known_bore=lock, progressQueue=progressQueue
+                    )
+                elif gunType == HIGHLOW:
+                    e_1, V_1, l_g = constrained.solve(
+                        **kwargs, known_bore=lock, progressQueue=progressQueue
+                    )
+                    kwargs.update({"expansionVolume": V_1})
 
             kwargs.update({"grainSize": 2 * e_1})
 
             if not lock:
                 kwargs.update({"lengthGun": l_g})
-
-            chamberVolume = (
-                kwargs["chargeMass"]
-                / kwargs["propellant"].rho_p
-                / kwargs["loadFraction"]
-            )
-            kwargs.update({"chamberVolume": chamberVolume})
 
         if gunType == CONVENTIONAL:
             gun = Gun(**kwargs)
@@ -2856,8 +2889,6 @@ def calculate(queue, progressQueue, kwargs):
             **kwargs, progressQueue=progressQueue
         )
         errorReport = []
-
-        progressQueue.put(100)
 
     except Exception as e:
         gun = None
@@ -2876,7 +2907,7 @@ def calculate(queue, progressQueue, kwargs):
             errorReport.append(str(e))
 
     # fmt: off
-    queue.put(
+    jobQueue.put(
         (
             kwargs, gun, tableData, errorData, pressureTrace, structure, errorReport
         )

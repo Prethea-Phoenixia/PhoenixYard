@@ -10,6 +10,8 @@ ENGLISH = {
     "enableLabel": "Enabled",
     "vTgtLabel": "Vel. Tgt.",
     "pTgtLabel": "Pre. Tgt.",
+    "pHTgtLabel": "H.-C. P.T.",
+    "pLTgtLabel": "L.-C. P.T.",
     "minWebLabel": "Min. Web.",
     "maxLgLabel": "Max. Len.",
     "calLabel": "Caliber",
@@ -412,7 +414,20 @@ ENGLISH = {
             "characteristc point calculations, though.",
         )
     ),
-    "pTgtText": "Maximum length-averaged chamber pressure.",
+    "pTgtText": " ".join(
+        (
+            "Pressure constraint, imposed at the characteristc",
+            "point selected in the drop down menu.",
+        )
+    ),
+    "pHTgtText": " ".join(("Pressure constraint, average value within high chamber.")),
+    "pLTgtText": " ".join(
+        (
+            "Pressure constraint for the low pressure chamber,"
+            "imposed at the characteristc",
+            "point selected in the drop down menu.",
+        )
+    ),
     "useConsText": " ".join(
         (
             "Solve the required arc thickness and barrel length to achieve",
@@ -639,6 +654,8 @@ CHINESE = {
     "enableLabel": "启用",
     "vTgtLabel": "设计弹速",
     "pTgtLabel": "最大膛压",
+    "pHTgtLabel": "高压目标",
+    "pLTgtLabel": "低压目标",
     "minWebLabel": "最小弧厚",
     "maxLgLabel": "最长身管",
     "calLabel": "口径",
@@ -889,6 +906,8 @@ CHINESE = {
         )
     ),
     "pTgtText": "设计最大空间平均压强",
+    "pHTgtText": "高压室的设计平均压强",
+    "pLTgtText": "低压室的设计压强，以下拉菜单选择的特征点为准。",
     "useConsText": "".join(
         (
             "根据设计最大压强与设计弹速，按照精度要求，反算满足条件的火药弧厚，身管长度。",

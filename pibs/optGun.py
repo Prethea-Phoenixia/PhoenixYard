@@ -372,15 +372,16 @@ class Constrained:
             probeWeb *= 2
             dp_bar_probe = _f_p_e_1(probeWeb)[0]
 
+        def fr(x):
+            progressQueue.put(round(x * 100))
+
         e_1, _ = dekker(
             lambda web: _f_p_e_1(web)[0],
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
             # x_tol=1e-14,
             y_abs_tol=p_bar_d * tol,
-            f_report=lambda x: (
-                progressQueue.put(round(x * 100)) if progressQueue is not None else None
-            ),
+            f_report=fr if progressQueue is not None else None,
         )  # this is the e_1 that satisifies the pressure specification.
 
         (p_bar_dev, Z_i, t_bar_i, l_bar_i, v_bar_i) = _f_p_e_1(e_1)
@@ -665,17 +666,17 @@ class Constrained:
         result than requriing a relative tolerance on the function
         values.
         """
+
+        def fr(x):
+            progressQueue.put(round(x * 33) + 66)
+
         lf_low, lf_high = gss(
             lambda lf: f(lf)[1],
             low,
             high,
             x_tol=tol,
             findMin=True,
-            f_report=lambda x: (
-                progressQueue.put(round(x * 33) + 66)
-                if progressQueue is not None
-                else None
-            ),
+            f_report=fr if progressQueue is not None else None,
         )
 
         lf = 0.5 * (lf_high + lf_low)

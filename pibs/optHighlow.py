@@ -25,9 +25,7 @@ class ConstrainedHighlow:
         designLowPressure,
         designVelocity,
         minWeb=1e-6,
-        maxWeb=10e-3,
         maxLength=1e3,
-        minEV=0.1e-3,
         maxEV=1,
         ambientRho=1.204,
         ambientP=101.325e3,
@@ -53,9 +51,9 @@ class ConstrainedHighlow:
         self.tol = tol
 
         self.maxLength = maxLength
-        self.minEV, self.maxEV = min((minEV, maxEV)), max((minEV, maxEV))
-        # self.minWeb = minWeb
-        self.minWeb, self.maxWeb = min((minWeb, maxWeb)), max((minWeb, maxWeb))
+        self.maxEV = maxEV
+
+        self.minWeb = minWeb
         self.ambientRho = ambientRho
         self.ambientP = ambientP
         self.ambientGamma = ambientGamma
@@ -86,11 +84,13 @@ class ConstrainedHighlow:
         self,
         loadFraction,
         chargeMassRatio,
-        portAreaRatio,
+        # portAreaRatio,
+        portArea,
         lengthGun=None,
         known_bore=False,
         suppress=False,
         progressQueue=None,
+        **_,
     ):
         if any((chargeMassRatio <= 0, loadFraction <= 0, loadFraction > 1)):
             raise ValueError("Invalid parameters to solve constrained design problem")
@@ -103,7 +103,7 @@ class ConstrainedHighlow:
         theta = self.theta
         f = self.f
         chi = self.chi
-        chi_k = self.chi_k
+        # chi_k = self.chi_k
         labda = self.labda
         mu = self.mu
         S = self.S
@@ -169,8 +169,10 @@ class ConstrainedHighlow:
             V_psi = V_0 - omega / rho_p * (1 - psi) - alpha * omega * (psi - eta)
             return f * omega * tau_1 / V_psi * (psi - eta)
 
-        S_j_bar = portAreaRatio
-        S_j = S * S_j_bar
+        # S_j_bar = portAreaRatio
+        # S_j = S * S_j_bar
+        S_j = portArea
+        # S_j_bar = S_j / S
 
         phi = phi_1 + labda_2 * omega / m
 
@@ -248,8 +250,6 @@ class ConstrainedHighlow:
                 * 0.5
             )
 
-            # print(g(Z_p_i))
-
             return g(Z_p_i) - p_d_h
 
         dp_bar_probe = f_e_1(self.minWeb)
@@ -264,17 +264,18 @@ class ConstrainedHighlow:
             probeWeb *= 2
             dp_bar_probe = f_e_1(probeWeb)
 
+        def fr(x):
+            progressQueue.put(round(x * 50))
+
         e_1, _ = dekker(
             f_e_1,
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
             y_abs_tol=p_d_h * self.tol,
-            f_report=lambda x: (
-                progressQueue.put(round(x * 50)) if progressQueue is not None else None
-            ),
+            f_report=fr if progressQueue is not None else None,
         )  # this is the e_1 that satisifies the pressure specification.
 
-        print("solved e_1 at ", e_1, "with a pressure deviation of ", f_e_1(e_1))
+        # print("solved e_1 at ", e_1, "with a pressure deviation of ", f_e_1(e_1))
 
         def f_ev(expansionVolume):
             V_1 = expansionVolume
@@ -302,7 +303,9 @@ class ConstrainedHighlow:
             def _ode_Zs(Z, t, eta, tau_1, tau_2, _):
                 psi = f_psi_Z(Z)
                 p_1 = _f_p_1(Z, eta, tau_1, psi)
-                p_2 = _f_p_2(0, eta, tau_2)
+
+                l_star = (V_1 - alpha * omega * eta) / S
+                p_2 = f * omega * tau_2 * eta / (S * l_star)
 
                 dt = 1 / (u_1 / e_1 * p_1**n)  # dt / dZ
 
@@ -344,13 +347,12 @@ class ConstrainedHighlow:
             def abort(x, ys, record):
                 Z, _, eta, tau_1, tau_2 = x, *ys
                 p_1 = _f_p_1(Z, eta, tau_1)
-                p_2 = _f_p_2(0, eta, tau_2)
+
+                l_star = (V_1 - alpha * omega * eta) / S
+                p_2 = f * omega * tau_2 * eta / (S * l_star)
 
                 if len(record) < 1:
                     return False
-                # ox, oys = record[-1]
-                # oZ, _, oeta, otau_1, _ = ox, *oys
-                # op_1 = _f_p_1(oZ, oeta, otau_1)
 
                 return p_2 > p_0_s or (p_1 - p_2 < tol * p_1)
 
@@ -379,7 +381,8 @@ class ConstrainedHighlow:
                 record_0.extend(v for v in r if v[0] not in xs)
                 record_0.sort()
 
-                p_2 = _f_p_2(0, eta, tau_2)
+                l_star = (V_1 - alpha * omega * eta) / S
+                p_2 = f * omega * tau_2 * eta / (S * l_star)
 
                 return p_2
 
@@ -411,6 +414,7 @@ class ConstrainedHighlow:
 
             Z_1, _ = dekker(lambda x: g(x) - p_0_s, Z_0, Z_sm, y_abs_tol=p_0_s * tol)
 
+            print("Z_1 according to opt", Z_1)
             record_1 = [[Z_0, (t_0, eta_0, tau_1_0, tau_2_0)]]
             t_1, eta_1, tau_1_1, tau_2_1 = RKF78(
                 _ode_Zs,
@@ -437,7 +441,9 @@ class ConstrainedHighlow:
             def _ode_Z(Z, t, l, v, eta, tau_1, tau_2, _):
                 psi = f_psi_Z(Z)
                 p_1 = _f_p_1(Z, eta, tau_1, psi)
-                p_2 = _f_p_2(l, eta, tau_2)
+
+                l_star = (V_1 - alpha * omega * eta) / S
+                p_2 = f * omega * tau_2 * eta / (S * (l_star + l))
 
                 dt = 1 / (u_1 / e_1 * p_1**n)  # dt / dZ
 
@@ -578,7 +584,6 @@ class ConstrainedHighlow:
             )
 
             p_p_h = _f_p_1_Z(Z_p_1)
-
             p_p_l, vals_2 = _f_p_2_Z(Z_p_2)
 
             return p_p_h, p_p_l, vals_2
@@ -652,18 +657,19 @@ class ConstrainedHighlow:
                 + f"bounding volume of > {evLowerBound * 1e-3:.2f} L.",
             )
 
+        def fr(x):
+            progressQueue.put(round(x * 50) + 50)
+
         V_1, _ = dekker(
             lambda ev: f_ev(ev)[1],
             evLowerBound,
             evUpperBound,
             y=p_d_l,
             y_rel_tol=tol,
-            f_report=lambda x: (
-                progressQueue.put(round(x * 50 + 50))
-                if progressQueue is not None
-                else None
-            ),
+            f_report=fr if progressQueue is not None else None,
         )
+
+        # print("expansion volumed solved to be ", V_1)
 
         p_h_act, p_l_act, (Z_i, t_i, l_i, v_i, eta_i, tau_1_i, tau_2_i) = f_ev(V_1)
 
@@ -673,11 +679,20 @@ class ConstrainedHighlow:
                 + "decorrelated."
             )
 
-        l_1 = V_1 / S
+        print("high pressure actual", p_h_act, "low pressure actual", p_l_act)
+
+        if known_bore:
+            if progressQueue is not None:
+                progressQueue.put(100)
+            return e_1, V_1, lengthGun
+
+        # l_1 = V_1 / S
 
         def _f_p_2(l, eta, tau_2):
             l_star = (V_1 - alpha * omega * eta) / S
             p_avg = f * omega * tau_2 * eta / (S * (l_star + l))
+
+            return p_avg
 
             if control == POINT_PEAK_AVG:
                 return p_avg
@@ -696,7 +711,9 @@ class ConstrainedHighlow:
         def _ode_v(v, t, Z, l, eta, tau_1, tau_2, _):
             psi = f_psi_Z(Z)
             p_1 = _f_p_1(Z, eta, tau_1, psi)
-            p_2 = _f_p_2(l, eta, tau_2)
+
+            l_star = (V_1 - alpha * omega * eta) / S
+            p_2 = f * omega * tau_2 * eta / (S * (l_star + l))
 
             if c_a != 0 and v > 0:
                 k = k_1  # gamma
@@ -744,11 +761,6 @@ class ConstrainedHighlow:
             ) / eta  # dtau_2 / dv
 
             return dt, dZ, dl, deta, dtau_1, dtau_2
-
-        if known_bore:
-            if progressQueue is not None:
-                progressQueue.put(100)
-            return e_1, lengthGun
 
         v_d = self.v_d
         if v_i > v_d and not suppress:
@@ -805,7 +817,7 @@ class ConstrainedHighlow:
         if progressQueue is not None:
             progressQueue.put(100)
 
-        return e_1, l_g
+        return e_1, V_1, l_g
 
 
 if __name__ == "__main__":
@@ -833,6 +845,7 @@ if __name__ == "__main__":
         designHighPressure=50e6,
         designLowPressure=20e6,
         designVelocity=150,
+        control=POINT_PEAK_BLEED,
     )
 
     # result = test.constrained(
@@ -853,5 +866,7 @@ if __name__ == "__main__":
     result = test.solve(
         loadFraction=0.5,
         chargeMassRatio=0.5 / 5,
-        portAreaRatio=0.5,
+        portArea=0.5 * pi * 0.082**2 * 0.25,
     )
+
+    print(result)

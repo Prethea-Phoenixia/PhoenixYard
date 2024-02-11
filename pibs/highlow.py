@@ -538,9 +538,7 @@ class Highlow:
                 + "not enough to start the shot."
             )
 
-        Z_1 = 0.5 * sum(
-            dekker(lambda x: f(x) - self.p_0_s, Z_0, Z, y_abs_tol=self.p_0_s * tol)
-        )
+        Z_1, _ = dekker(lambda x: f(x) - self.p_0_s, Z_0, Z, y_abs_tol=self.p_0_s * tol)
 
         # fmt: off
         record.extend(
@@ -626,7 +624,7 @@ class Highlow:
                 raise e
 
             if l_j >= l_g:
-                if abs(l_i - l_g) / (l_g) > tol or l_i == 0:
+                if abs(l_i - l_g) > tol * l_g or l_i == 0:
                     N *= 2
                     Z_j = Z_i + Delta_Z / N
                 else:
