@@ -1,5 +1,5 @@
 from tkinter import Frame, Menu, Text, filedialog, messagebox, StringVar, IntVar
-from tkinter import Tk, ttk
+from tkinter import Tk, ttk, TOP, BOTH
 import tkinter.font as tkFont
 
 from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
@@ -26,7 +26,7 @@ from misc import loadfont, resolvepath
 from math import ceil, pi, log10
 
 from matplotlib import font_manager
-import matplotlib.pyplot as mpl
+import matplotlib as mpl
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from labellines import labelLines
@@ -120,6 +120,9 @@ class InteriorBallisticsFrame(Frame):
     def __init__(self, parent, menubar, dpi, defaultLang=None):
         super().__init__(parent)
         self.grid(row=0, column=0, sticky="nsew")
+        parent.rowconfigure(0, weight=1)
+        parent.columnconfigure(0, weight=1)
+        # self.pack(fill="both", expand=True)
         self.LANG = StringVar(
             value=list(STRING.keys())[0] if defaultLang is None else defaultLang
         )
@@ -220,7 +223,7 @@ class InteriorBallisticsFrame(Frame):
 
         self.addPlotFrm()
         self.addAuxFrm()
-        self.addspecFrm()
+        self.addSpecFrm()
         self.addTblFrm()
 
         self.addGeomPlot()
@@ -249,6 +252,8 @@ class InteriorBallisticsFrame(Frame):
 
         self.tLid = None
         self.timedLoop()
+
+        # self.event_generate("<Normal>", when="tail")
 
     def getDescriptive(self):
         if self.gun is None:
@@ -888,7 +893,7 @@ class InteriorBallisticsFrame(Frame):
             allLLF=self.locs,
         )
         sampleFrm.grid(row=i, column=0, columnspan=2, sticky="nsew", padx=2, pady=2)
-        sampleFrm.columnconfigure(1, weight=1)
+        sampleFrm.columnconfigure(0, weight=1)
 
         self.dropDomain = LocDropdown(
             parent=sampleFrm,
@@ -912,8 +917,8 @@ class InteriorBallisticsFrame(Frame):
             default="100",
             validation=validationNN,
             formatter=formatIntInput,
-            reverse=True,
-            anchor="center",
+            # reverse=True,
+            # anchor="center",
             locFunc=self.getLocStr,
             allInputs=self.locs,
         )
@@ -1238,7 +1243,7 @@ class InteriorBallisticsFrame(Frame):
             except AttributeError:
                 pass
 
-    def addspecFrm(self):
+    def addSpecFrm(self):
         specFrm = LocLabelFrame(
             self,
             locKey="specFrmLabel",
@@ -1399,7 +1404,7 @@ class InteriorBallisticsFrame(Frame):
         )
         grainFrm.grid(row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
         grainFrm.columnconfigure(0, weight=1)
-        grainFrm.rowconfigure(0, weight=1, minsize=200)
+        grainFrm.rowconfigure(0, weight=1, minsize=250)
 
         geomPlotFrm = LocLabelFrame(
             grainFrm,
@@ -1627,10 +1632,11 @@ class InteriorBallisticsFrame(Frame):
 
     def addGeomPlot(self):
         geomPlotFrm = self.geomPlotFrm
-        geomPlotFrm.columnconfigure(0, weight=1)
-        geomPlotFrm.rowconfigure(0, weight=1)
+        # geomPlotFrm.columnconfigure(0, weight=1)
+        # geomPlotFrm.rowconfigure(0, weight=1)
 
-        geomPlotFrm.grid_propagate(False)
+        # geomPlotFrm.grid_propagate(False)
+        # geomPlotFrm.pack_propagate(0)
 
         with mpl.rc_context(GEOM_CONTEXT):
             fig = Figure(dpi=96, layout="constrained")
@@ -1638,18 +1644,20 @@ class InteriorBallisticsFrame(Frame):
             self.geomAx = fig.add_subplot(111)
 
             self.geomCanvas = FigureCanvasTkAgg(fig, master=geomPlotFrm)
-            self.geomCanvas.get_tk_widget().grid(
-                row=0, column=0, padx=0, pady=0, sticky="nsew"
-            )
-            # fig.set_layout_engine(None)
             self.geomCanvas.draw_idle()
+            # self.geomCanvas.get_tk_widget().grid(
+            #     row=0, column=0, padx=0, pady=0, sticky="nsew"
+            # )
+            self.geomCanvas.get_tk_widget().place(relheight=1, relwidth=1)
+            # self.geomCanvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=False)
+            # fig.set_layout_engine(None)
+
+        # geomPlotFrm.grid_propagate(True)
 
     def addPlotFrm(self):
         plotFrm = LocLabelFrame(
             self,
             locKey="plotFrmLabel",
-            width=960,
-            height=300,
             locFunc=self.getLocStr,
             tooltipLocKey="plotText",
             allLLF=self.locs,
@@ -1758,9 +1766,10 @@ class InteriorBallisticsFrame(Frame):
     def addFigPlot(self):
         plotFrm = self.plotFrm
         plotFrm.columnconfigure(0, weight=1)
-        plotFrm.rowconfigure(0, weight=1, minsize=50)
+        plotFrm.rowconfigure(0, weight=1)
 
-        plotFrm.grid_propagate(False)
+        plotPlaceFrm = Frame(plotFrm)
+        plotPlaceFrm.grid(row=0, column=0, padx=2, pady=2, sticky="nsew", columnspan=5)
 
         with mpl.rc_context(FIG_CONTEXT):
             fig = Figure(dpi=96, layout="constrained")
@@ -1788,19 +1797,16 @@ class InteriorBallisticsFrame(Frame):
             # self.axF = axF
             self.fig = fig
 
-            self.pltCanvas = FigureCanvasTkAgg(fig, master=plotFrm)
-            self.pltCanvas.get_tk_widget().grid(
-                row=0, column=0, padx=2, pady=2, sticky="nsew", columnspan=5
-            )
-
+            self.pltCanvas = FigureCanvasTkAgg(fig, master=plotPlaceFrm)
             self.pltCanvas.draw_idle()
+            self.pltCanvas.get_tk_widget().place(relheight=1, relwidth=1)
+
+            # self.pltCanvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
 
     def addAuxFrm(self):
         auxFrm = LocLabelFrame(
             self,
             locKey="auxFrmLabel",
-            width=960,
-            height=200,
             locFunc=self.getLocStr,
             tooltipLocKey="auxText",
             allLLF=self.locs,
@@ -1841,10 +1847,13 @@ class InteriorBallisticsFrame(Frame):
 
     def addAuxPlot(self):
         auxFrm = self.auxFrm
-        auxFrm.columnconfigure(0, weight=1)
-        auxFrm.rowconfigure(0, weight=1, minsize=50)
+        auxFrm.columnconfigure(0, weight=1, minsize=1)
+        auxFrm.rowconfigure(0, weight=1, minsize=1)
 
-        auxFrm.grid_propagate(False)
+        auxPlaceFrm = Frame(auxFrm)
+        auxPlaceFrm.grid(row=0, column=0, padx=2, pady=2, sticky="nsew", columnspan=2)
+        # auxPlaceFrm.grid_propagate(False)
+        # auxFrm.grid_propagate(False)
 
         with mpl.rc_context(FIG_CONTEXT):
             fig = Figure(dpi=96, layout="constrained")
@@ -1857,19 +1866,16 @@ class InteriorBallisticsFrame(Frame):
             self.auxAxH = axH
             self.auxFig = fig
             self.auxAxH.yaxis.tick_right()
-            self.auxCanvas = FigureCanvasTkAgg(fig, master=auxFrm)
-            self.auxCanvas.get_tk_widget().grid(
-                row=0, column=0, padx=2, pady=2, sticky="nsew", columnspan=2
-            )
-
+            self.auxCanvas = FigureCanvasTkAgg(fig, master=auxPlaceFrm)
             self.auxCanvas.draw_idle()
+            self.auxCanvas.get_tk_widget().place(relwidth=1, relheight=1)
 
     def timedLoop(self):
         # polling function for the calculation subprocess
         if self.process is not None:
             self.getValue()
 
-        self.tLid = self.after(10, self.timedLoop)
+        self.tLid = self.after(25, self.timedLoop)
 
     def quit(self):
         root = self.parent
@@ -2599,11 +2605,19 @@ class InteriorBallisticsFrame(Frame):
             # self.solve_W_Lg.set(0)
             # self.solve_W_Lg.disable()
 
+            self.pTgt.remove()
+            self.pHTgt.restore()
+            self.pLTgt.restore()
+
         else:
             self.evL.remove()
             self.bstMPa.remove()
             self.perf.remove()
             self.plotAvgP.reLocalize("plotAvgP")
+
+            self.pTgt.restore()
+            self.pHTgt.remove()
+            self.pLTgt.remove()
 
             # self.solve_W_Lg.enable()
 
@@ -2670,6 +2684,8 @@ class InteriorBallisticsFrame(Frame):
         if self.solve_W_Lg.get() == 0:
             self.vTgt.disable()
             self.pTgt.disable()
+            self.pLTgt.disable()
+            self.pHTgt.disable()
             self.opt_lf.disable()
             self.lock_Lg.disable()
             self.minWeb.disable()
@@ -2693,6 +2709,8 @@ class InteriorBallisticsFrame(Frame):
                 self.lock_Lg.enable()
 
             self.pTgt.enable()
+            self.pLTgt.enable()
+            self.pHTgt.enable()
             self.minWeb.enable()
             self.lgmax.enable()
             self.pControl.enable()
@@ -2947,12 +2965,12 @@ def main():
     myappid = "Phoenix.Interior.Ballistics.Solver"  # arbitrary string
     windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
-    root = Tk()
-
-    root.iconbitmap(resolvepath("ui/logo.ico"))
-
     loadfont(resolvepath("ui/sarasa-fixed-sc-regular.ttf"), False, True)
     font_manager.fontManager.addfont(resolvepath("ui/sarasa-fixed-sc-regular.ttf"))
+
+    root = Tk()
+    root.iconbitmap(resolvepath("ui/logo.ico"))
+
     # from tkinter import font
     # print(font.families())
 
@@ -2971,15 +2989,20 @@ def main():
     menubar = Menu(root)
     root.config(menu=menubar)
 
-    root.columnconfigure(0, weight=1)
-    root.rowconfigure(0, weight=1)
+    # root.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
+    # root.resizable(False, False)
+    # root.iconify()
     InteriorBallisticsFrame(
         root, menubar, dpi, defaultLang="English" if loc != "zh_CN" else "中文"
     )
+    root.state("zoomed")
 
-    root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
-    # root.wm_state("iconic")
-    root.state("zoomed")  # maximize window
+    root.bind("<Escape>", lambda event: root.state("normal"))
+    root.bind("<F11>", lambda event: root.state("zoomed"))
+    # root.resizable(True, True)
+    # root.geometry("1600x900")
+    # root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
+
     root.mainloop()
 
 

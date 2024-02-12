@@ -164,7 +164,7 @@ class Loc2Input:
         descLabelKey=None,
         default="",
         validation=None,
-        labelWidth=10,
+        labelWidth=15,
         entryWidth=10,
         formatter=formatFloatInput,
         color=None,
@@ -285,7 +285,7 @@ class Loc3Input(Loc2Input):
         unitText="",
         default="",
         validation=None,
-        labelWidth=10,
+        labelWidth=15,
         entryWidth=10,
         formatter=formatFloatInput,
         color=None,
@@ -464,7 +464,7 @@ class LocLabelCheck:
         descLabelKey=None,
         tooltipLocKey=None,
         locFunc=None,
-        width=20,
+        width=25,
         allLC=None,
     ):
         self.nominalState = "normal"
