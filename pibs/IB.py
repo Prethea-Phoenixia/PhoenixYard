@@ -214,11 +214,11 @@ class InteriorBallisticsFrame(Frame):
         self.errorLst = []
 
         self.columnconfigure(1, weight=1)
-        self.rowconfigure(1, weight=3)
-        self.rowconfigure(2, weight=2)
+        self.rowconfigure(1, weight=1)
 
         self.addNamePlate()
         self.addLeftFrm()
+        self.addCenterFrm()
         self.addRightFrm()
 
         self.addPlotFrm()
@@ -423,6 +423,9 @@ class InteriorBallisticsFrame(Frame):
 
         self.calButton.config(text=self.getLocStr("calcLabel"))
 
+        self.tabParent.tab(self.plotTab, text=self.getLocStr("plotTab"))
+        self.tabParent.tab(self.tableTab, text=self.getLocStr("tableTab"))
+
         self.updateTable()
         self.updateGeom()
         self.updateSpec()
@@ -468,7 +471,7 @@ class InteriorBallisticsFrame(Frame):
 
     def addLeftFrm(self):
         leftFrm = ttk.Frame(self)
-        leftFrm.grid(row=1, column=0, rowspan=5, sticky="nsew")
+        leftFrm.grid(row=1, column=0, sticky="nsew")
         leftFrm.columnconfigure(0, weight=1)
         leftFrm.rowconfigure(0, weight=1)
 
@@ -592,7 +595,7 @@ class InteriorBallisticsFrame(Frame):
 
     def addRightFrm(self):
         rightFrm = ttk.Frame(self)
-        rightFrm.grid(row=0, column=3, rowspan=6, sticky="nsew")
+        rightFrm.grid(row=0, column=3, rowspan=2, sticky="nsew")
         rightFrm.columnconfigure(0, weight=1)
         rightFrm.rowconfigure(0, weight=1)
 
@@ -1250,7 +1253,7 @@ class InteriorBallisticsFrame(Frame):
             locFunc=self.getLocStr,
             allLLF=self.locs,
         )
-        specFrm.grid(row=0, column=2, rowspan=6, sticky="nsew")
+        specFrm.grid(row=0, column=2, rowspan=2, sticky="nsew")
         specFrm.columnconfigure(0, weight=1)
 
         # validation
@@ -1654,15 +1657,38 @@ class InteriorBallisticsFrame(Frame):
 
         # geomPlotFrm.grid_propagate(True)
 
+    def addCenterFrm(self):
+        self.tabParent = ttk.Notebook(self, padding=0)
+        self.tabParent.grid(row=1, column=1, sticky="nsew")
+
+        self.tabParent.columnconfigure(0, weight=1)
+        self.tabParent.rowconfigure(0, weight=1)
+        self.plotTab = Frame(self.tabParent)
+        self.plotTab.grid(row=0, column=0, stick="nsew")
+        self.plotTab.rowconfigure(0, weight=1)
+        self.plotTab.rowconfigure(1, weight=1)
+        self.plotTab.columnconfigure(0, weight=1)
+
+        self.tableTab = Frame(self.tabParent)
+        self.tableTab.grid(row=0, column=0, sticky="nsew")
+
+        self.tableTab.rowconfigure(0, weight=1)
+        self.tableTab.columnconfigure(0, weight=1)
+
+        self.tabParent.add(self.plotTab, text=self.getLocStr("plotTab"))
+        self.tabParent.add(self.tableTab, text=self.getLocStr("tableTab"))
+
+        self.tabParent.enable_traversal()
+
     def addPlotFrm(self):
         plotFrm = LocLabelFrame(
-            self,
+            self.plotTab,
             locKey="plotFrmLabel",
             locFunc=self.getLocStr,
             tooltipLocKey="plotText",
             allLLF=self.locs,
         )
-        plotFrm.grid(row=1, column=1, padx=0, pady=0, sticky="nsew")
+        plotFrm.grid(row=0, column=0, padx=0, pady=0, sticky="nsew")
 
         self.plotFrm = plotFrm
 
@@ -1805,13 +1831,13 @@ class InteriorBallisticsFrame(Frame):
 
     def addAuxFrm(self):
         auxFrm = LocLabelFrame(
-            self,
+            self.plotTab,
             locKey="auxFrmLabel",
             locFunc=self.getLocStr,
             tooltipLocKey="auxText",
             allLLF=self.locs,
         )
-        auxFrm.grid(row=2, column=1, padx=0, pady=0, sticky="nsew")
+        auxFrm.grid(row=1, column=0, padx=0, pady=0, sticky="nsew")
         self.auxFrm = auxFrm
 
         for i in range(2):
@@ -2272,9 +2298,12 @@ class InteriorBallisticsFrame(Frame):
 
     def addTblFrm(self):
         tblFrm = LocLabelFrame(
-            self, locKey="tblFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
+            self.tableTab,
+            locKey="tblFrmLabel",
+            locFunc=self.getLocStr,
+            allLLF=self.locs,
         )
-        tblFrm.grid(row=3, column=1, sticky="nsew")
+        tblFrm.grid(row=0, column=0, sticky="nsew")
 
         tblFrm.columnconfigure(0, weight=1)
         tblFrm.rowconfigure(0, weight=1)
@@ -2510,7 +2539,7 @@ class InteriorBallisticsFrame(Frame):
         fontWidth, _ = t_Font.measure("m"), t_Font.metrics("linespace")
 
         winWidth = self.tv.winfo_width()
-        width = round(winWidth / len(self.tv["columns"]))
+        width = winWidth // len(self.tv["columns"])
 
         for i, column in enumerate(columnList):  # foreach column
             self.tv.heading(
@@ -2778,7 +2807,7 @@ class InteriorBallisticsFrame(Frame):
 
         style.configure(
             "TNotebook.Tab",
-            padding=[10, 2],
+            # padding=[10, 2],
             font=(FONTNAME, FONTSIZE + 2, "bold"),
         )
 

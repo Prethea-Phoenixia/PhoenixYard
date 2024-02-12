@@ -641,6 +641,8 @@ ENGLISH = {
             "load density, at a certain temperature, for a particular batch.",
         )
     ),
+    "plotTab": "Plotted Data",
+    "tableTab": "Tabular Data",
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -1104,6 +1106,8 @@ CHINESE = {
             "其取值可以大于100%。",
         )
     ),
+    "plotTab": "数据作图",
+    "tableTab": "数据打表",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}
 
