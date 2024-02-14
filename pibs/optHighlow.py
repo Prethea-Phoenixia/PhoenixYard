@@ -10,6 +10,14 @@ from gun import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_EXIT
 from highlow import POINT_PEAK_HIGH, POINT_PEAK_BLEED
 
 
+class CoalescedError(ValueError):
+    pass
+
+
+class UnstartedError(ValueError):
+    pass
+
+
 class ConstrainedHighlow:
     def __init__(
         self,
@@ -250,28 +258,29 @@ class ConstrainedHighlow:
                 * 0.5
             )
 
-            return g(Z_p_i) - p_d_h
+            return g(Z_p_i)
 
-        dp_bar_probe = f_e_1(self.minWeb)
+        p_probe = f_e_1(self.minWeb)
         probeWeb = self.minWeb
 
-        if dp_bar_probe < 0:
+        if p_probe < p_d_h:
             raise ValueError(
                 "Design pressure cannot be achieved by varying" + " web down to minimum"
             )
 
-        while dp_bar_probe > 0:
+        while p_probe > p_d_h:
             probeWeb *= 2
-            dp_bar_probe = f_e_1(probeWeb)
+            p_probe = f_e_1(probeWeb)
 
         def fr(x):
-            progressQueue.put(round(x * 50))
+            progressQueue.put(round(x * 33))
 
         e_1, _ = dekker(
             f_e_1,
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
-            y_abs_tol=p_d_h * self.tol,
+            y=p_d_h,
+            y_rel_tol=self.tol,
             f_report=fr if progressQueue is not None else None,
         )  # this is the e_1 that satisifies the pressure specification.
 
@@ -280,22 +289,22 @@ class ConstrainedHighlow:
         def f_ev(expansionVolume):
             V_1 = expansionVolume
 
-            def _f_p_2(l, eta, tau_2):
+            def _f_p_2(l, eta, tau_2, point=control):
                 l_star = (V_1 - alpha * omega * eta) / S
                 p_avg = f * omega * tau_2 * eta / (S * (l_star + l))
 
-                if control == POINT_PEAK_AVG:
+                if point == POINT_PEAK_AVG:
                     return p_avg
 
                 factor_s = 1 + labda_2 * (omega * eta / (phi_1 * m))
 
-                if control == POINT_PEAK_SHOT:
+                if point == POINT_PEAK_SHOT:
                     return p_avg / factor_s
 
                 factor_b = (phi_1 * m + labda_2 * omega * eta) / (
                     phi_1 * m + labda_1 * omega * eta
                 )
-                if control == POINT_PEAK_BLEED:
+                if point == POINT_PEAK_BLEED:
                     return p_avg / factor_b
 
             Z_0, t_0, eta_0, tau_1_0, tau_2_0 = Zs[0], 0, 0, 1, 1 + theta
@@ -303,9 +312,7 @@ class ConstrainedHighlow:
             def _ode_Zs(Z, t, eta, tau_1, tau_2, _):
                 psi = f_psi_Z(Z)
                 p_1 = _f_p_1(Z, eta, tau_1, psi)
-
-                l_star = (V_1 - alpha * omega * eta) / S
-                p_2 = f * omega * tau_2 * eta / (S * l_star)
+                p_2 = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
 
                 dt = 1 / (u_1 / e_1 * p_1**n)  # dt / dZ
 
@@ -347,9 +354,7 @@ class ConstrainedHighlow:
             def abort(x, ys, record):
                 Z, _, eta, tau_1, tau_2 = x, *ys
                 p_1 = _f_p_1(Z, eta, tau_1)
-
-                l_star = (V_1 - alpha * omega * eta) / S
-                p_2 = f * omega * tau_2 * eta / (S * l_star)
+                p_2 = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
 
                 if len(record) < 1:
                     return False
@@ -381,8 +386,7 @@ class ConstrainedHighlow:
                 record_0.extend(v for v in r if v[0] not in xs)
                 record_0.sort()
 
-                l_star = (V_1 - alpha * omega * eta) / S
-                p_2 = f * omega * tau_2 * eta / (S * l_star)
+                p_2 = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
 
                 return p_2
 
@@ -397,17 +401,17 @@ class ConstrainedHighlow:
                 record=record_0,
             )
             p_1_sm = _f_p_1(Z_sm, eta, tau_1)
-            p_2_sm = _f_p_2(0, eta, tau_2)
+            p_2_sm = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
 
             if abs(p_1_sm - p_2_sm) < tol * p_1_sm and p_2_sm < p_0_s:
-                raise ValueError(
+                raise CoalescedError(
                     "Pressure levels have coalesced between high and low chamber "
                     + "before shot has started, "
-                    + f"at ({p_2_sm * 1e-6:.6f} MPa)."
+                    + f"at {p_1_sm * 1e-6:.6f} MPa (high), {p_2_sm * 1e-6:.6f} MPa (low)."
                 )
 
             elif p_2_sm < p_0_s:
-                raise ValueError(
+                raise UnstartedError(
                     f"Maximum pressure developed in low-chamber ({p_2_sm * 1e-6:.6f} MPa) "
                     + "not enough to start the shot."
                 )
@@ -441,9 +445,7 @@ class ConstrainedHighlow:
             def _ode_Z(Z, t, l, v, eta, tau_1, tau_2, _):
                 psi = f_psi_Z(Z)
                 p_1 = _f_p_1(Z, eta, tau_1, psi)
-
-                l_star = (V_1 - alpha * omega * eta) / S
-                p_2 = f * omega * tau_2 * eta / (S * (l_star + l))
+                p_2 = _f_p_2(l, eta, tau_2, POINT_PEAK_AVG)
 
                 dt = 1 / (u_1 / e_1 * p_1**n)  # dt / dZ
 
@@ -588,26 +590,13 @@ class ConstrainedHighlow:
 
             return p_p_h, p_p_l, vals_2
 
-        probeEV = self.maxEV
-        lastEV = probeEV
-        while True:
-            try:
-                dp_bar_probe = f_ev(probeEV)[1]
-                break
-            except ValueError:
-                lastEV = probeEV
-                probeEV *= 0.5
-
-        # actual maximum lies somewhere between probeEV and 2x probeEV
-
-        def findBound(func, x_probe, x_bound, tol, record=None):
+        def findBound(func, x_probe, x_bound, tol, record=None, exception=ValueError):
             if record is None:
                 record = []
-
             try:
                 record.append((x_bound, func(x_bound)))
                 return x_bound
-            except ValueError:
+            except exception:
                 x_valid = x_probe
 
                 delta = x_bound - x_probe
@@ -619,46 +608,71 @@ class ConstrainedHighlow:
                     try:
                         record.append((x_probe, func(x_probe)))
                         x_valid = x_probe
-                    except ValueError:
+                    except exception:
                         delta *= 0.5
                     finally:
                         x_probe = x_valid + delta
 
                 return x_valid
 
-        evUpperBound = findBound(f_ev, probeEV, lastEV, tol * V_0)
+        probeEV = 2 * tol * V_0
+        lastEV = tol * V_0
 
-        p_l_min = f_ev(evUpperBound)[1]
-
-        if p_l_min > p_d_l:
-            raise ValueError(
-                "Minimum pressure level in low chamber exceeds design pressure at "
-                + f"{p_l_min * 1e-3:.2f} MPa and "
-                + f"bounding volume of < {evUpperBound * 1e-3:.2f} L.",
-            )
-
-        probeEV = evUpperBound
-        lastEV = probeEV
         while True:
             try:
-                dp_bar_probe = f_ev(probeEV)[1]
+                f_ev(probeEV)[1]
+                break
+            except CoalescedError:
+                # print("CE")
                 lastEV = probeEV
-                probeEV *= 0.5
+                probeEV *= 2
+            except UnstartedError:  # overshoot
+                # print("UE")
+                delta = probeEV - lastEV
+                if delta < tol:
+                    raise ValueError(
+                        "No valid expansion volume can be found that "
+                        + "starts the shot without the pressures coalescing"
+                        + " between high and low chamber."
+                    )
+                probeEV = lastEV + 0.5 * delta
+
+        evLowerBound = findBound(f_ev, probeEV, lastEV, tol * V_0)
+        # print("evLowerBound", evLowerBound)
+
+        if progressQueue is not None:
+            progressQueue.put(50)
+
+        probeEV = evLowerBound * 2
+        lastEV = evLowerBound
+
+        while True:
+            try:
+                f_ev(probeEV)[1]
+                lastEV = probeEV
+                probeEV *= 2
             except ValueError:
                 break
 
-        evLowerBound = findBound(f_ev, probeEV, lastEV, tol * V_0)
-        p_l_max = f_ev(evLowerBound)[1]
+        evUpperBound = findBound(f_ev, lastEV, probeEV, tol * V_0)
+        # print("evUpperBound", evUpperBound)
 
-        if p_l_max < p_d_l:
+        if progressQueue is not None:
+            progressQueue.put(66)
+
+        p_l_max = f_ev(evLowerBound)[1]
+        p_l_min = f_ev(evUpperBound)[1]
+
+        if p_l_min > p_d_l or p_d_l > p_l_max:
             raise ValueError(
-                "Maximum pressure level in low chamber subceeds design pressure at "
-                + f"{p_l_max * 1e-3:.2f} MPa and "
-                + f"bounding volume of > {evLowerBound * 1e-3:.2f} L.",
+                "Range of valid solution does not allow low chamber design pressure "
+                + "to be met, "
+                + f"between V > {evLowerBound * 1e3:.3f} L, P < {p_l_max * 1e-6:.3f} MPa, "
+                + f"and V < {evUpperBound * 1e3:.3f} L, P > {p_l_min * 1e-6:.3f} MPa"
             )
 
         def fr(x):
-            progressQueue.put(round(x * 50) + 50)
+            progressQueue.put(round(x * 34) + 66)
 
         V_1, _ = dekker(
             lambda ev: f_ev(ev)[1],
@@ -688,32 +702,30 @@ class ConstrainedHighlow:
 
         # l_1 = V_1 / S
 
-        def _f_p_2(l, eta, tau_2):
+        def _f_p_2(l, eta, tau_2, point=control):
             l_star = (V_1 - alpha * omega * eta) / S
             p_avg = f * omega * tau_2 * eta / (S * (l_star + l))
 
             return p_avg
 
-            if control == POINT_PEAK_AVG:
+            if point == POINT_PEAK_AVG:
                 return p_avg
 
             factor_s = 1 + labda_2 * (omega * eta / (phi_1 * m))
 
-            if control == POINT_PEAK_SHOT:
+            if point == POINT_PEAK_SHOT:
                 return p_avg / factor_s
 
             factor_b = (phi_1 * m + labda_2 * omega * eta) / (
                 phi_1 * m + labda_1 * omega * eta
             )
-            if control == POINT_PEAK_BLEED:
+            if point == POINT_PEAK_BLEED:
                 return p_avg / factor_b
 
         def _ode_v(v, t, Z, l, eta, tau_1, tau_2, _):
             psi = f_psi_Z(Z)
             p_1 = _f_p_1(Z, eta, tau_1, psi)
-
-            l_star = (V_1 - alpha * omega * eta) / S
-            p_2 = f * omega * tau_2 * eta / (S * (l_star + l))
+            p_2 = _f_p_2(l, eta, tau_2, POINT_PEAK_AVG)
 
             if c_a != 0 and v > 0:
                 k = k_1  # gamma

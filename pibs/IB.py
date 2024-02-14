@@ -221,14 +221,9 @@ class InteriorBallisticsFrame(Frame):
         self.addCenterFrm()
         self.addRightFrm()
 
-        self.addPlotFrm()
-        self.addAuxFrm()
         self.addSpecFrm()
-        self.addTblFrm()
 
         self.addGeomPlot()
-        self.addFigPlot()
-        self.addAuxPlot()
 
         self.ambCallback()
         self.cvlfCallback()
@@ -1680,6 +1675,13 @@ class InteriorBallisticsFrame(Frame):
 
         self.tabParent.enable_traversal()
 
+        self.addPlotFrm()
+        self.addAuxFrm()
+        self.addTblFrm()
+
+        self.addFigPlot()
+        self.addAuxPlot()
+
     def addPlotFrm(self):
         plotFrm = LocLabelFrame(
             self.plotTab,
@@ -2307,11 +2309,14 @@ class InteriorBallisticsFrame(Frame):
 
         tblFrm.columnconfigure(0, weight=1)
         tblFrm.rowconfigure(0, weight=1)
+
+        tblPlaceFrm = Frame(tblFrm)
+        tblPlaceFrm.grid(row=0, column=0, sticky="nsew")
         # configure the numerical
         self.tv = ttk.Treeview(
-            tblFrm, selectmode="browse", height=8
+            tblPlaceFrm, selectmode="browse", height=8
         )  # this set the nbr. of values
-        self.tv.grid(row=0, column=0, sticky="nsew")
+        self.tv.place(relwidth=1, relheight=1)
 
         vertscroll = ttk.Scrollbar(tblFrm, orient="vertical")  # create a scrollbar
         vertscroll.configure(command=self.tv.yview)  # make it vertical
@@ -3004,12 +3009,10 @@ def main():
     # print(font.families())
 
     dpi = root.winfo_fpixels("1i")
-
     # Tk was originally developed for a dpi of 72
     # root.tk.call("tk", "scaling", "-displayof", ".", dpi / 72.0)
     scale = 1.0 * dpi / 72.0
     root.tk.call("tk", "scaling", scale)
-
     root.tk.call("lappend", "auto_path", resolvepath("ui/awthemes-10.4.0"))
     root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
 
@@ -3024,8 +3027,8 @@ def main():
     InteriorBallisticsFrame(
         root, menubar, dpi, defaultLang="English" if loc != "zh_CN" else "中文"
     )
+    # root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
     root.state("zoomed")
-
     root.bind("<Escape>", lambda event: root.state("normal"))
     root.bind("<F11>", lambda event: root.state("zoomed"))
     # root.resizable(True, True)

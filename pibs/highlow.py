@@ -522,7 +522,7 @@ class Highlow:
             raise ValueError(
                 "Pressure levels have coalesced between high and low chamber "
                 + "before shot has started, "
-                + f"at ({p_2_sm * 1e-6:.6f} MPa)."
+                + f"at {p_1_sm * 1e-6:.6f} MPa (high), {p_2_sm * 1e-6:.6f} MPa (low)."
             )
 
         elif p_1_sm > p_max:
