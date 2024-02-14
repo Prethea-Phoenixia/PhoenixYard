@@ -359,7 +359,12 @@ class ConstrainedHighlow:
                 if len(record) < 1:
                     return False
 
-                return p_2 > p_0_s or (p_1 - p_2 < tol * p_1)
+                ox, oys = record[-1]
+                oZ, _, oeta, otau_1, _ = ox, *oys
+                op_1 = _f_p_1(oZ, oeta, otau_1)
+                # op_2 = _f_p_2(0, oeta, otau_2, POINT_PEAK_AVG)
+
+                return p_2 > p_0_s or (p_1 - p_2 < tol * p_1 and p_1 > op_1)
 
             def g(Z):
                 i = record_0.index([v for v in record_0 if v[0] <= Z][-1])
@@ -403,7 +408,15 @@ class ConstrainedHighlow:
             p_1_sm = _f_p_1(Z_sm, eta, tau_1)
             p_2_sm = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
 
-            if abs(p_1_sm - p_2_sm) < tol * p_1_sm and p_2_sm < p_0_s:
+            ox, oys = record_0[-1]
+            oZ, _, oeta, otau_1, _ = ox, *oys
+            op_1_sm = _f_p_1(oZ, oeta, otau_1)
+
+            if (
+                abs(p_1_sm - p_2_sm) < tol * p_1_sm
+                and p_2_sm < p_0_s
+                and p_1_sm > op_1_sm
+            ):
                 raise CoalescedError(
                     "Pressure levels have coalesced between high and low chamber "
                     + "before shot has started, "
