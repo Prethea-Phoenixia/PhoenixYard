@@ -561,7 +561,7 @@ ENGLISH = {
     "figShotBase": "Shot Base\nPressure\nMPa",
     "figTgtV": "Velocity Target",
     "figTgtP": "Pressure Target",
-    "figPsi": "Volume Burnup",
+    "figPsi": "Burnup Fraction",
     "figRecoil": "Recoil\nMN",
     "solLabel": "Solution",
     "atmosLabel": "Aerodynamic Drag",
