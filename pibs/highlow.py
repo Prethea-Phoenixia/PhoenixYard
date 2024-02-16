@@ -1,7 +1,7 @@
 from math import pi, log, inf
 from num import gss, RKF78, cubic, bisect, dekker
 
-
+from gun import Gun._Vrho_k
 from gun import DOMAIN_TIME, DOMAIN_LENG
 from gun import (
     POINT_START,
@@ -1100,20 +1100,20 @@ class Highlow:
         # calculate a pressure tracing.
         p_trace = []
 
-        L_h = self.l_0 / self.chi_k  # physical length of the high pressure chamber
-        L_l = self.l_1 / self.chi_k  # low pressure chamber
+        l_h = self.l_0 / self.chi_k  # physical length of the high pressure chamber
+        l_l = self.l_1 / self.chi_k  # low pressure chamber
 
         for line in data:
             tag, t, l, psi, v, p_h, p_b, p, p_s, T_1, T_2, eta = line
             p_line = []
             for i in range(step):
-                x = i / step * (l + L_l) + L_h
+                x = i / step * (l + l_l) + l_h
                 p_x = self.toPx(l, p_h, p_b, p_s, x)
                 p_line.append((x, p_x))
 
-            p_line.append((l + L_l + L_h, p_s))
+            p_line.append((l + l_l + l_h, p_s))
             p_trace.append((tag, psi, T_2, p_line))
-            p_trace.append((tag, psi, T_1, [(0, p_h), (L_h * (1 - tol), p_h)]))
+            p_trace.append((tag, psi, T_1, [(0, p_h), (l_h * (1 - tol), p_h)]))
 
         return data, error, p_trace, [None, None, None, None]
 
@@ -1158,24 +1158,47 @@ class Highlow:
 
     def toPx(self, l, p_h, p_b, p_s, x):
         """
-        | L_h | L_l |======l======
+        | l_h | l_l |======l======
         """
-        L_h = self.l_0 / self.chi_k  # physical length of the high pressure chamber
-        L_l = self.l_1 / self.chi_k  # low pressure chamber
+        l_h = self.l_0 / self.chi_k  # physical length of the high pressure chamber
+        l_l = self.l_1 / self.chi_k  # low pressure chamber
 
-        if x < L_h:
+        if x < l_h:
             p_x = p_h
         else:
             r = (
-                self.chi_k * (x - L_h)
-                if x < (L_l + L_h)
-                else (x - L_l - L_h) + self.l_1
+                self.chi_k * (x - l_h)
+                if x < (l_l + l_h)
+                else (x - l_l - l_h) + self.l_1
             )
             k = (r / (self.l_1 + l)) ** 2
 
             p_x = p_s * k + p_b * (1 - k)
 
         return p_x
+
+    def getStructural(self, data, step, tol):
+        r = 0.5 * self.caliber
+        l_g = self.l_g
+        chi_k = self.chi_k
+        l_h = self.l_0 / chi_k
+        l_l = self.l_1 / chi_k
+        
+        
+        sigma = self.material.Y
+        S = self.S
+
+        r_b = r * chi_k**0.5  # radius of breech
+        S_b = S * chi_k  # area of breech
+
+        x_probes = (
+            [i / step * l_c for i in range(step)]
+            + [l_c * (1 - tol)]
+            + [i / step * l_g + l_c for i in range(step)]
+            + [l_g + l_c]
+        )
+        p_probes = [0] * len(x_probes)
+
 
 
 if __name__ == "__main__":
