@@ -1,7 +1,6 @@
 from tkinter import StringVar, Toplevel, Label, LEFT, SOLID
 import tkinter.font as tkFont
 
-
 # import textwrap
 
 
@@ -30,7 +29,7 @@ class ToolTip(object):
         tw.wm_overrideredirect(1)
         root = self.widget.winfo_toplevel()
 
-        t_Font = tkFont.Font(family="Sarasa Fixed SC", size=9)
+        t_Font = tkFont.Font(family="Sarasa Fixed SC", size=8)
 
         # we use a fixed width font so any char will do
         columnWidth = 60

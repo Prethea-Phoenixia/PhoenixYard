@@ -83,7 +83,7 @@ USE_CV = "USE_CV"
 USE = {USE_LF: USE_LF, USE_CV: USE_CV}
 
 FONTNAME = "Sarasa Fixed SC"
-FONTSIZE = 9
+FONTSIZE = 8
 
 GEOM_CONTEXT = {
     "font.size": FONTSIZE,
@@ -420,6 +420,7 @@ class InteriorBallisticsFrame(Frame):
 
         self.tabParent.tab(self.plotTab, text=self.getLocStr("plotTab"))
         self.tabParent.tab(self.tableTab, text=self.getLocStr("tableTab"))
+        self.tabParent.tab(self.errorTab, text=self.getLocStr("errorTab"))
 
         self.updateTable()
         self.updateGeom()
@@ -563,30 +564,8 @@ class InteriorBallisticsFrame(Frame):
             allDisps=self.locs,
         )
 
-        i += 2
-        parFrm.rowconfigure(i, weight=1)
-        errorFrm = LocLabelFrame(
-            parFrm,
-            locKey="errFrmLabel",
-            locFunc=self.getLocStr,
-            allLLF=self.locs,
-        )
-        errorFrm.grid(row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
-        errorFrm.columnconfigure(0, weight=1)
-        errorFrm.rowconfigure(0, weight=1)
-
-        errScroll = ttk.Scrollbar(errorFrm, orient="vertical")
-        errScroll.grid(row=0, column=1, sticky="nsew")
-        self.errorText = Text(
-            errorFrm,
-            yscrollcommand=errScroll.set,
-            wrap="word",
-            height=6,
-            width=0,
-            font=(FONTNAME, FONTSIZE),
-        )
-
-        self.errorText.grid(row=0, column=0, sticky="nsew")
+        # i += 2
+        # parFrm.rowconfigure(i, weight=1)
 
     def addRightFrm(self):
         rightFrm = ttk.Frame(self)
@@ -1228,6 +1207,12 @@ class InteriorBallisticsFrame(Frame):
                 "N/A" if breech_nozzle_mass is None else formatMass(breech_nozzle_mass)
             )
 
+            if self.tabParent.index(self.tabParent.select()) == 2:
+                self.tabParent.select(self.plotTab)
+
+        else:
+            self.tabParent.select(self.errorTab)
+
         self.updateTable()
         self.updateError()
         self.updateFigPlot()
@@ -1658,21 +1643,50 @@ class InteriorBallisticsFrame(Frame):
 
         self.tableTab = Frame(self.tabParent)
         self.tableTab.grid(row=0, column=0, sticky="nsew")
-
         self.tableTab.rowconfigure(0, weight=1)
         self.tableTab.columnconfigure(0, weight=1)
 
+        self.errorTab = Frame(self.tabParent)
+        self.errorTab.grid(row=0, column=0, sticky="nsew")
+        self.errorTab.rowconfigure(0, weight=1)
+        self.errorTab.columnconfigure(0, weight=1)
+
         self.tabParent.add(self.plotTab, text=self.getLocStr("plotTab"))
         self.tabParent.add(self.tableTab, text=self.getLocStr("tableTab"))
+        self.tabParent.add(self.errorTab, text=self.getLocStr("errorTab"))
 
         self.tabParent.enable_traversal()
 
         self.addPlotFrm()
         self.addAuxFrm()
         self.addTblFrm()
+        self.addErrFrm()
 
         self.addFigPlot()
         self.addAuxPlot()
+
+    def addErrFrm(self):
+        errorFrm = LocLabelFrame(
+            self.errorTab,
+            locKey="errFrmLabel",
+            locFunc=self.getLocStr,
+            allLLF=self.locs,
+        )
+        errorFrm.grid(row=0, column=0, columnspan=3, sticky="nsew")
+        errorFrm.columnconfigure(0, weight=1)
+        errorFrm.rowconfigure(0, weight=1)
+
+        errScroll = ttk.Scrollbar(errorFrm, orient="vertical")
+        errScroll.grid(row=0, column=1, sticky="nsew")
+        self.errorText = Text(
+            errorFrm,
+            yscrollcommand=errScroll.set,
+            wrap="word",
+            height=6,
+            width=0,
+            font=(FONTNAME, FONTSIZE),
+        )
+        self.errorText.grid(row=0, column=0, sticky="nsew")
 
     def addPlotFrm(self):
         plotFrm = LocLabelFrame(
@@ -1682,7 +1696,7 @@ class InteriorBallisticsFrame(Frame):
             tooltipLocKey="plotText",
             allLLF=self.locs,
         )
-        plotFrm.grid(row=0, column=0, padx=0, pady=0, sticky="nsew")
+        plotFrm.grid(row=0, column=0, sticky="nsew")
 
         self.plotFrm = plotFrm
 
@@ -1831,7 +1845,7 @@ class InteriorBallisticsFrame(Frame):
             tooltipLocKey="auxText",
             allLLF=self.locs,
         )
-        auxFrm.grid(row=1, column=0, padx=0, pady=0, sticky="nsew")
+        auxFrm.grid(row=1, column=0, sticky="nsew")
         self.auxFrm = auxFrm
 
         for i in range(2):
@@ -2393,8 +2407,6 @@ class InteriorBallisticsFrame(Frame):
         self.callback()
         self.cvlfConsisCallback()  # update the chamber volume / load fraction with current data
 
-        return True
-
     def updateGeom(self, *args):
         geom = self.dropGeom.getObj()
         if geom == SimpleGeometry.SPHERE:
@@ -2430,8 +2442,6 @@ class InteriorBallisticsFrame(Frame):
             self.grdR.reLocalize("pdtalLabel", "pDiaRText")
 
         self.callback()
-
-        return True
 
     def updateGeomPlot(self):
         with mpl.rc_context(GEOM_CONTEXT):

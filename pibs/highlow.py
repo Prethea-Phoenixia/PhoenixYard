@@ -1,7 +1,7 @@
 from math import pi, log, inf
 from num import gss, RKF78, cubic, bisect, dekker
 
-from gun import Gun._Vrho_k
+from gun import Gun
 from gun import DOMAIN_TIME, DOMAIN_LENG
 from gun import (
     POINT_START,
@@ -1183,8 +1183,7 @@ class Highlow:
         chi_k = self.chi_k
         l_h = self.l_0 / chi_k
         l_l = self.l_1 / chi_k
-        
-        
+
         sigma = self.material.Y
         S = self.S
 
@@ -1198,7 +1197,6 @@ class Highlow:
             + [l_g + l_c]
         )
         p_probes = [0] * len(x_probes)
-
 
 
 if __name__ == "__main__":

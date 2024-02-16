@@ -645,6 +645,7 @@ ENGLISH = {
     ),
     "plotTab": "Plotted Data",
     "tableTab": "Tabular Data",
+    "errorTab": "Exceptions",
 }
 CHINESE = {
     "fileLabel": "文件",
@@ -1112,6 +1113,7 @@ CHINESE = {
     ),
     "plotTab": "数据作图",
     "tableTab": "数据打表",
+    "errorTab": "运行例外",
 }
 STRING = {"English": ENGLISH, "中文": CHINESE}
 
