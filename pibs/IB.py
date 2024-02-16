@@ -1,5 +1,5 @@
 from tkinter import Frame, Menu, Text, filedialog, messagebox, StringVar, IntVar
-from tkinter import Tk, ttk, TOP, BOTH
+from tkinter import Tk, ttk
 import tkinter.font as tkFont
 
 from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
@@ -1365,18 +1365,9 @@ class InteriorBallisticsFrame(Frame):
         self.dropProp.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2)
 
         specScroll = ttk.Scrollbar(propFrm, orient="vertical")
-        specScroll.grid(
-            row=1,
-            rowspan=2,
-            column=1,
-            sticky="nsew",
-        )
+        specScroll.grid(row=1, rowspan=2, column=1, sticky="nsew")
         specHScroll = ttk.Scrollbar(propFrm, orient="horizontal")
-        specHScroll.grid(
-            row=2,
-            column=0,
-            sticky="nsew",
-        )
+        specHScroll.grid(row=2, column=0, sticky="nsew")
 
         self.specs = Text(
             propFrm,
@@ -2328,22 +2319,23 @@ class InteriorBallisticsFrame(Frame):
 
         tblPlaceFrm = Frame(tblFrm)
         tblPlaceFrm.grid(row=0, column=0, sticky="nsew")
-        # configure the numerical
+
+        vertscroll = ttk.Scrollbar(tblFrm, orient="vertical")  # create a scrollbar
+        vertscroll.grid(row=0, rowspan=2, column=1, sticky="nsew")
+        horzscroll = ttk.Scrollbar(tblFrm, orient="horizontal")
+        horzscroll.grid(row=1, column=0, sticky="nsew")
+
         self.tv = ttk.Treeview(
-            tblPlaceFrm, selectmode="browse", height=8
+            tblPlaceFrm,
+            selectmode="browse",
+            yscrollcommand=vertscroll.set,
+            xscrollcommand=horzscroll.set,
         )  # this set the nbr. of values
         self.tv.place(relwidth=1, relheight=1)
 
-        vertscroll = ttk.Scrollbar(tblFrm, orient="vertical")  # create a scrollbar
         vertscroll.configure(command=self.tv.yview)  # make it vertical
-        vertscroll.grid(row=0, rowspan=2, column=1, sticky="nsew")
 
-        horzscroll = ttk.Scrollbar(tblFrm, orient="horizontal")
         horzscroll.configure(command=self.tv.xview)
-        horzscroll.grid(row=1, column=0, sticky="nsew")
-        self.tv.configure(
-            yscrollcommand=vertscroll.set, xscrollcommand=horzscroll.set
-        )  # assign the scrollbar to the Treeview Widget
 
     def updateSpec(self, *args):
         self.specs.config(state="normal")
@@ -3042,12 +3034,12 @@ def main():
         root, menubar, dpi, defaultLang="English" if loc != "zh_CN" else "中文"
     )
     # root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
+    # root.geometry("1600x1200")
+    # root.minsize(1600, 1200)  # set minimum size
     root.state("zoomed")
     root.bind("<Escape>", lambda event: root.state("normal"))
     root.bind("<F11>", lambda event: root.state("zoomed"))
     # root.resizable(True, True)
-    # root.geometry("1600x900")
-    # root.minsize(root.winfo_width(), root.winfo_height())  # set minimum size
 
     root.mainloop()
 
