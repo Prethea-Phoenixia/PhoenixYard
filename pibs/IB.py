@@ -1652,7 +1652,7 @@ class InteriorBallisticsFrame(Frame):
         self.tabParent.rowconfigure(0, weight=1)
         self.plotTab = Frame(self.tabParent)
         self.plotTab.grid(row=0, column=0, stick="nsew")
-        self.plotTab.rowconfigure(0, weight=1)
+        self.plotTab.rowconfigure(0, weight=2)
         self.plotTab.rowconfigure(1, weight=1)
         self.plotTab.columnconfigure(0, weight=1)
 
