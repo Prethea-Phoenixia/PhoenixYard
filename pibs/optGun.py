@@ -107,7 +107,7 @@ class Constrained:
         cc=None,
         it=0,
         lengthGun=None,
-        known_bore=False,
+        knownBore=False,
         suppress=False,  # suppress design velocity exceeded before peak pressure check
         progressQueue=None,
         **_,
@@ -183,7 +183,7 @@ class Constrained:
 
         gamma_1 = self.ambientGamma
 
-        if v_j < v_d and not known_bore:
+        if v_j < v_d and not knownBore:
             raise ValueError(
                 "Propellant load too low to achieve design velocity. "
                 + " The 2nd ballistic limit for this loading conditions is"
@@ -400,7 +400,7 @@ class Constrained:
                 )
             )
 
-        if known_bore:
+        if knownBore:
             if progressQueue is not None:
                 progressQueue.put(100)
             return e_1, lengthGun
@@ -523,7 +523,7 @@ class Constrained:
                 cc=cc_n,
                 it=it + 1,
                 lengthGun=l_bar_g * l_0,
-                known_bore=known_bore,
+                knownBore=knownBore,
                 suppress=suppress,
                 progressQueue=progressQueue,
             )
@@ -573,7 +573,7 @@ class Constrained:
                 chargeMassRatio=chargeMassRatio,
                 labda_1=labda_1,
                 labda_2=labda_2,
-                known_bore=False,
+                knownBore=False,
                 suppress=True,
             )
 

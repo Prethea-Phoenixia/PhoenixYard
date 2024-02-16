@@ -95,7 +95,7 @@ class ConstrainedHighlow:
         # portAreaRatio,
         portArea,
         lengthGun=None,
-        known_bore=False,
+        knownBore=False,
         suppress=False,
         progressQueue=None,
         **_,
@@ -708,7 +708,7 @@ class ConstrainedHighlow:
 
         # print("high pressure actual", p_h_act, "low pressure actual", p_l_act)
 
-        if known_bore:
+        if knownBore:
             if progressQueue is not None:
                 progressQueue.put(100)
             return e_1, V_1, lengthGun

@@ -797,7 +797,7 @@ class InteriorBallisticsFrame(Frame):
             col=0,
             labelLocKey="vTgtLabel",
             unitText="m/s",
-            default="1200.0",
+            default="1000.0",
             validation=validationNN,
             locFunc=self.getLocStr,
             allInputs=self.locs,
@@ -823,7 +823,7 @@ class InteriorBallisticsFrame(Frame):
             col=0,
             labelLocKey="pHTgtLabel",
             unitText="MPa",
-            default="100.0",
+            default="200.0",
             validation=validationNN,
             tooltipLocKey="pHTgtText",
             locFunc=self.getLocStr,
@@ -836,7 +836,7 @@ class InteriorBallisticsFrame(Frame):
             col=0,
             labelLocKey="pLTgtLabel",
             unitText="MPa",
-            default="25.0",
+            default="50.0",
             validation=validationNN,
             tooltipLocKey="pLTgtText",
             locFunc=self.getLocStr,
@@ -1055,7 +1055,8 @@ class InteriorBallisticsFrame(Frame):
                 "loadFraction": loadFraction,
                 "step": int(self.step.get()),
                 "maxInset": maxInset,
-                "autofrettage": autofrettage
+                "autofrettage": autofrettage,
+                "knownBore": lock
             }
             # fmt: on
             if atmosphere:
@@ -1330,7 +1331,7 @@ class InteriorBallisticsFrame(Frame):
             row=i,
             labelLocKey="chgLabel",
             unitText="kg",
-            default="1.0",
+            default="0.5",
             validation=validationNN,
             tooltipLocKey="chgText",
             locFunc=self.getLocStr,
@@ -2081,13 +2082,28 @@ class InteriorBallisticsFrame(Frame):
                     xs, Pss, "yellowgreen", label=self.getLocStr("figShotBase")
                 )
 
-            Pd = float(self.pTgt.get())
-            self.axP.axhline(
-                Pd,
-                c="tab:green",
-                linestyle=":",
-                label=self.getLocStr("figTgtP"),
-            )
+            # TODO: add case for HL here.
+
+            if gunType == CONVENTIONAL or gunType == RECOILESS:
+                self.axP.axhline(
+                    float(self.pTgt.get()),
+                    c="tab:green",
+                    linestyle=":",
+                    label=self.getLocStr("figTgtP"),
+                )
+            elif gunType == HIGHLOW:
+                self.axP.axhline(
+                    float(self.pHTgt.get()),
+                    c="seagreen",
+                    linestyle=":",
+                    label=self.getLocStr("figHTgtP"),
+                )
+                self.axP.axhline(
+                    float(self.pLTgt.get()),
+                    c="tab:green",
+                    linestyle=":",
+                    label=self.getLocStr("figLTgtP"),
+                )
 
             if self.plotVel.get():
                 self.axv.plot(
@@ -2916,12 +2932,10 @@ def calculate(jobQueue, progressQueue, kwargs):
                 kwargs.update({"chamberVolume": chamberVolume})
             else:
                 if gunType == CONVENTIONAL or gunType == RECOILESS:
-                    e_1, l_g = constrained.solve(
-                        **kwargs, known_bore=lock, progressQueue=progressQueue
-                    )
+                    e_1, l_g = constrained.solve(**kwargs, progressQueue=progressQueue)
                 elif gunType == HIGHLOW:
                     e_1, V_1, l_g = constrained.solve(
-                        **kwargs, known_bore=lock, progressQueue=progressQueue
+                        **kwargs, progressQueue=progressQueue
                     )
                     kwargs.update({"expansionVolume": V_1})
 

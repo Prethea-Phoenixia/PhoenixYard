@@ -98,7 +98,7 @@ class ConstrainedRecoiless:
         loadFraction,
         chargeMassRatio,
         lengthGun=None,
-        known_bore=False,
+        knownBore=False,
         suppress=False,  # suppress design velocity exceeded before peak pressure check
         progressQueue=None,
         **_,
@@ -180,7 +180,7 @@ class ConstrainedRecoiless:
 
         gamma_1 = self.ambientGamma
 
-        if v_j < v_d and not known_bore:
+        if v_j < v_d and not knownBore:
             raise ValueError(
                 "Propellant load too low to achieve design velocity. "
                 + " The 2nd ballistic limit for this loading conditions is"
@@ -451,7 +451,7 @@ class ConstrainedRecoiless:
             """
             Z_i = Z_b + tol
 
-        if known_bore:
+        if knownBore:
             if progressQueue is not None:
                 progressQueue.put(100)
             return e_1, lengthGun
@@ -604,7 +604,7 @@ class ConstrainedRecoiless:
             e_1, l_g = solve(
                 loadFraction=lf,
                 chargeMassRatio=chargeMassRatio,
-                known_bore=False,
+                knownBore=False,
                 suppress=True,
             )
             return e_1, (l_g + l_0), l_g
