@@ -461,7 +461,6 @@ class Gun:
         def abort(x, ys, record):
             Z = x
             t_bar, l_bar, v_bar = ys
-
             p_bar = self._f_p_bar(Z, l_bar, v_bar)
 
             return l_bar > l_g_bar or p_bar > p_bar_max or v_bar < 0
@@ -509,7 +508,7 @@ class Gun:
 
                     raise ValueError(
                         "Squib load condition detected: Shot stopped in bore.\n"
-                        + "Shot is last calculated at:.0f} mm at {:.0f} mm/s after {:.0f} ms".format(
+                        + "Shot is last calculated at {:.0f} mm at {:.0f} mm/s after {:.0f} ms".format(
                             l_bar * self.l_0 * 1e3,
                             v_bar * self.v_j * 1e3,
                             t_bar * tScale * 1e3,
@@ -602,7 +601,9 @@ class Gun:
             if v_bar_e <= 0:
                 raise ValueError(
                     "Squib load condition detected post burnout:"
-                    + " Round stopped in bore at {:}".format(l_bar * self.l_0)
+                    + " Round stopped in bore at {:.0f} mm".format(
+                        l_bar * self.l_0 * 1e3
+                    )
                 )
 
         record.extend(
@@ -933,7 +934,7 @@ class Gun:
             #     traceback.format_exception(exc_type, exc_value, exc_traceback)
             # )
             # print(errMsg)
-            structure = [None, None, None, None]
+            structure = [None, None, None]
 
         return data, error, p_trace, structure
 
@@ -1048,6 +1049,8 @@ class Gun:
             # x = x_probes[i]
             p_probes[i] = p * self.ssf
 
+        rho_probes = []
+        V = 0
         if self.is_af:
             """
             m : r_a / r_i
@@ -1063,14 +1066,7 @@ class Gun:
             x_c, p_c = x_probes[:i], p_probes[:i]  # c for chamber
             x_b, p_b = x_probes[i:], p_probes[i:]  # b for barrel
 
-            V_c, rho_c = Gun._Vrho_k(
-                x_c,
-                p_c,
-                [S * chi_k for _ in x_c],
-                sigma,
-                tol,
-            )
-
+            V_c, rho_c = Gun._Vrho_k(x_c, p_c, [S * chi_k for _ in x_c], sigma, tol)
             V_b, rho_b = Gun._Vrho_k(
                 x_b,
                 p_b,
@@ -1107,8 +1103,6 @@ class Gun:
             )
             (x from -1 to 1)
             """
-            rho_probes = []
-            V = 0
 
             for p in p_probes:
                 y = p / sigma
@@ -1127,37 +1121,34 @@ class Gun:
                 rho_0 = rho_probes[i]
                 rho_1 = rho_probes[i + 1]
                 dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
-                if x_1 <= l_c:
+                if x_1 < l_c:
                     V += dV * chi_k
                 else:
                     V += dV
 
         P__sigma = p_probes[0] / sigma
         R2__rb = rho_probes[0]
+        R2 = R2__rb * r_b
 
         R1__R2 = max((1 - 1 / R2__rb * (P__sigma) ** 0.5) ** 0.5, R2__rb**-1)
         R1__rb = R1__R2 * R2__rb
         L__rb = 0.5 * (
             P__sigma**0.5 * (R1__rb**2 / P__sigma - R1__R2**2 / (1 - R1__R2**2)) ** -0.5
         )
-
-        L = L__rb * r_b * 2  # *2 to account for screw interruption
         R1 = R1__rb * r_b
-
-        bore = []
+        L = max(L__rb * r_b, 2 * R1)
+        hull = [(-L, R1, R2), (0.0, R1, R2)]
         for x, rho in zip(x_probes, rho_probes):
             if x < l_c:
-                bore.append((x, rho * r_b))
+                hull.append((x, r_b, rho * r_b))
             else:
-                bore.append((x, rho * r))
+                hull.append((x, r, rho * r))
 
         bore_mass = (V + (R2__rb**2 - R1__rb**2) * S_b * L) * self.material.rho
 
-        breech = [(-L, R1), (0.0, R1)]
-
         breech_mass = R1__rb**2 * S_b * L * self.material.rho
 
-        return bore_mass, bore, breech_mass, breech
+        return bore_mass, breech_mass, hull
 
     @staticmethod
     def _Vrho_k(x_s, p_s, S_s, sigma, tol, k_max=None, k_min=None, index=0, p_ref=None):

@@ -1201,7 +1201,7 @@ class InteriorBallisticsFrame(Frame):
 
             self.gm.set(formatMass(bore_mass) if bore_mass is not None else "N/A")
 
-            breech_nozzle_mass = self.structure[2]
+            breech_nozzle_mass = self.structure[1]
 
             self.bm.set(
                 "N/A" if breech_nozzle_mass is None else formatMass(breech_nozzle_mass)
@@ -1621,7 +1621,7 @@ class InteriorBallisticsFrame(Frame):
             self.geomCanvas = FigureCanvasTkAgg(fig, master=geomPlotFrm)
             self.geomCanvas.draw_idle()
             # self.geomCanvas.get_tk_widget().grid(
-            #     row=0, column=0, padx=0, pady=0, sticky="nsew"
+            #     row=0, column=0,  sticky="nsew"
             # )
             self.geomCanvas.get_tk_widget().place(relheight=1, relwidth=1)
             # self.geomCanvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=False)
@@ -2244,12 +2244,9 @@ class InteriorBallisticsFrame(Frame):
             self.auxAx.set_xlim(left=0, right=x_max)
             self.auxAx.set_ylim(bottom=0, top=y_max * 1.15)
 
-            l_c = gun.l_c
-            chi_k = gun.chi_k
-            r = 0.5 * self.kwargs["caliber"] * 1e3
-            self.auxAx.plot(
-                (l_c, l_c), (0, y_max * 1.15), c="grey", ls="dotted", zorder=1.5
-            )
+            # self.auxAx.plot(
+            #     (l_c, l_c), (0, y_max * 1.15), c="grey", ls="dotted", zorder=1.5
+            # )
 
             tkw = dict(size=4, width=1.5)
             self.auxAx.tick_params(axis="y", colors="tab:green", **tkw)
@@ -2257,62 +2254,24 @@ class InteriorBallisticsFrame(Frame):
 
             self.auxAx.set_xlabel(self.getLocStr("figAuxDomain"))
 
-            HTrace = self.structure[1]
+            HTrace = self.structure[2]
 
             if HTrace is not None and self.traceHull.get():
-                xHull, rHull = zip(*HTrace)
-                rHull = [r * 1e3 for r in rHull]
-                inline = [chi_k**0.5 * r if x < l_c else r for x in xHull]
-                rRim = rHull[0]
+                xHull, rIn, rOut = zip(*HTrace)
+                rIn, rOut = [r * 1e3 for r in rIn], [r * 1e3 for r in rOut]
 
-                BTrace = self.structure[3]
-                if gunType == CONVENTIONAL and BTrace is not None:
-                    xBreech, rBreech = zip(*BTrace)
-                    rBreech = [r * 1e3 for r in rBreech]
-                    rFace = rBreech[-1]
-
-                    self.auxAxH.plot(xBreech, rBreech, c="tab:green")
-                    self.auxAxH.fill_between(
-                        xBreech,
-                        rBreech,
-                        [0 for _ in xBreech],
-                        alpha=0.5 if self.tracePress.get() else 0.8,
-                        color="tab:green",
-                    )
-                    self.auxAx.set_xlim(left=min(xBreech))
-
-                    xHull = list(xBreech) + list(xHull)
-                    rHull = [rRim for _ in xBreech] + rHull
-                    inline = [rFace for _ in xBreech] + inline
-
-                elif gunType == RECOILESS and BTrace is not None:
-                    xNozzle, rIn, rOut = zip(*BTrace)
-                    rIn = [r * 1e3 for r in rIn]
-                    rOut = [r * 1e3 for r in rOut]
-
-                    self.auxAxH.plot(xNozzle, rIn, c="tab:green")
-                    self.auxAxH.plot(xNozzle, rOut, c="tab:green")
-
-                    self.auxAxH.fill_between(
-                        xNozzle,
-                        rIn,
-                        rOut,
-                        alpha=0.5 if self.tracePress.get() else 0.8,
-                        color="tab:green",
-                    )
-
-                    self.auxAx.set_xlim(left=min(xNozzle))
-
-                self.auxAxH.plot(xHull, rHull, c="tab:blue")
-                self.auxAxH.plot(xHull, inline, c="tab:blue")
+                self.auxAxH.plot(xHull, rIn, c="tab:blue")
+                self.auxAxH.plot(xHull, rOut, c="tab:blue")
 
                 self.auxAxH.fill_between(
                     xHull,
-                    rHull,
-                    inline,
+                    rIn,
+                    rOut,
                     alpha=0.5 if self.tracePress.get() else 0.8,
                     color="tab:blue",
                 )
+
+                self.auxAx.set_xlim(left=min(xHull))
 
             self.auxAxH.set_ylim(bottom=0)
 

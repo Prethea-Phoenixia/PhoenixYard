@@ -30,10 +30,10 @@ class Recoiless:
         lengthGun,
         chambrage,
         nozzleExpansion,
-        structuralMaterial=None,
-        structuralSafetyFactor=1.1,
         dragCoefficient=0,
         nozzleEfficiency=0.92,
+        structuralMaterial=None,
+        structuralSafetyFactor=1.1,
         autofrettage=True,
         **_,
     ):
@@ -80,11 +80,11 @@ class Recoiless:
         self.phi_1 = 1 / (1 - dragCoefficient)  # drag work coefficient
         self.phi = self.phi_1 + self.omega / (3 * self.m)
 
+        self.v_j = (2 * self.f * self.omega / (self.theta * self.phi * self.m)) ** 0.5
+
         self.material = structuralMaterial
         self.ssf = structuralSafetyFactor
         self.is_af = autofrettage
-
-        self.v_j = (2 * self.f * self.omega / (self.theta * self.phi * self.m)) ** 0.5
 
         if self.p_0 == 0:
             raise NotImplementedError(
@@ -1245,12 +1245,16 @@ class Recoiless:
                 rho_0, rho_1 = rho_n[i], rho_n[i + 1]
                 dV = 0.5 * ((rho_0**2 - 1) * S_0 + (rho_1**2 - 1) * S_1) * h
                 V_n += dV
-        nozzle = []
+
+        hull = []
+
         for x, r, rho in zip(neg_x_probes, r_probes, rho_n):
-            nozzle.append((x, r, r * rho))
+            hull.append((x, r, r * rho))
 
         nozzle_mass = V_n * self.material.rho
 
+        rho_probes = []
+        V = 0
         if self.is_af:
             """
             m : r_n / r_i
@@ -1267,7 +1271,7 @@ class Recoiless:
             x_b, p_b = x_probes[i:], p_probes[i:]  # b for barrel
             V_c, rho_c = Gun._Vrho_k(
                 x_c, p_c, [S * chi_k for _ in x_c], sigma, tol, k_min=rho_n[-1]
-            )
+            )  # c for chamber
             V_b, rho_b = Gun._Vrho_k(
                 x_b,
                 p_b,
@@ -1276,7 +1280,7 @@ class Recoiless:
                 tol,
                 k_max=rho_c[-1] * chi_k**0.5,
                 p_ref=max(p_c),
-            )
+            )  # b for bore
             V = V_c + V_b
             rho_probes = rho_c + rho_b
 
@@ -1303,15 +1307,12 @@ class Recoiless:
             )
             (x from -1 to 1)
             """
-            rho_probes = []
-            V = 0
-
             for p in p_probes:
                 y = p / sigma
                 if y > 3**-0.5:
                     raise ValueError(
                         f"Limit to conventional construction ({sigma * 3*1e-6:.3f} MPa)"
-                        + " exceeded in barrel."
+                        + " exceeded in section."
                     )
                 rho = ((1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)) ** 0.5
                 rho_probes.append(rho)
@@ -1322,21 +1323,20 @@ class Recoiless:
                 rho_0 = rho_probes[i]
                 rho_1 = rho_probes[i + 1]
                 dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
-                if x_1 <= l_c:
+                if x_1 < l_c:
                     V += dV * chi_k
                 else:
                     V += dV
 
         tube_mass = V * self.material.rho
 
-        hull = []
         for x, rho in zip(x_probes, rho_probes):
             if x < l_c:
-                hull.append((x, rho * r_b))
+                hull.append((x, r_b, rho * r_b))
             else:
-                hull.append((x, rho * r_s))
+                hull.append((x, r_s, rho * r_s))
 
-        return tube_mass, hull, nozzle_mass, nozzle
+        return tube_mass, nozzle_mass, hull
 
     @staticmethod
     def getAr(gamma, Pr):

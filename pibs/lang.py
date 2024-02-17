@@ -614,8 +614,9 @@ ENGLISH = {
         (
             "Breech mass is calculated for a straight wall, interrupted screw",
             "type, after the work of Akselʹ Vilʹgelʹmovich Gadolin,",
-            "with the screw radius optimized for minimum mass, subjected to",
-            "reasonable constraints.",
+            "with the screw radius optimized for minimum stress. The",
+            "breech block is constrained to be as long as it is wide for",
+            "ease of operation."
             "In practice, the breech block is usually a separate piece, onto",
             "which the barrel is screwed to, complicating the real stress",
             "distribution. The breech can also be made in the style of sliding",
@@ -1077,7 +1078,8 @@ CHINESE = {
         (
             "炮闩的质量按直壁螺式计，以加道林",
             "(Akselʹ Vilʹgelʹmovich Gadolin，沙皇俄国)的方法计算。",
-            "炮闩直径已作最小质量（即最短炮尾）优化。",
+            "炮闩直径已作最小质量（即最短炮尾）优化。考虑",
+            "开闩难度，此处选取炮闩直径的一倍限制炮膛最小长度。",
             "实际武器上，炮尾常常是一个独立部件，与炮管通过螺纹",
             "连接，炮闩也可作楔式，受力情况更为复杂，故此，",
             "该简化计算值仅作初步设计参考，方便比较不同参数方案。",

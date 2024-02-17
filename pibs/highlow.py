@@ -34,6 +34,9 @@ class Highlow:
         chambrage,
         lengthGun,
         dragCoefficient=0,
+        structuralMaterial=None,
+        structuralSafetyFactor=1.1,
+        autofrettage=True,
         **_,
     ):
         if any(
@@ -56,6 +59,7 @@ class Highlow:
         if chargeMass > (propellant.maxLF * propellant.rho_p * chamberVolume):
             raise ValueError("Specified Load Fraction Violates Geometrical Constraint")
 
+        self.caliber = caliber
         self.propellant = propellant
 
         self.e_1 = 0.5 * grainSize
@@ -77,6 +81,13 @@ class Highlow:
 
         self.phi_1 = 1 / (1 - dragCoefficient)  # drag work coefficient
         self.phi = self.phi_1 + self.omega / (3 * self.m)
+
+        # pressure ratio threshold for critical flow
+        self.v_j = (2 * self.f * self.omega / (self.theta * self.phi * self.m)) ** 0.5
+
+        self.material = structuralMaterial
+        self.ssf = structuralSafetyFactor
+        self.is_af = autofrettage
 
         if self.p_0_e == 0:
             raise NotImplementedError(
@@ -120,9 +131,6 @@ class Highlow:
 
         self.cfpr = (2 / (gamma + 1)) ** (gamma / self.theta)
         self.K_0 = gamma**0.5 * (2 / (gamma + 1)) ** ((gamma + 1) / (2 * self.theta))
-
-        # pressure ratio threshold for critical flow
-        self.v_j = (2 * self.f * self.omega / (self.theta * self.phi * self.m)) ** 0.5
 
     def __getattr__(self, attrName):
         if "propellant" in vars(self) and not (
@@ -1115,7 +1123,23 @@ class Highlow:
             p_trace.append((tag, psi, T_2, p_line))
             p_trace.append((tag, psi, T_1, [(0, p_h), (l_h * (1 - tol), p_h)]))
 
-        return data, error, p_trace, [None, None, None, None]
+        try:
+            if self.material is None:
+                raise ValueError("Structural material not specified")
+
+            structure = self.getStructural(data, step, tol)
+
+        except Exception:
+            import sys, traceback
+
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            errMsg = "".join(
+                traceback.format_exception(exc_type, exc_value, exc_traceback)
+            )
+            print(errMsg)
+            structure = [None, None, None]
+
+        return data, error, p_trace, structure
 
     def getEff(self, vg):
         """
@@ -1178,25 +1202,99 @@ class Highlow:
         return p_x
 
     def getStructural(self, data, step, tol):
-        r = 0.5 * self.caliber
+
         l_g = self.l_g
         chi_k = self.chi_k
-        l_h = self.l_0 / chi_k
-        l_l = self.l_1 / chi_k
+        l_h = self.l_0 / chi_k  # physical length of high chamber
+        l_l = self.l_1 / chi_k  # physical length of low chamber
 
         sigma = self.material.Y
         S = self.S
 
-        r_b = r * chi_k**0.5  # radius of breech
+        r_s = 0.5 * self.caliber
+        r_b = r_s * chi_k**0.5  # radius of breech
         S_b = S * chi_k  # area of breech
 
         x_probes = (
-            [i / step * l_c for i in range(step)]
-            + [l_c * (1 - tol)]
-            + [i / step * l_g + l_c for i in range(step)]
-            + [l_g + l_c]
+            [i / step * l_h for i in range(step)]
+            + [l_h * (1 - tol)]
+            + [i / step * l_l + l_h for i in range(step)]
+            + [l_h + l_l * (1 - tol)]
+            + [i / step * l_g + (l_h + l_l) for i in range(step)]
+            + [l_g + l_h + l_l]
         )
         p_probes = [0] * len(x_probes)
+
+        for line in data:
+            tag, t, l, psi, v, p_h, p_b, p, p_s, T_1, T_2, eta = line
+
+            for i, x in enumerate(x_probes):
+                if (x - (l_h + l_l)) <= l:
+                    p_x = self.toPx(l, p_h, p_b, p_s, x)
+                    p_probes[i] = max(p_probes[i], p_x)
+                else:
+                    break
+
+        for i, p in enumerate(p_probes):
+            x = x_probes[i]
+            p_probes[i] = p * self.ssf
+
+        rho_probes = []
+        V = 0
+        if self.is_af:
+            i, j = x_probes.index(l_h), x_probes.index(l_h + l_l)
+
+            x_h, p_h = x_probes[:i], p_probes[:i]
+            x_l, p_l = x_probes[i:j], p_probes[i:j]
+            x_b, p_b = x_probes[j:], p_probes[j:]
+
+            V_h, rho_h = Gun._Vrho_k(x_h, p_h, [S_b for _ in x_h], sigma, tol)
+            V_l, rho_l = Gun._Vrho_k(x_l, p_l, [S_b for _ in x_l], sigma, tol)
+            V_b, rho_b = Gun._Vrho_k(
+                x_b,
+                p_b,
+                [S for _ in x_b],
+                sigma,
+                tol,
+                p_ref=max(p_l),
+                k_max=rho_l[-1] * chi_k**0.5,
+            )
+
+            V = V_h + V_l + V_b
+            rho_probes = rho_h + rho_l + rho_b
+        else:
+            for p in p_probes:
+                y = p / sigma
+
+                if y > 3**-0.5:
+                    raise ValueError(
+                        f"Limit to conventional construction ({sigma * 3*1e-6:.3f} MPa)"
+                        + " exceeded in section."
+                    )
+                rho = ((1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)) ** 0.5
+                rho_probes.append(rho)
+
+            for i in range(len(x_probes) - 1):
+                x_0 = x_probes[i]
+                x_1 = x_probes[i + 1]
+                rho_0 = rho_probes[i]
+                rho_1 = rho_probes[i + 1]
+                dV = (rho_1**2 + rho_0**2 - 2) * 0.5 * S * (x_1 - x_0)
+                if x_1 < (l_h + l_l):
+                    V += dV * chi_k
+                else:
+                    V += dV
+
+        tube_mass = V * self.material.rho
+
+        hull = []
+        for x, rho in zip(x_probes, rho_probes):
+            if x < l_h + l_l:
+                hull.append((x, r_b, rho * r_b))
+            else:
+                hull.append((x, r_s, rho * r_s))
+
+        return tube_mass, None, hull
 
 
 if __name__ == "__main__":
