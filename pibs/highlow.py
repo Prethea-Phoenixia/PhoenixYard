@@ -1248,8 +1248,11 @@ class Highlow:
             x_l, p_l = x_probes[i:j], p_probes[i:j]
             x_b, p_b = x_probes[j:], p_probes[j:]
 
-            V_h, rho_h = Gun._Vrho_k(x_h, p_h, [S_b for _ in x_h], sigma, tol)
             V_l, rho_l = Gun._Vrho_k(x_l, p_l, [S_b for _ in x_l], sigma, tol)
+            V_h, rho_h = Gun._Vrho_k(
+                x_h, p_h, [S_b for _ in x_h], sigma, tol, k_min=rho_l[0]
+            )
+
             V_b, rho_b = Gun._Vrho_k(
                 x_b,
                 p_b,
