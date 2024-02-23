@@ -487,7 +487,9 @@ class ConstrainedRecoiless:
                 v_r = v_bar / c_a_bar
                 p_d_bar = (
                     +0.25 * gamma_1 * (gamma_1 + 1) * v_r**2
-                    + gamma_1 * v_r * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5
+                    + gamma_1
+                    * v_r
+                    * (1 + (0.25 * (gamma_1 + 1)) ** 2 * v_r**2) ** 0.5
                 ) * p_a_bar
             else:
                 p_d_bar = 0

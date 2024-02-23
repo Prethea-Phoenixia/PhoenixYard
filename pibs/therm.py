@@ -180,8 +180,7 @@ class Ingredient:
             name="Nitrocellulose ({:.2f}% N)".format(y),
             elements=elements,
             rho=0.0560,  # copied directly from database.
-            Hf=-1417.029
-            + 6318.3 * nitration,  # fit from Tab.3 in R.S.Jessup & E.J.Prosen
+            Hf=-1417.029 + 6318.3 * nitration,  # fit from Tab.3 in R.S.Jessup & E.J.Prosen
         )
 
 
@@ -199,9 +198,7 @@ class Mixture:
         for ingr, fraction in compoDict.items():
             total += fraction
 
-        self.compoDict = {
-            ingr: fraction / total for ingr, fraction in compoDict.items()
-        }
+        self.compoDict = {ingr: fraction / total for ingr, fraction in compoDict.items()}
 
         # tally the releavnt factors according to their mass fraction
 
@@ -211,9 +208,7 @@ class Mixture:
 
         for ingr, fraction in self.compoDict.items():
             if ingr.rho == 0:
-                raise ValueError(
-                    "{:} is not provided with density data".format(ingr.name)
-                )
+                raise ValueError("{:} is not provided with density data".format(ingr.name))
             invRho += fraction / ingr.rho
             Ci += fraction * ingr.Ci  # mol/g
             Hi += fraction * ingr.Hi
@@ -238,9 +233,7 @@ class Mixture:
             self.Hf, Tv, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b
         )
         # see Corner ss 3.4
-        _, _, _, E1, _, _, _ = balance(
-            self.Hf, Tv, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b
-        )
+        _, _, _, E1, _, _, _ = balance(self.Hf, Tv, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b)
         _, _, _, E2, _, _, _ = balance(
             self.Hf, 0.7 * Tv, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b
         )
@@ -283,11 +276,7 @@ class Mixture:
                     1 / n, (1 / n - 1 / self.n) / (1 / self.n)
                 )
             )
-            print(
-                "Covolume           : {:>6.4g} cc/g  Δ={:>6.1%}".format(
-                    b, (b - self.b) / self.b
-                )
-            )
+            print("Covolume           : {:>6.4g} cc/g  Δ={:>6.1%}".format(b, (b - self.b) / self.b))
 
             C_v = E / (T - 300)
             gamma = (n * 1.987 / C_v) + 1

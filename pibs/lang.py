@@ -420,10 +420,10 @@ ENGLISH = {
             "point selected in the drop down menu.",
         )
     ),
-    "pHTgtText": " ".join(("Pressure constraint, average value within high chamber.")),
+    "pHTgtText": " ".join(("Pressure constraint, average value within high chamber.",)),
     "pLTgtText": " ".join(
         (
-            "Pressure constraint for the low pressure chamber,"
+            "Pressure constraint for the low pressure chamber,",
             "imposed at the characteristc",
             "point selected in the drop down menu.",
         )

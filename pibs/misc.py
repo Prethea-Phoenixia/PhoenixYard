@@ -131,9 +131,7 @@ def validateNN(inp):
         inp == ""
         or inp == "."
         or (inp.count("e") == 1 and inp[-1] == "e")  # scientific input
-        or (
-            inp.count("e") == 1 and inp[-2:] == "e-"
-        )  # scientific input with negative exponent
+        or (inp.count("e") == 1 and inp[-2:] == "e-")  # scientific input with negative exponent
     ):
         return True
     try:
@@ -162,9 +160,7 @@ def validateFLT(inp):  # validate an input such that the result is a float.
         or inp == "."
         or inp == "-"
         or (inp.count("e") == 1 and inp[-1] == "e")  # scientific input
-        or (
-            inp.count("e") == 1 and inp[-2:] == "e-"
-        )  # scientific input with negative exponent
+        or (inp.count("e") == 1 and inp[-2:] == "e-")  # scientific input with negative exponent
     ):
         return True
     try:

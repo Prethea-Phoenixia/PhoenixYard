@@ -416,7 +416,7 @@ class InteriorBallisticsFrame(Frame):
         for locWidget in self.locs:
             locWidget.reLocalize()
 
-        self.calButton.config(text=self.getLocStr("calcLabel"))
+        self.calcButton.config(text=self.getLocStr("calcLabel"))
 
         self.tabParent.tab(self.plotTab, text=self.getLocStr("plotTab"))
         self.tabParent.tab(self.tableTab, text=self.getLocStr("tableTab"))
@@ -649,7 +649,10 @@ class InteriorBallisticsFrame(Frame):
         self.dropSoln.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=2, pady=2)
 
         envFrm = LocLabelFrame(
-            rightFrm, locKey="envFrmLabel", locFunc=self.getLocStr, allLLF=self.locs
+            rightFrm,
+            locKey="envFrmLabel",
+            locFunc=self.getLocStr,
+            allLLF=self.locs,
         )
         envFrm.grid(row=3, column=0, sticky="nsew")
         envFrm.columnconfigure(0, weight=1)
@@ -921,18 +924,18 @@ class InteriorBallisticsFrame(Frame):
 
         i += 1
 
-        self.calButton = ttk.Button(
+        self.calcButton = ttk.Button(
             opFrm,
             text=self.getLocStr("calcLabel"),
             command=self.onCalculate,
         )
-        self.calButton.grid(
+        self.calcButton.grid(
             row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2
         )
 
         opFrm.rowconfigure(i, weight=1)
         self.calcButtonTip = StringVar(value=self.getLocStr("calcButtonText"))
-        CreateToolTip(self.calButton, self.calcButtonTip)
+        CreateToolTip(self.calcButton, self.calcButtonTip)
 
     def onCalculate(self):
         self.focus()  # remove focus to force widget entry validation
@@ -1050,9 +1053,10 @@ class InteriorBallisticsFrame(Frame):
                 self.kwargs.update({"ambientP": 0, "ambientRho": 0, "ambientGamma": 1})
 
             self.process = Process(
-                target=calculate, args=(self.jobQueue, self.progressQueue, self.kwargs)
+                target=calculate,
+                args=(self.jobQueue, self.progressQueue, self.kwargs),
             )
-            self.calButton.config(state="disabled")
+            self.calcButton.config(state="disabled")
             # self.progressbar.start(interval=10)
             self.process.start()
 
@@ -1219,7 +1223,7 @@ class InteriorBallisticsFrame(Frame):
         self.updateAuxPlot()
 
         # self.progressbar.stop()
-        self.calButton.config(state="normal")
+        self.calcButton.config(state="normal")
 
         for loc in self.locs:
             try:
@@ -1379,7 +1383,7 @@ class InteriorBallisticsFrame(Frame):
         )
         grainFrm.grid(row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
         grainFrm.columnconfigure(0, weight=1)
-        grainFrm.rowconfigure(0, weight=1, minsize=250)
+        grainFrm.rowconfigure(0, weight=1, minsize=200)
 
         geomPlotFrm = LocLabelFrame(
             grainFrm,
@@ -1881,8 +1885,8 @@ class InteriorBallisticsFrame(Frame):
 
     def addAuxPlot(self):
         auxFrm = self.auxFrm
-        auxFrm.columnconfigure(0, weight=1, minsize=1)
-        auxFrm.rowconfigure(0, weight=1, minsize=1)
+        auxFrm.columnconfigure(0, weight=1)
+        auxFrm.rowconfigure(0, weight=1)
 
         auxPlaceFrm = Frame(auxFrm)
         auxPlaceFrm.grid(row=0, column=0, padx=2, pady=2, sticky="nsew", columnspan=2)

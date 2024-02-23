@@ -83,9 +83,7 @@ if __name__ == "__main__":
     Cxs = []
     for fn in range(2, 20):
         fns.append(fn)
-        Cxs.append(
-            Cx(152e-3, ln=152e-3 * fn, M_inf=M, rho_inf=rho, v_inf=a * M, mu_inf=mu)
-        )
+        Cxs.append(Cx(152e-3, ln=152e-3 * fn, M_inf=M, rho_inf=rho, v_inf=a * M, mu_inf=mu))
 
     ax.plot(fns, Cxs)
     plt.show()

@@ -106,6 +106,8 @@ class ConstrainedHighlow:
         if progressQueue is not None:
             progressQueue.put(1)
 
+        p_max = 1e9
+
         m = self.m
         rho_p = self.rho_p
         theta = self.theta
@@ -216,7 +218,7 @@ class ConstrainedHighlow:
                 oZ, _, oeta, otau_1 = o_x, *o_ys
                 op_1 = _f_p_1(oZ, oeta, otau_1)
 
-                return p_1 < op_1
+                return p_1 < op_1 or p_1 > p_max
 
             def g(Z):
                 i = record_0.index([v for v in record_0 if v[0] <= Z][-1])
@@ -225,6 +227,7 @@ class ConstrainedHighlow:
                 ys = record_0[i][1]
 
                 r = []
+
                 Z, (t, eta, tau_1), _ = RKF78(
                     _ode_Zi,
                     ys,
@@ -236,6 +239,10 @@ class ConstrainedHighlow:
                     record=r,
                 )
 
+                p_1 = _f_p_1(Z, eta, tau_1)
+                if p_1 > p_max:
+                    return p_1
+
                 if Z not in [line[0] for line in r]:
                     r.append([Z, (t, eta, tau_1)])
 
@@ -243,7 +250,7 @@ class ConstrainedHighlow:
                 record_0.extend(v for v in r if v[0] not in xs)
                 record_0.sort()
 
-                return _f_p_1(Z, eta, tau_1)
+                return p_1
 
             Z_p_i = (
                 sum(
@@ -843,6 +850,9 @@ class ConstrainedHighlow:
             progressQueue.put(100)
 
         return e_1, V_1, l_g
+
+    def findMinV(self, chargeMassRatio, progressQueue=None, **_):
+        pass
 
 
 if __name__ == "__main__":

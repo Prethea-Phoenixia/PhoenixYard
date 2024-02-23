@@ -1202,7 +1202,6 @@ class Highlow:
         return p_x
 
     def getStructural(self, data, step, tol):
-
         l_g = self.l_g
         chi_k = self.chi_k
         l_h = self.l_0 / chi_k  # physical length of high chamber

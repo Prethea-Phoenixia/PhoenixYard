@@ -151,12 +151,8 @@ class Bullet:
                 elevation, a.k.a bullet drop. This measure is probably point-
                 less for larger guns.
                 """
-                l = (
-                    (x - x_0) ** 2 + (y - y_0) ** 2
-                ) ** 0.5  # line of sight distance to target,
-                drop = acos(((x - x_0) * cos(theta) + (y - y_0) * sin(theta)) / l) * (
-                    180 / pi
-                )
+                l = ((x - x_0) ** 2 + (y - y_0) ** 2) ** 0.5  # line of sight distance to target,
+                drop = acos(((x - x_0) * cos(theta) + (y - y_0) * sin(theta)) / l) * (180 / pi)
 
                 lTable.append(
                     (
@@ -190,9 +186,7 @@ class Bullet:
         if prettyprint:
             print(
                 self.name
-                + " @ {:.3f}m/s Emplaced at {:.1f}m ASL Target at {:}m ASL.".format(
-                    vel, gunH, tgtH
-                )
+                + " @ {:.3f}m/s Emplaced at {:.1f}m ASL Target at {:}m ASL.".format(vel, gunH, tgtH)
             )
             from tabulate import tabulate
 
@@ -252,9 +246,7 @@ class Bullet:
         else:
             # if i == N - 1:
             raise ValueError(
-                "No valid elevation can be found within specified in {:} samples".format(
-                    N
-                )
+                "No valid elevation can be found within specified in {:} samples".format(N)
             )
 
         def bisect_serach(elev_tgt):
@@ -453,8 +445,7 @@ class Bullet:
 
         if (not DESCEND) and gunH > tgtH:
             raise ValueError(
-                "No Ascending Solution Possible Given Gun Height"
-                + " is Higher Than Target."
+                "No Ascending Solution Possible Given Gun Height" + " is Higher Than Target."
             )
 
         x_0, y_0 = 0, R_e + gunH
@@ -556,9 +547,7 @@ class Bullet:
             be done.
             """
 
-            t_prime = 0.5 * sum(
-                gss(f_tgt, t_1, t_2, x_tol=max(t_2, 1) * tol, findMin=False)
-            )
+            t_prime = 0.5 * sum(gss(f_tgt, t_1, t_2, x_tol=max(t_2, 1) * tol, findMin=False))
             h_prime = f_tgt(t_prime)
             if h_prime > 0:
                 if DESCEND:
@@ -570,9 +559,7 @@ class Bullet:
 
             else:
                 # even the new peak point found cannot crest the target plane.
-                raise ValueError(
-                    "Projectile Cresting Below Target at {:.3f} m".format(h_prime)
-                )
+                raise ValueError("Projectile Cresting Below Target at {:.3f} m".format(h_prime))
 
         else:
             t_t, _ = dekker(f_tgt, t_1, t_2, x_tol=max(t_2, 1) * tol)

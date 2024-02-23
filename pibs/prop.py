@@ -216,10 +216,7 @@ class GrainComp:
         else:
             # pressure ratio is interpreted as chamber/exit
             return (
-                2
-                * self.f
-                / self.theta
-                * (1 - pRatio ** (-self.theta / (self.theta + 1)))
+                2 * self.f / self.theta * (1 - pRatio ** (-self.theta / (self.theta + 1)))
             ) ** 0.5
 
     @classmethod
@@ -416,9 +413,7 @@ class Propellant:
 
             elif self.geometry == SimpleGeometry.ROD:
                 self.maxLF = 1
-                beta, alpha = sorted(
-                    (1 / R1, 1 / R2)
-                )  # ensure that alpha > beta, ascending order
+                beta, alpha = sorted((1 / R1, 1 / R2))  # ensure that alpha > beta, ascending order
 
                 self.chi = 1 + alpha + beta
                 self.labda = -(alpha + beta + alpha * beta) / self.chi
@@ -438,8 +433,7 @@ class Propellant:
                     return getattr(self.composition, attrName)
             except AttributeError:
                 raise AttributeError(
-                    "%r object has no attribute %r"
-                    % (self.__class__.__name__, attrName)
+                    "%r object has no attribute %r" % (self.__class__.__name__, attrName)
                 )
         else:
             raise AttributeError

@@ -174,9 +174,7 @@ class Loc2Input:
         locFunc=None,
         allInputs=None,
     ):
-        lb = ttk.Label(
-            parent, text=locFunc(labelLocKey), width=labelWidth, anchor=anchor
-        )
+        lb = ttk.Label(parent, text=locFunc(labelLocKey), width=labelWidth, anchor=anchor)
 
         lb.grid(
             row=row,
@@ -380,9 +378,7 @@ class LocDropdown:
         Given an unlocalized string / localization key, set the drop down menu
         to the correct position.
         """
-        self.widget.set(
-            self.widget["values"][list(self.strObjDict.keys()).index(string)]
-        )
+        self.widget.set(self.widget["values"][list(self.strObjDict.keys()).index(string)])
 
     def setByObj(self, obj):
         index = list(self.strObjDict.values()).index(obj)

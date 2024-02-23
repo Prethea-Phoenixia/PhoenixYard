@@ -1183,11 +1183,7 @@ class Recoiless:
         alpha = 15
         l_a = (r_n - r_t) / tan(alpha * pi / 180)
 
-        p_max = p_probes[0]
-        """
-        For nozzle design, we simply take the maximum breech face pressure
-        as the maximum pressure
-        """
+        p_entry = p_probes[0]
 
         neg_x_probes = (
             [-l_b - l_a + l_a * i / step for i in range(step)]
@@ -1204,16 +1200,12 @@ class Recoiless:
             if x < -l_b:
                 k = (x + l_b + l_a) / l_a
                 r = k * r_t + (1 - k) * r_n
-                p = (
-                    Recoiless.getPr(gamma, (r / r_t) ** 2, tol)[1]
-                    / ((2 / (gamma + 1)) ** (gamma / (gamma - 1)))
-                    * p_max
-                )
+                p = Recoiless.getPr(gamma, (r / r_t) ** 2, tol)[1] * p_entry
 
             else:
                 k = (x + l_b) / l_b
                 r = k * r_b + (1 - k) * r_t
-                p = p_max
+                p = Recoiless.getPr(gamma, (r / r_t) ** 2, tol)[0] * p_entry
 
             if p > 3**-0.5 * sigma:
                 raise ValueError(

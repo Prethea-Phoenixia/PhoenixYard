@@ -433,10 +433,20 @@ class Specie:
 
         Cp0__R = a1 + a2 * T + a3 * T**2 + a4 * T**3 + a5 * T**4
         H0_T__RT = (
-            a1 + a2 / 2 * T + a3 / 3 * T**2 + a4 / 4 * T**3 + a5 / 5 * T**4 + a6 / T
+            a1
+            + a2 / 2 * T
+            + a3 / 3 * T**2
+            + a4 / 4 * T**3
+            + a5 / 5 * T**4
+            + a6 / T
         )
         S0_T__R = (
-            a1 * log(T) + a2 * T + a3 / 2 * T**2 + a4 / 3 * T**3 + a5 / 4 * T**4 + a7
+            a1 * log(T)
+            + a2 * T
+            + a3 / 2 * T**2
+            + a4 / 3 * T**3
+            + a5 / 4 * T**4
+            + a7
         )
         if C == "p":
             return Cp0__R * R, H0_T__RT * R * T, S0_T__R * R
