@@ -53,7 +53,9 @@ def f_r_b(v_bo, gamma, h_bo=0):
         / (2 - V_0_bar_sq)
         * (
             K * sin(theta_0) / (1 - K * cos(theta_0))
-            + 2 / (1 - K**2) ** 0.5 * atan((1 - K**2) ** 0.5 * tan(0.5 * theta_0) / (1 - K))
+            + 2
+            / (1 - K**2) ** 0.5
+            * atan((1 - K**2) ** 0.5 * tan(0.5 * theta_0) / (1 - K))
         )
     )
     return r_b, ttt

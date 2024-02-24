@@ -234,7 +234,10 @@ def readHuntTable(T):
         Thigh, *Khigh = equilibriumKT[i + 1]
         if Tlow <= T <= Thigh:
             k = (1 / T - 1 / Tlow) / (1 / Thigh - 1 / Tlow)
-            K = [10 ** (log10(Ki) * (1 - k) + log10(Kj) * k) for Ki, Kj in zip(Klow, Khigh)]
+            K = [
+                10 ** (log10(Ki) * (1 - k) + log10(Kj) * k)
+                for Ki, Kj in zip(Klow, Khigh)
+            ]
             break
 
     for i in range(len(BCTable) - 1):

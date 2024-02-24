@@ -318,7 +318,9 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=100, tol=1e-9):
 
     n: number of gram-molecules per unit mass of gas, in mol/g
     """
-    if T > 4000 or T < max(v.fitTlow for v in (CO2, H2O, CO, H2, N2, OH, NO, O2, CH4, NH3)):
+    if T > 4000 or T < max(
+        v.fitTlow for v in (CO2, H2O, CO, H2, N2, OH, NO, O2, CH4, NH3)
+    ):
         raise ValueError("T Not supported")
 
     negDeltaB, neghalfDeltaC = 0, 0
@@ -391,7 +393,9 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=100, tol=1e-9):
     else:
         K0 = k0(T) * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
     try:
-        CO2j = [v for v in quadratic((1 - K0), -(G + H + K0 * I), G * H) if v < Ci and v > 0][0]
+        CO2j = [
+            v for v in quadratic((1 - K0), -(G + H + K0 * I), G * H) if v < Ci and v > 0
+        ][0]
         """get a first-order estimate of CO2 concentration assuming
         only major products (CO2, H2O, H2, CO, N2) by solving the
         equilibrium quadratic of the water-gas balance. This equilibrium
@@ -521,7 +525,9 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=100, tol=1e-9):
         else:
             if epsilon_0 == epsilon:
                 logger.warning(
-                    "Solving terminated due to oscillating conditions.Δ={:}".format(delta)
+                    "Solving terminated due to oscillating conditions.Δ={:}".format(
+                        delta
+                    )
                 )
                 break
 
@@ -659,7 +665,8 @@ if __name__ == "__main__":
         print(" @ Product  %mass  1e-6 mol/g")
         print(
             *[
-                "{:>2} : {:^6} {:<6.1%}".format(i, name, mass) + "{:>10,.2f}".format(num * 1e6)
+                "{:>2} : {:^6} {:<6.1%}".format(i, name, mass)
+                + "{:>10,.2f}".format(num * 1e6)
                 for i, (name, mass, num) in enumerate(speciesList)
             ],
             sep="\n"

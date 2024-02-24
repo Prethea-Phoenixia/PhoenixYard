@@ -24,7 +24,9 @@ def coordesc(
     """
     sig = inspect.signature(f)
     paramstrs = [
-        str(param) for param in sig.parameters.values() if param.kind == param.POSITIONAL_OR_KEYWORD
+        str(param)
+        for param in sig.parameters.values()
+        if param.kind == param.POSITIONAL_OR_KEYWORD
     ]
     n = len(paramstrs)
 
@@ -49,7 +51,9 @@ def coordesc(
         except ValueError as e:
             if debug:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                errMsg = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+                errMsg = "".join(
+                    traceback.format_exception(exc_type, exc_value, exc_traceback)
+                )
                 print(str(errMsg))
             pass
 
@@ -64,7 +68,9 @@ def coordesc(
         delta = x_bound - x_probe
         up = x_bound > x_probe
 
-        while abs(2 * delta) > tol and (x_probe <= x_bound if up else x_probe >= x_bound):
+        while abs(2 * delta) > tol and (
+            x_probe <= x_bound if up else x_probe >= x_bound
+        ):
             try:
                 record.append((x_probe, func(x_probe)))
                 x_valid = x_probe

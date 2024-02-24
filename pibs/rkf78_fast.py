@@ -124,7 +124,11 @@ def RKF78(
     sig = inspect.signature(dFunc)
 
     params = len(
-        [param for param in sig.parameters.values() if param.kind == param.POSITIONAL_OR_KEYWORD]
+        [
+            param
+            for param in sig.parameters.values()
+            if param.kind == param.POSITIONAL_OR_KEYWORD
+        ]
     )
 
     if debug:

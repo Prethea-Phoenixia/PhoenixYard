@@ -46,7 +46,9 @@ def pso(
 
     sig = inspect.signature(f)
     paramstrs = [
-        str(param) for param in sig.parameters.values() if param.kind == param.POSITIONAL_OR_KEYWORD
+        str(param)
+        for param in sig.parameters.values()
+        if param.kind == param.POSITIONAL_OR_KEYWORD
     ]
 
     if len(paramstrs) != len(ss):
@@ -60,7 +62,11 @@ def pso(
         generate initial position vector using random distribution,
         component by component
         """
-        if (isinstance(s, tuple) or isinstance(s, list)) and len(s) == 2 and s[0] != s[1]:
+        if (
+            (isinstance(s, tuple) or isinstance(s, list))
+            and len(s) == 2
+            and s[0] != s[1]
+        ):
             pass
         else:
             raise ValueError(
@@ -94,7 +100,10 @@ def pso(
         fps = vfps[:n]
         pbs = [v for v in ps]
         fpbs = [v for v in fps]
-        vs = [[random() * max(cog, soc) * (max(s) - min(s)) + min(s) for s in ss] for _ in range(n)]
+        vs = [
+            [random() * max(cog, soc) * (max(s) - min(s)) + min(s) for s in ss]
+            for _ in range(n)
+        ]
 
         fgb = min(fpbs)
         gb = pbs[fpbs.index(fgb)]  # initialize global best
@@ -163,7 +172,8 @@ def pso(
                 delta = 0
                 for component in components:
                     delta = max(
-                        (max(component) - min(component)) / min(abs(v) for v in component),
+                        (max(component) - min(component))
+                        / min(abs(v) for v in component),
                         delta,
                     )
                 # print("delta", delta)

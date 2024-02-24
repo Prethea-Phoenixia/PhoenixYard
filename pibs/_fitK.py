@@ -166,8 +166,12 @@ if __name__ == "__main__":
         invFit1, invFit2 = False, False
         if i == 0:
             # k0 = kp9 * kp4/ kp10
-            f1 = np.polynomial.polynomial.Polynomial(kp9_l.coef + kp4_l.coef - kp10_l.coef)
-            f2 = np.polynomial.polynomial.Polynomial(kp9_h.coef + kp4_h.coef - kp10_h.coef)
+            f1 = np.polynomial.polynomial.Polynomial(
+                kp9_l.coef + kp4_l.coef - kp10_l.coef
+            )
+            f2 = np.polynomial.polynomial.Polynomial(
+                kp9_h.coef + kp4_h.coef - kp10_h.coef
+            )
         elif i == 1:
             f2 = kp2_h
         elif i == 2:
@@ -263,7 +267,9 @@ if __name__ == "__main__":
                         isInv = isInvFit_l[i]
                     if f is not None:
                         newLine.append(
-                            float("{:.4g}".format(10 ** f(1 / T) if isInv else 10 ** f(T)))
+                            float(
+                                "{:.4g}".format(10 ** f(1 / T) if isInv else 10 ** f(T))
+                            )
                         )
                     else:
                         newLine.append(None)

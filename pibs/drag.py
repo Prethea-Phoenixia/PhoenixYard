@@ -559,7 +559,9 @@ class KdCurve(Enum):
         n = len(mach)
         if M < mach[0] or M > mach[n - 1]:
             raise ValueError(
-                "Mach value {:} is out of range for {:}-{:}".format(M, mach[0], mach[n - 1])
+                "Mach value {:} is out of range for {:}-{:}".format(
+                    M, mach[0], mach[n - 1]
+                )
             )
 
         """

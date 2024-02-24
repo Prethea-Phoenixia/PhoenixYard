@@ -180,7 +180,8 @@ class Ingredient:
             name="Nitrocellulose ({:.2f}% N)".format(y),
             elements=elements,
             rho=0.0560,  # copied directly from database.
-            Hf=-1417.029 + 6318.3 * nitration,  # fit from Tab.3 in R.S.Jessup & E.J.Prosen
+            Hf=-1417.029
+            + 6318.3 * nitration,  # fit from Tab.3 in R.S.Jessup & E.J.Prosen
         )
 
 
@@ -198,7 +199,9 @@ class Mixture:
         for ingr, fraction in compoDict.items():
             total += fraction
 
-        self.compoDict = {ingr: fraction / total for ingr, fraction in compoDict.items()}
+        self.compoDict = {
+            ingr: fraction / total for ingr, fraction in compoDict.items()
+        }
 
         # tally the releavnt factors according to their mass fraction
 
@@ -208,7 +211,9 @@ class Mixture:
 
         for ingr, fraction in self.compoDict.items():
             if ingr.rho == 0:
-                raise ValueError("{:} is not provided with density data".format(ingr.name))
+                raise ValueError(
+                    "{:} is not provided with density data".format(ingr.name)
+                )
             invRho += fraction / ingr.rho
             Ci += fraction * ingr.Ci  # mol/g
             Hi += fraction * ingr.Hi
@@ -233,7 +238,9 @@ class Mixture:
             self.Hf, Tv, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b
         )
         # see Corner ss 3.4
-        _, _, _, E1, _, _, _ = balance(self.Hf, Tv, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b)
+        _, _, _, E1, _, _, _ = balance(
+            self.Hf, Tv, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b
+        )
         _, _, _, E2, _, _, _ = balance(
             self.Hf, 0.7 * Tv, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b
         )
@@ -276,7 +283,11 @@ class Mixture:
                     1 / n, (1 / n - 1 / self.n) / (1 / self.n)
                 )
             )
-            print("Covolume           : {:>6.4g} cc/g  Δ={:>6.1%}".format(b, (b - self.b) / self.b))
+            print(
+                "Covolume           : {:>6.4g} cc/g  Δ={:>6.1%}".format(
+                    b, (b - self.b) / self.b
+                )
+            )
 
             C_v = E / (T - 300)
             gamma = (n * 1.987 / C_v) + 1
@@ -327,52 +338,52 @@ class Mixture:
         print("")
 
 
-def estU1(nitration, ng, cen, dbp, dnt, vas):
-    """
-    Estimate the burn velocity assuming a linear realtionship
-    between pressure and burn rate, i.e. u = u1 * P
+# def estU1(nitration, ng, cen, dbp, dnt, vas):
+#     """
+#     Estimate the burn velocity assuming a linear realtionship
+#     between pressure and burn rate, i.e. u = u1 * P
 
-    nitration:
-        N, nitration % of nitrocellulose
-        硝化棉中氮的百分含量
-    ng:
-        H, percentage of nitroglycerin
-        硝化甘油的百分含量
+#     nitration:
+#         N, nitration % of nitrocellulose
+#         硝化棉中氮的百分含量
+#     ng:
+#         H, percentage of nitroglycerin
+#         硝化甘油的百分含量
 
-    cent:
-        E, percentage of centralite
-        中定剂的百分含量
-    dbp:
-        F, percentage of dibutyl phthalate
-        苯二甲酸二丁酯的百分含量
-    dnt:
-        G, percentage of dinitrotoluene
-        二硝基甲苯的百分含量
-    vaseline:
-        I, 凡士林的百分含量
+#     cent:
+#         E, percentage of centralite
+#         中定剂的百分含量
+#     dbp:
+#         F, percentage of dibutyl phthalate
+#         苯二甲酸二丁酯的百分含量
+#     dnt:
+#         G, percentage of dinitrotoluene
+#         二硝基甲苯的百分含量
+#     vaseline:
+#         I, 凡士林的百分含量
 
-    The result is converted into m/s/Pa
-    """
-    N, H, E, F, G, I = nitration, ng, cen, dbp, dnt, vas
+#     The result is converted into m/s/Pa
+#     """
+#     N, H, E, F, G, I = nitration, ng, cen, dbp, dnt, vas
 
-    return (
-        10
-        ** (
-            0.7838
-            - 9
-            + 0.1366 * (N - 11.8)
-            + 0.008652 * H
-            - 0.02620 * E
-            - 0.02235 * F
-            - 0.007355 * G
-            - 0.03447 * I
-        )  # m^3/s-kg
-        / 9.8
-    )
+#     return (
+#         10
+#         ** (
+#             0.7838
+#             - 9
+#             + 0.1366 * (N - 11.8)
+#             + 0.008652 * H
+#             - 0.02620 * E
+#             - 0.02235 * F
+#             - 0.007355 * G
+#             - 0.03447 * I
+#         )  # m^3/s-kg
+#         / 9.8
+#     )
 
 
-def estU8053(Tv):
-    return (-0.8340 + 8.3956e-4 * Tv) * 1e-3 / 1e6**0.8053
+# def estU8053(Tv):
+#     return (-0.8340 + 8.3956e-4 * Tv) * 1e-3 / 1e6**0.8053
 
 
 if __name__ == "__main__":

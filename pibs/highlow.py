@@ -1118,8 +1118,8 @@ class Highlow:
                 x = i / step * (l + l_l) + l_h
                 p_x = self.toPx(l, p_h, p_b, p_s, x)
                 p_line.append((x, p_x))
-
             p_line.append((l + l_l + l_h, p_s))
+
             p_trace.append((tag, psi, T_2, p_line))
             p_trace.append((tag, psi, T_1, [(0, p_h), (l_h * (1 - tol), p_h)]))
 
@@ -1130,13 +1130,13 @@ class Highlow:
             structure = self.getStructural(data, step, tol)
 
         except Exception:
-            import sys, traceback
+            # import sys, traceback
 
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            errMsg = "".join(
-                traceback.format_exception(exc_type, exc_value, exc_traceback)
-            )
-            print(errMsg)
+            # exc_type, exc_value, exc_traceback = sys.exc_info()
+            # errMsg = "".join(
+            #     traceback.format_exception(exc_type, exc_value, exc_traceback)
+            # )
+            # print(errMsg)
             structure = [None, None, None]
 
         return data, error, p_trace, structure
@@ -1287,16 +1287,38 @@ class Highlow:
                 else:
                     V += dV
 
-        tube_mass = V * self.material.rho
+        # gun breech design:
+        P__sigma = p_probes[0] / sigma
+        R2__rb = rho_probes[0]
+        R2 = R2__rb * r_b
+
+        R1__R2 = max((1 - 1 / R2__rb * (P__sigma) ** 0.5) ** 0.5, R2__rb**-1)
+        R1__rb = R1__R2 * R2__rb
+        L__rb = 0.5 * (
+            P__sigma**0.5 * (R1__rb**2 / P__sigma - R1__R2**2 / (1 - R1__R2**2)) ** -0.5
+        )
+        R1 = R1__rb * r_b
+        L_rb = max(L__rb * r_b, 2 * R1)  # the "rear", or the actual breech
+        L_fb = L__rb * r_b  # the "forward breech", or the plate between high and low
+
+        tube_mass = (V + (R2__rb**2 - R1__rb**2) * S_b * L_rb) * self.material.rho
+        breech_mass = R1__rb**2 * S_b * L_rb * self.material.rho
 
         hull = []
         for x, rho in zip(x_probes, rho_probes):
-            if x < l_h + l_l:
+            if x < l_h:
                 hull.append((x, r_b, rho * r_b))
+            elif x < l_h + l_l:
+                hull.append((x + L_fb, r_b, rho * r_b))
             else:
-                hull.append((x, r_s, rho * r_s))
+                hull.append((x + L_fb, r_s, rho * r_s))
 
-        return tube_mass, None, hull
+        r_out = hull[0][2]
+        hull.insert(step + 1, (l_h, 0, r_out))
+        hull.insert(step + 2, (l_h + L_fb, 0, r_out))
+        hull = [(-L_rb, R1, R2), (0.0, R1, R2)] + hull
+
+        return tube_mass, breech_mass, hull
 
 
 if __name__ == "__main__":
