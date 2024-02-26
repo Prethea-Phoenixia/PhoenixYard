@@ -1195,16 +1195,17 @@ class Highlow:
             # fmt: on
             error.append(HighlowErrorEntry("L"))
 
-        data, error, p_trace = zip(
+        data, error, p_trace_low, p_trace_high = zip(
             *(
-                (a, b, c)
-                for a, b, c in sorted(
-                    zip(data, error, p_trace), key=lambda entries: entries[0].time
+                (a, b, c, d)
+                for a, b, c, d in sorted(
+                    zip(data, error, p_trace[::2], p_trace[1::2]),
+                    key=lambda entries: entries[0].time,
                 )
             )
         )
 
-        highlowResult = HighlowResult(self, data, error, p_trace)
+        highlowResult = HighlowResult(self, data, error, p_trace_low + p_trace_high)
 
         try:
             if self.material is None:
