@@ -1,7 +1,8 @@
 from math import pi, log, inf, exp
 from num import gss, RKF78, cubic, intg, secant, dekker
 from prop import GrainComp, Propellant
-
+from dataclasses import dataclass, asdict
+from typing import List
 
 DOMAIN_TIME = "DOMAIN_TIME"
 DOMAIN_LENG = "DOMAIN_LENG"
@@ -19,6 +20,106 @@ SOL_PIDDUCK = "SOL_PIDDUCK"
 SOL_MAMONTOV = "SOL_MAMONTOV"
 
 minTol = 1e-14  # based on experience
+
+
+@dataclass
+class GenericEntry:
+    def getRawLine(self):
+        return list(asdict(self).values())
+
+
+@dataclass
+class GunTableEntry(GenericEntry):
+    tag: str
+    time: float
+    travel: float
+    burnup: float
+    velocity: float
+    breechPressure: float
+    avgPressure: float
+    shotPressure: float
+    temperature: float
+
+
+@dataclass
+class GunErrorEntry(GenericEntry):
+    tag: str
+    time: float = None
+    travel: float = None
+    burnup: float = None
+    velocity: float = None
+    breechPressure: float = None
+    avgPressure: float = None
+    shotPressure: float = None
+    temperature: float = None
+
+
+@dataclass
+class PressureProbePoint:
+    x: float
+    p: float
+
+
+@dataclass
+class PressureTraceEntry(GenericEntry):
+    tag: str
+    T: float
+    pressureTrace: List[PressureProbePoint]
+
+
+@dataclass
+class OutlineEntry(GenericEntry):
+    x: float
+    r_in: float
+    r_ex: float
+
+
+@dataclass
+class GenericResult:
+    gun: object
+    tableData: List
+    errorData: List
+    pressureTrace: List
+    pressureTrace: List[PressureTraceEntry]
+
+    # falliables (optional ones)
+    tubeMass: float = None
+    breechMass: float = None
+    outline: List[OutlineEntry] = None
+
+    def readTableData(self, tag):
+        for tableEntry in self.tableData:
+            if tableEntry.tag == tag:
+                return tableEntry
+        return None
+
+    def getRawTableData(self):
+        rawLines = []
+        for gunTableEntry in self.tableData:
+            rawLines.append(gunTableEntry.getRawLine())
+
+        return rawLines
+
+    def getRawErrorData(self):
+        rawLines = []
+        for gunErrorEntry in self.errorData:
+            rawLines.append(gunErrorEntry.getRawLine())
+
+        return rawLines
+
+    def getRawPressureTrace(self):
+        rawLines = []
+        for pressureProbePoint in self.pressureTrace:
+            rawLines.append(pressureProbePoint.getRawLine())
+
+        return rawLines
+
+
+@dataclass
+class GunResult(GenericResult):
+    gun: "Gun"
+    tableData: List[GunTableEntry]
+    errorData: List[GunErrorEntry]
 
 
 def pidduck(wpm, k, tol):
@@ -746,7 +847,7 @@ class Gun:
 
             if tag == POINT_PEAK_AVG:
                 return p_bar
-            Ps, Pb = self.toPsPb(l_bar * self.l_0, p_bar * pScale)
+            Ps, Pb = self._toPsPb(l_bar * self.l_0, p_bar * pScale)
             if tag == POINT_PEAK_SHOT:
                 return Ps / pScale
             elif tag == POINT_PEAK_BREECH:
@@ -849,30 +950,40 @@ class Gun:
 
         data = []
         error = []
+        p_trace = []
 
         for bar_dataLine, bar_errorLine in zip(bar_data, bar_err):
             dtag, t_bar, l_bar, Z, v_bar, p_bar = bar_dataLine
             # fmt:off
             (
-                etag, t_bar_err, l_bar_err, Z_err, v_bar_err, p_bar_err
+                _, t_bar_err, l_bar_err, Z_err, v_bar_err, p_bar_err
             ) = bar_errorLine
             # fmt:on
 
-            t, t_err = (t_bar * tScale, t_bar_err * tScale)
-            l, l_err = (l_bar * self.l_0, l_bar_err * self.l_0)
-            psi, psi_err = (self.f_psi_Z(Z), abs(self.f_sigma_Z(Z) * Z_err))
+            t, t_err = t_bar * tScale, t_bar_err * tScale
+            l, l_err = l_bar * self.l_0, l_bar_err * self.l_0
+            psi, psi_err = self.f_psi_Z(Z), abs(self.f_sigma_Z(Z) * Z_err)
             v, v_err = v_bar * self.v_j, v_bar_err * self.v_j
-
             p, p_err = p_bar * pScale, p_bar_err * pScale
-
-            ps, pb = self.toPsPb(l, p)
-
+            ps, pb = self._toPsPb(l, p)
             T = self._T(psi, l, p)
 
-            data.append((dtag, t, l, psi, v, pb, p, ps, T))
-            error.append(
-                (etag, t_err, l_err, psi_err, v_err, "---", p_err, "---", "---")
+            p_line = []
+            for i in range(step):
+                x = i / step * (l + self.l_c)
+                p_x, _ = self._toPxU(l, ps, pb, v, x)
+                pp = PressureProbePoint(x, p_x)
+                p_line.append(pp)
+
+            p_line.append(PressureProbePoint(l + self.l_c, ps))
+            p_trace.append(PressureTraceEntry(dtag, T, p_line))
+
+            tableEntry = GunTableEntry(dtag, t, l, psi, v, pb, p, ps, T)
+            errorEntry = GunErrorEntry(
+                "L", t_err, l_err, psi_err, v_err, None, p_err, None, None
             )
+            data.append(tableEntry)
+            error.append(errorEntry)
 
         """
         scale the records too
@@ -880,74 +991,66 @@ class Gun:
 
         for t_bar, (l_bar, psi, v_bar, p_bar) in record:
             t = t_bar * tScale
-            if t in [line[1] for line in data]:
+            if t in [tableEntry.time for tableEntry in data]:
                 continue
-
             l = l_bar * self.l_0
+            t = t_bar * tScale
             p = p_bar * pScale
-            ps, pb = self.toPsPb(l, p)
-            data.append(
-                (
-                    "*",
-                    t_bar * tScale,
-                    l,
-                    psi,
-                    v_bar * self.v_j,
-                    pb,
-                    p,
-                    ps,
-                    self._T(psi, l, p),
-                ),
-            )
-            errLine = ("L", *("--" for _ in range(8)))
-            error.append(errLine)
+            ps, pb = self._toPsPb(l, p)
+            v = v_bar * self.v_j
+            T = self._T(psi, l, p)
 
-        data, error = zip(
-            *((a, b) for a, b in sorted(zip(data, error), key=lambda x: x[0][1]))
+            p_line = []
+            for i in range(step):
+                x = i / step * (l + self.l_c)
+                p_x, _ = self._toPxU(l, ps, pb, v, x)
+                pp = PressureProbePoint(x, p_x)
+                p_line.append(pp)
+
+            p_line.append(PressureProbePoint(l + self.l_c, ps))
+            p_trace.append(PressureTraceEntry(dtag, T, p_line))
+
+            tableEntry = GunTableEntry("*", t, l, psi, v, pb, p, ps, T)
+            errorEntry = GunErrorEntry("L")
+            data.append(tableEntry)
+            error.append(errorEntry)
+
+        data, error, p_trace = zip(
+            *(
+                (tableEntry, errorEntry, pTrace)
+                for tableEntry, errorEntry, pTrace in sorted(
+                    zip(data, error, p_trace), key=lambda entries: entries[0].time
+                )
+            )
         )
 
         # calculate a pressure and flow velcoity tracing.
-        p_trace = []
-        l_c = self.l_c
-
-        for line in data:
-            tag, t, l, psi, v, p_b, p, p_s, T = line
-            p_line = []
-            for i in range(step):
-                x = i / step * (l + l_c)
-                p_x, _ = self.toPxU(l, p_s, p_b, v, x)
-                p_line.append((x, p_x))
-
-            p_line.append((l + l_c, p_s))
-            p_trace.append((tag, psi, T, p_line))
+        gunResult = GunResult(self, data, error, p_trace)
 
         try:
             if self.material is None:
                 raise ValueError("Structural material not specified")
 
-            structure = self.getStructural(data, step, tol)
+            self._getStructural(gunResult, step, tol)
 
-        except Exception:
-            # import sys, traceback
-            # exc_type, exc_value, exc_traceback = sys.exc_info()
-            # errMsg = "".join(
-            #     traceback.format_exception(exc_type, exc_value, exc_traceback)
-            # )
-            # print(errMsg)
-            structure = [None, None, None]
+        except Exception as e:
+            print(e)
+            pass
 
-        return data, error, p_trace, structure
+        return gunResult
 
-    def getEff(self, vg):
+    def getEff(self, vg, p_max):
         """
         te: thermal efficiency
         be: ballistic efficiency
+        pe: piezoelectric efficiency
         """
         te = (vg / self.v_j) ** 2
         be = te / self.phi
-        return te, be
+        pe = 0.5 * self.phi * self.m * vg**2 / (p_max * self.S * self.l_g)
+        return te, be, pe
 
-    def toPsPb(self, l, p):
+    def _toPsPb(self, l, p):
         """
         Convert average chamber pressure at a certain travel to
         shot base pressure, and breech face pressure
@@ -972,14 +1075,14 @@ class Gun:
 
         return p / factor_s, p / factor_b
 
-    def toPxU(self, l, p_s, p_b, v, x):
+    def _toPxU(self, l, p_s, p_b, v, x):
         """
         Convert the average chamber to pressure and gas flow speed
         at arbitrary point x for a projectile travel of l and average pressure
         of p, **assuming the Lagrangian distribution**.
 
         Note that with the current state of research, only characteristic point
-        values are available for other distributions, use toPsPb() instead for that.
+        values are available for other distributions, use _toPsPb() instead for that.
 
         l: projectile travel
         p_s: pressure of shot
@@ -1016,7 +1119,7 @@ class Gun:
 
         return p_x, u
 
-    def getStructural(self, data, step, tol):
+    def _getStructural(self, gunResult: GunResult, step: int, tol: float):
         # step 1. calculate the barrel mass
         r = 0.5 * self.caliber
         l_c = self.l_c
@@ -1036,11 +1139,14 @@ class Gun:
         )
         p_probes = [0] * len(x_probes)
 
-        for line in data:
-            tag, t, l, psi, v, p_b, p, p_s, T = line
+        for gunTableEntry in gunResult.tableData:
+            l = gunTableEntry.travel
+            v = gunTableEntry.velocity
+            p_s = gunTableEntry.shotPressure
+            p_b = gunTableEntry.breechPressure
             for i, x in enumerate(x_probes):
                 if (x - l_c) <= l:
-                    p_x, _ = self.toPxU(l, p_s, p_b, v, x)
+                    p_x, _ = self._toPxU(l, p_s, p_b, v, x)
                     p_probes[i] = max(p_probes[i], p_x)
                 else:
                     break
@@ -1144,17 +1250,16 @@ class Gun:
         lower values has been reported. However, with increased pressure, these become
         harder to open due to difficulty related to alignment. Therefore the breech mass
         should be treated as a conservative estimate """
-        hull = [(-L, R1, R2), (0.0, R1, R2)]
+        hull = [OutlineEntry(-L, R1, R2), OutlineEntry(0.0, R1, R2)]
         for x, rho in zip(x_probes, rho_probes):
             if x < l_c:
-                hull.append((x, r_b, rho * r_b))
+                hull.append(OutlineEntry(x, r_b, rho * r_b))
             else:
-                hull.append((x, r, rho * r))
+                hull.append(OutlineEntry(x, r, rho * r))
 
-        bore_mass = (V + (R2__rb**2 - R1__rb**2) * S_b * L) * self.material.rho
-        breech_mass = R1__rb**2 * S_b * L * self.material.rho
-
-        return bore_mass, breech_mass, hull
+        gunResult.outline = hull
+        gunResult.tubeMass = (V + (R2__rb**2 - R1__rb**2) * S_b * L) * self.material.rho
+        gunResult.breechMass = R1__rb**2 * S_b * L * self.material.rho
 
     @staticmethod
     def _Vrho_k(x_s, p_s, S_s, sigma, tol, k_max=None, k_min=None, index=0, p_ref=None):
@@ -1340,7 +1445,6 @@ if __name__ == "__main__":
         lengthGun=3.5,
         chambrage=1.5,
         dragCoefficient=0.05,
-        # autofrettage=False,
     )
     """
 
@@ -1360,9 +1464,10 @@ if __name__ == "__main__":
     )
     """
     result = test.integrate(0, 1e-3, dom=DOMAIN_TIME, sol=SOL_LAGRANGE)
+    print(result)
     print(
         tabulate(
-            result[0],
+            result.getRawTableData(),
             headers=("tag", "t", "l", "phi", "v", "pb", "p", "ps", "T", "eta"),
         )
     )

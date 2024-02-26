@@ -71,6 +71,13 @@ def loadfont(fontpath, private=True, enumerable=False):
 
 
 def toSI(v, dec=4, unit=None, useSN=False):
+    if v is None:
+        return "N/A"
+    elif isinstance(v, int) or isinstance(v, float):
+        pass
+    else:
+        raise ValueError(f"Cannot convert type of {type(v):} to SI notation")
+
     if v >= 0:
         positive = True
     else:
@@ -200,11 +207,13 @@ def dot_aligned(matrix, units, useSN, stripWS=True):
     for seq, unit, isSN in zip(zip(*matrix), units, useSN):
         snums = []
         for n in seq:
-            try:
-                vstr = toSI(float(n), unit=unit, useSN=isSN)
+            if isinstance(n, int) or isinstance(n, float) or n is None:
+                vstr = toSI(n, unit=unit, useSN=isSN)
                 snums.append(vstr.strip() if stripWS else vstr)
-            except ValueError:
+            elif isinstance(n, str):
                 snums.append(n)
+            else:
+                raise ValueError("Unknown type encountered in dot_aligned")
         dots = [s.find(".") for s in snums]
         m = max(dots)
         transposed.append(tuple(" " * (m - d) + s for s, d in zip(snums, dots)))
@@ -217,6 +226,8 @@ def roundSig(x, n=4):
 
 
 def formatMass(m, n=4):
+    if m is None:
+        return "N/A"
     if m < 1e-3:
         return "{:.{:}g} mg".format(m * 1e6, n)
     elif m < 1:

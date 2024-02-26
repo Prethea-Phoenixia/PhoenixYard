@@ -151,7 +151,7 @@ class ConstrainedRecoiless:
 
         phi = phi_1 + omega / (3 * m)
 
-        S_j_bar = 1 / (Recoiless.getCf(gamma, A_bar, tol) * chi_0)
+        S_j_bar = 1 / (Recoiless._getCf(gamma, A_bar, tol) * chi_0)
         if S_j_bar > chi_k:
             raise ValueError(
                 "Achieving recoiless condition necessitates"

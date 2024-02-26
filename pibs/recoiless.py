@@ -1,7 +1,8 @@
 from math import pi, inf, tan
 from num import gss, RKF78, cubic, dekker
 from prop import GrainComp, Propellant
-
+from dataclasses import dataclass
+from typing import List
 from gun import DOMAIN_TIME, DOMAIN_LENG
 from gun import (
     POINT_START,
@@ -13,8 +14,49 @@ from gun import (
     POINT_EXIT,
 )
 from gun import Gun
+from gun import GenericEntry, GenericResult
+from gun import PressureTraceEntry, PressureProbePoint, OutlineEntry
 
 POINT_PEAK_STAG = "PEAK_STAG_P"
+
+
+@dataclass
+class RecoilessTableEntry(GenericEntry):
+    tag: str
+    time: float
+    travel: float
+    burnup: float
+    velocity: float
+    outflowVelocity: float
+    breechPressure: float
+    stagPressure: float
+    avgPressure: float
+    shotPressure: float
+    temperature: float
+    outflowFraction: float
+
+
+@dataclass
+class RecoilessErrorEntry(GenericEntry):
+    tag: str
+    time: float = None
+    travel: float = None
+    burnup: float = None
+    velocity: float = None
+    outflowVelocity: float = None
+    breechPressure: float = None
+    stagPressure: float = None
+    avgPressure: float = None
+    shotPressure: float = None
+    temperature: float = None
+    outflowFraction: float = None
+
+
+@dataclass
+class RecoilessResult(GenericResult):
+    gun: "Recoiless"
+    tableData: List[RecoilessTableEntry]
+    errorData: List[RecoilessErrorEntry]
 
 
 class Recoiless:
@@ -296,11 +338,11 @@ class Recoiless:
 
         gamma = self.theta + 1
         """
-        self.S_j_bar = self.getCf(gamma, 1, tol) / (
-            self.getCf(gamma, self.A_bar, tol) * self.chi_0
+        self.S_j_bar = self._getCf(gamma, 1, tol) / (
+            self._getCf(gamma, self.A_bar, tol) * self.chi_0
         )  # = S_j/S
         """
-        self.C_f = self.getCf(gamma, self.A_bar, tol)
+        self.C_f = self._getCf(gamma, self.A_bar, tol)
         self.S_j_bar = 1 / (self.C_f * self.chi_0)
         if self.S_j_bar > self.chi_k:
             raise ValueError(
@@ -707,7 +749,7 @@ class Recoiless:
             if tag == POINT_PEAK_AVG:
                 return p_bar
 
-            Ps, P0, Pb, Vb = self.toPsP0PbVb(
+            Ps, P0, Pb, Vb = self._toPsP0PbVb(
                 l_bar * self.l_0, v_bar * self.v_j, p_bar * pScale, tau * self.T_v, eta
             )
 
@@ -903,6 +945,9 @@ class Recoiless:
 
         data = []
         error = []
+        p_trace = []
+        l_c = self.l_c
+        l_g = self.l_g
 
         for bar_dataLine, bar_errorLine in zip(bar_data, bar_err):
             dtag, t_bar, l_bar, Z, v_bar, p_bar, eta, tau = bar_dataLine
@@ -928,20 +973,33 @@ class Recoiless:
             T = tau * self.T_v
             T_err = tau_err * self.T_v
 
-            ps, p0, pb, vb = self.toPsP0PbVb(l, v, p, T, eta)
-            data.append((dtag, t, l, psi, v, vb, pb, p0, p, ps, T, eta))
+            ps, p0, pb, vb = self._toPsP0PbVb(l, v, p, T, eta)
+
+            p_line = []
+            for i in range(step):  # 0....step -1
+                x = i / step * (l + l_c)
+                px = self._toPx(l, v, vb, ps, T, eta, x)
+
+                p_line.append(PressureProbePoint(x, px))
+
+            p_line.append(PressureProbePoint(l + l_c, ps))
+            p_trace.append(PressureTraceEntry(dtag, T, p_line))
+
+            data.append(
+                RecoilessTableEntry(dtag, t, l, psi, v, vb, pb, p0, p, ps, T, eta)
+            )
             error.append(
-                (
+                RecoilessErrorEntry(
                     etag,
                     t_err,
                     l_err,
                     psi_err,
                     v_err,
-                    "---",
-                    "---",
-                    "---",
+                    None,
+                    None,
+                    None,
                     p_err,
-                    "---",
+                    None,
                     T_err,
                     eta_err,
                 )
@@ -949,7 +1007,7 @@ class Recoiless:
 
         for t_bar, (l_bar, psi, v_bar, p_bar, eta, tau) in record:
             t = t_bar * tScale
-            if t in [line[1] for line in data]:
+            if t in [tableEntry.time for tableEntry in data]:
                 continue
             l, v, p, T = (
                 l_bar * self.l_0,
@@ -958,78 +1016,64 @@ class Recoiless:
                 tau * self.T_v,
             )
 
-            ps, p0, pb, vb = self.toPsP0PbVb(l, v, p, T, eta)
-            data.append(("*", t, l, psi, v, vb, pb, p0, p, ps, T, eta))
-            errLine = ("L", *("--" for _ in range(11)))
-            error.append(errLine)
-
-        data, error = zip(
-            *((a, b) for a, b in sorted(zip(data, error), key=lambda x: x[0][1]))
-        )
-
-        p_trace = []
-        l_c = self.l_c
-        l_g = self.l_g
-
-        for line in data:
-            tag, t, l, psi, v, vb, pb, p0, p, ps, T, eta = line
+            ps, p0, pb, vb = self._toPsP0PbVb(l, v, p, T, eta)
 
             p_line = []
             for i in range(step):  # 0....step -1
                 x = i / step * (l + l_c)
-                px = self.toPx(l, v, vb, ps, T, eta, x)
+                px = self._toPx(l, v, vb, ps, T, eta, x)
+                pp = PressureProbePoint(x, px)
+                p_line.append(pp)
 
-                p_line.append((x, px))
+            p_line.append(PressureProbePoint(l + l_c, ps))
+            p_trace.append(PressureTraceEntry(dtag, T, p_line))
 
-            p_line.append((l + l_c, ps))
-            p_trace.append((tag, psi, T, p_line))
+            data.append(
+                RecoilessTableEntry("*", t, l, psi, v, vb, pb, p0, p, ps, T, eta)
+            )
+            error.append(RecoilessErrorEntry("L"))
 
-        x_probes = (
-            [i / step * l_c for i in range(step)]
-            + [i / step * l_g + l_c for i in range(step)]
-            + [l_g + l_c]
+        data, error, p_trace = zip(
+            *(
+                (a, b, c)
+                for a, b, c in sorted(
+                    zip(data, error, p_trace), key=lambda entries: entries[0].time
+                )
+            )
         )
-        p_probes = [0] * len(x_probes)
 
-        for line in data:
-            tag, t, l, psi, v, vb, pb, p0, p, ps, T, eta = line
-            for i, x in enumerate(x_probes):
-                if (x - l_c) <= l:
-                    p_x = self.toPx(l, v, vb, ps, T, eta, x)
-                    p_probes[i] = max(p_probes[i], p_x)
-                else:
-                    break
+        recoilessResult = RecoilessResult(self, data, error, p_trace)
 
         try:
             if self.material is None:
                 raise ValueError("Structural material not specified")
 
-            structure = self.getStructural(data, step, tol)
+            self._getStructural(recoilessResult, step, tol)
 
         except Exception:
-            # import sys, traceback
+            import sys, traceback
 
-            # exc_type, exc_value, exc_traceback = sys.exc_info()
+            exc_type, exc_value, exc_traceback = sys.exc_info()
 
-            # errMsg = "".join(
-            #     traceback.format_exception(exc_type, exc_value, exc_traceback)
-            # )
-            # print(errMsg)
+            errMsg = "".join(
+                traceback.format_exception(exc_type, exc_value, exc_traceback)
+            )
+            print(errMsg)
 
-            structure = [None, None, None, None]
+        return recoilessResult
 
-        return data, error, p_trace, structure
-
-    def getEff(self, vg):
+    def getEff(self, vg, p_max):
         """
         te: thermal efficiency
         be: ballistic efficiency
+        pe: piezoelectric efficiency
         """
         te = (vg / self.v_j) ** 2
         be = te / self.phi
-        return te, be
+        pe = 0.5 * self.phi * self.m * vg**2 / (p_max * self.S * self.l_g)
+        return te, be, pe
 
-    def toPsP0PbVb(self, l, v, p, T, eta):
+    def _toPsP0PbVb(self, l, v, p, T, eta):
         """
         Diagramatic explanation of the calculated values:
             ----\___     __________________
@@ -1076,7 +1120,7 @@ class Recoiless:
         # l0 = H / (1 + H) * l  # location of the stagnation point
         return ps, p0, pb, vb
 
-    def toPx(self, l, v, vb, ps, T, eta, x):
+    def _toPx(self, l, v, vb, ps, T, eta, x):
         m = self.m
         omega = self.omega
         phi_1 = self.phi_1
@@ -1110,7 +1154,7 @@ class Recoiless:
         return px
 
     @staticmethod
-    def getCf(gamma, Sr, tol=1e-5):
+    def _getCf(gamma, Sr, tol=1e-5):
         """
         takes the adiabatic index and area ration between constriction throat
         and the exit, calculate the thrust factor Cf
@@ -1134,7 +1178,7 @@ class Recoiless:
 
         return Cf
 
-    def getStructural(self, data, step, tol):
+    def _getStructural(self, recoilessResult: RecoilessResult, step: int, tol: float):
         l_c = self.l_c
         l_g = self.l_g
         chi_k = self.chi_k
@@ -1157,11 +1201,18 @@ class Recoiless:
         )
 
         p_probes = [0] * len(x_probes)
-        for line in data:
-            tag, t, l, psi, v, vb, pb, p0, p, ps, T, eta = line
+        for recoilessTableEntry in recoilessResult.tableData:
+            # t = recoilessTableEntry.time
+            l = recoilessTableEntry.travel
+            v = recoilessTableEntry.velocity
+            vb = recoilessTableEntry.outflowVelocity
+            ps = recoilessTableEntry.shotPressure
+            T = recoilessTableEntry.temperature
+            eta = recoilessTableEntry.outflowFraction
+
             for i, x in enumerate(x_probes):
                 if (x - l_c) <= l:
-                    p_x = self.toPx(l, v, vb, ps, T, eta, x)
+                    p_x = self._toPx(l, v, vb, ps, T, eta, x)
                     p_probes[i] = max(p_probes[i], p_x)
                 else:
                     break
@@ -1200,12 +1251,12 @@ class Recoiless:
             if x < -l_b:
                 k = (x + l_b + l_a) / l_a
                 r = k * r_t + (1 - k) * r_n
-                p = Recoiless.getPr(gamma, (r / r_t) ** 2, tol)[1] * p_entry
+                p = Recoiless._getPr(gamma, (r / r_t) ** 2, tol)[1] * p_entry
 
             else:
                 k = (x + l_b) / l_b
                 r = k * r_b + (1 - k) * r_t
-                p = Recoiless.getPr(gamma, (r / r_t) ** 2, tol)[0] * p_entry
+                p = Recoiless._getPr(gamma, (r / r_t) ** 2, tol)[0] * p_entry
 
             if p > 3**-0.5 * sigma:
                 raise ValueError(
@@ -1241,7 +1292,7 @@ class Recoiless:
         hull = []
 
         for x, r, rho in zip(neg_x_probes, r_probes, rho_n):
-            hull.append((x, r, r * rho))
+            hull.append(OutlineEntry(x, r, r * rho))
 
         nozzle_mass = V_n * self.material.rho
 
@@ -1324,14 +1375,16 @@ class Recoiless:
 
         for x, rho in zip(x_probes, rho_probes):
             if x < l_c:
-                hull.append((x, r_b, rho * r_b))
+                hull.append(OutlineEntry(x, r_b, rho * r_b))
             else:
-                hull.append((x, r_s, rho * r_s))
+                hull.append(OutlineEntry(x, r_s, rho * r_s))
 
-        return tube_mass, nozzle_mass, hull
+        recoilessResult.outline = hull
+        recoilessResult.tubeMass = tube_mass
+        recoilessResult.breechMass = nozzle_mass
 
     @staticmethod
-    def getAr(gamma, Pr):
+    def _getAr(gamma, Pr):
         if Pr == 0 or Pr == 1:
             return inf
         return (
@@ -1341,7 +1394,7 @@ class Recoiless:
         ) ** -1
 
     @staticmethod
-    def getPr(gamma, Ar, tol):
+    def _getPr(gamma, Ar, tol):
         """
         Given an area ratio Ar, calculate the pressure ratio Pr for a
         converging-diverging nozzle. One area ratio corresponds to two
@@ -1361,7 +1414,7 @@ class Recoiless:
         Pr_c = (2 / (gamma + 1)) ** (gamma / (gamma - 1))
 
         Pr_sup, _ = dekker(
-            lambda Pr: Recoiless.getAr(gamma, Pr),
+            lambda Pr: Recoiless._getAr(gamma, Pr),
             0,
             Pr_c,
             y=Ar,
@@ -1369,7 +1422,7 @@ class Recoiless:
         )
 
         Pr_sub, _ = dekker(
-            lambda Pr: Recoiless.getAr(gamma, Pr),
+            lambda Pr: Recoiless._getAr(gamma, Pr),
             Pr_c,
             1,
             y=Ar,
@@ -1408,15 +1461,15 @@ if __name__ == "__main__":
         lengthGun=3.5,
         nozzleExpansion=2.0,
         chambrage=1.0,
-        structuralMaterial=Material._30SIMN2MOVA.createMaterialAtTemp(0),
-        structuralSafetyFactor=1.1,
+        # structuralMaterial=Material._30SIMN2MOVA.createMaterialAtTemp(0),
+        # structuralSafetyFactor=1.1,
     )
     record = []
     # fmt: off
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(10, 1e-3, dom=DOMAIN_TIME)[0],
+            test.integrate(10, 1e-3, dom=DOMAIN_TIME).getRawTableData(),
             headers=("tag", "t", "l", "psi", "v", "vb", "pb", "p0", "p", "ps",
                      "T", "eta")
         )
@@ -1424,7 +1477,7 @@ if __name__ == "__main__":
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(10, 1e-3, dom=DOMAIN_LENG)[0],
+            test.integrate(10, 1e-3, dom=DOMAIN_LENG).getRawTableData(),
             headers=("tag", "t", "l", "psi", "v", "vb", "pb", "p0", "p", "ps",
                      "T", "eta")
         )

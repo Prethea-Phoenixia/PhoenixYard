@@ -612,7 +612,7 @@ ENGLISH = {
     "nmLabel": "Nozzle Mass",
     "bmText": " ".join(
         (
-            "Breech mass is calculated for a straight wall, interrupted screw",
+            "Breech mass is calculated for a straight wall, uninterrupted screw",
             "type, after the work of Akselʹ Vilʹgelʹmovich Gadolin,",
             "with the screw radius optimized for minimum stress. The",
             "breech block is constrained to be as long as it is wide for",

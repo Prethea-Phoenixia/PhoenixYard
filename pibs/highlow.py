@@ -1,8 +1,9 @@
-from math import pi, log, inf
-from num import gss, RKF78, cubic, bisect, dekker
-
+from math import pi
+from num import gss, RKF78, cubic, dekker
 from gun import Gun
 from gun import DOMAIN_TIME, DOMAIN_LENG
+from dataclasses import dataclass
+from typing import List
 from gun import (
     POINT_START,
     POINT_PEAK_AVG,
@@ -11,11 +12,52 @@ from gun import (
     POINT_BURNOUT,
     POINT_EXIT,
 )
+from gun import GenericEntry, GenericResult
+from gun import PressureTraceEntry, PressureProbePoint, OutlineEntry
 
 POINT_PEAK_HIGH = "PEAK_HIGH_P"
 POINT_PEAK_BLEED = "PEAK_BLEED_P"
 
 HIGHLOW_PEAKS = [POINT_PEAK_HIGH, POINT_PEAK_BLEED, POINT_PEAK_AVG, POINT_PEAK_SHOT]
+
+
+@dataclass
+class HighlowTableEntry(GenericEntry):
+    tag: str
+    time: float
+    travel: float
+    burnup: float
+    velocity: float
+    highPressure: float
+    breechPressure: float
+    avgPressure: float
+    shotPressure: float
+    highTemperature: float
+    lowTemperature: float
+    outflowFraction: float
+
+
+@dataclass
+class HighlowErrorEntry(GenericEntry):
+    tag: str
+    time: float = None
+    travel: float = None
+    burnup: float = None
+    velocity: float = None
+    highPressure: float = None
+    breechPressure: float = None
+    avgPressure: float = None
+    shotPressure: float = None
+    highTemperature: float = None
+    lowTemperature: float = None
+    outflowFraction: float = None
+
+
+@dataclass
+class HighlowResult(GenericResult):
+    gun: "Highlow"
+    tableData: List[HighlowTableEntry]
+    errorData: List[HighlowErrorEntry]
 
 
 class Highlow:
@@ -865,7 +907,7 @@ class Highlow:
             p_low = self._f_p_2(l, eta, tau_2)
             if m == POINT_PEAK_AVG:
                 return p_low
-            p_s, p_b = self.toPsPb(l, p_low, eta)
+            p_s, p_b = self._toPsPb(l, p_low, eta)
             if m == POINT_PEAK_SHOT:
                 return p_s
             elif m == POINT_PEAK_BLEED:
@@ -1058,7 +1100,9 @@ class Highlow:
         sort the data points
         """
 
-        data, error = [], []
+        data, error, p_trace = [], [], []
+        l_h = self.l_0 / self.chi_k  # physical length of the high pressure chamber
+        l_l = self.l_1 / self.chi_k  # low pressure chamber
 
         for bar_dataLine, bar_errorLine in zip(bar_data, bar_err):
             # fmt: off
@@ -1067,90 +1111,130 @@ class Highlow:
              tau_1_err, tau_2_err) = bar_errorLine
             # fmt: on
             psi, psi_err = self.f_psi_Z(Z), abs(self.f_sigma_Z(Z) * Z_err)
-            p_s, p_b = self.toPsPb(l, p_2, eta)
+            p_s, p_b = self._toPsPb(l, p_2, eta)
 
             T_1 = tau_1 * self.T_v
             T_2 = tau_2 * self.T_v
             T_1_err = tau_1_err * self.T_v
             T_2_err = tau_2_err * self.T_v
-            # fmt: off
-            data.append((dtag, t, l, psi, v, p_1, p_b, p_2, p_s, T_1, T_2, eta))
-            error.append(
-                (etag, t_err, l_err, psi_err, v_err, p_1_err, "---", p_2_err, "---",
-                 T_1_err, T_2_err, eta_err)
+
+            p_line = []
+            for i in range(step):
+                x = i / step * (l + l_l) + l_h
+                p_x = self._toPx(l, p_1, p_b, p_s, x)
+                p_line.append(PressureProbePoint(x, p_x))
+            p_line.append(PressureProbePoint(l + l_l + l_h, p_s))
+
+            p_trace.append(PressureTraceEntry(dtag, T_2, p_line))
+            p_trace.append(
+                PressureTraceEntry(
+                    dtag,
+                    T_1,
+                    [
+                        PressureProbePoint(0, p_1),
+                        PressureProbePoint(l_h * (1 - tol), p_1),
+                    ],
+                )
             )
-            # fmt: on
+
+            data.append(
+                HighlowTableEntry(dtag, t, l, psi, v, p_1, p_b, p_2, p_s, T_1, T_2, eta)
+            )
+            error.append(
+                HighlowErrorEntry(
+                    etag,
+                    t_err,
+                    l_err,
+                    psi_err,
+                    v_err,
+                    p_1_err,
+                    None,
+                    p_2_err,
+                    None,
+                    T_1_err,
+                    T_2_err,
+                    eta_err,
+                )
+            )
 
         """
         scale the records too
         """
 
         for t, (l, psi, v, p_1, p_2, eta, tau_1, tau_2) in record:
-            if t in [line[1] for line in data]:
+            if t in [tableEntry.time for tableEntry in data]:
                 continue
-            p_s, p_b = self.toPsPb(l, p_2, eta)
+            p_s, p_b = self._toPsPb(l, p_2, eta)
+
+            p_line = []
+            for i in range(step):
+                x = i / step * (l + l_l) + l_h
+                p_x = self._toPx(l, p_1, p_b, p_s, x)
+                p_line.append(PressureProbePoint(x, p_x))
+            p_line.append(PressureProbePoint(l + l_l + l_h, p_s))
+
+            p_trace.append(PressureTraceEntry("*", T_2, p_line))
+            p_trace.append(
+                PressureTraceEntry(
+                    "*",
+                    T_1,
+                    [
+                        PressureProbePoint(0, p_1),
+                        PressureProbePoint(l_h * (1 - tol), p_1),
+                    ],
+                )
+            )
+
             # fmt: off
             data.append(
-                (
+                HighlowTableEntry(
                     "*", t, l, psi, v, p_1, p_b, p_2, p_s, tau_1 * self.T_v,
                     tau_2 * self.T_v, eta
                 )
             )
             # fmt: on
+            error.append(HighlowErrorEntry("L"))
 
-            errLine = ("L", *("--" for _ in range(11)))
-            error.append(errLine)
-
-        data, error = zip(
-            *((a, b) for a, b in sorted(zip(data, error), key=lambda x: x[0][1]))
+        data, error, p_trace = zip(
+            *(
+                (a, b, c)
+                for a, b, c in sorted(
+                    zip(data, error, p_trace), key=lambda entries: entries[0].time
+                )
+            )
         )
 
-        # calculate a pressure tracing.
-        p_trace = []
-
-        l_h = self.l_0 / self.chi_k  # physical length of the high pressure chamber
-        l_l = self.l_1 / self.chi_k  # low pressure chamber
-
-        for line in data:
-            tag, t, l, psi, v, p_h, p_b, p, p_s, T_1, T_2, eta = line
-            p_line = []
-            for i in range(step):
-                x = i / step * (l + l_l) + l_h
-                p_x = self.toPx(l, p_h, p_b, p_s, x)
-                p_line.append((x, p_x))
-            p_line.append((l + l_l + l_h, p_s))
-
-            p_trace.append((tag, psi, T_2, p_line))
-            p_trace.append((tag, psi, T_1, [(0, p_h), (l_h * (1 - tol), p_h)]))
+        highlowResult = HighlowResult(self, data, error, p_trace)
 
         try:
             if self.material is None:
                 raise ValueError("Structural material not specified")
 
-            structure = self.getStructural(data, step, tol)
+            self._getStructural(highlowResult, step, tol)
 
         except Exception:
-            # import sys, traceback
+            import sys, traceback
 
-            # exc_type, exc_value, exc_traceback = sys.exc_info()
-            # errMsg = "".join(
-            #     traceback.format_exception(exc_type, exc_value, exc_traceback)
-            # )
-            # print(errMsg)
-            structure = [None, None, None]
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            errMsg = "".join(
+                traceback.format_exception(exc_type, exc_value, exc_traceback)
+            )
+            print(errMsg)
 
-        return data, error, p_trace, structure
+        return highlowResult
 
-    def getEff(self, vg):
+    def getEff(self, vg, p_max):
         """
         te: thermal efficiency
         be: ballistic efficiency
+        pe: piezoelectric efficiency
         """
         te = (vg / self.v_j) ** 2
         be = te / self.phi
-        return te, be
+        pe = 0.5 * self.phi * self.m * vg**2 / (p_max * self.S * self.l_g)
+        return te, be, pe
 
-    def toPsPb(self, l, p, eta):
+    def _toPsPb(self, l, p, eta):
         """
         Convert average chamber pressure at a certain travel to
         shot base pressure, and breech face pressure
@@ -1180,7 +1264,7 @@ class Highlow:
 
         return p / factor_s, p / factor_b
 
-    def toPx(self, l, p_h, p_b, p_s, x):
+    def _toPx(self, l, p_h, p_b, p_s, x):
         """
         | l_h | l_l |======l======
         """
@@ -1201,7 +1285,7 @@ class Highlow:
 
         return p_x
 
-    def getStructural(self, data, step, tol):
+    def _getStructural(self, highlowResult: HighlowResult, step: int, tol: float):
         l_g = self.l_g
         chi_k = self.chi_k
         l_h = self.l_0 / chi_k  # physical length of high chamber
@@ -1224,12 +1308,15 @@ class Highlow:
         )
         p_probes = [0] * len(x_probes)
 
-        for line in data:
-            tag, t, l, psi, v, p_h, p_b, p, p_s, T_1, T_2, eta = line
+        for highlowTableEntry in highlowResult.tableData:
+            l = highlowTableEntry.travel
+            p_h = highlowTableEntry.highPressure
+            p_b = highlowTableEntry.breechPressure
+            p_s = highlowTableEntry.shotPressure
 
             for i, x in enumerate(x_probes):
                 if (x - (l_h + l_l)) <= l:
-                    p_x = self.toPx(l, p_h, p_b, p_s, x)
+                    p_x = self._toPx(l, p_h, p_b, p_s, x)
                     p_probes[i] = max(p_probes[i], p_x)
                 else:
                     break
@@ -1294,31 +1381,43 @@ class Highlow:
 
         R1__R2 = max((1 - 1 / R2__rb * (P__sigma) ** 0.5) ** 0.5, R2__rb**-1)
         R1__rb = R1__R2 * R2__rb
+        R1 = R1__rb * r_b
         L__rb = 0.5 * (
             P__sigma**0.5 * (R1__rb**2 / P__sigma - R1__R2**2 / (1 - R1__R2**2)) ** -0.5
         )
-        R1 = R1__rb * r_b
-        L_rb = max(L__rb * r_b, 2 * R1)  # the "rear", or the actual breech
-        L_fb = L__rb * r_b  # the "forward breech", or the plate between high and low
+        L_rear = max(L__rb * r_b, 2 * R1)  # the "rear", or the actual breech
 
-        tube_mass = (V + (R2__rb**2 - R1__rb**2) * S_b * L_rb) * self.material.rho
-        breech_mass = R1__rb**2 * S_b * L_rb * self.material.rho
+        R0__R2 = 1 / R2__rb
+        R0__rb = 1
+        Lf__rb = 0.5 * (
+            P__sigma**0.5 * (R0__rb**2 / P__sigma - R0__R2**2 / (1 - R0__R2**2)) ** -0.5
+        )
+        L_front = (
+            Lf__rb * r_b
+        )  # the "forward breech", or the plate between high and low
+
+        tube_mass = (
+            V + (R2__rb**2 - R1__rb**2) * S_b * L_rear + S_b * L_front
+        ) * self.material.rho
+        breech_mass = R1__rb**2 * S_b * L_rear * self.material.rho
 
         hull = []
         for x, rho in zip(x_probes, rho_probes):
             if x < l_h:
-                hull.append((x, r_b, rho * r_b))
+                hull.append(OutlineEntry(x, r_b, rho * r_b))
             elif x < l_h + l_l:
-                hull.append((x + L_fb, r_b, rho * r_b))
+                hull.append(OutlineEntry(x + L_front, r_b, rho * r_b))
             else:
-                hull.append((x + L_fb, r_s, rho * r_s))
+                hull.append(OutlineEntry(x + L_front, r_s, rho * r_s))
 
-        r_out = hull[0][2]
-        hull.insert(step + 1, (l_h, 0, r_out))
-        hull.insert(step + 2, (l_h + L_fb, 0, r_out))
-        hull = [(-L_rb, R1, R2), (0.0, R1, R2)] + hull
+        r_out = hull[0].r_ex
+        hull.insert(step + 1, OutlineEntry(l_h, 0, r_out))
+        hull.insert(step + 2, OutlineEntry(l_h + L_front, 0, r_out))
+        hull = [OutlineEntry(-L_rear, R1, R2), OutlineEntry(0.0, R1, R2)] + hull
 
-        return tube_mass, breech_mass, hull
+        highlowResult.outline = hull
+        highlowResult.tubeMass = tube_mass
+        highlowResult.breechMass = breech_mass
 
 
 if __name__ == "__main__":
@@ -1357,7 +1456,7 @@ if __name__ == "__main__":
     print("\nnumerical: time")
     print(
         tabulate(
-            test.integrate(10, 1e-3, dom=DOMAIN_TIME)[0],
+            test.integrate(10, 1e-3, dom=DOMAIN_TIME).getRawTableData(),
             headers=(
                 "tag",
                 "t",
@@ -1380,7 +1479,7 @@ if __name__ == "__main__":
     print("\nnumerical: length")
     print(
         tabulate(
-            test.integrate(9, 1e-3, dom=DOMAIN_LENG)[0],
+            test.integrate(9, 1e-3, dom=DOMAIN_LENG).getRawTableData(),
             headers=(
                 "tag",
                 "t",

@@ -387,7 +387,7 @@ class InteriorBallisticsFrame(Frame):
 
                 csvWriter.writerow(columnList)
 
-                for line in self.tableData:
+                for line in self.gunResult.getRawTableData():
                     csvWriter.writerow(line)
 
             messagebox.showinfo(
@@ -422,15 +422,14 @@ class InteriorBallisticsFrame(Frame):
         self.tabParent.tab(self.tableTab, text=self.getLocStr("tableTab"))
         self.tabParent.tab(self.errorTab, text=self.getLocStr("errorTab"))
 
+        self.propTabParent.tab(self.propFrm, text=self.getLocStr("propFrmLabel"))
+        self.propTabParent.tab(self.grainFrm, text=self.getLocStr("grainFrmLabel"))
+
         self.updateTable()
         self.updateGeom()
         self.updateSpec()
         self.updateFigPlot()
         self.updateAuxPlot()
-
-    def readTable(self, tag):
-        i = [line[0] for line in self.tableData].index(tag)
-        return self.tableData[i]
 
     def getLocStr(self, name, forceDefault=None):
         try:
@@ -523,6 +522,15 @@ class InteriorBallisticsFrame(Frame):
             row=i,
             labelLocKey="beffLabel",
             tooltipLocKey="beffText",
+            locFunc=self.getLocStr,
+            allDisps=self.locs,
+        )
+        i += 2
+        self.pe = Loc12Disp(
+            parent=parFrm,
+            row=i,
+            labelLocKey="peffLabel",
+            tooltipLocKey="peffText",
             locFunc=self.getLocStr,
             allDisps=self.locs,
         )
@@ -1092,15 +1100,7 @@ class InteriorBallisticsFrame(Frame):
             pass
 
         try:
-            (
-                self.kwargs,
-                self.gun,
-                self.tableData,
-                self.errorData,
-                self.pressureTrace,
-                self.structure,
-                errorLst,
-            ) = jobQueue.get_nowait()
+            (self.kwargs, self.gun, self.gunResult, errorLst) = jobQueue.get_nowait()
 
             self.errorLst.extend(errorLst)
 
@@ -1164,12 +1164,32 @@ class InteriorBallisticsFrame(Frame):
             self.ld.set(toSI(trueLF * self.prop.rho_p, useSN=False).strip() + " kg/m³")
             # true load density
 
-            _, _, _, _, vg, *_ = self.readTable(POINT_EXIT)
+            # _, _, _, _, vg, *_ = self.readTable(POINT_EXIT)
+            vg = self.gunResult.readTableData(POINT_EXIT).velocity
 
-            eta_t, eta_b = gun.getEff(vg)
+            # if gunType == CONVENTIONAL:
+            #     p = self.readTable(POINT_PEAK_AVG)[6]
+            # elif gunType == RECOILESS:
+            #     p = self.readTable(POINT_PEAK_AVG)[8]
+            # elif gunType == HIGHLOW:
+            #     p = self.readTable(POINT_PEAK_AVG)[7]
+
+            p = self.gunResult.readTableData(POINT_PEAK_AVG).avgPressure
+
+            # if gunType == CONVENTIONAL:
+            #     ps = self.readTable(POINT_PEAK_SHOT)[7]
+            # elif gunType == RECOILESS:
+            #     ps = self.readTable(POINT_PEAK_SHOT)[9]
+            # elif gunType == HIGHLOW:
+            #     ps = self.readTable(POINT_PEAK_SHOT)[8]
+
+            ps = self.gunResult.readTableData(POINT_PEAK_SHOT).shotPressure
+
+            eta_t, eta_b, eta_p = gun.getEff(vg, p)
 
             self.te.set(str(round(eta_t * 100, 2)) + " %")
             self.be.set(str(round(eta_b * 100, 2)) + " %")
+            self.pe.set(str(round(eta_p * 100, 2)) + " %")
 
             self.va.set(toSI(gun.v_j, unit="m/s"))
 
@@ -1190,26 +1210,13 @@ class InteriorBallisticsFrame(Frame):
                 "{:.3g} x {:.4g} mm".format(caliber * 1e3, cartridge_len * 1e3)
             )
 
-            if gunType == CONVENTIONAL:
-                ps = self.readTable(POINT_PEAK_SHOT)[7]
-            elif gunType == RECOILESS:
-                ps = self.readTable(POINT_PEAK_SHOT)[9]
-            elif gunType == HIGHLOW:
-                ps = self.readTable(POINT_PEAK_SHOT)[8]
-
             self.pa.set(toSI(ps * gun.S / gun.m, unit="m/s²"))
-
             self.name.set(self.getDescriptive())
 
-            bore_mass = self.structure[0]
-
-            self.gm.set(formatMass(bore_mass) if bore_mass is not None else "N/A")
-
-            breech_nozzle_mass = self.structure[1]
-
-            self.bm.set(
-                "N/A" if breech_nozzle_mass is None else formatMass(breech_nozzle_mass)
-            )
+            bore_mass = self.gunResult.tubeMass
+            self.gm.set(formatMass(bore_mass))
+            breech_nozzle_mass = self.gunResult.breechMass
+            self.bm.set(formatMass(breech_nozzle_mass))
 
             if self.tabParent.index(self.tabParent.select()) == 2:
                 self.tabParent.select(self.plotTab)
@@ -1328,17 +1335,23 @@ class InteriorBallisticsFrame(Frame):
         )
         i += 1
 
+        self.propTabParent = ttk.Notebook(specFrm, padding=0)
+        self.propTabParent.grid(row=i, column=0, columnspan=3, sticky="nsew")
+        specFrm.rowconfigure(i, weight=1)
+
+        self.propTabParent.columnconfigure(0, weight=1)
+        self.propTabParent.rowconfigure(0, weight=1)
+
         propFrm = LocLabelFrame(
-            specFrm,
+            self.propTabParent,
             locKey="propFrmLabel",
             style="SubLabelFrame.TLabelframe",
             locFunc=self.getLocStr,
             tooltipLocKey="specsText",
             allLLF=self.locs,
         )
-        propFrm.grid(row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
-        specFrm.rowconfigure(i, weight=1)
-
+        self.propFrm = propFrm
+        propFrm.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
         propFrm.rowconfigure(1, weight=1)
         propFrm.columnconfigure(0, weight=1)
 
@@ -1371,19 +1384,21 @@ class InteriorBallisticsFrame(Frame):
         specScroll.config(command=self.specs.yview)
         specHScroll.config(command=self.specs.xview)
 
-        i += 1
-        specFrm.rowconfigure(i, weight=1)
-
         grainFrm = LocLabelFrame(
-            specFrm,
+            self.propTabParent,
             locKey="grainFrmLabel",
             style="SubLabelFrame.TLabelframe",
             locFunc=self.getLocStr,
             allLLF=self.locs,
         )
+        self.grainFrm = grainFrm
         grainFrm.grid(row=i, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
         grainFrm.columnconfigure(0, weight=1)
         grainFrm.rowconfigure(0, weight=1, minsize=200)
+
+        self.propTabParent.add(grainFrm, text=self.getLocStr("grainFrmLabel"))
+        self.propTabParent.add(propFrm, text=self.getLocStr("propFrmLabel"))
+        self.propTabParent.enable_traversal()
 
         geomPlotFrm = LocLabelFrame(
             grainFrm,
@@ -1611,8 +1626,6 @@ class InteriorBallisticsFrame(Frame):
 
     def addGeomPlot(self):
         geomPlotFrm = self.geomPlotFrm
-        # geomPlotFrm.columnconfigure(0, weight=1)
-        # geomPlotFrm.rowconfigure(0, weight=1)
 
         # geomPlotFrm.grid_propagate(False)
         # geomPlotFrm.pack_propagate(0)
@@ -1623,7 +1636,7 @@ class InteriorBallisticsFrame(Frame):
             self.geomAx = fig.add_subplot(111)
 
             self.geomCanvas = FigureCanvasTkAgg(fig, master=geomPlotFrm)
-            self.geomCanvas.draw_idle()
+            self.geomCanvas.draw()
             # self.geomCanvas.get_tk_widget().grid(
             #     row=0, column=0,  sticky="nsew"
             # )
@@ -1950,7 +1963,7 @@ class InteriorBallisticsFrame(Frame):
             vxs = []
 
             if gunType == CONVENTIONAL:
-                for tag, t, l, psi, v, Pb, P, Ps, T in self.tableData:
+                for tag, t, l, psi, v, Pb, P, Ps, T in self.gunResult.getRawTableData():
                     if tag == POINT_PEAK_AVG:
                         if dom == DOMAIN_TIME:
                             xPeak = t * 1e3
@@ -1974,7 +1987,7 @@ class InteriorBallisticsFrame(Frame):
                 # fmt: off
                 for (
                     tag, t, l, psi, v, vx, Px, P0, P, Ps, T, eta
-                ) in self.tableData:
+                ) in self.gunResult.getRawTableData():
                     # fmt: on
                     if tag == POINT_PEAK_AVG:
                         if dom == DOMAIN_TIME:
@@ -2000,7 +2013,7 @@ class InteriorBallisticsFrame(Frame):
 
             elif gunType == HIGHLOW:
                 # fmt: off
-                for (tag, t, l, psi, v, Ph, Pb, P, Ps, Th, Tl, eta) in self.tableData:
+                for (tag, t, l, psi, v, Ph, Pb, P, Ps, Th, Tl, eta) in self.gunResult.getRawTableData():
                     # fmt: on
                     if tag == POINT_PEAK_AVG:
                         if dom == DOMAIN_TIME:
@@ -2216,28 +2229,41 @@ class InteriorBallisticsFrame(Frame):
             self.auxAx.cla()
             self.auxAxH.cla()
 
-            gunType = self.kwargs["typ"]
+            # gunType = self.kwargs["typ"]
 
-            pTrace = self.pressureTrace
+            pTrace = self.gunResult.pressureTrace
             cmap = mpl.colormaps["afmhot"]
 
             x_max = 0
             y_max = 0
-            T_max = max(trace[2] for trace in pTrace)
-            T_min = min(trace[2] for trace in pTrace)
+            T_max = max(trace.T for trace in pTrace)
+            T_min = min(trace.T for trace in pTrace)
 
-            for i, (tag, psi, T, trace) in enumerate(pTrace[::-1]):
+            for pressureTraceEntry in pTrace[::-1]:
+                # if tag != "":
+                #     continue
+
+                tag, T, trace = (
+                    pressureTraceEntry.tag,
+                    pressureTraceEntry.T,
+                    pressureTraceEntry.pressureTrace,
+                )
+
                 if tag != "":
-                    continue
-                if self.themeRadio.get():
+                    color = "black" if self.themeRadio.get() else "white"
+                    linestyle = "dotted"
+                    alpha = 0.1
+
+                elif self.themeRadio.get():
                     color = cmap(1 - (T - T_min) / (T_max - T_min))
+                    linestyle = None
+                    alpha = None
                 else:
                     color = cmap((T - T_min) / (T_max - T_min))
+                    linestyle = None
+                    alpha = None
 
-                alpha = None
-                linestyle = None
-
-                x, y = zip(*trace)
+                x, y = zip(*[(ppp.x, ppp.p) for ppp in trace])
                 y = [v * 1e-6 for v in y]
                 x_max = max(x_max, max(x))
                 y_max = max(y_max, max(y))
@@ -2258,10 +2284,10 @@ class InteriorBallisticsFrame(Frame):
 
             self.auxAx.set_xlabel(self.getLocStr("figAuxDomain"))
 
-            HTrace = self.structure[2]
+            HTrace = self.gunResult.outline
 
             if HTrace is not None and self.traceHull.get():
-                xHull, rIn, rOut = zip(*HTrace)
+                xHull, rIn, rOut = zip(*[trace.getRawLine() for trace in HTrace])
                 rIn, rOut = [r * 1e3 for r in rIn], [r * 1e3 for r in rOut]
 
                 self.auxAxH.plot(xHull, rIn, c="tab:blue")
@@ -2455,7 +2481,10 @@ class InteriorBallisticsFrame(Frame):
 
         try:
             gunType = self.kwargs["typ"]
-            tableData, errorData = self.tableData, self.errorData
+            tableData, errorData = (
+                self.gunResult.getRawTableData(),
+                self.gunResult.getRawErrorData(),
+            )
         except AttributeError:
             gunType = self.typeOptn.getObj()
             tableData, errorData = [], []
@@ -2494,7 +2523,6 @@ class InteriorBallisticsFrame(Frame):
             # fmt: on
 
         locTableData = dot_aligned(locTableData, units=units, useSN=useSN)
-
         errorData = dot_aligned(errorData, units=units, useSN=useSN)
 
         columnList = self.getLocStr("columnList")[gunType]
@@ -2550,7 +2578,7 @@ class InteriorBallisticsFrame(Frame):
                 str(i + 1),
                 "end",
                 str(-i - 1),
-                values=tuple("±" + e if e != erow[0] else e for e in erow),
+                values=tuple("±" + e if "." in e else e for e in erow),
                 tags="error",
             )
             self.tv.move(str(-i - 1), str(i + 1), "end")
@@ -2601,11 +2629,15 @@ class InteriorBallisticsFrame(Frame):
             self.dropSoln.disable()
 
         if gunType == RECOILESS:
+            self.bm.reLocalize("nmLabel", "")
+
             self.nozzExp.restore()
             self.nozzEff.restore()
 
             self.plotNozzleV.restore()
         else:
+            self.bm.reLocalize("bmLabel", "bmText")
+
             self.nozzExp.remove()
             self.nozzEff.remove()
 
@@ -2616,9 +2648,6 @@ class InteriorBallisticsFrame(Frame):
             self.bstMPa.restore()
             self.perf.restore()
             self.plotAvgP.reLocalize("plotLowAvgP")
-
-            # self.solve_W_Lg.set(0)
-            # self.solve_W_Lg.disable()
 
             self.pTgt.remove()
             self.pHTgt.restore()
@@ -2634,8 +2663,6 @@ class InteriorBallisticsFrame(Frame):
             self.pHTgt.remove()
             self.pLTgt.remove()
 
-            # self.solve_W_Lg.enable()
-
         if gunType == CONVENTIONAL or gunType == RECOILESS:
             self.ammoOptn.enable()
         else:
@@ -2644,10 +2671,8 @@ class InteriorBallisticsFrame(Frame):
 
         if gunType == CONVENTIONAL:
             self.plotBreechP.reLocalize("plotBreechP")
-            self.bm.reLocalize("bmLabel", "bmText")
 
             self.plotStagP.remove()
-
             self.plotEta.remove()
 
             self.pControl.reset(
@@ -2659,7 +2684,6 @@ class InteriorBallisticsFrame(Frame):
             )
         elif gunType == RECOILESS:
             self.plotBreechP.reLocalize("plotNozzleP")
-            self.bm.reLocalize("nmLabel", "")
 
             self.plotStagP.restore()
             self.plotStagP.reLocalize("plotStagP")
@@ -2678,7 +2702,6 @@ class InteriorBallisticsFrame(Frame):
 
         elif gunType == HIGHLOW:
             self.plotBreechP.reLocalize("plotLowBldP")
-            self.bm.reLocalize("", "")
 
             self.plotStagP.restore()
             self.plotStagP.reLocalize("plotHighP")
@@ -2786,16 +2809,11 @@ class InteriorBallisticsFrame(Frame):
         style.configure("TButton", font=(FONTNAME, FONTSIZE + 2, "bold"))
         style.configure("TLabelframe.Label", font=(FONTNAME, FONTSIZE + 2, "bold"))
         style.configure(
-            "SubLabelFrame.TLabelframe.Label",
-            font=(FONTNAME, FONTSIZE + 2),
+            "SubLabelFrame.TLabelframe.Label", font=(FONTNAME, FONTSIZE + 2)
         )
         style.configure("TCheckbutton", font=(FONTNAME, FONTSIZE))
 
-        style.configure(
-            "TNotebook.Tab",
-            # padding=[10, 2],
-            font=(FONTNAME, FONTSIZE + 2, "bold"),
-        )
+        style.configure("TNotebook.Tab", font=(FONTNAME, FONTSIZE + 1, "bold"))
 
         bgc = str(style.lookup("TFrame", "background"))
         fgc = str(style.lookup("TFrame", "foreground"))
@@ -2858,15 +2876,6 @@ class InteriorBallisticsFrame(Frame):
         except AttributeError:
             pass
 
-        """
-        try:
-            self.tv.tag_configure("oddrow", background=bgc)
-            self.tv.tag_configure("evenrow", background=ebgc)
-        except AttributeError:
-            pass
-        self.updateTable()
-        """
-
         self.update_idletasks()
 
 
@@ -2916,17 +2925,12 @@ def calculate(jobQueue, progressQueue, kwargs):
         elif gunType == HIGHLOW:
             gun = Highlow(**kwargs)
 
-        tableData, errorData, pressureTrace, structure = gun.integrate(
-            **kwargs, progressQueue=progressQueue
-        )
+        gunResult = gun.integrate(**kwargs, progressQueue=progressQueue)
         errorReport = []
 
     except Exception as e:
         gun = None
-        tableData = []
-        errorData = []
-        pressureTrace = []
-        structure = []
+        gunResult = None
 
         errorReport = ["Exception while calculating:"]
         exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -2937,13 +2941,7 @@ def calculate(jobQueue, progressQueue, kwargs):
         else:
             errorReport.append(str(e))
 
-    # fmt: off
-    jobQueue.put(
-        (
-            kwargs, gun, tableData, errorData, pressureTrace, structure, errorReport
-        )
-    )
-    # fmt: on
+    jobQueue.put((kwargs, gun, gunResult, errorReport))
 
 
 def main():
