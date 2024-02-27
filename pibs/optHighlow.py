@@ -2,12 +2,14 @@ from highlow import Highlow
 
 # from pso import pso
 from _coordesc import coordesc
-from math import pi, log, inf
+from math import pi, log, inf, floor
+from random import uniform
 from num import cubic, RKF78, dekker, gss
 
 # from gun import
 from gun import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_EXIT
 from highlow import POINT_PEAK_HIGH, POINT_PEAK_BLEED
+from optGun import MAX_GUESSES
 
 
 class CoalescedError(ValueError):
@@ -92,7 +94,6 @@ class ConstrainedHighlow:
         self,
         loadFraction,
         chargeMassRatio,
-        # portAreaRatio,
         portArea,
         lengthGun=None,
         knownBore=False,
@@ -851,8 +852,150 @@ class ConstrainedHighlow:
 
         return e_1, V_1, l_g
 
-    def findMinV(self, chargeMassRatio, progressQueue=None, **_):
-        pass
+    def findMinV(self, chargeMassRatio, portArea, progressQueue=None, **_):
+        """
+        find the minimum volume solution.
+        """
+        """
+        Step 1, find a valid range of values for load fraction,
+        using psuedo-bisection.
+
+        high lf -> high web
+        low lf -> low web
+        """
+        m = self.m
+        omega = m * chargeMassRatio
+        rho_p = self.rho_p
+        S = self.S
+        solve = self.solve
+        tol = self.tol
+
+        def f(lf):
+            print(lf)
+            V_0 = omega / (rho_p * lf)
+            l_0 = V_0 / S
+
+            e_1, V_1, l_g = solve(
+                loadFraction=lf,
+                chargeMassRatio=chargeMassRatio,
+                portArea=portArea,
+                knownBore=False,
+                suppress=True,
+            )
+
+            l_1 = V_1 / S
+
+            print(e_1, V_1, l_g)
+
+            return l_g + l_0 + l_1, e_1, V_1, l_g
+
+        records = []
+        for i in range(MAX_GUESSES):
+            startProbe = uniform(tol, 1 - tol)
+
+            try:
+                lt_i, *_ = f(startProbe)
+                records.append((startProbe, lt_i))
+                break
+            except ValueError:
+                if progressQueue is not None:
+                    progressQueue.put(round(i / MAX_GUESSES * 33))
+
+        else:
+            # if i == MAX_GUESSES - 1:
+            raise ValueError(
+                "Unable to find any valid load fraction"
+                + " with {:d} random samples.".format(MAX_GUESSES)
+            )
+
+        if progressQueue is not None:
+            progressQueue.put(33)
+
+        low = tol
+        probe = startProbe
+        delta_low = low - probe
+        new_low = probe + delta_low
+
+        k, n = 0, floor(log(abs(delta_low) / tol, 2)) + 1
+        while abs(2 * delta_low) > tol:
+            try:
+                lt_i, *_ = f(new_low)
+                records.append((new_low, lt_i))
+                probe = new_low
+            except ValueError:
+                delta_low *= 0.5
+                if progressQueue is not None:
+                    progressQueue.put(round(k / n * 17) + 33)
+                k += 1
+            finally:
+                new_low = probe + delta_low
+
+        low = probe
+
+        high = 1 - tol
+        probe = startProbe
+        delta_high = high - probe
+        new_high = probe + delta_high
+
+        k, n = 0, floor(log(abs(delta_high) / tol, 2)) + 1
+        while abs(2 * delta_high) > tol and new_high < 1:
+            try:
+                lt_i, *_ = f(new_high)
+                records.append((new_high, lt_i))
+                probe = new_high
+            except ValueError:
+                delta_high *= 0.5
+                if progressQueue is not None:
+                    progressQueue.put(round(k / n * 16) + 50)
+                k += 1
+            finally:
+                new_high = probe + delta_high
+
+        high = probe
+
+        if abs(high - low) < tol:
+            raise ValueError("No range of values satisfying constraint.")
+
+        if len(records) > 2:
+            records.sort(key=lambda x: x[0])
+            for l, m, h in zip(records[:-2], records[1:-1], records[2:]):
+                if l[1] > m[1] and h[1] > m[1]:
+                    low = l[0]
+                    high = h[0]
+
+        # delta = high - low
+
+        # low += delta * tol
+        # high -= delta * tol
+
+        """
+        Step 2, gss to min.
+
+        It was found that at this step, setting the accuracy metric
+        on the x-value (or the load fraction) gives more consistent
+        result than requriing a relative tolerance on the function
+        values.
+        """
+
+        def fr(x):
+            progressQueue.put(round(x * 33) + 66)
+
+        lf_low, lf_high = gss(
+            lambda lf: f(lf)[0],
+            low,
+            high,
+            x_tol=tol,
+            findMin=True,
+            f_report=fr if progressQueue is not None else None,
+        )
+
+        lf = 0.5 * (lf_high + lf_low)
+        _, e_1, V_1, l_g = f(lf)
+
+        if progressQueue is not None:
+            progressQueue.put(100)
+
+        return lf, e_1, V_1, l_g
 
 
 if __name__ == "__main__":
@@ -898,8 +1041,13 @@ if __name__ == "__main__":
     #     designLowPressure=40e6,
     #     designVelocity=75,
     # )
-    result = test.solve(
-        loadFraction=0.5,
+    # result = test.solve(
+    #     loadFraction=0.5,
+    #     chargeMassRatio=0.5 / 5,
+    #     portArea=0.5 * pi * 0.082**2 * 0.25,
+    # )
+
+    result = test.findMinV(
         chargeMassRatio=0.5 / 5,
         portArea=0.5 * pi * 0.082**2 * 0.25,
     )

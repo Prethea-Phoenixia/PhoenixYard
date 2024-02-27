@@ -2877,7 +2877,11 @@ def calculate(jobQueue, progressQueue, kwargs):
                 constrained = ConstrainedHighlow(**kwargs)
 
             if optimize:
-                l_f, e_1, l_g = constrained.findMinV(**kwargs)
+                if gunType == CONVENTIONAL or gunType == RECOILESS:
+                    l_f, e_1, l_g = constrained.findMinV(**kwargs)
+                elif gunType == HIGHLOW:
+                    l_f, e_1, V_1, l_g = constrained.findMinV(**kwargs)
+                    kwargs.update({"expansionVolume": V_1})
                 kwargs.update({"loadFraction": l_f})
                 chamberVolume = (
                     kwargs["chargeMass"]

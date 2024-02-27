@@ -44,7 +44,7 @@ ENGLISH = {
     "pPLabel": "Peak Pressure",
     "teffLabel": "Thermal Efficiency",
     "beffLabel": "Ballistic Efficiency",
-    "peffLabel": "Piezoelectric Efficiency",
+    "peffLabel": "Piezo Efficiency",
     "cvLabel": "Chamber Volume",
     "evLabel": "Expansion Volume",
     "ldLabel": "Loading Density",
