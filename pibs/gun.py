@@ -87,6 +87,10 @@ class GenericResult:
     breechMass: float = None
     outline: List[OutlineEntry] = None
 
+    thermalEfficiency: float = None
+    ballisticEfficiency: float = None
+    piezoEfficiency: float = None
+
     def readTableData(self, tag):
         for tableEntry in self.tableData:
             if tableEntry.tag == tag:
@@ -113,6 +117,26 @@ class GenericResult:
             rawLines.append(pressureProbePoint.getRawLine())
 
         return rawLines
+
+    def getEff(self):
+        """
+        te: thermal efficiency
+        be: ballistic efficiency
+        pe: piezoelectric efficiency
+        """
+        vg = self.readTableData(POINT_EXIT).velocity
+        p_max = self.readTableData(POINT_PEAK_AVG).avgPressure
+
+        te = (vg / self.gun.v_j) ** 2
+        be = te / self.gun.phi
+        pe = (
+            0.5
+            * self.gun.phi
+            * self.gun.m
+            * vg**2
+            / (p_max * self.gun.S * self.gun.l_g)
+        )
+        return te, be, pe
 
 
 @dataclass
@@ -1038,17 +1062,6 @@ class Gun:
             pass
 
         return gunResult
-
-    def getEff(self, vg, p_max):
-        """
-        te: thermal efficiency
-        be: ballistic efficiency
-        pe: piezoelectric efficiency
-        """
-        te = (vg / self.v_j) ** 2
-        be = te / self.phi
-        pe = 0.5 * self.phi * self.m * vg**2 / (p_max * self.S * self.l_g)
-        return te, be, pe
 
     def _toPsPb(self, l, p):
         """

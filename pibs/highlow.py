@@ -1224,17 +1224,6 @@ class Highlow:
 
         return highlowResult
 
-    def getEff(self, vg, p_max):
-        """
-        te: thermal efficiency
-        be: ballistic efficiency
-        pe: piezoelectric efficiency
-        """
-        te = (vg / self.v_j) ** 2
-        be = te / self.phi
-        pe = 0.5 * self.phi * self.m * vg**2 / (p_max * self.S * self.l_g)
-        return te, be, pe
-
     def _toPsPb(self, l, p, eta):
         """
         Convert average chamber pressure at a certain travel to

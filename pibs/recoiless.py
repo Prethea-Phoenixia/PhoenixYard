@@ -1062,17 +1062,6 @@ class Recoiless:
 
         return recoilessResult
 
-    def getEff(self, vg, p_max):
-        """
-        te: thermal efficiency
-        be: ballistic efficiency
-        pe: piezoelectric efficiency
-        """
-        te = (vg / self.v_j) ** 2
-        be = te / self.phi
-        pe = 0.5 * self.phi * self.m * vg**2 / (p_max * self.S * self.l_g)
-        return te, be, pe
-
     def _toPsP0PbVb(self, l, v, p, T, eta):
         """
         Diagramatic explanation of the calculated values:

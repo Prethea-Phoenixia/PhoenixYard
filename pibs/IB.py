@@ -1164,28 +1164,9 @@ class InteriorBallisticsFrame(Frame):
             self.ld.set(toSI(trueLF * self.prop.rho_p, useSN=False).strip() + " kg/m³")
             # true load density
 
-            # _, _, _, _, vg, *_ = self.readTable(POINT_EXIT)
-            vg = self.gunResult.readTableData(POINT_EXIT).velocity
-
-            # if gunType == CONVENTIONAL:
-            #     p = self.readTable(POINT_PEAK_AVG)[6]
-            # elif gunType == RECOILESS:
-            #     p = self.readTable(POINT_PEAK_AVG)[8]
-            # elif gunType == HIGHLOW:
-            #     p = self.readTable(POINT_PEAK_AVG)[7]
-
-            p = self.gunResult.readTableData(POINT_PEAK_AVG).avgPressure
-
-            # if gunType == CONVENTIONAL:
-            #     ps = self.readTable(POINT_PEAK_SHOT)[7]
-            # elif gunType == RECOILESS:
-            #     ps = self.readTable(POINT_PEAK_SHOT)[9]
-            # elif gunType == HIGHLOW:
-            #     ps = self.readTable(POINT_PEAK_SHOT)[8]
-
             ps = self.gunResult.readTableData(POINT_PEAK_SHOT).shotPressure
 
-            eta_t, eta_b, eta_p = gun.getEff(vg, p)
+            eta_t, eta_b, eta_p = self.gunResult.getEff()
 
             self.te.set(str(round(eta_t * 100, 2)) + " %")
             self.be.set(str(round(eta_b * 100, 2)) + " %")
