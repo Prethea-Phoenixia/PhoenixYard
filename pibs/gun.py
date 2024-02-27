@@ -79,7 +79,6 @@ class GenericResult:
     gun: object
     tableData: List
     errorData: List
-    pressureTrace: List
     pressureTrace: List[PressureTraceEntry]
 
     # falliables (optional ones)
@@ -626,10 +625,7 @@ class Gun:
             else:
                 ztlv_record.extend(ztlv_record_i)
                 if v_bar_j <= 0:
-                    Z, t_bar, l_bar, v_bar = (
-                        ztlv_record[-1][0],
-                        *ztlv_record[-1][1],
-                    )
+                    Z, t_bar, l_bar, v_bar = ztlv_record[-1][0], *ztlv_record[-1][1]
 
                     raise ValueError(
                         "Squib load condition detected: Shot stopped in bore.\n"

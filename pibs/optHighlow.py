@@ -184,10 +184,7 @@ class ConstrainedHighlow:
             V_psi = V_0 - omega / rho_p * (1 - psi) - alpha * omega * (psi - eta)
             return f * omega * tau_1 / V_psi * (psi - eta)
 
-        # S_j_bar = portAreaRatio
-        # S_j = S * S_j_bar
         S_j = portArea
-        # S_j_bar = S_j / S
 
         phi = phi_1 + labda_2 * omega / m
 
@@ -258,15 +255,7 @@ class ConstrainedHighlow:
                 return p_1
 
             Z_p_i = (
-                sum(
-                    gss(
-                        lambda Z: g(Z),
-                        Z_0,
-                        Z_b,
-                        y_rel_tol=0.5 * tol,
-                        findMin=False,
-                    )
-                )
+                sum(gss(lambda Z: g(Z), Z_0, Z_b, y_rel_tol=0.5 * tol, findMin=False))
                 * 0.5
             )
 
@@ -296,8 +285,6 @@ class ConstrainedHighlow:
             f_report=fr if progressQueue is not None else None,
         )  # this is the e_1 that satisifies the pressure specification.
 
-        # print("solved e_1 at ", e_1, "with a pressure deviation of ", f_e_1(e_1))
-
         def f_ev(expansionVolume):
             V_1 = expansionVolume
 
@@ -308,16 +295,17 @@ class ConstrainedHighlow:
                 if point == POINT_PEAK_AVG:
                     return p_avg
 
-                factor_s = 1 + labda_2 * (omega * eta / (phi_1 * m))
-
-                if point == POINT_PEAK_SHOT:
+                elif point == POINT_PEAK_SHOT:
+                    factor_s = 1 + labda_2 * (omega * eta / (phi_1 * m))
                     return p_avg / factor_s
 
-                factor_b = (phi_1 * m + labda_2 * omega * eta) / (
-                    phi_1 * m + labda_1 * omega * eta
-                )
-                if point == POINT_PEAK_BLEED:
+                elif point == POINT_PEAK_BLEED:
+                    factor_b = (phi_1 * m + labda_2 * omega * eta) / (
+                        phi_1 * m + labda_1 * omega * eta
+                    )
                     return p_avg / factor_b
+                else:
+                    raise ValueError("Unknown control point.")
 
             Z_0, t_0, eta_0, tau_1_0, tau_2_0 = Zs[0], 0, 0, 1, 1 + theta
 
@@ -405,7 +393,6 @@ class ConstrainedHighlow:
                     + "before shot has started, "
                     + f"at {p_1_sm * 1e-6:.6f} MPa (high), {p_2_sm * 1e-6:.6f} MPa (low)."
                 )
-
             elif p_2_sm < p_0_s:
                 raise LPCPMaxBelowStartError(
                     f"Maximum pressure developed in low-chamber ({p_2_sm * 1e-6:.6f} MPa) "
@@ -430,9 +417,6 @@ class ConstrainedHighlow:
                     record=r,
                 )
 
-                if Z not in [line[0] for line in r]:
-                    r.append([Z, (t, eta, tau_1)])
-
                 xs = [v[0] for v in record_0]
                 record_0.extend(v for v in r if v[0] not in xs)
                 record_0.sort()
@@ -443,8 +427,6 @@ class ConstrainedHighlow:
 
             Z_1, _ = dekker(lambda x: g(x) - p_0_s, Z_0, Z_sm, y_abs_tol=p_0_s * tol)
 
-            # print("Z_1 according to opt", Z_1)
-            record_1 = [[Z_0, (t_0, eta_0, tau_1_0, tau_2_0)]]
             t_1, eta_1, tau_1_1, tau_2_1 = RKF78(
                 _ode_Zs,
                 (t_0, eta_0, tau_1_0, tau_2_0),
@@ -452,7 +434,6 @@ class ConstrainedHighlow:
                 Z_1,
                 relTol=tol,
                 absTol=tol**2,
-                record=record_1,
             )[1]
 
             def abort_Z2(x, ys, record):
@@ -465,7 +446,7 @@ class ConstrainedHighlow:
                 op_h = _f_p_1(oZ, oeta, otau_1)
                 op_l = _f_p_2(ol, oeta, otau_2)
 
-                return (p_h < op_h and p_l < op_l) or (p_h - p_d_h) > tol * p_d_h
+                return (p_h < op_h and p_l < op_l) or p_h - p_d_h > tol * p_d_h
 
             def _ode_Z(Z, t, l, v, eta, tau_1, tau_2, _):
                 psi = f_psi_Z(Z)
@@ -527,7 +508,7 @@ class ConstrainedHighlow:
             )
 
             p_1_j = _f_p_1(Z_j, eta_j, tau_1_j)
-            if (p_1_j - p_d_h) > tol * p_d_h:
+            if p_1_j - p_d_h > tol * p_d_h:
                 raise UnstartedError(
                     "Pressure in low chamber rises such that the bleed nozzles "
                     + "has unstarted, raising pressure in the high chamber."
@@ -552,58 +533,6 @@ class ConstrainedHighlow:
                 record_2.sort()
                 return _f_p_2(l, eta, tau_2), (Z, t, l, v, eta, tau_1, tau_2)
 
-            def _f_p_1_Z(Z):
-                if Z < Z_1:
-                    i = record_1.index([v for v in record_1 if v[0] <= Z][-1])
-                    x, ys = record_1[i]
-
-                    r = []
-                    _, (t, eta, tau_1, tau_2), _ = RKF78(
-                        dFunc=_ode_Zs,
-                        iniVal=ys,
-                        x_0=x,
-                        x_1=Z,
-                        relTol=tol,
-                        absTol=tol**2,
-                        record=r,
-                    )
-                    xs = [v[0] for v in record_1]
-                    record_1.extend(v for v in r if v[0] not in xs)
-                    record_1.sort()
-
-                else:
-                    i = record_2.index([v for v in record_2 if v[0] <= Z][-1])
-                    x, ys = record_2[i]
-
-                    r = []
-                    _, (t, l, v, eta, tau_1, tau_2), _ = RKF78(
-                        dFunc=_ode_Z,
-                        iniVal=ys,
-                        x_0=x,
-                        x_1=Z,
-                        relTol=tol,
-                        absTol=tol**2,
-                        record=r,
-                    )
-                    xs = [v[0] for v in record_2]
-                    record_2.extend(v for v in r if v[0] not in xs)
-                    record_2.sort()
-
-                return _f_p_1(Z, eta, tau_1)
-
-            Z_p_1 = (
-                sum(
-                    gss(
-                        _f_p_1_Z,
-                        Z_0,
-                        Z_j,
-                        y_rel_tol=0.5 * tol,
-                        findMin=False,
-                    )
-                )
-                * 0.5
-            )
-
             Z_p_2 = (
                 sum(
                     gss(
@@ -617,10 +546,9 @@ class ConstrainedHighlow:
                 * 0.5
             )
 
-            p_p_h = _f_p_1_Z(Z_p_1)
             p_p_l, vals_2 = _f_p_2_Z(Z_p_2)
 
-            return p_p_h, p_p_l, vals_2
+            return p_p_l, vals_2
 
         def findBound(func, x_probe, x_bound, tol, record=None, exception=ValueError):
             if record is None:
@@ -652,13 +580,12 @@ class ConstrainedHighlow:
 
         while True:
             try:
-                f_ev(probeEV)[1]
+                f_ev(probeEV)[0]
                 break
             except (CoalescedError, UnstartedError):
                 lastEV = probeEV
                 probeEV *= 2
             except LPCPMaxBelowStartError:  # overshoot
-                # print("UE")
                 delta = probeEV - lastEV
                 if delta < tol:
                     raise ValueError(
@@ -667,9 +594,11 @@ class ConstrainedHighlow:
                         + " between high and low chamber."
                     )
                 probeEV = lastEV + 0.5 * delta
+            except ValueError as e:  # catch other potential error
+                print(e)
+                raise e
 
         evLowerBound = findBound(f_ev, probeEV, lastEV, tol * V_0)
-        # print("evLowerBound", evLowerBound)
 
         if progressQueue is not None:
             progressQueue.put(50)
@@ -677,36 +606,43 @@ class ConstrainedHighlow:
         probeEV = evLowerBound * 2
         lastEV = evLowerBound
 
+        ## todo: investigate
+
         while True:
             try:
-                f_ev(probeEV)[1]
+                f_ev(probeEV)[0]
                 lastEV = probeEV
                 probeEV *= 2
             except ValueError:
                 break
 
         evUpperBound = findBound(f_ev, lastEV, probeEV, tol * V_0)
-        # print("evUpperBound", evUpperBound)
+
+        if evUpperBound - evLowerBound < tol * V_0:
+            raise ValueError(
+                "Expansion volume for valid solution solved with insufficient margin, "
+                + f"between {evLowerBound * 1e3:.3f} L and {evUpperBound * 1e3:.3f} L."
+            )
 
         if progressQueue is not None:
             progressQueue.put(66)
 
-        p_l_max = f_ev(evLowerBound)[1]
-        p_l_min = f_ev(evUpperBound)[1]
+        p_l_max = f_ev(evLowerBound)[0]
+        p_l_min = f_ev(evUpperBound)[0]
 
         if p_l_min > p_d_l or p_d_l > p_l_max:
             raise ValueError(
                 "Range of valid solution does not allow low chamber design pressure "
                 + "to be met, "
                 + f"between V > {evLowerBound * 1e3:.3f} L, P < {p_l_max * 1e-6:.3f} MPa, "
-                + f"and V < {evUpperBound * 1e3:.3f} L, P > {p_l_min * 1e-6:.3f} MPa"
+                + f"and V < {evUpperBound * 1e3:.3f} L, P > {p_l_min * 1e-6:.3f} MPa."
             )
 
         def fr(x):
             progressQueue.put(round(x * 34) + 66)
 
         V_1, _ = dekker(
-            lambda ev: f_ev(ev)[1],
+            lambda ev: f_ev(ev)[0],
             evLowerBound,
             evUpperBound,
             y=p_d_l,
@@ -714,7 +650,8 @@ class ConstrainedHighlow:
             f_report=fr if progressQueue is not None else None,
         )
 
-        p_h_act, p_l_act, (Z_i, t_i, l_i, v_i, eta_i, tau_1_i, tau_2_i) = f_ev(V_1)
+        # p_h_act, p_l_act, (Z_i, t_i, l_i, v_i, eta_i, tau_1_i, tau_2_i) = f_ev(V_1)
+        p_l_act, (Z_i, t_i, l_i, v_i, eta_i, tau_1_i, tau_2_i) = f_ev(V_1)
 
         if knownBore:
             if progressQueue is not None:
@@ -727,21 +664,20 @@ class ConstrainedHighlow:
             l_star = (V_1 - alpha * omega * eta) / S
             p_avg = f * omega * tau_2 * eta / (S * (l_star + l))
 
-            return p_avg
-
             if point == POINT_PEAK_AVG:
                 return p_avg
 
-            factor_s = 1 + labda_2 * (omega * eta / (phi_1 * m))
-
-            if point == POINT_PEAK_SHOT:
+            elif point == POINT_PEAK_SHOT:
+                factor_s = 1 + labda_2 * (omega * eta / (phi_1 * m))
                 return p_avg / factor_s
 
-            factor_b = (phi_1 * m + labda_2 * omega * eta) / (
-                phi_1 * m + labda_1 * omega * eta
-            )
-            if point == POINT_PEAK_BLEED:
+            elif point == POINT_PEAK_BLEED:
+                factor_b = (phi_1 * m + labda_2 * omega * eta) / (
+                    phi_1 * m + labda_1 * omega * eta
+                )
                 return p_avg / factor_b
+            else:
+                raise ValueError("Unknown control point.")
 
         def _ode_v(v, t, Z, l, eta, tau_1, tau_2, _):
             psi = f_psi_Z(Z)
@@ -864,7 +800,7 @@ class ConstrainedHighlow:
         low lf -> low web
         """
 
-         if progressQueue is not None:
+        if progressQueue is not None:
             progressQueue.put(1)
 
         m = self.m
@@ -875,7 +811,6 @@ class ConstrainedHighlow:
         tol = self.tol
 
         def f(lf):
-            print(lf)
             V_0 = omega / (rho_p * lf)
             l_0 = V_0 / S
 
@@ -886,10 +821,7 @@ class ConstrainedHighlow:
                 knownBore=False,
                 suppress=True,
             )
-
             l_1 = V_1 / S
-
-            print(e_1, V_1, l_g)
 
             return l_g + l_0 + l_1, e_1, V_1, l_g
 
@@ -906,7 +838,6 @@ class ConstrainedHighlow:
                     progressQueue.put(round(i / MAX_GUESSES * 33))
 
         else:
-            # if i == MAX_GUESSES - 1:
             raise ValueError(
                 "Unable to find any valid load fraction"
                 + " with {:d} random samples.".format(MAX_GUESSES)
@@ -967,11 +898,6 @@ class ConstrainedHighlow:
                     low = l[0]
                     high = h[0]
 
-        # delta = high - low
-
-        # low += delta * tol
-        # high -= delta * tol
-
         """
         Step 2, gss to min.
 
@@ -1028,6 +954,7 @@ if __name__ == "__main__":
         designLowPressure=20e6,
         designVelocity=150,
         control=POINT_PEAK_BLEED,
+        minWeb=1e-4,
     )
 
     # result = test.constrained(

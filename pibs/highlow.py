@@ -1236,14 +1236,6 @@ class Highlow:
         Ps: pressure at shot
         Pb: pressure at breech
         """
-        # Labda_g = l / self.l_1
-        # labda_1_prime = (1 / 2) * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
-        # labda_2_prime = (1 / 3) * (1 / self.chi_k + Labda_g) / (1 + Labda_g)
-        # factor_s = 1 + labda_2_prime * (self.omega * eta / (self.phi_1 * self.m))
-
-        # factor_b = (self.phi_1 * self.m + labda_2_prime * self.omega * eta) / (
-        #     self.phi_1 * self.m + labda_1_prime * self.omega * eta
-        # )
 
         labda_1, labda_2 = 1 / 2, 1 / 3
         factor_s = 1 + labda_2 * (self.omega * eta / (self.phi_1 * self.m))
@@ -1408,6 +1400,11 @@ class Highlow:
         highlowResult.outline = hull
         highlowResult.tubeMass = tube_mass
         highlowResult.breechMass = breech_mass
+
+        for pressureTraceEntry in highlowResult.pressureTrace:
+            for pressureProbePoint in pressureTraceEntry.pressureTrace:
+                if pressureProbePoint.x >= l_h:
+                    pressureProbePoint.x += L_front
 
 
 if __name__ == "__main__":

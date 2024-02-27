@@ -384,7 +384,7 @@ class Constrained:
             f_report=fr if progressQueue is not None else None,
         )  # this is the e_1 that satisifies the pressure specification.
 
-        (p_bar_dev, Z_i, t_bar_i, l_bar_i, v_bar_i) = _f_p_e_1(e_1)
+        p_bar_dev, Z_i, t_bar_i, l_bar_i, v_bar_i = _f_p_e_1(e_1)
 
         if abs(Z_i - Z_b) < tol:
             """

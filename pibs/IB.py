@@ -813,7 +813,7 @@ class InteriorBallisticsFrame(Frame):
             col=0,
             labelLocKey="pHTgtLabel",
             unitText="MPa",
-            default="200.0",
+            default="350.0",
             validation=validationNN,
             tooltipLocKey="pHTgtText",
             locFunc=self.getLocStr,
@@ -2878,9 +2878,13 @@ def calculate(jobQueue, progressQueue, kwargs):
 
             if optimize:
                 if gunType == CONVENTIONAL or gunType == RECOILESS:
-                    l_f, e_1, l_g = constrained.findMinV(**kwargs)
+                    l_f, e_1, l_g = constrained.findMinV(
+                        **kwargs, progressQueue=progressQueue
+                    )
                 elif gunType == HIGHLOW:
-                    l_f, e_1, V_1, l_g = constrained.findMinV(**kwargs)
+                    l_f, e_1, V_1, l_g = constrained.findMinV(
+                        **kwargs, progressQueue=progressQueue
+                    )
                     kwargs.update({"expansionVolume": V_1})
                 kwargs.update({"loadFraction": l_f})
                 chamberVolume = (
