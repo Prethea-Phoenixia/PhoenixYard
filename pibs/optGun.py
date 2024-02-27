@@ -538,6 +538,9 @@ class Constrained:
         """
         find the minimum volume solution.
         """
+        if progressQueue is not None:
+            progressQueue.put(1)
+
         """
         Step 1, find a valid range of values for load fraction,
         using psuedo-bisection.

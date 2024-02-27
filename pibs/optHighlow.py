@@ -16,6 +16,10 @@ class CoalescedError(ValueError):
     pass
 
 
+class LPCPMaxBelowStartError(ValueError):
+    pass
+
+
 class UnstartedError(ValueError):
     pass
 
@@ -359,7 +363,7 @@ class ConstrainedHighlow:
 
             record_0 = [[Z_0, [t_0, eta_0, tau_1_0, tau_2_0]]]
 
-            def abort(x, ys, record):
+            def abort_Z1(x, ys, record):
                 Z, _, eta, tau_1, tau_2 = x, *ys
                 p_1 = _f_p_1(Z, eta, tau_1)
                 p_2 = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
@@ -374,35 +378,6 @@ class ConstrainedHighlow:
 
                 return p_2 > p_0_s or (p_1 - p_2 < tol * p_1 and p_1 > op_1)
 
-            def g(Z):
-                i = record_0.index([v for v in record_0 if v[0] <= Z][-1])
-
-                x = record_0[i][0]
-                ys = record_0[i][1]
-
-                r = []
-                Z, (t, eta, tau_1, tau_2), _ = RKF78(
-                    _ode_Zs,
-                    ys,
-                    x,
-                    Z,
-                    relTol=tol,
-                    absTol=tol**2,
-                    abortFunc=abort,
-                    record=r,
-                )
-
-                if Z not in [line[0] for line in r]:
-                    r.append([Z, (t, eta, tau_1)])
-
-                xs = [v[0] for v in record_0]
-                record_0.extend(v for v in r if v[0] not in xs)
-                record_0.sort()
-
-                p_2 = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
-
-                return p_2
-
             Z_sm, (t, eta, tau_1, tau_2), _ = RKF78(
                 _ode_Zs,
                 record_0[0][1],
@@ -410,7 +385,7 @@ class ConstrainedHighlow:
                 Z_b,
                 relTol=tol,
                 absTol=tol**2,
-                abortFunc=abort,
+                abortFunc=abort_Z1,
                 record=record_0,
             )
             p_1_sm = _f_p_1(Z_sm, eta, tau_1)
@@ -432,10 +407,39 @@ class ConstrainedHighlow:
                 )
 
             elif p_2_sm < p_0_s:
-                raise UnstartedError(
+                raise LPCPMaxBelowStartError(
                     f"Maximum pressure developed in low-chamber ({p_2_sm * 1e-6:.6f} MPa) "
                     + "not enough to start the shot."
                 )
+
+            def g(Z):
+                i = record_0.index([v for v in record_0 if v[0] <= Z][-1])
+
+                x = record_0[i][0]
+                ys = record_0[i][1]
+
+                r = []
+                Z, (t, eta, tau_1, tau_2), _ = RKF78(
+                    _ode_Zs,
+                    ys,
+                    x,
+                    Z,
+                    relTol=tol,
+                    absTol=tol**2,
+                    abortFunc=abort_Z1,
+                    record=r,
+                )
+
+                if Z not in [line[0] for line in r]:
+                    r.append([Z, (t, eta, tau_1)])
+
+                xs = [v[0] for v in record_0]
+                record_0.extend(v for v in r if v[0] not in xs)
+                record_0.sort()
+
+                p_2 = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
+
+                return p_2
 
             Z_1, _ = dekker(lambda x: g(x) - p_0_s, Z_0, Z_sm, y_abs_tol=p_0_s * tol)
 
@@ -451,7 +455,7 @@ class ConstrainedHighlow:
                 record=record_1,
             )[1]
 
-            def abort_Z(x, ys, record):
+            def abort_Z2(x, ys, record):
                 Z, _, l, _, eta, tau_1, tau_2 = x, *ys
                 p_h = _f_p_1(Z, eta, tau_1)
                 p_l = _f_p_2(l, eta, tau_2)
@@ -461,7 +465,7 @@ class ConstrainedHighlow:
                 op_h = _f_p_1(oZ, oeta, otau_1)
                 op_l = _f_p_2(ol, oeta, otau_2)
 
-                return p_h < op_h and p_l < op_l
+                return (p_h < op_h and p_l < op_l) or (p_h - p_d_h) > tol * p_d_h
 
             def _ode_Z(Z, t, l, v, eta, tau_1, tau_2, _):
                 psi = f_psi_Z(Z)
@@ -518,9 +522,16 @@ class ConstrainedHighlow:
                 Z_b,
                 relTol=tol,
                 absTol=tol**2,
-                abortFunc=abort_Z,
+                abortFunc=abort_Z2,
                 record=record_2,
             )
+
+            p_1_j = _f_p_1(Z_j, eta_j, tau_1_j)
+            if (p_1_j - p_d_h) > tol * p_d_h:
+                raise UnstartedError(
+                    "Pressure in low chamber rises such that the bleed nozzles "
+                    + "has unstarted, raising pressure in the high chamber."
+                )
 
             def _f_p_2_Z(Z):
                 i = record_2.index([v for v in record_2 if v[0] <= Z][-1])
@@ -643,11 +654,10 @@ class ConstrainedHighlow:
             try:
                 f_ev(probeEV)[1]
                 break
-            except CoalescedError:
-                # print("CE")
+            except (CoalescedError, UnstartedError):
                 lastEV = probeEV
                 probeEV *= 2
-            except UnstartedError:  # overshoot
+            except LPCPMaxBelowStartError:  # overshoot
                 # print("UE")
                 delta = probeEV - lastEV
                 if delta < tol:
@@ -704,17 +714,7 @@ class ConstrainedHighlow:
             f_report=fr if progressQueue is not None else None,
         )
 
-        # print("expansion volumed solved to be ", V_1)
-
         p_h_act, p_l_act, (Z_i, t_i, l_i, v_i, eta_i, tau_1_i, tau_2_i) = f_ev(V_1)
-
-        if abs(p_h_act - p_d_h) > tol * p_d_h:
-            raise ValueError(
-                "High and low pressure chamber conditions are insufficiently "
-                + "decorrelated."
-            )
-
-        # print("high pressure actual", p_h_act, "low pressure actual", p_l_act)
 
         if knownBore:
             if progressQueue is not None:
@@ -863,6 +863,10 @@ class ConstrainedHighlow:
         high lf -> high web
         low lf -> low web
         """
+
+         if progressQueue is not None:
+            progressQueue.put(1)
+
         m = self.m
         omega = m * chargeMassRatio
         rho_p = self.rho_p
