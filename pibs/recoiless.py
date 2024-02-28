@@ -1026,7 +1026,7 @@ class Recoiless:
                 p_line.append(pp)
 
             p_line.append(PressureProbePoint(l + l_c, ps))
-            p_trace.append(PressureTraceEntry(dtag, T, p_line))
+            p_trace.append(PressureTraceEntry("*", T, p_line))
 
             data.append(
                 RecoilessTableEntry("*", t, l, psi, v, vb, pb, p0, p, ps, T, eta)
@@ -1298,7 +1298,7 @@ class Recoiless:
             The point of optimum autofrettage, or the minimum autofrettage
             necessary to contain the working pressure, is
             """
-            i = x_probes.index(l_c)
+            i = step + 1
             x_c, p_c = x_probes[:i], p_probes[:i]  # c for chamber
             x_b, p_b = x_probes[i:], p_probes[i:]  # b for barrel
             V_c, rho_c = Gun._Vrho_k(

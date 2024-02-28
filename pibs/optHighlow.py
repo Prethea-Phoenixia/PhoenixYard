@@ -1,12 +1,7 @@
-from highlow import Highlow
-
-# from pso import pso
-from _coordesc import coordesc
-from math import pi, log, inf, floor
+from math import pi, log, floor
 from random import uniform
 from num import cubic, RKF78, dekker, gss
 
-# from gun import
 from gun import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_EXIT
 from highlow import POINT_PEAK_HIGH, POINT_PEAK_BLEED
 from optGun import MAX_GUESSES
@@ -126,32 +121,26 @@ class ConstrainedHighlow:
         phi_1 = self.phi_1
         p_d_l = self.p_d_l
         p_d_h = self.p_d_h
-
         u_1, n = self.u_1, self.n
         alpha = self.alpha
         Z_b = self.Z_b
-
         f_psi_Z = self.f_psi_Z
         f_sigma_Z = self.f_sigma_Z
-
         p_0_e = self.p_0_e
         p_0_s = self.p_0_s
-
         cfpr = self.cfpr
         phi_2 = self.phi_2
         K_0 = self.K_0
-
         Z_b = self.Z_b
-
         tol = self.tol
-
         p_a = self.ambientP
+        k_1 = self.ambientGamma
+        control = self.control
+
         if self.ambientRho != 0:
             c_a = (self.ambientGamma * self.ambientP / self.ambientRho) ** 0.5
         else:
             c_a = 0
-        k_1 = self.ambientGamma
-        control = self.control
 
         if loadFraction > maxLF:
             raise ValueError("Specified Load Fraction Violates Geometrical Constraint")
@@ -362,7 +351,6 @@ class ConstrainedHighlow:
                 ox, oys = record[-1]
                 oZ, _, oeta, otau_1, _ = ox, *oys
                 op_1 = _f_p_1(oZ, oeta, otau_1)
-                # op_2 = _f_p_2(0, oeta, otau_2, POINT_PEAK_AVG)
 
                 return p_2 > p_0_s or (p_1 - p_2 < tol * p_1 and p_1 > op_1)
 
@@ -606,8 +594,6 @@ class ConstrainedHighlow:
         probeEV = evLowerBound * 2
         lastEV = evLowerBound
 
-        ## todo: investigate
-
         while True:
             try:
                 f_ev(probeEV)[0]
@@ -650,15 +636,12 @@ class ConstrainedHighlow:
             f_report=fr if progressQueue is not None else None,
         )
 
-        # p_h_act, p_l_act, (Z_i, t_i, l_i, v_i, eta_i, tau_1_i, tau_2_i) = f_ev(V_1)
         p_l_act, (Z_i, t_i, l_i, v_i, eta_i, tau_1_i, tau_2_i) = f_ev(V_1)
 
         if knownBore:
             if progressQueue is not None:
                 progressQueue.put(100)
             return e_1, V_1, lengthGun
-
-        # l_1 = V_1 / S
 
         def _f_p_2(l, eta, tau_2, point=control):
             l_star = (V_1 - alpha * omega * eta) / S
@@ -694,9 +677,7 @@ class ConstrainedHighlow:
             else:
                 p_d = 0
 
-            # dv = S / (phi * m) * (p_2 - p_d)  # dv / dt
             dt = (phi * m) / (S * (p_2 - p_d))  # dt / dv
-            # dl = v # dl / dt
             dl = v * dt  # dl / dv
 
             if Z <= Z_b:

@@ -1028,7 +1028,7 @@ class Gun:
                 p_line.append(pp)
 
             p_line.append(PressureProbePoint(l + self.l_c, ps))
-            p_trace.append(PressureTraceEntry(dtag, T, p_line))
+            p_trace.append(PressureTraceEntry("*", T, p_line))
 
             tableEntry = GunTableEntry("*", t, l, psi, v, pb, p, ps, T)
             errorEntry = GunErrorEntry("L")
@@ -1177,7 +1177,7 @@ class Gun:
             The point of optimum autofrettage, or the minimum autofrettage
             necessary to contain the working pressure, is
             """
-            i = x_probes.index(l_c)
+            i = step + 1
             x_c, p_c = x_probes[:i], p_probes[:i]  # c for chamber
             x_b, p_b = x_probes[i:], p_probes[i:]  # b for barrel
 
@@ -1473,7 +1473,7 @@ if __name__ == "__main__":
     )
     """
     result = test.integrate(0, 1e-3, dom=DOMAIN_TIME, sol=SOL_LAGRANGE)
-    print(result)
+
     print(
         tabulate(
             result.getRawTableData(),

@@ -2221,8 +2221,6 @@ class InteriorBallisticsFrame(Frame):
             T_min = min(trace.T for trace in pTrace)
 
             for pressureTraceEntry in pTrace[::-1]:
-                # if tag != "":
-                #     continue
 
                 tag, T, trace = (
                     pressureTraceEntry.tag,

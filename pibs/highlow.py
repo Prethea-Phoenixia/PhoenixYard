@@ -1310,8 +1310,8 @@ class Highlow:
         rho_probes = []
         V = 0
         if self.is_af:
-            i, j = x_probes.index(l_h), x_probes.index(l_h + l_l)
-
+            i = step + 1
+            j = 2 * step + 2
             x_h, p_h = x_probes[:i], p_probes[:i]
             x_l, p_l = x_probes[i:j], p_probes[i:j]
             x_b, p_b = x_probes[j:], p_probes[j:]
