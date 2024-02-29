@@ -463,9 +463,7 @@ class ConstrainedRecoiless:
 
         if v_bar_i > v_bar_d and not suppress:
             raise ValueError(
-                "Design velocity exceeded ({:.4g} m/s > {:.4g} m/s) before peak pressure.".format(
-                    v_bar_i * v_j, v_bar_d * v_j
-                )
+                f"Design velocity exceeded before peak pressure point (V = {v_bar_i * v_j:.4g} m/s)."
             )
 
         # TODO: find some way of making this cross constraint less troublesome.

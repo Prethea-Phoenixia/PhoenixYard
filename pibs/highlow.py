@@ -148,8 +148,14 @@ class Highlow:
             if self.psi_0 <= 0:
                 raise ValueError(
                     "Initial burnup fraction is solved to be negative."
-                    + " In practice this implies a detonation of the gun breech"
-                    + " will likely occur."
+                    + " This indicate an excessively high load density for the"
+                    + " start-pressure target."
+                )
+            elif self.psi_0 >= 1:
+                raise ValueError(
+                    "Initial burnup fraction is solved to be greater than unity."
+                    + " This indicate an excessively low loading density for the"
+                    + " start-pressure target."
                 )
 
         Zs = cubic(self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0)
@@ -523,16 +529,7 @@ class Highlow:
             if len(record) < 1:
                 return False
 
-            ox, oys = record[-1]
-            oZ, _, oeta, otau_1, _ = ox, *oys
-            op_1 = self._f_p_1(oZ, oeta, otau_1)
-            # op_2 = self._f_p_2(0, oeta, otau_2)
-
-            return (
-                p_2 > self.p_0_s
-                or p_1 > p_max
-                or (p_1 - p_2 < tol * p_1 and p_1 > op_1)
-            )
+            return p_2 > self.p_0_s or p_1 > p_max or p_2 / p_1 > self.cfpr
 
         def f(Z):
             i = tett_record.index([v for v in tett_record if v[0] <= Z][-1])
@@ -557,7 +554,7 @@ class Highlow:
             tett_record.sort()
             p_2 = self._f_p_2(0, eta, tau_2)
 
-            return p_2
+            return p_2, (t, eta, tau_1, tau_2)
 
         Z, (t, eta, tau_1, tau_2), _ = RKF78(
             self._ode_Zs,
@@ -569,38 +566,35 @@ class Highlow:
             abortFunc=abort,
             record=tett_record,
         )
-        p_1_sm = self._f_p_1(Z, eta, tau_1)
+
         p_2_sm = self._f_p_2(0, eta, tau_2)
 
-        ox, oys = tett_record[-1]
-        oZ, _, oeta, otau_1, _ = ox, *oys
-        op_1_sm = self._f_p_1(oZ, oeta, otau_1)
-
-        if (
-            abs(p_1_sm - p_2_sm) < tol * p_1_sm
-            and p_2_sm < self.p_0_s
-            and p_1_sm > op_1_sm
-        ):
-            raise ValueError(
-                "Pressure levels have coalesced between high and low chamber "
-                + "before shot has started, "
-                + f"at {p_1_sm * 1e-6:.6f} MPa (high), {p_2_sm * 1e-6:.6f} MPa (low)."
-            )
-
-        elif p_1_sm > p_max:
-            raise ValueError(
-                "Nobel-Abel EoS is generally accurate enough below 600MPa. However, "
-                + f"Unreasonably high pressure ({p_1_sm * 1e-6:.0f}>{p_max * 1e-6:.0f}"
-                + " MPa) was encountered.",  # in practice most of the pressure-realted spikes are captured here.
-            )
-
-        elif p_2_sm < self.p_0_s:
+        if p_2_sm < self.p_0_s:
             raise ValueError(
                 f"Maximum pressure developed in low-chamber ({p_2_sm * 1e-6:.6f} MPa) "
                 + "not enough to start the shot."
             )
 
-        Z_1, _ = dekker(lambda x: f(x) - self.p_0_s, Z_0, Z, y_abs_tol=self.p_0_s * tol)
+        Z_1, _ = dekker(
+            lambda x: f(x)[0] - self.p_0_s, Z_0, Z, y_abs_tol=self.p_0_s * tol
+        )
+
+        p_2_sm, (t, eta, tau_1, tau_2) = f(Z_1)
+        p_1_sm = self._f_p_1(Z_1, eta, tau_1)
+        # p_2_sm = self._f_p_2(0, eta, tau_2)
+
+        if p_2_sm / p_1_sm > self.cfpr:
+            raise ValueError(
+                "Pressure levels in low chamber has increased such that the bleed nozzles"
+                + " has unstarted before shot start, "
+                + f"at {p_1_sm * 1e-6:.6f} MPa (high), {p_2_sm * 1e-6:.6f} MPa (low)."
+            )
+        # elif p_1_sm > p_max:
+        #     raise ValueError(
+        #         "Nobel-Abel EoS is generally accurate enough below 600MPa. However, "
+        #         + f"Unreasonably high pressure ({p_1_sm * 1e-6:.0f}>{p_max * 1e-6:.0f}"
+        #         + " MPa) was encountered.",  # in practice most of the pressure-realted spikes are captured here.
+        #     )
 
         # fmt: off
         record.extend(
@@ -923,9 +917,7 @@ class Highlow:
 
             t_tol = tol * min(t for t in (t_e, t_b, t_f) if t is not None)
 
-            t = 0.5 * sum(
-                gss(g, t_0, t_e if t_b is None else t_b, x_tol=t_tol, findMin=False)
-            )
+            t = 0.5 * sum(gss(g, t_0, t_e, x_tol=t_tol, findMin=False))
 
             if t < t_1:
                 l, v = 0, 0

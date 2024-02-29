@@ -946,6 +946,9 @@ class InteriorBallisticsFrame(Frame):
         CreateToolTip(self.calcButton, self.calcButtonTip)
 
     def onCalculate(self):
+        if self.process is not None:
+            return
+
         self.focus()  # remove focus to force widget entry validation
         self.update()  # and wait for the event to update.
         for loc in self.locs:

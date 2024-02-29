@@ -266,8 +266,14 @@ class Gun:
             if self.psi_0 <= 0:
                 raise ValueError(
                     "Initial burnup fraction is solved to be negative."
-                    + " In practice this implies a detonation of the chmaber"
-                    + " will likely occur."
+                    + " This indicate an excessively high load density for the"
+                    + " start-pressure target."
+                )
+            elif self.psi_0 >= 1:
+                raise ValueError(
+                    "Initial burnup fraction is solved to be greater than unity."
+                    + " This indicate an excessively low loading density for the"
+                    + " start-pressure target."
                 )
 
         Zs = cubic(self.chi * self.mu, self.chi * self.labda, self.chi, -self.psi_0)

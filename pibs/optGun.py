@@ -395,9 +395,7 @@ class Constrained:
 
         if abs(p_bar_dev) > tol * p_bar_d:
             raise ValueError(
-                "Design pressure is not met, delta = {:.3g} Pa".format(
-                    p_bar_dev * (f * Delta)
-                )
+                f"Design pressure is not met, delta = {p_bar_dev * f * Delta * 1e-6:.6f} MPa"
             )
 
         if knownBore:
@@ -407,9 +405,7 @@ class Constrained:
 
         if v_j * v_bar_i > v_d and not suppress:
             raise ValueError(
-                "Design velocity exceeded ({:.4g} m/s > {:.4g} m/s) before peak pressure.".format(
-                    v_bar_i * v_j, v_bar_d * v_j
-                )
+                f"Design velocity exceeded before peak pressure point (V = {v_bar_i * v_j:.4g} m/s)."
             )
 
         """
