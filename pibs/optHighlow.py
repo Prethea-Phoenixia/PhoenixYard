@@ -992,8 +992,6 @@ class ConstrainedHighlow:
             except ValueError:
                 cap_high = new_high
                 delta_high *= 0.5
-                if progressQueue is not None:
-                    progressQueue.put(round(k / n * 16) + 50)
                 k += 1
             finally:
                 if probe + delta_high > cap_high - tol:
@@ -1002,7 +1000,7 @@ class ConstrainedHighlow:
 
                 new_high = probe + delta_high
                 if progressQueue is not None:
-                    progressQueue.put(round(k / n * 17) + 33)
+                    progressQueue.put(round(k / n * 17) + 50)
 
         high = probe
 
