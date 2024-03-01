@@ -1555,7 +1555,7 @@ class InteriorBallisticsFrame(Frame):
             row=i,
             labelLocKey="bstLabel",
             unitText="MPa",
-            default="10.0",
+            default="50.0",
             validation=validationNN,
             tooltipLocKey="bstText",
             locFunc=self.getLocStr,

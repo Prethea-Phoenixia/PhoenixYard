@@ -837,7 +837,7 @@ class ConstrainedHighlow:
         v_d = self.v_d
         if v_i > v_d and not suppress:
             raise ValueError(
-                f"Design velocity exceeded ({v_i:.4g} m/s > {v_d:.4g} m/s) before peak pressure."
+                f"Design velocity exceeded before peak pressure point (V = {v_i:.4g} m/s)."
             )
 
         def abort_v(x, ys, record):
@@ -893,6 +893,9 @@ class ConstrainedHighlow:
         """
         find the minimum volume solution.
         """
+        if progressQueue is not None:
+            progressQueue.put(1)
+
         """
         Step 1, find a valid range of values for load fraction,
         using psuedo-bisection.
@@ -900,10 +903,6 @@ class ConstrainedHighlow:
         high lf -> high web
         low lf -> low web
         """
-
-        if progressQueue is not None:
-            progressQueue.put(1)
-
         m = self.m
         omega = m * chargeMassRatio
         rho_p = self.rho_p
@@ -947,10 +946,13 @@ class ConstrainedHighlow:
         if progressQueue is not None:
             progressQueue.put(33)
 
+        # find the lower limit
+
         low = tol
         probe = startProbe
         delta_low = low - probe
         new_low = probe + delta_low
+        cap_low = None
 
         k, n = 0, floor(log(abs(delta_low) / tol, 2)) + 1
         while abs(2 * delta_low) > tol:
@@ -959,19 +961,27 @@ class ConstrainedHighlow:
                 records.append((new_low, lt_i))
                 probe = new_low
             except ValueError:
+                cap_low = new_low
                 delta_low *= 0.5
-                if progressQueue is not None:
-                    progressQueue.put(round(k / n * 17) + 33)
                 k += 1
             finally:
+                if probe + delta_low < cap_low + tol:
+                    delta_low *= 0.5
+                    k += 1
                 new_low = probe + delta_low
 
+                if progressQueue is not None:
+                    progressQueue.put(round(k / n * 17) + 33)
+
         low = probe
+
+        # find the upper limit
 
         high = 1 - tol
         probe = startProbe
         delta_high = high - probe
         new_high = probe + delta_high
+        cap_high = None
 
         k, n = 0, floor(log(abs(delta_high) / tol, 2)) + 1
         while abs(2 * delta_high) > tol and new_high < 1:
@@ -980,12 +990,19 @@ class ConstrainedHighlow:
                 records.append((new_high, lt_i))
                 probe = new_high
             except ValueError:
+                cap_high = new_high
                 delta_high *= 0.5
                 if progressQueue is not None:
                     progressQueue.put(round(k / n * 16) + 50)
                 k += 1
             finally:
+                if probe + delta_high > cap_high - tol:
+                    delta_high *= 0.5
+                    k += 1
+
                 new_high = probe + delta_high
+                if progressQueue is not None:
+                    progressQueue.put(round(k / n * 17) + 33)
 
         high = probe
 
