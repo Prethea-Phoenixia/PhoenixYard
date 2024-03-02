@@ -826,7 +826,7 @@ class InteriorBallisticsFrame(Frame):
             col=0,
             labelLocKey="pLTgtLabel",
             unitText="MPa",
-            default="50.0",
+            default="70.0",
             validation=validationNN,
             tooltipLocKey="pLTgtText",
             locFunc=self.getLocStr,

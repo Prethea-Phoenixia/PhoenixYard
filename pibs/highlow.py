@@ -804,26 +804,41 @@ class Highlow:
         if progressQueue is not None:
             progressQueue.put(20)
 
-        t_f = None
+        t_f = None  # TODO: fix this when Z_b happens in _ode_Zs
         if Z_b > 1.0 and Z_e >= 1.0:  # fracture point exist and is contained
             """
             Subscript f indicate fracture condition
             ODE w.r.t Z is integrated from Z_0 to 1, from onset of projectile
             movement to charge fracture
             """
-
-            (
-                _,
-                (t_f, l_f, v_f, eta_f, tau_1_f, tau_2_f),
-                (t_err, l_err, v_err, eta_err, tau_1_err, tau_2_err),
-            ) = RKF78(
-                self._ode_Z,
-                (t_1, 0, 0, eta_1, tau_1_1, tau_2_1),
-                Z_1,
-                1,
-                relTol=tol,
-                absTol=tol**2,
-            )
+            if Z_1 < 1:
+                (
+                    _,
+                    (t_f, l_f, v_f, eta_f, tau_1_f, tau_2_f),
+                    (t_err, l_err, v_err, eta_err, tau_1_err, tau_2_err),
+                ) = RKF78(
+                    self._ode_Z,
+                    (t_1, 0, 0, eta_1, tau_1_1, tau_2_1),
+                    Z_1,
+                    1,
+                    relTol=tol,
+                    absTol=tol**2,
+                )
+            else:
+                l_f, v_f = 0, 0
+                l_err, v_err = 0, 0
+                (
+                    _,
+                    (t_f, eta_f, tau_1_f, tau_2_f),
+                    (t_err, eta_err, tau_1_err, tau_2_err),
+                ) = RKF78(
+                    self._ode_Zs,
+                    (t_0, eta_0, tau_1_0, tau_2_0),
+                    Z_0,
+                    1,
+                    relTol=tol,
+                    absTol=tol**2,
+                )
             # fmt: off
             updBarData(
                 tag=POINT_FRACTURE, t=t_f, l=l_f, Z=1, v=v_f, eta=eta_f,
@@ -875,6 +890,7 @@ class Highlow:
 
         def g(t, m=POINT_PEAK_AVG):
             if t < t_1:
+                l, v = 0, 0
                 Z, eta, tau_1, tau_2 = RKF78(
                     self._ode_ts,
                     (Z_0, eta_0, tau_1_0, tau_2_0),
@@ -884,7 +900,6 @@ class Highlow:
                     absTol=tol**2,
                 )[1]
 
-                l, v = 0, 0
             else:
                 Z, l, v, eta, tau_1, tau_2 = RKF78(
                     self._ode_t,
@@ -1206,13 +1221,14 @@ class Highlow:
             self._getStructural(highlowResult, step, tol)
 
         except Exception:
-            import sys, traceback
+            pass
+            # import sys, traceback
 
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            errMsg = "".join(
-                traceback.format_exception(exc_type, exc_value, exc_traceback)
-            )
-            print(errMsg)
+            # exc_type, exc_value, exc_traceback = sys.exc_info()
+            # errMsg = "".join(
+            #     traceback.format_exception(exc_type, exc_value, exc_traceback)
+            # )
+            # print(errMsg)
 
         return highlowResult
 

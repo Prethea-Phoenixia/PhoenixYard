@@ -101,7 +101,7 @@ class ConstrainedHighlow:
         **_,
     ):
 
-        print("lf:", loadFraction)
+        # print("lf:", loadFraction)
         if any((chargeMassRatio <= 0, loadFraction <= 0, loadFraction > 1)):
             raise ValueError("Invalid parameters to solve constrained design problem")
 
@@ -261,7 +261,7 @@ class ConstrainedHighlow:
 
         if p_probe < p_d_h:
             raise ValueError(
-                "Design pressure cannot be achieved by varying" + " web down to minimum"
+                "Design pressure cannot be achieved by varying web down to minimum"
             )
 
         while p_probe > p_d_h:
@@ -443,13 +443,12 @@ class ConstrainedHighlow:
                 return p_h < op_h and p_l < op_l
 
             def abort_l(x, ys, record):
-
-                l, t, Z, v, eta, tau_1, tau_2 = x, *ys
+                l, _, Z, _, eta, tau_1, tau_2 = x, *ys
                 p_h = _f_p_1(Z, eta, tau_1)
                 p_l = _f_p_2(l, eta, tau_2)
 
                 o_x, o_ys = record[-1]
-                ol, ot, oZ, ov, oeta, otau_1, otau_2 = o_x, *o_ys
+                ol, _, oZ, _, oeta, otau_1, otau_2 = o_x, *o_ys
                 op_h = _f_p_1(oZ, oeta, otau_1)
                 op_l = _f_p_2(ol, oeta, otau_2)
 
@@ -741,7 +740,7 @@ class ConstrainedHighlow:
         def fr(x):
             progressQueue.put(round(x * 34) + 66)
 
-        print("evLower", evLowerBound, "evUpper", evUpperBound)
+        # print("evLower", evLowerBound, "evUpper", evUpperBound)
 
         V_1, _ = dekker(
             lambda ev: f_ev(ev)[0],
@@ -754,7 +753,7 @@ class ConstrainedHighlow:
 
         p_l_act, (Z_i, t_i, l_i, v_i, eta_i, tau_1_i, tau_2_i) = f_ev(V_1)
 
-        print(p_l_act)
+        # print(p_l_act)
 
         if knownBore:
             if progressQueue is not None:
@@ -950,7 +949,7 @@ class ConstrainedHighlow:
         new_low = probe + delta_low
         cap_low = None
 
-        k, n = 0, floor(log(abs(delta_low) / tol, 2)) + 1
+        k, n = -1, floor(log(abs(delta_low) / tol, 2)) + 1
         while abs(2 * delta_low) > tol:
             try:
                 lt_i, *_ = f(new_low)
@@ -979,7 +978,7 @@ class ConstrainedHighlow:
         new_high = probe + delta_high
         cap_high = None
 
-        k, n = 0, floor(log(abs(delta_high) / tol, 2)) + 1
+        k, n = -1, floor(log(abs(delta_high) / tol, 2)) + 1
         while abs(2 * delta_high) > tol and new_high < 1:
             try:
                 lt_i, *_ = f(new_high)
@@ -999,6 +998,8 @@ class ConstrainedHighlow:
                     progressQueue.put(round(k / n * 17) + 50)
 
         high = probe
+
+        # print("low", low, "high", high)
 
         if abs(high - low) < tol:
             raise ValueError("No range of values satisfying constraint.")
@@ -1020,7 +1021,7 @@ class ConstrainedHighlow:
         """
 
         def fr(x):
-            progressQueue.put(round(x * 33) + 66)
+            progressQueue.put(round(x * 33) + 67)
 
         lf_low, lf_high = gss(
             lambda lf: f(lf)[0],
