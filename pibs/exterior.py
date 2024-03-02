@@ -693,7 +693,7 @@ if __name__ == "__main__":
         sep="\n"
     )
     """
-    test.rangeTable(tol=1e-3, vel=2000, minR=0, maxR=200000, deltaR=2000, tgtH=0.1)
+    test.rangeTable(tol=1e-3, vel=5000, minR=0, maxR=200000, deltaR=2000, tgtH=100000)
 
     """
     test = Bullet(

@@ -414,11 +414,14 @@ class LocDropdown:
         return self.locFunc(self.descLabelKey, forceDefault=True)
 
     def reset(self, strObjDict):
+        currentObject = self.getObj()
         self.strObjDict = strObjDict
         self.locStrObjDict = {self.locFunc(k): v for k, v in strObjDict.items()}
-
         self.widget["values"] = tuple(self.locStrObjDict.keys())
-        self.widget.current(0)
+        try:
+            self.setByObj(currentObject)
+        except ValueError:
+            self.widget.current(0)
 
 
 class LocLabelFrame(ttk.LabelFrame):

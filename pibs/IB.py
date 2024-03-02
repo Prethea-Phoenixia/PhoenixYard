@@ -2612,17 +2612,13 @@ class InteriorBallisticsFrame(Frame):
 
         if gunType == RECOILESS:
             self.bm.reLocalize("nmLabel", "")
-
             self.nozzExp.restore()
             self.nozzEff.restore()
-
             self.plotNozzleV.restore()
         else:
             self.bm.reLocalize("bmLabel", "bmText")
-
             self.nozzExp.remove()
             self.nozzEff.remove()
-
             self.plotNozzleV.remove()
 
         if gunType == HIGHLOW:
@@ -2630,33 +2626,25 @@ class InteriorBallisticsFrame(Frame):
             self.bstMPa.restore()
             self.perf.restore()
             self.plotAvgP.reLocalize("plotLowAvgP")
-
             self.pTgt.remove()
             self.pHTgt.restore()
             self.pLTgt.restore()
-
+            self.ammoOptn.setByObj(CARTRIDGE)
+            self.ammoOptn.disable()
         else:
             self.evL.remove()
             self.bstMPa.remove()
             self.perf.remove()
             self.plotAvgP.reLocalize("plotAvgP")
-
             self.pTgt.restore()
             self.pHTgt.remove()
             self.pLTgt.remove()
-
-        if gunType == CONVENTIONAL or gunType == RECOILESS:
             self.ammoOptn.enable()
-        else:
-            self.ammoOptn.setByObj(CARTRIDGE)
-            self.ammoOptn.disable()
 
         if gunType == CONVENTIONAL:
             self.plotBreechP.reLocalize("plotBreechP")
-
             self.plotStagP.remove()
             self.plotEta.remove()
-
             self.pControl.reset(
                 {
                     POINT_PEAK_SHOT: POINT_PEAK_SHOT,
@@ -2666,13 +2654,10 @@ class InteriorBallisticsFrame(Frame):
             )
         elif gunType == RECOILESS:
             self.plotBreechP.reLocalize("plotNozzleP")
-
             self.plotStagP.restore()
             self.plotStagP.reLocalize("plotStagP")
-
             self.plotEta.restore()
             self.plotEta.reLocalize("plotEtaEsc")
-
             self.pControl.reset(
                 {
                     POINT_PEAK_SHOT: POINT_PEAK_SHOT,
@@ -2681,19 +2666,14 @@ class InteriorBallisticsFrame(Frame):
                     POINT_PEAK_BREECH: POINT_PEAK_BREECH,
                 }
             )
-
         elif gunType == HIGHLOW:
             self.plotBreechP.reLocalize("plotLowBldP")
-
             self.plotStagP.restore()
             self.plotStagP.reLocalize("plotHighP")
-
             self.plotEta.restore()
             self.plotEta.reLocalize("plotEtaBld")
-
             self.pControl.reset(
                 {
-                    # POINT_PEAK_HIGH: POINT_PEAK_HIGH,
                     POINT_PEAK_SHOT: POINT_PEAK_SHOT,
                     POINT_PEAK_AVG: POINT_PEAK_AVG,
                     POINT_PEAK_BLEED: POINT_PEAK_BLEED,
