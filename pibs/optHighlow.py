@@ -276,12 +276,12 @@ class ConstrainedHighlow:
             probeWeb,  # >0
             0.5 * probeWeb,  # ?0
             y=p_d_h,
-            y_rel_tol=tol,
+            y_abs_tol=tol * p_d_h,
             f_report=fr if progressQueue is not None else None,
         )  # this is the e_1 that satisifies the pressure specification.
 
         p_a_h = f_e_1(e_1)
-        if p_a_h - p_d_h > p_d_h * tol:
+        if abs(p_a_h - p_d_h) > p_d_h * tol:
             raise ValueError(
                 "High chamber pressure cannot be solved to specification. "
                 + f"Actual value {p_a_h * 1e-6:.6f} MPa"
@@ -411,10 +411,6 @@ class ConstrainedHighlow:
 
             p_2_sm, (t, eta, tau_1, tau_2) = g(Z_1)
             p_1_sm = _f_p_1(Z_1, eta, tau_1)
-
-            # ox, oys = record_0[-1]
-            # oZ, _, oeta, otau_1, _ = ox, *oys
-            # op_1_sm = _f_p_1(oZ, oeta, otau_1)
 
             if p_2_sm / p_1_sm > cfpr:
                 raise UnstartedError(
@@ -566,98 +562,96 @@ class ConstrainedHighlow:
 
             l_i = l_j
 
-            if Z_j == Z_b:  # peak pressure point can be inside the extended phase.
-                record_2_l = []
-                for line in record_2_Z:
-                    Z, (t, l, v, eta, tau_1, tau_2) = line
+            record_2_l = []
+            for line in record_2_Z:
+                Z, (t, l, v, eta, tau_1, tau_2) = line
 
-                record_2_l.append([l, (t, Z, v, eta, tau_1, tau_2)])
+            record_2_l.append([l, (t, Z, v, eta, tau_1, tau_2)])
 
-                l_j, (t_j, Z_j, v_j, eta_j, tau_1_j, tau_2_j), _ = RKF78(
-                    _ode_l,
-                    record_2_l[-1][1],
-                    record_2_l[-1][0],
-                    l_d,
+            l_j, (t_j, Z_j, v_j, eta_j, tau_1_j, tau_2_j), _ = RKF78(
+                _ode_l,
+                record_2_l[-1][1],
+                record_2_l[-1][0],
+                l_d,
+                relTol=tol,
+                absTol=tol**2,
+                abortFunc=abort_l,
+                record=record_2_l,
+            )
+
+            def _f_p_2_l(l):
+                i = record_2_l.index([v for v in record_2_l if v[0] <= l][-1])
+                x, ys = record_2_l[i]
+
+                r = []
+                l, (t, Z, v, eta, tau_1, tau_2), _ = RKF78(
+                    dFunc=_ode_l,
+                    iniVal=ys,
+                    x_0=x,
+                    x_1=l,
                     relTol=tol,
                     absTol=tol**2,
-                    abortFunc=abort_l,
-                    record=record_2_l,
+                    record=r,
                 )
+                xs = [v[0] for v in record_2_l]
+                record_2_l.extend(v for v in r if v[0] not in xs)
+                record_2_l.sort()
+                return _f_p_2(l, eta, tau_2), (Z, t, l, v, eta, tau_1, tau_2)
 
-                def _f_p_2_l(l):
-                    i = record_2_l.index([v for v in record_2_l if v[0] <= l][-1])
-                    x, ys = record_2_l[i]
-
-                    r = []
-                    l, (t, Z, v, eta, tau_1, tau_2), _ = RKF78(
-                        dFunc=_ode_l,
-                        iniVal=ys,
-                        x_0=x,
-                        x_1=l,
-                        relTol=tol,
-                        absTol=tol**2,
-                        record=r,
+            l_p_2 = (
+                sum(
+                    gss(
+                        lambda l: _f_p_2_l(l)[0],
+                        l_i,
+                        l_j,
+                        y_rel_tol=0.5 * tol,
+                        findMin=False,
                     )
-                    xs = [v[0] for v in record_2_l]
-                    record_2_l.extend(v for v in r if v[0] not in xs)
-                    record_2_l.sort()
-                    return _f_p_2(l, eta, tau_2), (Z, t, l, v, eta, tau_1, tau_2)
-
-                l_p_2 = (
-                    sum(
-                        gss(
-                            lambda l: _f_p_2_l(l)[0],
-                            l_i,
-                            l_j,
-                            y_rel_tol=0.5 * tol,
-                            findMin=False,
-                        )
-                    )
-                    * 0.5
                 )
+                * 0.5
+            )
 
-                p_p_l, vals_2 = _f_p_2_l(l_p_2)
+            p_p_l_l, vals_2_l = _f_p_2_l(l_p_2)
 
-                return p_p_l, vals_2
+            def _f_p_2_Z(Z):
+                i = record_2_Z.index([v for v in record_2_Z if v[0] <= Z][-1])
+                x, ys = record_2_Z[i]
 
+                r = []
+                _, (t, l, v, eta, tau_1, tau_2), _ = RKF78(
+                    dFunc=_ode_Z,
+                    iniVal=ys,
+                    x_0=x,
+                    x_1=Z,
+                    relTol=tol,
+                    absTol=tol**2,
+                    record=r,
+                )
+                xs = [v[0] for v in record_2_Z]
+                record_2_Z.extend(v for v in r if v[0] not in xs)
+                record_2_Z.sort()
+
+                return _f_p_2(l, eta, tau_2), (Z, t, l, v, eta, tau_1, tau_2)
+
+            Z_p_2 = (
+                sum(
+                    gss(
+                        lambda Z: _f_p_2_Z(Z)[0],
+                        Z_1,
+                        Z_j,
+                        y_rel_tol=0.5 * tol,
+                        findMin=False,
+                    )
+                )
+                * 0.5
+            )
+
+            p_p_l_Z, vals_2_Z = _f_p_2_Z(Z_p_2)
+
+            if p_p_l_l > p_p_l_Z:
+                return p_p_l_l, vals_2_l
             else:
-
-                def _f_p_2_Z(Z):
-                    i = record_2_Z.index([v for v in record_2_Z if v[0] <= Z][-1])
-                    x, ys = record_2_Z[i]
-
-                    r = []
-                    _, (t, l, v, eta, tau_1, tau_2), _ = RKF78(
-                        dFunc=_ode_Z,
-                        iniVal=ys,
-                        x_0=x,
-                        x_1=Z,
-                        relTol=tol,
-                        absTol=tol**2,
-                        record=r,
-                    )
-                    xs = [v[0] for v in record_2_Z]
-                    record_2_Z.extend(v for v in r if v[0] not in xs)
-                    record_2_Z.sort()
-
-                    return _f_p_2(l, eta, tau_2), (Z, t, l, v, eta, tau_1, tau_2)
-
-                Z_p_2 = (
-                    sum(
-                        gss(
-                            lambda Z: _f_p_2_Z(Z)[0],
-                            Z_1,
-                            Z_j,
-                            y_rel_tol=0.5 * tol,
-                            findMin=False,
-                        )
-                    )
-                    * 0.5
-                )
-
-                p_p_l, vals_2 = _f_p_2_Z(Z_p_2)
-
-                return p_p_l, vals_2
+                return p_p_l_Z, vals_2_Z
 
         def findBound(func, x_probe, x_bound, tol, record=None, exception=ValueError):
             if record is None:
@@ -759,6 +753,8 @@ class ConstrainedHighlow:
         )
 
         p_l_act, (Z_i, t_i, l_i, v_i, eta_i, tau_1_i, tau_2_i) = f_ev(V_1)
+
+        print(p_l_act)
 
         if knownBore:
             if progressQueue is not None:

@@ -184,6 +184,14 @@ ENGLISH = {
             "secondary work factor.",
         )
     ),
+    "peffText": " ".join(
+        (
+            "Piezoelectric efficiency of the gun system, i.e.",
+            "the ratio of average pressure to peak pressure.",
+            "Higher value indicate more efficient utilization",
+            "of tube length.",
+        )
+    ),
     "specsText": " ".join(
         (
             "Specify the propellant composition used.\n",
@@ -786,6 +794,12 @@ CHINESE = {
         (
             "火炮弹道效率（γg）定义为热机效率除以次要功系数（φ），即γg=γg'/φ，",
             "也是炮弹出膛动能占火药做功潜能的比例，是衡量火炮系统火药利用效率的主要指标之一。",
+        )
+    ),
+    "peffText": "".join(
+        (
+            "火炮压电效率（γp）又称充满系数，是弹底平均压强（加速度）与弹底最大压强（加速度）",
+            "的比值，该指标衡量火炮工作容积利用效率。",
         )
     ),
     "specsText": "".join(
