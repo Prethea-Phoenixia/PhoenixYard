@@ -1,8 +1,6 @@
 from ballistics.therm import Ingredient, Mixture
 
 if __name__ == "__main__":
-    Ingredient.readFile("./ballistics/resource/PEPCODED.DAF")
-
     NC1260 = Ingredient.getLine(683)
     RDX = Ingredient.getLine(847)
 

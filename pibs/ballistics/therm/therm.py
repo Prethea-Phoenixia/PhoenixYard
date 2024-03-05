@@ -4,6 +4,8 @@ from .corner import balance
 from ..num import secant
 from .periodic import molarMasses
 
+from os import path
+
 
 class Ingredient:
     allIngr = {}
@@ -82,7 +84,9 @@ class Ingredient:
             raise ValueError("Unknown Enthalpy Unit")
 
     @classmethod
-    def readFile(cls, fileName):
+    def readFile(cls, fileName=None):
+        if fileName is None:
+            fileName = path.join(path.dirname(__file__), "PEPCODED.DAF")
         # read data from PEP database
         with open(fileName, "r", encoding="ascii") as file:
             fileIngr = []
@@ -384,3 +388,5 @@ class Mixture:
 
 # def estU8053(Tv):
 #     return (-0.8340 + 8.3956e-4 * Tv) * 1e-3 / 1e6**0.8053
+
+Ingredient.readFile()
