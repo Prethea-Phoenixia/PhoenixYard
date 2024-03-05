@@ -92,7 +92,7 @@ condensed phase? presumably.
 
 import logging
 import difflib
-from periodic import molarMasses
+from .periodic import molarMasses
 from math import log, exp
 
 # create logger
@@ -585,7 +585,7 @@ class Reaction:
 
 def main():
     # some simple examples
-    Specie.read("data/nasa7.dat")
+    Specie.read("/ballistics/resource/nasa7.dat")
     methane = Specie.get("CH4")
     ammonia = Specie.get("NH3")
 

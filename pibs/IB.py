@@ -1345,7 +1345,7 @@ class InteriorBallisticsFrame(Frame):
         self.dropProp = LocDropdown(
             parent=propFrm,
             strObjDict=GrainComp.readFile(
-                resolvepath("ballistics/prop/propellants.csv")
+                resolvepath("ballistics/resource/propellants.csv")
             ),  # dict of composition.name (string) -> composition (object),
             locFunc=self.getLocStr,
             dropdowns=self.locs,

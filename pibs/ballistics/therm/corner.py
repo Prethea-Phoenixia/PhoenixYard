@@ -1,6 +1,6 @@
 from math import exp
-from num import quadratic
-from nasa7 import Specie, Reaction
+from ..num import quadratic
+from .nasa7 import Specie, Reaction
 
 import logging
 
@@ -19,7 +19,7 @@ ch.setFormatter(formatter)
 # add ch to logger
 logger.addHandler(ch)
 
-Specie.read("nasa7.dat")
+Specie.read("./ballistics/resource/nasa7.dat")
 
 CO2 = Specie.get("CO2")
 H2O = Specie.get("H2O")

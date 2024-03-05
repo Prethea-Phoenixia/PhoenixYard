@@ -1422,7 +1422,7 @@ if __name__ == "__main__":
     from tabulate import tabulate
     from prop import GrainComp, Propellant
 
-    compositions = GrainComp.readFile("data/propellants.csv")
+    compositions = GrainComp.readFile("ballistics/resource/propellants.csv")
 
     M17 = compositions["M17"]
     M1 = compositions["M1"]

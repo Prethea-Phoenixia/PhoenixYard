@@ -24,3 +24,5 @@ from .prop import GEOMETRIES
 
 from .gun import GenericEntry, GenericResult
 from .gun import PressureTraceEntry, PressureProbePoint, OutlineEntry
+
+# from .therm import Ingredient, Mixture
