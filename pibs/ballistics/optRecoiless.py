@@ -1,11 +1,11 @@
-from num import gss, RKF78, cubic, dekker
-from prop import Propellant
+from .num import gss, RKF78, cubic, dekker
+from .prop import Propellant
 from random import uniform
 from math import pi, log, floor, inf
-from recoiless import Recoiless
-from optGun import MAX_GUESSES
-from gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
-from recoiless import POINT_PEAK_STAG
+from .recoiless import Recoiless
+from .optGun import MAX_GUESSES
+from .gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
+from .recoiless import POINT_PEAK_STAG
 
 
 class ConstrainedRecoiless:

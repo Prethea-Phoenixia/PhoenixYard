@@ -472,8 +472,5 @@ class Propellant:
 
 
 if __name__ == "__main__":
-    compositions = GrainComp.readFile("data/propellants.csv")
-    print(compositions)
+    compositions = GrainComp.readFile("propellants.csv")
     GrainComp.check()
-
-    print(GEOMETRIES)

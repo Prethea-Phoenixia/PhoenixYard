@@ -1,9 +1,5 @@
 import math
 
-# from rkf78 import RKF78 # <- documented, slow version
-from rkf78_fast import RKF78  # <- undocumented, optimized, fast version
-from umf import *
-
 
 def cubic(a, b, c, d):
     """

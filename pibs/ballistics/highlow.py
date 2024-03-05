@@ -1,10 +1,10 @@
 from math import pi
-from num import gss, RKF78, cubic, dekker
-from gun import Gun
-from gun import DOMAIN_TIME, DOMAIN_LENG
+from .num import gss, RKF78, cubic, dekker
+from .gun import Gun
+from .gun import DOMAIN_TIME, DOMAIN_LENG
 from dataclasses import dataclass
 from typing import List
-from gun import (
+from .gun import (
     POINT_START,
     POINT_PEAK_AVG,
     POINT_PEAK_SHOT,
@@ -12,8 +12,8 @@ from gun import (
     POINT_BURNOUT,
     POINT_EXIT,
 )
-from gun import GenericEntry, GenericResult
-from gun import PressureTraceEntry, PressureProbePoint, OutlineEntry
+from .gun import GenericEntry, GenericResult
+from .gun import PressureTraceEntry, PressureProbePoint, OutlineEntry
 
 POINT_PEAK_HIGH = "PEAK_HIGH_P"
 POINT_PEAK_BLEED = "PEAK_BLEED_P"

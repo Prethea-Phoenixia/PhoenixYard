@@ -384,10 +384,8 @@ class Mixture:
 
 # def estU8053(Tv):
 #     return (-0.8340 + 8.3956e-4 * Tv) * 1e-3 / 1e6**0.8053
-
-
 if __name__ == "__main__":
-    Ingredient.readFile("data/PEPCODED.DAF")
+    Ingredient.readFile("therm/PEPCODED.DAF")
 
     NC1260 = Ingredient.getLine(683)
     RDX = Ingredient.getLine(847)

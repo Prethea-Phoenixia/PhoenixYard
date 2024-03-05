@@ -1,10 +1,10 @@
 from math import pi, log, floor
 from random import uniform
-from num import cubic, RKF78, dekker, gss
+from .num import cubic, RKF78, dekker, gss
 
-from gun import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_EXIT
-from highlow import POINT_PEAK_HIGH, POINT_PEAK_BLEED
-from optGun import MAX_GUESSES
+from .gun import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_EXIT
+from .highlow import POINT_PEAK_HIGH, POINT_PEAK_BLEED
+from .optGun import MAX_GUESSES
 
 
 # class CoalescedError(ValueError):
@@ -709,6 +709,7 @@ class ConstrainedHighlow:
 
         while True:
             try:
+                # print(probeEV)
                 f_ev(probeEV)[0]
                 lastEV = probeEV
                 probeEV *= 2
@@ -797,10 +798,7 @@ class ConstrainedHighlow:
             dt = (phi * m) / (S * (p_2 - p_d))  # dt / dv
             dl = v * dt  # dl / dv
 
-            if Z <= Z_b:
-                dZ = u_1 / e_1 * p_1**n * dt  # dZ / dv
-            else:
-                dZ = 0
+            dZ = u_1 / e_1 * p_1**n * dt if Z <= Z_b else 0
 
             pr = p_2 / p_1
             if pr <= cfpr:
@@ -1050,10 +1048,10 @@ if __name__ == "__main__":
 
     M17 = compositions["M17"]
     M1 = compositions["M1"]
-    from prop import SimpleGeometry
+    from prop import SimpleGeometry, MultPerfGeometry
 
-    M17C = Propellant(M17, SimpleGeometry.CYLINDER, None, 2.5)
-    M1C = Propellant(M1, SimpleGeometry.CYLINDER, None, 10)
+    # M17C = Propellant(M17, SimpleGeometry.CYLINDER, None, 2.5)
+    M1C = Propellant(M1, MultPerfGeometry.SEVEN_PERF_CYLINDER, 1, 2.5)
     test = ConstrainedHighlow(
         caliber=0.082,
         propellant=M1C,
@@ -1085,15 +1083,15 @@ if __name__ == "__main__":
     #     designLowPressure=40e6,
     #     designVelocity=75,
     # )
-    # result = test.solve(
-    #     loadFraction=0.5,
-    #     chargeMassRatio=0.5 / 5,
-    #     portArea=0.5 * pi * 0.082**2 * 0.25,
-    # )
-
-    result = test.findMinV(
+    result = test.solve(
+        loadFraction=0.5,
         chargeMassRatio=0.5 / 5,
         portArea=0.5 * pi * 0.082**2 * 0.25,
     )
+
+    # result = test.findMinV(
+    #     chargeMassRatio=0.5 / 5,
+    #     portArea=0.5 * pi * 0.082**2 * 0.25,
+    # )
 
     print(result)

@@ -2,19 +2,22 @@ from tkinter import Frame, Menu, Text, filedialog, messagebox, StringVar, IntVar
 from tkinter import Tk, ttk
 import tkinter.font as tkFont
 
-from gun import Gun, DOMAIN_TIME, DOMAIN_LENG
-from gun import POINT_START, POINT_BURNOUT, POINT_FRACTURE, POINT_EXIT
-from gun import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_PEAK_BREECH
-from recoiless import POINT_PEAK_STAG
-from highlow import POINT_PEAK_HIGH, POINT_PEAK_BLEED
-from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
-from recoiless import Recoiless
-from highlow import Highlow
+from ballistics import DOMAIN_TIME, DOMAIN_LENG
+from ballistics import POINT_START, POINT_BURNOUT, POINT_FRACTURE, POINT_EXIT
+from ballistics import (
+    POINT_PEAK_AVG,
+    POINT_PEAK_SHOT,
+    POINT_PEAK_BREECH,
+    POINT_PEAK_STAG,
+    POINT_PEAK_HIGH,
+    POINT_PEAK_BLEED,
+)
+from ballistics import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
+from ballistics import Gun, Recoiless, Highlow
+from ballistics import Propellant, GrainComp, GEOMETRIES, SimpleGeometry
+from ballistics import Constrained, ConstrainedRecoiless, ConstrainedHighlow
 
-from prop import Propellant, GrainComp, GEOMETRIES, SimpleGeometry
-from optGun import Constrained
-from optRecoiless import ConstrainedRecoiless
-from optHighlow import ConstrainedHighlow
+
 from tip import CreateToolTip
 from lang import STRING
 
@@ -34,11 +37,11 @@ from labellines import labelLines
 from multiprocessing import Process, Queue, freeze_support
 from queue import Empty
 
-import sys
 import csv
 import json
 import platform
 import traceback
+import sys
 
 from ctypes import windll
 
@@ -46,7 +49,7 @@ from locWidget import Loc12Disp, Loc122Disp
 from locWidget import Loc2Input, Loc3Input
 from locWidget import LocLabelFrame, LocLabelCheck, LocDropdown
 
-from material import MATERIALS
+from ballistics import MATERIALS
 
 import locale
 
@@ -1342,7 +1345,7 @@ class InteriorBallisticsFrame(Frame):
         self.dropProp = LocDropdown(
             parent=propFrm,
             strObjDict=GrainComp.readFile(
-                resolvepath("data/propellants.csv")
+                resolvepath("ballistics/prop/propellants.csv")
             ),  # dict of composition.name (string) -> composition (object),
             locFunc=self.getLocStr,
             dropdowns=self.locs,
@@ -2919,16 +2922,16 @@ def main():
 
     # if check avoids hackery when not profiling
     # Optional; hackery *seems* to work fine even when not profiling, it's just wasteful
-    import cProfile
+    # import cProfile
 
-    if sys.modules["__main__"].__file__ == cProfile.__file__:
-        # noinspection PyUnresolvedReferences
-        import IB  # Imports you again (does *not* use cache or execute as __main__)
+    # if sys.modules["__main__"].__file__ == cProfile.__file__:
+    #     # noinspection PyUnresolvedReferences
+    #     import IB  # Imports you again (does *not* use cache or execute as __main__)
 
-        globals().update(vars(IB))
-        # Replaces current contents with newly imported stuff
-        sys.modules["__main__"] = IB
-        # Ensures pickle lookups on __main__ find matching version
+    #     globals().update(vars(IB))
+    #     # Replaces current contents with newly imported stuff
+    #     sys.modules["__main__"] = IB
+    #     # Ensures pickle lookups on __main__ find matching version
 
     # this tells windows that our program will handle scaling ourselves
     winRelease = platform.release()

@@ -1,6 +1,6 @@
 from math import pi, log, inf, exp
-from num import gss, RKF78, cubic, intg, secant, dekker
-from prop import GrainComp, Propellant
+from .num import gss, RKF78, cubic, intg, secant, dekker
+from .prop import GrainComp, Propellant
 from dataclasses import dataclass, asdict
 from typing import List
 
@@ -1437,7 +1437,7 @@ if __name__ == "__main__":
     """
     from tabulate import tabulate
 
-    compositions = GrainComp.readFile("data/propellants.csv")
+    compositions = GrainComp.readFile("prop/propellants.csv")
 
     M17 = compositions["M17"]
 

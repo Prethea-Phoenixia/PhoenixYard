@@ -538,7 +538,7 @@ from bisect import bisect
 from enum import Enum
 import csv
 
-with open("data/ffvhl.csv", "r", newline="") as csvFile:
+with open("ffvhl.csv", "r", newline="") as csvFile:
     reader = csv.reader(csvFile, delimiter=",", quoting=csv.QUOTE_NONNUMERIC)
     crhs, ffk1, ffk8, ffk2 = zip(*list(reader)[1:])
 

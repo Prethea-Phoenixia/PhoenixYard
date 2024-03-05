@@ -371,6 +371,7 @@ def bisect(
             fb = fc
 
     if debug:
+        print("BISECT")
         print("{:>4}{:>24}{:>24}".format("I", "X", "FX"))
         record.sort(key=lambda r: r[1])
         for line in record:

@@ -2,6 +2,9 @@ import os
 
 
 def countlines(start, lines=0, header=True, begin_start=None):
+    if begin_start is None:
+        begin_start = start
+
     if header:
         print("{:>10} |{:>10} | {:<20}".format("ADDED", "TOTAL", "FILE"))
         print("{:->11}|{:->11}|{:->20}".format("", "", ""))
@@ -16,10 +19,7 @@ def countlines(start, lines=0, header=True, begin_start=None):
                     newlines = len(newlines)
                     lines += newlines
 
-                    if begin_start is not None:
-                        reldir_of_thing = "." + thing.replace(begin_start, "")
-                    else:
-                        reldir_of_thing = "." + thing.replace(start, "")
+                    reldir_of_thing = "." + thing.replace(begin_start, "")
 
                     print(
                         "{:>10} |{:>10} | {:<20}".format(
@@ -27,13 +27,17 @@ def countlines(start, lines=0, header=True, begin_start=None):
                         )
                     )
 
-    for thing in os.listdir(start):
-        thing = os.path.join(start, thing)
-        if os.path.isdir(thing):
-            lines = countlines(thing, lines, header=False, begin_start=start)
+        elif os.path.isdir(thing):
+            lines = countlines(thing, lines, header=False, begin_start=begin_start)
+
+    # for thing in os.listdir(start):
+    #     thing = os.path.join(start, thing)
+    #     if os.path.isdir(thing):
+    #         lines = countlines(thing, lines, header=False, begin_start=begin_start)
 
     return lines
 
 
 if __name__ == "__main__":
     countlines(os.getcwd())
+    input()

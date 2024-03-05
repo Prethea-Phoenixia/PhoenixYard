@@ -1,10 +1,10 @@
 from math import pi, inf, tan
-from num import gss, RKF78, cubic, dekker
-from prop import GrainComp, Propellant
+from .num import gss, RKF78, cubic, dekker
+from .prop import GrainComp, Propellant
 from dataclasses import dataclass
 from typing import List
-from gun import DOMAIN_TIME, DOMAIN_LENG
-from gun import (
+from .gun import DOMAIN_TIME, DOMAIN_LENG
+from .gun import (
     POINT_START,
     POINT_PEAK_AVG,
     POINT_PEAK_SHOT,
@@ -13,9 +13,9 @@ from gun import (
     POINT_BURNOUT,
     POINT_EXIT,
 )
-from gun import Gun
-from gun import GenericEntry, GenericResult
-from gun import PressureTraceEntry, PressureProbePoint, OutlineEntry
+from .gun import Gun
+from .gun import GenericEntry, GenericResult
+from .gun import PressureTraceEntry, PressureProbePoint, OutlineEntry
 
 POINT_PEAK_STAG = "PEAK_STAG_P"
 

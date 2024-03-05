@@ -1,10 +1,10 @@
-from num import gss, RKF78, cubic, dekker
+from .num import gss, RKF78, cubic, dekker
 
 from random import uniform
 from math import pi, log, floor
-from gun import pidduck
-from gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
-from gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
+from .gun import pidduck
+from .gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
+from .gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
 
 """
 Machine-accuracy factor, determines that, if a numerical method
