@@ -93,6 +93,8 @@ c11 = 41 / 840
 
 c_hat = -41 / 840
 
+EPSILON = 1e-16
+
 
 def RKF78(
     dFunc,
@@ -164,7 +166,7 @@ def RKF78(
         return x, y_this, Rm
 
     while (h > 0 and x < x_1) or (h < 0 and x > x_1):
-        if (x + h) == x:
+        if abs(h) < EPSILON:
             break  # catch the error using the final lines
         if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
             h = x_1 - x
@@ -401,13 +403,13 @@ def RKF78(
                 x=x, ys=y_this, record=record
             ):  # premature terminating cond. is met
                 if debug:
-                    print("exiting via debug")
+                    print("exiting via abortFunc")
                     print("record")
                     for line in record:
-                        x, yval = line
-                        print("{:^12.8g}|".format(x), end="")
-                        for i, y in enumerate(yval):
-                            print("{:^12.8g}|".format(y), end="")
+                        xval, yvals = line
+                        print("{:^12.8g}|".format(xval), end="")
+                        for yval in yvals:
+                            print("{:^12.8g}|".format(yval), end="")
                         print()
 
                 return x, y_this, Rm
@@ -421,19 +423,19 @@ def RKF78(
                 delta = 2
 
         h *= min(max(delta, 0.125), 2)
-
         n += 1
-        # if debug and isinstance(debug, int) and n % debug == 0:
-        #     print(x, *y_this)
+
+        # if debug and n % 100 == 0:
+        #     print(x, *y_this, h)
 
     if debug:
         print("exiting main loop normally")
         print("record")
         for line in record:
-            x, yval = line
-            print("{:^12.8g}|".format(x), end="")
-            for i, y in enumerate(yval):
-                print("{:^12.8g}|".format(y), end="")
+            xval, yvals = line
+            print("{:^12.8g}|".format(xval), end="")
+            for yval in yvals:
+                print("{:^12.8g}|".format(yval), end="")
             print()
 
     if abs(x - x_1) > abs(x_1 - x_0) * relTol:

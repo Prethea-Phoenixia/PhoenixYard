@@ -567,13 +567,23 @@ class Highlow:
             record=tett_record,
         )
 
+        p_1_sm = self._f_p_1(Z, eta, tau_1)
+
         p_2_sm = self._f_p_2(0, eta, tau_2)
 
         if p_2_sm < self.p_0_s:
-            raise ValueError(
-                f"Maximum pressure developed in low-chamber ({p_2_sm * 1e-6:.6f} MPa) "
-                + "not enough to start the shot."
-            )
+            if p_1_sm > p_max:
+                raise ValueError(
+                    "Nobel-Abel EoS is generally accurate enough below 600MPa. However, "
+                    + f"Unreasonably high pressure ({p_1_sm * 1e-6:.0f}>{p_max * 1e-6:.0f}"
+                    + " MPa) was encountered, before pressure in low chamber is enough to"
+                    + f" start shot ({p_2_sm * 1e-6:.6f} MPa)",
+                )
+            else:
+                raise ValueError(
+                    f"Maximum pressure developed in low-chamber ({p_2_sm * 1e-6:.6f} MPa) "
+                    + "not enough to start the shot."
+                )
 
         Z_1, _ = dekker(
             lambda x: f(x)[0] - self.p_0_s, Z_0, Z, y_abs_tol=self.p_0_s * tol
@@ -589,12 +599,7 @@ class Highlow:
                 + " has unstarted before shot start, "
                 + f"at {p_1_sm * 1e-6:.6f} MPa (high), {p_2_sm * 1e-6:.6f} MPa (low)."
             )
-        # elif p_1_sm > p_max:
-        #     raise ValueError(
-        #         "Nobel-Abel EoS is generally accurate enough below 600MPa. However, "
-        #         + f"Unreasonably high pressure ({p_1_sm * 1e-6:.0f}>{p_max * 1e-6:.0f}"
-        #         + " MPa) was encountered.",  # in practice most of the pressure-realted spikes are captured here.
-        #     )
+        # el
 
         # fmt: off
         record.extend(
