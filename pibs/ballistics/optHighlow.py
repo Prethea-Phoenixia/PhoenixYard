@@ -6,6 +6,9 @@ from .gun import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_EXIT
 from .highlow import POINT_PEAK_HIGH, POINT_PEAK_BLEED
 from .optGun import MAX_GUESSES
 
+import sys, traceback
+
+
 import logging
 
 logging.basicConfig(
@@ -18,10 +21,6 @@ logging.basicConfig(
 
 
 class LPCPMaxBelowStartError(ValueError):
-    pass
-
-
-class UnstartedError(ValueError):
     pass
 
 
@@ -333,7 +332,7 @@ class ConstrainedHighlow:
             progressQueue.put(round(x * 33))
 
         logging.warn(
-            f"Dekker method called between {probeWeb * 1e3} L and {0.5 * probeWeb * 1e3} L"
+            f"Dekker method called between {probeWeb * 1e3} mm and {0.5 * probeWeb * 1e3} mm"
         )
         e_1, _ = dekker(
             f_e_1,
@@ -346,15 +345,6 @@ class ConstrainedHighlow:
         logging.info(
             f"Solved web to be {e_1 * 1e3:} mm to achieve high chamber design pressure."
         )
-
-        p_a_h = f_e_1(e_1)
-        logging.info(f"Check: f_e_1({e_1 * 1e3:} mm) = {p_a_h * 1e-6:} MPa")
-        if abs(p_a_h - p_d_h) > p_d_h * tol:
-            raise ValueError(
-                "High chamber pressure cannot be solved to specification. "
-                + f"Actual value {p_a_h * 1e-6:.6f} MPa"
-            )
-        logging.info("High chamber pressure checked within tolerance")
 
         def f_ev(expansionVolume):
             logging.info(f"\t\tf_ev called with ev = {expansionVolume*1e3:} L")
@@ -424,14 +414,14 @@ class ConstrainedHighlow:
             record_0 = [[Z_0, [t_0, eta_0, tau_1_0, tau_2_0]]]
 
             def abort_Z1(x, ys, record):
-                Z, _, eta, tau_1, tau_2 = x, *ys
-                p_1 = _f_p_1(Z, eta, tau_1)
+                Z, _, eta, _, tau_2 = x, *ys
                 p_2 = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
 
-                if len(record) < 1:
-                    return False
+                o_x, o_ys = record[-1]
+                oZ, _, oeta, _, otau_2 = o_x, *o_ys
+                op_2 = _f_p_2(0, oeta, otau_2, POINT_PEAK_AVG)
 
-                return p_2 > p_0_s or p_2 / p_1 > cfpr
+                return p_2 > p_0_s or (p_2 - op_2) < p_2 * tol
 
             Z_sm, (t, eta, tau_1, tau_2), _ = RKF78(
                 _ode_Zs,
@@ -443,12 +433,12 @@ class ConstrainedHighlow:
                 abortFunc=abort_Z1,
                 record=record_0,
             )
-
+            p_1_sm = _f_p_1(Z_sm, eta, tau_1)
             p_2_sm = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
 
             if p_2_sm < p_0_s:
                 logging.warning(
-                    "\t\tmaximum low pressure chamber not enough to start shot"
+                    f"\t\tmaximum low pressure chamber not enough to start shot, {p_2_sm * 1e-6} MPa"
                 )
                 raise LPCPMaxBelowStartError(
                     f"Maximum pressure developed in low-chamber ({p_2_sm * 1e-6:.6f} MPa) "
@@ -480,15 +470,6 @@ class ConstrainedHighlow:
             p_2_sm, (t, eta, tau_1, tau_2) = g(Z_1)
             p_1_sm = _f_p_1(Z_1, eta, tau_1)
 
-            if p_2_sm / p_1_sm > cfpr:
-                raise UnstartedError(
-                    "Pressure in low chamber rises such that the bleed nozzles "
-                    + "has unstarted, raising pressure in the high chamber. "
-                    + f"Current condition at {t * 1e3:.3f} ms, "
-                    + f"Low-chamber Pressure at {p_2_sm * 1e-6:.6f} MPa, "
-                    + f"High-chamber Pressure at {p_1_sm * 1e-6:.6f} MPa"
-                )
-
             t_1, eta_1, tau_1_1, tau_2_1 = RKF78(
                 _ode_Zs,
                 (t_0, eta_0, tau_1_0, tau_2_0),
@@ -499,7 +480,7 @@ class ConstrainedHighlow:
             )[1]
 
             def abort_Z2(x, ys, record):
-                Z, _, l, _, eta, tau_1, tau_2 = x, *ys
+                Z, _, l, _, eta, tau_1_j, tau_2 = x, *ys
                 p_h = _f_p_1(Z, eta, tau_1)
                 p_l = _f_p_2(l, eta, tau_2)
 
@@ -508,19 +489,7 @@ class ConstrainedHighlow:
                 op_h = _f_p_1(oZ, oeta, otau_1)
                 op_l = _f_p_2(ol, oeta, otau_2)
 
-                return p_h < op_h and p_l < op_l
-
-            def abort_l(x, ys, record):
-                l, _, Z, _, eta, tau_1, tau_2 = x, *ys
-                p_h = _f_p_1(Z, eta, tau_1)
-                p_l = _f_p_2(l, eta, tau_2)
-
-                o_x, o_ys = record[-1]
-                ol, _, oZ, _, oeta, otau_1, otau_2 = o_x, *o_ys
-                op_h = _f_p_1(oZ, oeta, otau_1)
-                op_l = _f_p_2(ol, oeta, otau_2)
-
-                return p_h < op_h and p_l < op_l
+                return p_l < op_l or p_h - p_d_h > 2 * tol * p_d_h
 
             def _ode_Z(Z, t, l, v, eta, tau_1, tau_2, _):
                 psi = f_psi_Z(Z)
@@ -569,52 +538,6 @@ class ConstrainedHighlow:
 
                 return dt, dl, dv, deta, dtau_1, dtau_2
 
-            def _ode_l(l, t, Z, v, eta, tau_1, tau_2, _):
-                dt = 1 / v  # dt / dl
-                psi = f_psi_Z(Z)
-                p_1 = _f_p_1(Z, eta, tau_1, psi)
-                dZ = u_1 / e_1 * p_1**n * dt if Z <= Z_b else 0  # dZ / dl
-                p_2 = _f_p_2(l, eta, tau_2, POINT_PEAK_AVG)
-
-                pr = p_2 / p_1
-                if pr <= cfpr:
-                    deta = (
-                        (phi_2 * K_0 * p_1 * S_j) / ((f * tau_1) ** 0.5 * omega)
-                    ) * dt  # deta / dl
-                else:
-                    gamma = theta + 1
-                    deta = (
-                        (phi_2 * p_1 * S_j)
-                        / ((f * tau_1) ** 0.5 * omega)
-                        * (
-                            (2 * gamma / theta)
-                            * (pr ** (2 / gamma) - pr ** ((gamma + 1) / (gamma)))
-                        )
-                        ** 0.5
-                    ) * dt  # deta / dl
-
-                dpsi = f_sigma_Z(Z) * dZ  # dpsi / dl
-                dtau_1 = ((1 - tau_1) * dpsi - theta * tau_1 * deta) / (psi - eta)
-
-                if c_a != 0 and v > 0:
-                    k = k_1  # gamma
-                    v_r = v / c_a
-                    p_d = (
-                        0.25 * k * (k + 1) * v_r**2
-                        + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
-                    ) * p_a
-                else:
-                    p_d = 0
-
-                dv = S / (phi * m) * (p_2 - p_d) * dt
-
-                dtau_2 = (
-                    ((1 + theta) * tau_1 - tau_2) * deta
-                    - (theta * phi * m) / (f * omega) * v * dv
-                ) / eta
-
-                return dt, dZ, dv, deta, dtau_1, dtau_2
-
             logging.info(f"\t\tintegrating to burnout from {Z_1} to {Z_b}")
             record_2_Z = [[Z_1, (t_1, 0, 0, eta_1, tau_1_1, tau_2_1)]]
             Z_j, (t_1_j, l_j, v_j, eta_j, tau_1_j, tau_2_j), _ = RKF78(
@@ -631,69 +554,7 @@ class ConstrainedHighlow:
             logging.info(
                 f"\t\tintegrated to either burnout or pressure decrement point, Z = {Z_j}"
             )
-
             l_i = l_j
-
-            record_2_l = []
-            for line in record_2_Z:
-                Z, (t, l, v, eta, tau_1, tau_2) = line
-
-            record_2_l.append([l, (t, Z, v, eta, tau_1, tau_2)])
-
-            logging.info(
-                f"\t\tseeking from burnout point to pressure decrement point along lenght, l = {l_i} to {l_d}"
-            )
-            l_j, (t_j, Z_j, v_j, eta_j, tau_1_j, tau_2_j), _ = RKF78(
-                _ode_l,
-                record_2_l[-1][1],
-                record_2_l[-1][0],
-                l_d,
-                relTol=tol,
-                absTol=tol**2,
-                abortFunc=abort_l,
-                record=record_2_l,
-            )
-            logging.info(f"\t\tintegrated to pressure decrement point, l = {l_j}")
-
-            def _f_p_2_l(l):
-                i = record_2_l.index([v for v in record_2_l if v[0] <= l][-1])
-                x, ys = record_2_l[i]
-
-                r = []
-                l, (t, Z, v, eta, tau_1, tau_2), _ = RKF78(
-                    dFunc=_ode_l,
-                    iniVal=ys,
-                    x_0=x,
-                    x_1=l,
-                    relTol=tol,
-                    absTol=tol**2,
-                    record=r,
-                )
-                xs = [v[0] for v in record_2_l]
-                record_2_l.extend(v for v in r if v[0] not in xs)
-                record_2_l.sort()
-                return _f_p_2(l, eta, tau_2), (Z, t, l, v, eta, tau_1, tau_2)
-
-            l_p_2 = (
-                sum(
-                    gss(
-                        lambda l: _f_p_2_l(l)[0],
-                        l_i,
-                        l_j,
-                        y_rel_tol=0.5 * tol,
-                        findMin=False,
-                    )
-                )
-                * 0.5
-            )
-
-            logging.info(f"\t\tpost burnout peak low pressure found at {l_p_2} m")
-
-            p_p_l_l, vals_2_l = _f_p_2_l(l_p_2)
-
-            logging.info(
-                f"\t\tpost burnout peak low pressure found at {p_p_l_l * 1e-6} MPa"
-            )
 
             def _f_p_2_Z(Z):
                 i = record_2_Z.index([v for v in record_2_Z if v[0] <= Z][-1])
@@ -736,6 +597,131 @@ class ConstrainedHighlow:
                 f"\t\tpre burnout peak low pressure found to be {p_p_l_Z * 1e-6} MPa"
             )
 
+            try:
+
+                def abort_l(x, ys, record):
+                    l, _, _, _, eta, _, tau_2 = x, *ys
+                    # p_h = _f_p_1(Z, eta, tau_1)
+                    p_l = _f_p_2(l, eta, tau_2)
+
+                    o_x, o_ys = record[-1]
+                    ol, _, _, _, oeta, _, otau_2 = o_x, *o_ys
+                    # op_h = _f_p_1(oZ, oeta, otau_1)
+                    op_l = _f_p_2(ol, oeta, otau_2)
+
+                    return p_l < op_l
+
+                def _ode_l(l, t, Z, v, eta, tau_1, tau_2, _):
+                    dt = 1 / v  # dt / dl
+                    psi = f_psi_Z(Z)
+                    p_1 = _f_p_1(Z, eta, tau_1, psi)
+                    dZ = u_1 / e_1 * p_1**n * dt if Z <= Z_b else 0  # dZ / dl
+                    p_2 = _f_p_2(l, eta, tau_2, POINT_PEAK_AVG)
+
+                    pr = p_2 / p_1
+                    if pr <= cfpr:
+                        deta = (
+                            (phi_2 * K_0 * p_1 * S_j) / ((f * tau_1) ** 0.5 * omega)
+                        ) * dt  # deta / dl
+                    else:
+                        gamma = theta + 1
+                        deta = (
+                            (phi_2 * p_1 * S_j)
+                            / ((f * tau_1) ** 0.5 * omega)
+                            * (
+                                (2 * gamma / theta)
+                                * (pr ** (2 / gamma) - pr ** ((gamma + 1) / (gamma)))
+                            )
+                            ** 0.5
+                        ) * dt  # deta / dl
+
+                    dpsi = f_sigma_Z(Z) * dZ  # dpsi / dl
+                    dtau_1 = ((1 - tau_1) * dpsi - theta * tau_1 * deta) / (psi - eta)
+
+                    if c_a != 0 and v > 0:
+                        k = k_1  # gamma
+                        v_r = v / c_a
+                        p_d = (
+                            0.25 * k * (k + 1) * v_r**2
+                            + k * v_r * (1 + (0.25 * (k + 1)) ** 2 * v_r**2) ** 0.5
+                        ) * p_a
+                    else:
+                        p_d = 0
+
+                    dv = S / (phi * m) * (p_2 - p_d) * dt
+
+                    dtau_2 = (
+                        ((1 + theta) * tau_1 - tau_2) * deta
+                        - (theta * phi * m) / (f * omega) * v * dv
+                    ) / eta
+
+                    return dt, dZ, dv, deta, dtau_1, dtau_2
+
+                record_2_l = []
+                for line in record_2_Z:
+                    Z, (t, l, v, eta, tau_1, tau_2) = line
+                    record_2_l.append([l, (t, Z, v, eta, tau_1, tau_2)])
+
+                logging.info(
+                    f"\t\tseeking from burnout point to pressure decrement point along length, l = {l_i} to {l_d}"
+                )
+                l_j, (t_j, Z_j, v_j, eta_j, tau_1_j, tau_2_j), _ = RKF78(
+                    _ode_l,
+                    record_2_l[-1][1],
+                    record_2_l[-1][0],
+                    l_d,
+                    relTol=tol,
+                    absTol=tol**2,
+                    abortFunc=abort_l,
+                    record=record_2_l,
+                )
+                logging.info(f"\t\tintegrated to pressure decrement point, l = {l_j}")
+
+                def _f_p_2_l(l):
+                    i = record_2_l.index([v for v in record_2_l if v[0] <= l][-1])
+                    x, ys = record_2_l[i]
+
+                    r = []
+                    l, (t, Z, v, eta, tau_1, tau_2), _ = RKF78(
+                        dFunc=_ode_l,
+                        iniVal=ys,
+                        x_0=x,
+                        x_1=l,
+                        relTol=tol,
+                        absTol=tol**2,
+                        record=r,
+                    )
+                    xs = [v[0] for v in record_2_l]
+                    record_2_l.extend(v for v in r if v[0] not in xs)
+                    record_2_l.sort()
+                    return _f_p_2(l, eta, tau_2), (Z, t, l, v, eta, tau_1, tau_2)
+
+                l_p_2 = (
+                    sum(
+                        gss(
+                            lambda l: _f_p_2_l(l)[0],
+                            l_i,
+                            l_j,
+                            y_rel_tol=0.5 * tol,
+                            findMin=False,
+                        )
+                    )
+                    * 0.5
+                )
+
+                logging.info(f"\t\tpost burnout peak low pressure found at {l_p_2} m")
+                p_p_l_l, vals_2_l = _f_p_2_l(l_p_2)
+                logging.info(
+                    f"\t\tpost burnout peak low pressure found at {p_p_l_l * 1e-6} MPa"
+                )
+            except ValueError as e:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                errMsg = "".join(
+                    traceback.format_exception(exc_type, exc_value, exc_traceback)
+                )
+                print(str(errMsg))
+                p_p_l_l, vals_2_l = 0, None
+
             if p_p_l_l > p_p_l_Z:
                 return p_p_l_l, vals_2_l
             else:
@@ -777,10 +763,7 @@ class ConstrainedHighlow:
                     f"\tLow chamber peak pressure function f_ev({probeEV * 1e3:} L) = {f_ev(probeEV)[0] * 1e-6:} MPa"
                 )
                 break
-            except UnstartedError:
-                logging.info("\tException raised: UnstartedError")
-                lastEV = probeEV
-                probeEV *= 2
+
             except LPCPMaxBelowStartError:  # overshoot
                 logging.info(
                     "\tException raised: Low Pressure Chamber Pressure Max Below Start Error"
@@ -793,9 +776,10 @@ class ConstrainedHighlow:
                         + " between high and low chamber."
                     )
                 probeEV = lastEV + 0.5 * delta
-            except ValueError as e:  # catch other potential error
-                logging.warn(f"\traised other error {e}")
-                raise e
+            except ValueError:
+                logging.info("\tException raised: ValueError")
+                lastEV = probeEV
+                probeEV *= 2
 
         logging.warn(
             f"finding lower bound for f_ev between {probeEV * 1e3} L and {lastEV * 1e3} L"

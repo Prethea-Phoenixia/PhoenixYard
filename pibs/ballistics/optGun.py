@@ -14,7 +14,7 @@ is necessary to prevent numerical instability form causing sporadic
 appearance of outlier, at the cost of increased computation times.
 """
 #  maximum number of guesses taken to find valid load fraction.
-MAX_GUESSES = 10
+MAX_GUESSES = 100
 # maximum iteration to correct for chamberage effects.
 MAX_ITER = 10
 

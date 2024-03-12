@@ -521,15 +521,18 @@ class Highlow:
         tett_record = [[Z_0, [t_0, eta_0, tau_1_0, tau_2_0]]]
 
         def abort(x, ys, record):
-            Z, _, eta, tau_1, tau_2 = x, *ys
+            Z, t, eta, tau_1, tau_2 = x, *ys
 
             p_1 = self._f_p_1(Z, eta, tau_1)
             p_2 = self._f_p_2(0, eta, tau_2)
 
-            if len(record) < 1:
+            if len(record) == 0:
                 return False
+            o_x, o_ys = record[-1]
+            oZ, o_t, oeta, _, otau_2 = o_x, *o_ys
+            op_2 = self._f_p_2(0, oeta, otau_2)
 
-            return p_2 > self.p_0_s or p_1 > p_max or p_2 / p_1 > self.cfpr
+            return p_2 > self.p_0_s or p_1 > p_max or (p_2 - op_2) < p_2 * tol
 
         def f(Z):
             i = tett_record.index([v for v in tett_record if v[0] <= Z][-1])
@@ -589,17 +592,8 @@ class Highlow:
             lambda x: f(x)[0] - self.p_0_s, Z_0, Z, y_abs_tol=self.p_0_s * tol
         )
 
-        p_2_sm, (t, eta, tau_1, tau_2) = f(Z_1)
-        p_1_sm = self._f_p_1(Z_1, eta, tau_1)
-        # p_2_sm = self._f_p_2(0, eta, tau_2)
-
-        if p_2_sm / p_1_sm > self.cfpr:
-            raise ValueError(
-                "Pressure levels in low chamber has increased such that the bleed nozzles"
-                + " has unstarted before shot start, "
-                + f"at {p_1_sm * 1e-6:.6f} MPa (high), {p_2_sm * 1e-6:.6f} MPa (low)."
-            )
-        # el
+        # p_2_sm, (t, eta, tau_1, tau_2) = f(Z_1)
+        # p_1_sm = self._f_p_1(Z_1, eta, tau_1)
 
         # fmt: off
         record.extend(

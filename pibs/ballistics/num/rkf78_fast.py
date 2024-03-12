@@ -162,12 +162,13 @@ def RKF78(
 
     allK = [None for _ in range(13)]
 
-    if h == 0:
-        return x, y_this, Rm
+    if abs(h) < EPSILON:  # does a linear extrapolation if the epsilon is small enough
+        df = dFunc(x, *y_this, h)
+        y_this = [y + df * h for y, df in zip(y_this, df)]
+        return x_1, y_this, Rm
 
-    while (h > 0 and x < x_1) or (h < 0 and x > x_1):
-        if abs(h) < EPSILON:
-            break  # catch the error using the final lines
+    while (h > EPSILON and x < x_1) or (h < -EPSILON and x > x_1):
+
         if (h > 0 and (x + h) > x_1) or (h < 0 and (x + h) < x_1):
             h = x_1 - x
 
