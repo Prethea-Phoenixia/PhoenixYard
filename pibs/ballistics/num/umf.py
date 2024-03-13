@@ -87,6 +87,7 @@ def gss(
     else:
         n = math.inf
     n = min(n, it)
+    n = max(n, 1) # at least one iteration should be ran
 
     c = a + invphi2 * h
     d = a + invphi * h

@@ -1,67 +1,82 @@
-from ballistics import ConstrainedHighlow
+from ballistics import Highlow
 from ballistics import SimpleGeometry, MultPerfGeometry
-from ballistics import POINT_PEAK_BLEED, POINT_PEAK_AVG
+from ballistics import POINT_PEAK_BLEED, POINT_PEAK_AVG, DOMAIN_TIME, DOMAIN_LENG
 from ballistics import GrainComp, Propellant
 
 from tabulate import tabulate
 from math import pi
 
 if __name__ == "__main__":
+    """standard 7 port cylinder has d_0=e_1, port dia = 0.5 * arc width
+    d_0 = 4*2e_1+3*d_0 = 11 * e_1
+    """
 
     compositions = GrainComp.readFile("ballistics/resource/propellants.csv")
 
     M17 = compositions["M17"]
     M1 = compositions["M1"]
 
-    M1_19HEX = Propellant(M1, MultPerfGeometry.NINETEEN_PERF_HEXAGON, 1, 2.5)
-    test = ConstrainedHighlow(
-        caliber=0.05,
-        propellant=M1_19HEX,
-        shotMass=1.0,
-        burstPressure=50000000.0,
-        startPressure=30000000.0,
-        dragCoefficient=0.03,
-        chambrage=1.5,
-        tol=0.001,
-        designHighPressure=350000000.0,
-        designLowPressure=70000000.0,
-        designVelocity=1000.0,
-        minWeb=1e-06,
-        maxLength=100.0,
-        maxEV=1,
-        ambientRho=0,
-        ambientP=0,
-        ambientGamma=1,
-        control=POINT_PEAK_AVG,
+    M17C = Propellant(M17, SimpleGeometry.CYLINDER, None, 25)
+    M1C = Propellant(M1, SimpleGeometry.CYLINDER, None, 10)
+    lf = 0.5
+    print("DELTA/rho:", lf)
+    test = Highlow(
+        caliber=0.082,
+        shotMass=5,
+        propellant=M17C,
+        grainSize=5e-3,
+        chargeMass=0.5,
+        chamberVolume=0.5 / M1C.rho_p / lf,
+        expansionVolume=0.5 / M1C.rho_p / lf,
+        startPressure=5e6,
+        burstPressure=10e6,
+        lengthGun=3.5,
+        portArea=0.5 * (pi * 0.082**2 * 0.25),
+        chambrage=1,
+    )
+    record = []
+
+    print("\nnumerical: time")
+    print(
+        tabulate(
+            test.integrate(10, 1e-3, dom=DOMAIN_TIME).getRawTableData(),
+            headers=(
+                "tag",
+                "t",
+                "l",
+                "psi",
+                "v",
+                "p1",
+                "pb",
+                "p2",
+                "ps",
+                "T1",
+                "T2",
+                "eta",
+            ),
+        )
     )
 
-    # result = test.constrained(
-    #     minWeb=1e-6,
-    #     maxWeb=1e-2,
-    #     minLF=0.1,
-    #     minPortRatio=0.1,
-    #     maxPortRatio=1 / 0.15,
-    #     minLength=0.01,
-    #     maxLength=1,
-    #     minEV=0,
-    #     maxEV=2e-3,
-    #     control=POINT_PEAK_AVG,  # targeted pressure
-    #     designHighPressure=80e6,
-    #     designLowPressure=40e6,
-    #     designVelocity=75,
-    # )
-    result = test.solve(
-        loadFraction=0.49311307124633463,
-        chargeMassRatio=0.5,
-        portArea=0.0014726215563702157,
-        lengthGun=None,
-        knownBore=False,
-        suppress=True,
+    # input()
+
+    print("\nnumerical: length")
+    print(
+        tabulate(
+            test.integrate(9, 1e-3, dom=DOMAIN_LENG).getRawTableData(),
+            headers=(
+                "tag",
+                "t",
+                "l",
+                "psi",
+                "v",
+                "p1",
+                "pb",
+                "p2",
+                "ps",
+                "T1",
+                "T2",
+                "eta",
+            ),
+        )
     )
-
-    # result = test.findMinV(
-    #     chargeMassRatio=0.5 / 5,
-    #     portArea=0.5 * pi * 0.082**2 * 0.25,
-    # )
-
-    print(result)
+    # print(test.getEff(942))

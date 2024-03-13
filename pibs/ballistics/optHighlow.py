@@ -1,12 +1,11 @@
 from math import pi, log, floor
 from random import uniform
 from .num import cubic, RKF78, dekker, gss
-
-from .gun import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_EXIT
-from .highlow import POINT_PEAK_HIGH, POINT_PEAK_BLEED
+from . import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_PEAK_BLEED
 from .optGun import MAX_GUESSES
+from time import time
 
-import sys, traceback
+# import sys, traceback
 
 
 import logging
@@ -242,14 +241,6 @@ class ConstrainedHighlow:
 
                 return dt, deta, dtau_1
 
-            dt_0, deta_0, dtau_1_0 = _ode_Zi(Z_0, t_0, eta_0, tau_1_0, None)
-
-            dZ = Z_0 * tol
-            Z_0 += dZ
-            t_0 += dt_0 * dZ
-            eta_0 += deta_0 * dZ
-            tau_1_0 += dtau_1_0 * dZ
-
             record_0 = [[Z_0, [t_0, eta_0, tau_1_0]]]
 
             def abort_Zi(x, ys, record):
@@ -348,6 +339,7 @@ class ConstrainedHighlow:
 
         def f_ev(expansionVolume):
             logging.info(f"\t\tf_ev called with ev = {expansionVolume*1e3:} L")
+            ev_start_time = time()
             V_1 = expansionVolume
 
             def _f_p_2(l, eta, tau_2, point=control):
@@ -356,11 +348,9 @@ class ConstrainedHighlow:
 
                 if point == POINT_PEAK_AVG:
                     return p_avg
-
                 elif point == POINT_PEAK_SHOT:
                     factor_s = 1 + labda_2 * (omega * eta / (phi_1 * m))
                     return p_avg / factor_s
-
                 elif point == POINT_PEAK_BLEED:
                     factor_b = (phi_1 * m + labda_2 * omega * eta) / (
                         phi_1 * m + labda_1 * omega * eta
@@ -371,7 +361,7 @@ class ConstrainedHighlow:
 
             Z_0, t_0, eta_0, tau_1_0, tau_2_0 = Zs[0], 0, 0, 1, 1 + theta
 
-            def _ode_Zs(Z, t, eta, tau_1, tau_2, _):
+            def _ode_Zs(Z, t, eta, tau_1, tau_2, delta):
                 psi = f_psi_Z(Z)
                 p_1 = _f_p_1(Z, eta, tau_1, psi)
                 p_2 = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
@@ -396,22 +386,17 @@ class ConstrainedHighlow:
                 dpsi = f_sigma_Z(Z)  # dpsi / dZ
                 dtau_1 = ((1 - tau_1) * dpsi - theta * tau_1 * deta) / (psi - eta)
 
-                if eta == 0:
-                    dtau_2 = None
-                else:
-                    dtau_2 = (((1 + theta) * tau_1 - tau_2) * deta) / eta
+                # internal half-stepping
+                Z += delta
+                t += dt * delta
+                eta += deta * delta
+                tau_1 += dtau_1 * delta
+
+                dtau_2 = (((1 + theta) * tau_1 - tau_2) * deta) / eta
 
                 return dt, deta, dtau_1, dtau_2
 
-            dt_0, deta_0, dtau_1_0, _ = _ode_Zs(Z_0, t_0, eta_0, tau_1_0, tau_2_0, None)
-
-            dZ = Z_0 * tol
-            Z_0 += dZ
-            t_0 += dt_0 * dZ
-            eta_0 += deta_0 * dZ
-            tau_1_0 += dtau_1_0 * dZ
-
-            record_0 = [[Z_0, [t_0, eta_0, tau_1_0, tau_2_0]]]
+            record_Zs = [[Z_0, [t_0, eta_0, tau_1_0, tau_2_0]]]
 
             def abort_Zs(x, ys, record):
                 _, _, eta, _, tau_2 = x, *ys
@@ -425,15 +410,14 @@ class ConstrainedHighlow:
 
             Z_sm, (t, eta, tau_1, tau_2), _ = RKF78(
                 _ode_Zs,
-                record_0[0][1],
-                record_0[0][0],
+                record_Zs[0][1],
+                record_Zs[0][0],
                 Z_b,
                 relTol=tol,
                 absTol=tol**2,
                 abortFunc=abort_Zs,
-                record=record_0,
+                record=record_Zs,
             )
-            # p_1_sm = _f_p_1(Z_sm, eta, tau_1)
             p_2_sm = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
 
             if p_2_sm < p_0_s:
@@ -446,19 +430,17 @@ class ConstrainedHighlow:
                 )
 
             def g(Z):
-                i = record_0.index([v for v in record_0 if v[0] <= Z][-1])
+                i = record_Zs.index([v for v in record_Zs if v[0] <= Z][-1])
 
-                x = record_0[i][0]
-                ys = record_0[i][1]
-
+                x, ys = record_Zs[i][0], record_Zs[i][1]
                 r = []
                 Z, (t, eta, tau_1, tau_2), _ = RKF78(
                     _ode_Zs, ys, x, Z, relTol=tol, absTol=tol**2, record=r
                 )
 
-                xs = [v[0] for v in record_0]
-                record_0.extend(v for v in r if v[0] not in xs)
-                record_0.sort()
+                xs = [v[0] for v in record_Zs]
+                record_Zs.extend(v for v in r if v[0] not in xs)
+                record_Zs.sort()
 
                 p_2 = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
 
@@ -467,26 +449,15 @@ class ConstrainedHighlow:
             logging.warn(f"\t\tDekker to find shot start Z between {Z_0} and {Z_sm}")
             Z_1, _ = dekker(lambda x: g(x)[0] - p_0_s, Z_0, Z_sm, y_abs_tol=p_0_s * tol)
             logging.info(f"\t\tZ_1 found to be {Z_1:}")
-            p_2_sm, (t, eta, tau_1, tau_2) = g(Z_1)
-            # p_1_sm = _f_p_1(Z_1, eta, tau_1)
 
-            t_1, eta_1, tau_1_1, tau_2_1 = RKF78(
-                _ode_Zs,
-                (t_0, eta_0, tau_1_0, tau_2_0),
-                Z_0,
-                Z_1,
-                relTol=tol,
-                absTol=tol**2,
-            )[1]
+            _, (t_1, eta_1, tau_1_1, tau_2_1) = g(Z_1)
 
             def abort_t(x, ys, record):
                 _, _, l, _, eta, _, tau_2 = x, *ys
-                # p_h = _f_p_1(Z, eta, tau_1)
                 p_l = _f_p_2(l, eta, tau_2)
 
                 o_x, o_ys = record[-1]
                 _, _, ol, _, oeta, _, otau_2 = o_x, *o_ys
-                # op_h = _f_p_1(oZ, oeta, otau_1)
                 op_l = _f_p_2(ol, oeta, otau_2)
 
                 return p_l < op_l
@@ -537,27 +508,27 @@ class ConstrainedHighlow:
 
                 return dZ, dl, dv, deta, dtau_1, dtau_2
 
-            record_2_t = [[t_1, (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1)]]
+            record_t = [[t_1, (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1)]]
 
             t_probe, t_j = t_1, t_1
             while t_probe == t_j:  # has not aborted
                 t_probe = t_j * 2
                 t_j, (Z_j, l_j, v_j, eta_j, tau_1_j, tau_2_j), _ = RKF78(
                     _ode_t,
-                    record_2_t[-1][1],
-                    record_2_t[-1][0],
+                    record_t[-1][1],
+                    record_t[-1][0],
                     t_probe,
                     relTol=tol,
                     absTol=tol**2,
                     abortFunc=abort_t,
-                    record=record_2_t,
+                    record=record_t,
                 )
 
             logging.info(f"\t\tintegrated to pressure decrement at t < {t_j:}")
 
             def _f_p_2_t(t):
-                i = record_2_t.index([v for v in record_2_t if v[0] <= t][-1])
-                x, ys = record_2_t[i]
+                i = record_t.index([v for v in record_t if v[0] <= t][-1])
+                x, ys = record_t[i]
                 r = []
                 t, (Z, l, v, eta, tau_1, tau_2), _ = RKF78(
                     dFunc=_ode_t,
@@ -568,18 +539,35 @@ class ConstrainedHighlow:
                     absTol=tol**2,
                     record=r,
                 )
-                xs = [v[0] for v in record_2_t]
-                record_2_t.extend(v for v in r if v[0] not in xs)
-                record_2_t.sort()
+                xs = [v[0] for v in record_t]
+                record_t.extend(v for v in r if v[0] not in xs)
+                record_t.sort()
 
                 return _f_p_2(l, eta, tau_2), (t, Z, l, v, eta, tau_1, tau_2)
+
+            pressures = []
+            for line in record_t:
+                t, (Z, l, v, eta, tau_1, tau_2) = line
+                p_2 = _f_p_2(l, eta, tau_2)
+                pressures.append(p_2)
+
+            t_i, t_k = None, None
+
+            if len(pressures) > 3:  # barely 30ms improvement, *sigh*.
+                for i in range(len(pressures) - 2):
+                    p_i, p_j, p_k = pressures[i], pressures[i + 1], pressures[i + 2]
+                    if p_i <= p_j and p_j >= p_k:
+                        t_i, t_k = record_t[i][0], record_t[i + 2][0]
+
+            if t_i is None and t_k is None:
+                t_i, t_k = t_1, t_j
 
             t_p_2 = (
                 sum(
                     gss(
                         lambda t: _f_p_2_t(t)[0],
-                        t_1,
-                        t_j,
+                        t_i,
+                        t_k,
                         y_rel_tol=0.5 * tol,
                         findMin=False,
                     )
@@ -591,6 +579,9 @@ class ConstrainedHighlow:
 
             p_p_l_t, vals_2_t = _f_p_2_t(t_p_2)
 
+            ev_end_time = time()
+
+            logging.info(f"\t\tf_ev returned in {ev_end_time - ev_start_time}")
             return p_p_l_t, vals_2_t
 
         def findBound(func, x_probe, x_bound, tol, record=None, exception=ValueError):
@@ -618,6 +609,8 @@ class ConstrainedHighlow:
 
                 return x_valid
 
+        time_start = time()
+
         probeEV = 2 * tol * V_0
         lastEV = tol * V_0
 
@@ -625,8 +618,9 @@ class ConstrainedHighlow:
         while True:
             try:
                 logging.info(f"\tProbing ev = {probeEV * 1e3:} L")
+                p = f_ev(probeEV)[0] * 1e-6
                 logging.info(
-                    f"\tLow chamber peak pressure function f_ev({probeEV * 1e3:} L) = {f_ev(probeEV)[0] * 1e-6:} MPa"
+                    f"\tLow chamber peak pressure function f_ev({probeEV * 1e3:} L) = {p:} MPa"
                 )
                 break
 
@@ -663,8 +657,9 @@ class ConstrainedHighlow:
         while True:
             try:
                 logging.info(f"\tProbing ev = {probeEV * 1e3:} L")
+                p = f_ev(probeEV)[0] * 1e-6
                 logging.info(
-                    f"\tLow chamber peak pressure function f_ev({probeEV * 1e3:} L) = {f_ev(probeEV)[0] * 1e-6:} MPa"
+                    f"\tLow chamber peak pressure function f_ev({probeEV * 1e3:} L) = {p:} MPa"
                 )
                 lastEV = probeEV
                 probeEV *= 2
@@ -693,10 +688,11 @@ class ConstrainedHighlow:
 
         logging.info("Expansion volume range found to be valid")
 
+        time_end = time()
+        logging.warn(f"Limitation loops total elapsed time {time_end - time_start}")
+
         def fr(x):
             progressQueue.put(round(x * 34) + 66)
-
-        # print("evLower", evLowerBound, "evUpper", evUpperBound)
 
         logging.warn(
             f"Dekker method called on f_ev between {evLowerBound*1e3} L and {evUpperBound*1e3} L"
@@ -715,7 +711,6 @@ class ConstrainedHighlow:
         p_l_act, (t_i, Z_i, l_i, v_i, eta_i, tau_1_i, tau_2_i) = f_ev(V_1)
 
         logging.info(f"Check: actual low chamber pressure {p_l_act * 1e-6} MPa")
-        # print(p_l_act)
 
         if knownBore:
             if progressQueue is not None:
@@ -961,8 +956,6 @@ class ConstrainedHighlow:
                     progressQueue.put(round(k / n * 17) + 50)
 
         high = probe
-
-        # print("low", low, "high", high)
 
         if abs(high - low) < tol:
             raise ValueError("No range of values satisfying constraint.")

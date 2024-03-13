@@ -259,7 +259,7 @@ class Highlow:
 
         return dZ, dl, dv, deta, dtau_1, dtau_2
 
-    def _ode_ts(self, t, Z, eta, tau_1, tau_2, _):
+    def _ode_ts(self, t, Z, eta, tau_1, tau_2, delta):
         psi = self.f_psi_Z(Z)
         p_1 = self._f_p_1(Z, eta, tau_1, psi)
 
@@ -290,7 +290,13 @@ class Highlow:
         dpsi = self.f_sigma_Z(Z) * dZ
         dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (psi - eta)
 
-        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
+        # internal half-step
+        t += delta
+        Z += dZ * delta
+        eta += deta * delta
+        tau_1 += dtau_1 * delta
+
+        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / (eta)
         return dZ, deta, dtau_1, dtau_2
 
     def _ode_l(self, l, t, Z, v, eta, tau_1, tau_2, _):
@@ -395,14 +401,11 @@ class Highlow:
 
         return dt, dl, dv, deta, dtau_1, dtau_2
 
-    def _ode_Zs(self, Z, t, eta, tau_1, tau_2, _):
+    def _ode_Zs(self, Z, t, eta, tau_1, tau_2, delta):
         psi = self.f_psi_Z(Z)
         p_1 = self._f_p_1(Z, eta, tau_1, psi)
-
         dt = 1 / (self.u_1 / self.e_1 * p_1**self.n)  # dt / dZ
-
         p_2 = self._f_p_2(0, eta, tau_2)
-
         pr = p_2 / p_1
         if pr <= self.cfpr:
             deta = (
@@ -427,11 +430,13 @@ class Highlow:
         dpsi = self.f_sigma_Z(Z)  # dpsi / dZ
         dtau_1 = ((1 - tau_1) * dpsi - self.theta * tau_1 * deta) / (psi - eta)
 
-        if eta == 0:
-            dtau_2 = None
-        else:
-            dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
+        # internal half-stepping
+        Z += delta
+        t += dt * delta
+        eta += deta * delta
+        tau_1 += dtau_1 * delta
 
+        dtau_2 = (((1 + self.theta) * tau_1 - tau_2) * deta) / eta
         return dt, deta, dtau_1, dtau_2
 
     def integrate(
@@ -508,16 +513,6 @@ class Highlow:
 
         updBarData(t=t_0, l=0, Z=Z_0, v=0, eta=eta_0, tau_1=tau_1_0, tau_2=tau_2_0)
 
-        dt_0, deta_0, dtau_1_0, dtau_2_0 = self._ode_Zs(
-            Z_0, t_0, eta_0, tau_1_0, tau_2_0, _
-        )
-
-        dZ = Z_0 * tol
-        Z_0 += dZ
-        t_0 += dt_0 * dZ
-        eta_0 += deta_0 * dZ
-        tau_1_0 += dtau_1_0 * dZ
-
         tett_record = [[Z_0, [t_0, eta_0, tau_1_0, tau_2_0]]]
 
         def abort(x, ys, record):
@@ -571,7 +566,6 @@ class Highlow:
         )
 
         p_1_sm = self._f_p_1(Z, eta, tau_1)
-
         p_2_sm = self._f_p_2(0, eta, tau_2)
 
         if p_2_sm < self.p_0_s:
@@ -854,7 +848,6 @@ class Highlow:
             ODE w.r.t Z is integrated from Z_0 to Z_b, from onset of projectile
             movement to charge burnout.
             """
-
             (
                 _,
                 (t_b, l_b, v_b, eta_b, tau_1_b, tau_2_b),
@@ -1113,8 +1106,8 @@ class Highlow:
         for bar_dataLine, bar_errorLine in zip(bar_data, bar_err):
             # fmt: off
             dtag, t, l, Z, v, p_1, p_2, eta, tau_1, tau_2 = bar_dataLine
-            (etag, t_err, l_err, Z_err, v_err, p_1_err, p_2_err, eta_err,
-             tau_1_err, tau_2_err) = bar_errorLine
+            (etag, t_err, l_err, Z_err, v_err, p_1_err, p_2_err, eta_err, tau_1_err,
+             tau_2_err) = bar_errorLine
             # fmt: on
             psi, psi_err = self.f_psi_Z(Z), abs(self.f_sigma_Z(Z) * Z_err)
             p_s, p_b = self._toPsPb(l, p_2, eta)
@@ -1146,22 +1139,14 @@ class Highlow:
             data.append(
                 HighlowTableEntry(dtag, t, l, psi, v, p_1, p_b, p_2, p_s, T_1, T_2, eta)
             )
+            # fmt: off
             error.append(
                 HighlowErrorEntry(
-                    etag,
-                    t_err,
-                    l_err,
-                    psi_err,
-                    v_err,
-                    p_1_err,
-                    None,
-                    p_2_err,
-                    None,
-                    T_1_err,
-                    T_2_err,
-                    eta_err,
+                    etag, t_err, l_err, psi_err, v_err, p_1_err, None, p_2_err, None,
+                    T_1_err, T_2_err, eta_err
                 )
             )
+            # fmt: on
 
         """
         scale the records too
@@ -1412,82 +1397,3 @@ class Highlow:
             for pressureProbePoint in pressureTraceEntry.pressureTrace:
                 if pressureProbePoint.x >= l_h:
                     pressureProbePoint.x += L_front
-
-
-if __name__ == "__main__":
-    """standard 7 port cylinder has d_0=e_1, port dia = 0.5 * arc width
-    d_0 = 4*2e_1+3*d_0 = 11 * e_1
-    """
-    from tabulate import tabulate
-    from prop import GrainComp, Propellant
-
-    compositions = GrainComp.readFile("ballistics/resource/propellants.csv")
-
-    M17 = compositions["M17"]
-    M1 = compositions["M1"]
-    from prop import SimpleGeometry
-
-    M17C = Propellant(M17, SimpleGeometry.CYLINDER, None, 25)
-    M1C = Propellant(M1, SimpleGeometry.CYLINDER, None, 10)
-    lf = 0.5
-    print("DELTA/rho:", lf)
-    test = Highlow(
-        caliber=0.082,
-        shotMass=5,
-        propellant=M17C,
-        grainSize=5e-3,
-        chargeMass=0.5,
-        chamberVolume=0.5 / M1C.rho_p / lf,
-        expansionVolume=0.5 / M1C.rho_p / lf,
-        startPressure=5e6,
-        burstPressure=10e6,
-        lengthGun=3.5,
-        portArea=0.5 * (pi * 0.082**2 * 0.25),
-        chambrage=1,
-    )
-    record = []
-
-    print("\nnumerical: time")
-    print(
-        tabulate(
-            test.integrate(10, 1e-3, dom=DOMAIN_TIME).getRawTableData(),
-            headers=(
-                "tag",
-                "t",
-                "l",
-                "psi",
-                "v",
-                "p1",
-                "pb",
-                "p2",
-                "ps",
-                "T1",
-                "T2",
-                "eta",
-            ),
-        )
-    )
-
-    # input()
-
-    print("\nnumerical: length")
-    print(
-        tabulate(
-            test.integrate(9, 1e-3, dom=DOMAIN_LENG).getRawTableData(),
-            headers=(
-                "tag",
-                "t",
-                "l",
-                "psi",
-                "v",
-                "p1",
-                "pb",
-                "p2",
-                "ps",
-                "T1",
-                "T2",
-                "eta",
-            ),
-        )
-    )
-    # print(test.getEff(942))

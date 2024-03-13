@@ -1,6 +1,6 @@
 import inspect
 
-# import sys, traceback
+import sys, traceback
 
 a2 = 2 / 27
 a3 = 1 / 9
@@ -162,7 +162,9 @@ def RKF78(
 
     allK = [None for _ in range(13)]
 
-    if abs(h) < EPSILON:  # does a linear extrapolation if the epsilon is small enough
+    if h == 0:
+        return x, y_this, Rm
+    elif abs(h) < EPSILON:  # does a linear extrapolation if the epsilon is small enough
         df = dFunc(x, *y_this, h)
         y_this = [y + df * h for y, df in zip(y_this, df)]
         return x_1, y_this, Rm
@@ -365,13 +367,13 @@ def RKF78(
             ZeroDivisionError,
             OverflowError,
         ) as e:
-            # if debug:
-            #     exc_type, exc_value, exc_traceback = sys.exc_info()
-            #     errMsg = "".join(
-            #         traceback.format_exception(exc_type, exc_value, exc_traceback)
-            #     )
-            #     print(f"Error encountered at x={x:.8g}")
-            #     print(str(errMsg))
+            if debug:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                errMsg = "".join(
+                    traceback.format_exception(exc_type, exc_value, exc_traceback)
+                )
+                print(f"Error encountered at x={x:.8g}")
+                print(str(errMsg))
             h *= beta
             continue
 
@@ -438,6 +440,7 @@ def RKF78(
             for yval in yvals:
                 print("{:^12.8g}|".format(yval), end="")
             print()
+        print(Rm)
 
     if abs(x - x_1) > abs(x_1 - x_0) * relTol:
         raise ValueError(
