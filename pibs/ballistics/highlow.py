@@ -521,7 +521,7 @@ class Highlow:
         tett_record = [[Z_0, [t_0, eta_0, tau_1_0, tau_2_0]]]
 
         def abort(x, ys, record):
-            Z, t, eta, tau_1, tau_2 = x, *ys
+            Z, _, eta, tau_1, tau_2 = x, *ys
 
             p_1 = self._f_p_1(Z, eta, tau_1)
             p_2 = self._f_p_2(0, eta, tau_2)
@@ -529,7 +529,7 @@ class Highlow:
             if len(record) == 0:
                 return False
             o_x, o_ys = record[-1]
-            oZ, o_t, oeta, _, otau_2 = o_x, *o_ys
+            _, _, oeta, _, otau_2 = o_x, *o_ys
             op_2 = self._f_p_2(0, oeta, otau_2)
 
             return p_2 > self.p_0_s or p_1 > p_max or (p_2 - op_2) < p_2 * tol
