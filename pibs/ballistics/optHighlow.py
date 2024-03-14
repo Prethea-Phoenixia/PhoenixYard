@@ -449,23 +449,20 @@ class ConstrainedHighlow:
 
             def g(Z):
                 i = record_Zs.index([v for v in record_Zs if v[0] <= Z][-1])
-
                 x, ys = record_Zs[i][0], record_Zs[i][1]
                 r = []
                 Z, (t, eta, tau_1, tau_2), _ = RKF78(
                     _ode_Zs, ys, x, Z, relTol=tol, absTol=tol**2, record=r
                 )
-
                 xs = [v[0] for v in record_Zs]
                 record_Zs.extend(v for v in r if v[0] not in xs)
                 record_Zs.sort()
-
                 p_2 = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
-
                 return p_2, (t, eta, tau_1, tau_2)
 
-            logging.log(7, f"\t\tDekker to find shot start Z between {Z_0} and {Z_sm}")
-            Z_1, _ = dekker(lambda x: g(x)[0] - p_0_s, Z_0, Z_sm, y_abs_tol=p_0_s * tol)
+            Z_k = record_Zs[-1][0]
+            logging.log(7, f"\t\tDekker to find shot start Z between {Z_k} and {Z_sm}")
+            Z_1, _ = dekker(lambda x: g(x)[0] - p_0_s, Z_k, Z_sm, y_abs_tol=p_0_s * tol)
             logging.log(7, f"\t\tZ_1 found to be {Z_1:}")
 
             _, (t_1, eta_1, tau_1_1, tau_2_1) = g(Z_1)
@@ -483,10 +480,9 @@ class ConstrainedHighlow:
             def _ode_t(t, Z, l, v, eta, tau_1, tau_2, _):
                 psi = f_psi_Z(Z)
                 p_1 = _f_p_1(Z, eta, tau_1, psi)
+                p_2 = _f_p_2(l, eta, tau_2, POINT_PEAK_AVG)
 
                 dZ = u_1 / e_1 * p_1**n if Z <= Z_b else 0
-
-                p_2 = _f_p_2(l, eta, tau_2, POINT_PEAK_AVG)
 
                 pr = p_2 / p_1
                 if pr <= cfpr:
