@@ -366,7 +366,7 @@ def RKF78(
             TypeError,
             ZeroDivisionError,
             OverflowError,
-        ) as e:
+        ):
             if debug:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 errMsg = "".join(
