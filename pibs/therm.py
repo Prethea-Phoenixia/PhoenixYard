@@ -118,6 +118,9 @@ if __name__ == "__main__":
 
     ATKPRDS22.prettyPrint()
 
+    pureRDX = Mixture("PURE RDX", compoDict={RDX: 1}, Delta=0.2)
+    pureRDX.prettyPrint()
+
     """
 
     import matplotlib.pyplot as plt

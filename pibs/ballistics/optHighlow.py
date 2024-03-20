@@ -613,7 +613,7 @@ class ConstrainedHighlow:
                 up = x_bound > x_probe
 
                 while abs(2 * delta) > tol and (
-                    x_probe <= x_bound if up else x_probe >= x_bound
+                    x_probe <= x_bound + tol if up else x_probe >= x_bound - tol
                 ):
                     try:
                         record.append((x_probe, func(x_probe)))

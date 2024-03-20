@@ -627,7 +627,7 @@ class Constrained:
         new_high = probe + delta_high
 
         k, n = 0, floor(log(abs(delta_high) / tol, 2)) + 1
-        while abs(2 * delta_high) > tol and new_high < 1:
+        while abs(2 * delta_high) > tol:
             try:
                 _, lt_i, lg_i = f(new_high)
                 records.append((new_high, lt_i))
