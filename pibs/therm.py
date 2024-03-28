@@ -118,9 +118,6 @@ if __name__ == "__main__":
 
     ATKPRDS22.prettyPrint()
 
-    pureRDX = Mixture("PURE RDX", compoDict={RDX: 1}, Delta=0.2)
-    pureRDX.prettyPrint()
-
     """
 
     import matplotlib.pyplot as plt
@@ -154,7 +151,6 @@ if __name__ == "__main__":
 
     """
 
-    """
     NG = Ingredient.getLine(693)
     NC1316 = Ingredient.nitrocellulose(0.1316)
     NC1315 = Ingredient.nitrocellulose(0.1315)
@@ -245,7 +241,7 @@ if __name__ == "__main__":
         compoDict={NC1315: 95.77, MEC: 2.43, DPA: 0.73, K2SO4: 0.84},
     )
     CMR160.prettyPrint()
-
+"""
     for T in (2855, 2782, 2878, 2927, 2816, 2874, 2869, 2776):
         print(f"{estU8053(T):.5g}")
 """

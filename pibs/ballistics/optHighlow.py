@@ -10,14 +10,14 @@ from time import time
 
 import logging
 
-logging.basicConfig(
-    format="%(levelname)s:%(message)s",
-    filename="highlow_opt.log",
-    # encoding="utf-8", #Python 3.9+
-    # level=logging.DEBUG,
-    level=5,
-    filemode="w+",  # overwrite existing file
-)
+# logging.basicConfig(
+#     format="%(levelname)s:%(message)s",
+#     filename="highlow_opt.log",
+#     # encoding="utf-8", #Python 3.9+
+#     # level=logging.DEBUG,
+#     level=5,
+#     filemode="w+",  # overwrite existing file
+# )
 
 
 class LPCPMaxBelowStartError(ValueError):

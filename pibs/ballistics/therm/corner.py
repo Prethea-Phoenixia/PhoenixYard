@@ -288,7 +288,7 @@ dissociaiton considered ,in descending order of significance:
 """
 
 
-def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=100, tol=1e-9):
+def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=200, tol=1e-9):
     """
     Ci, Hi, Oi, Ni are in mol/g.
     Consequently,
@@ -393,19 +393,31 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=100, tol=1e-9):
         K0 = k0(T)
     else:
         K0 = k0(T) * exp(n / V * negDeltaB + (n / V) ** 2 * neghalfDeltaC)
-    try:
-        CO2j = [
-            v for v in quadratic((1 - K0), -(G + H + K0 * I), G * H) if v < Ci and v > 0
-        ][0]
-        """get a first-order estimate of CO2 concentration assuming
-        only major products (CO2, H2O, H2, CO, N2) by solving the
-        equilibrium quadratic of the water-gas balance. This equilibrium
-        is conveniently not dependent on pressure (since gas count
-        remains constant throughout), as specified by Corner.
-        """
-    except IndexError:
-        raise ValueError("Cannot get a first-estimate for CO2 molar concentration.")
-    """
+
+    # print(quadratic((1 - K0), -(G + H + K0 * I), G * H), Ci)
+    soln_1, soln_2 = quadratic(
+        (1 - K0), -(G + H + K0 * I), G * H
+    )  # two roots to the quadratic
+    CO2j = None
+    for soln in (soln_1, soln_2):
+        if Ci >= soln >= 0:
+            CO2j = soln if CO2j is None else min(soln, CO2j)
+    if CO2j is None:
+        raise ValueError(
+            "Cannot get a first-estimate for CO2 molar concentration. "
+            + "This is most likely a result of the mixture specified leaning towards "
+            + "fuel poor and oxygen rich."
+        )
+
+    """get a first-order estimate of CO2 concentration assuming
+    only major products (CO2, H2O, H2, CO, N2) by solving the
+    equilibrium quadratic of the water-gas balance. This equilibrium
+    is conveniently not dependent on pressure (since gas count
+    remains constant throughout), as specified by Corner.
+
+    Note: as a result of these assumptions, the method is only good for when the oxygen
+    balance of the proepllant skews in fuel-rich (oxygen poor).
+
     N2j = 0.5 * Ni
     COj = G - CO2j
     H2Oj = H - CO2j
@@ -418,7 +430,7 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=100, tol=1e-9):
     CO2j_1 = None
     epsilon_0 = None
     epsilon = None
-    kappa = 0.11
+    kappa = 0.1
     delta = None
     olds = None
 
@@ -443,6 +455,8 @@ def balance(Hf, T, Ci, Hi, Oi, Ni, V=1 / 0.1, its=100, tol=1e-9):
         if any((COj < 0, H2Oj < 0, CO2j < 0, H2j < 0)):
             logger.warning("Kappa-")
             kappa = kappa**2
+            if kappa < 1e-16:
+                raise ValueError("kappa has degenerated to zero.")
             CO2j = CO2j_nmp
             CO2j_0 = None
             epsilon = None

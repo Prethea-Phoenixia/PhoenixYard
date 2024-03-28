@@ -190,7 +190,7 @@ class Ingredient:
 
 
 class Mixture:
-    def __init__(self, name, compoDict, Delta=0.2, tol_z=1e-3, tol_b=1e-9, its=100):
+    def __init__(self, name, compoDict, Delta=0.2, tol_z=1e-3, tol_b=1e-9, its=200):
         self.name = name
         self.Delta = Delta  # load density in g/cc
         self.tol_z = tol_z  # tolerance for zeta
@@ -236,7 +236,7 @@ class Mixture:
             return zeta
 
         # zeta on the order of 0.5 per degree
-        Tv = 0.5 * sum(secant(f, 2500, 3500, x_min=1600, x_max=4000, x_tol=tol_z))
+        Tv = 0.5 * sum(secant(f, 3200, 3000, x_min=1600, x_max=4000, x_tol=tol_z))
 
         _, self.speciesList, n, E, self.b, self.p, self.f = balance(
             self.Hf, Tv, Ci, Hi, Oi, Ni, V=1 / Delta, its=its, tol=tol_b
@@ -258,7 +258,7 @@ class Mixture:
         self.Tv = Tv
         self.Hf = Hf
 
-    def balanceAt(self, T, verbose=True, its=100, tol=1e-9):
+    def balanceAt(self, T, verbose=True, its=200, tol=1e-9):
         Delta, speciesList, n, E, b, p, f = balance(
             self.Hf,
             T,
@@ -270,7 +270,6 @@ class Mixture:
             its=its,
             tol=tol,
         )
-        print(Delta)
         if verbose:
             print("Mixture: {:} At: {:}K".format(self.name, T))
 
@@ -327,7 +326,7 @@ class Mixture:
             ],
             sep="\n",
         )
-        print("Impetus / Force    : {:>8.5g} J/g".format(self.f))
+        print("Sp.Impetus (Force) : {:>8.5g} J/g".format(self.f))
         print("Covolume           : {:>8.4g} cc/g".format(self.b))
         # print(" @Temperature      : {:>6.0f} K".format(self.Tv))
         print(" @ Load Density    : {:>8.6g} g/cc".format(self.Delta))

@@ -2024,8 +2024,7 @@ class InteriorBallisticsFrame(Frame):
                     psis.append(psi)
                     etas.append(eta)
 
-            self.axP.spines.right.set_position(("data", xPeak))
-            # self.axF.spines.left.set_position(("data", xPeak))
+            self.axP.spines.left.set_position(("data", xPeak))
 
             if self.plotBreechP.get():
                 self.axP.plot(
@@ -2174,17 +2173,12 @@ class InteriorBallisticsFrame(Frame):
             self.axv.set(ylim=(0, max(vs + vxs) * 1.15))
             self.ax.set_ylim(bottom=0, top=1.05)
 
-            # fmax = pmax * gun.S
-
             self.axP.yaxis.set_ticks(
                 [v for v in self.axP.get_yticks() if v <= pmax][1:]
             )
-            # self.axF.yaxis.set_ticks(
-            #     [v for v in self.axF.get_yticks() if v <= fmax][1:]
-            # )
 
             self.ax.yaxis.tick_right()
-            # self.axF.yaxis.tick_left()
+            self.axP.yaxis.tick_left()
             self.axv.yaxis.tick_left()
 
             tkw = dict(size=4, width=1.5)
@@ -2200,7 +2194,11 @@ class InteriorBallisticsFrame(Frame):
             elif dom == DOMAIN_LENG:
                 self.ax.set_xlabel(self.getLocStr("figLengDomain"))
 
-            # self.fig.set_layout_engine("constrained")
+            self.axP.set_ylabel("MPa")
+            self.axP.yaxis.label.set_color("tab:green")
+
+            self.axv.set_ylabel("m/s")
+            self.axv.yaxis.label.set_color("tab:blue")
             self.pltCanvas.draw_idle()
 
     def updateAuxPlot(self, *args):
@@ -2268,6 +2266,13 @@ class InteriorBallisticsFrame(Frame):
             self.auxAx.tick_params(axis="x", **tkw)
 
             self.auxAx.set_xlabel(self.getLocStr("figAuxDomain"))
+
+            self.auxAx.yaxis.label.set_color("tab:green")
+            self.auxAx.set_ylabel("MPa")
+
+            self.auxAxH.yaxis.set_ticks_position("right")
+            self.auxAxH.yaxis.set_label_position("right")
+            self.auxAxH.set_ylabel("mm")
 
             HTrace = self.gunResult.outline
 
