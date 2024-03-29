@@ -1,5 +1,5 @@
 from tkinter import Frame, Menu, Text, filedialog, messagebox, StringVar, IntVar
-from tkinter import Tk, ttk
+from tkinter import Tk, ttk, END
 import tkinter.font as tkFont
 
 from ballistics import DOMAIN_TIME, DOMAIN_LENG
@@ -34,6 +34,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from labellines import labelLines
 
+
 from multiprocessing import Process, Queue, freeze_support
 from queue import Empty
 
@@ -53,6 +54,7 @@ from ballistics import MATERIALS
 
 import locale
 
+import logging
 
 RECOILESS = "RECOILESS"
 CONVENTIONAL = "CONVENTIONAL"
@@ -119,7 +121,39 @@ FIG_CONTEXT = {
 }
 
 
+class TextHandler(logging.Handler):
+    # This class allows you to log to a Tkinter Text or ScrolledText widget
+    # Adapted from Moshe Kaplan: https://gist.github.com/moshekaplan/c425f861de7bbf28ef06
+
+    def __init__(self, text):
+        # run the regular Handler __init__
+        logging.Handler.__init__(self)
+        self.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
+        # Store a reference to the Text it will log to
+        self.text = text
+
+        # self.text.tag_configure(logging.DEBUG, foreground="tan")
+        self.text.tag_configure(logging.WARNING, foreground="orange")
+        self.text.tag_configure(logging.ERROR, foreground="red")
+
+    def emit(self, record):
+        msg = self.format(record)
+
+        def append():
+            # self.text.configure(state="normal")
+            self.text.insert(END, msg + "\n", record.levelno)
+            # self.text.configure(state="disabled")
+            # Autoscroll to the bottom
+            self.text.yview(END)
+
+        # This is necessary because we can't modify the Text from other threads
+        self.text.after(0, append)
+
+
 class InteriorBallisticsFrame(Frame):
+
     def __init__(self, parent, menubar, dpi, defaultLang=None):
         super().__init__(parent)
         self.grid(row=0, column=0, sticky="nsew")
@@ -136,7 +170,9 @@ class InteriorBallisticsFrame(Frame):
         self.option_add("*Font", default_font)
 
         self.jobQueue = Queue()
+        self.logQueue = Queue()
         self.progressQueue = Queue()
+
         self.process = None
 
         self.dpi = dpi
@@ -214,7 +250,6 @@ class InteriorBallisticsFrame(Frame):
 
         self.prop = None
         self.gun = None
-        self.errorLst = []
 
         self.columnconfigure(1, weight=1)
         self.rowconfigure(1, weight=1)
@@ -249,6 +284,13 @@ class InteriorBallisticsFrame(Frame):
         self.useTheme()
 
         self.tLid = None
+
+        textHandler = TextHandler(self.errorText)
+        logger = logging.getLogger()
+        logger.addHandler(textHandler)
+
+        logging.info("Attaching tk text logger")
+
         self.timedLoop()
 
         # self.event_generate("<Normal>", when="tail")
@@ -954,11 +996,6 @@ class InteriorBallisticsFrame(Frame):
 
         self.focus()  # remove focus to force widget entry validation
         self.update()  # and wait for the event to update.
-        for loc in self.locs:
-            try:
-                loc.inhibit()
-            except AttributeError:
-                pass
 
         self.process = None
 
@@ -1068,29 +1105,31 @@ class InteriorBallisticsFrame(Frame):
 
             self.process = Process(
                 target=calculate,
-                args=(self.jobQueue, self.progressQueue, self.kwargs),
+                args=(self.jobQueue, self.progressQueue, self.logQueue, self.kwargs),
             )
-            self.calcButton.config(state="disabled")
-            # self.progressbar.start(interval=10)
+
             self.process.start()
 
-        except Exception as e:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
+        except Exception:
             self.gun = None
-            self.errorLst.append("Exception when dispatching calculation:")
-            if self.DEBUG.get():
-                self.errorLst.append(
-                    "".join(
-                        traceback.format_exception(exc_type, exc_value, exc_traceback)
-                    )
-                )
-            else:
-                self.errorLst.append(str(e))
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+
+            logging.error("Exception when dispatching calculation:")
+            logging.error(
+                "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+            )
 
             self.updateTable()
-            self.updateError()
             self.updateFigPlot()
             self.updateAuxPlot()
+        else:
+            for loc in self.locs:
+                try:
+                    loc.inhibit()
+                except AttributeError:
+                    pass
+
+            self.calcButton.config(state="disabled")
 
     def getValue(self):
         jobQueue = self.jobQueue
@@ -1106,9 +1145,7 @@ class InteriorBallisticsFrame(Frame):
             pass
 
         try:
-            (self.kwargs, self.gun, self.gunResult, errorLst) = jobQueue.get_nowait()
-
-            self.errorLst.extend(errorLst)
+            (self.kwargs, self.gun, self.gunResult) = jobQueue.get_nowait()
 
         except Empty:
             return
@@ -1212,11 +1249,8 @@ class InteriorBallisticsFrame(Frame):
             self.tabParent.select(self.errorTab)
 
         self.updateTable()
-        self.updateError()
         self.updateFigPlot()
         self.updateAuxPlot()
-
-        # self.progressbar.stop()
         self.calcButton.config(state="normal")
 
         for loc in self.locs:
@@ -1913,6 +1947,8 @@ class InteriorBallisticsFrame(Frame):
         if self.process is not None:
             self.getValue()
 
+        # self.updateError()
+
         self.tLid = self.after(25, self.timedLoop)
 
     def quit(self):
@@ -2327,17 +2363,16 @@ class InteriorBallisticsFrame(Frame):
         self.tv.place(relwidth=1, relheight=1)
 
         vertscroll.configure(command=self.tv.yview)  # make it vertical
-
         horzscroll.configure(command=self.tv.xview)
 
     def updateSpec(self, *args):
         self.specs.config(state="normal")
         compo = self.dropProp.getObj()
-        self.specs.delete("1.0", "end")
+        self.specs.delete("1.0", END)
         t_Font = tkFont.Font(font=self.specs.cget("font"))
         width = self.specs.winfo_width() // t_Font.measure("m")
         self.specs.insert(
-            "end",
+            END,
             "{:}: {:>4.0f} K {:}\n".format(
                 self.getLocStr("TvDesc"),
                 compo.T_v,
@@ -2346,19 +2381,19 @@ class InteriorBallisticsFrame(Frame):
         ),
 
         self.specs.insert(
-            "end",
+            END,
             "{:}: {:>4.0f} kg/m³\n".format(self.getLocStr("densityDesc"), compo.rho_p),
         )
         isp = compo.getIsp()
         self.specs.insert(
-            "end",
+            END,
             "{:}: {:>4.0f} m/s {:>3.0f} s\n".format(
                 self.getLocStr("vacISPDesc"), isp, isp / 9.805
             ),
         )
         isp = compo.getIsp(50)
         self.specs.insert(
-            "end",
+            END,
             "{:}: {:>4.0f} m/s {:>3.0f} s\n{:}\n".format(
                 self.getLocStr("atmISPDesc"),
                 isp,
@@ -2366,20 +2401,17 @@ class InteriorBallisticsFrame(Frame):
                 self.getLocStr("pRatioDesc"),
             ),
         )
-        self.specs.insert("end", "{:}:\n".format(self.getLocStr("brDesc")))
+        self.specs.insert(END, "{:}:\n".format(self.getLocStr("brDesc")))
         for p in (100e6, 200e6, 300e6):
             self.specs.insert(
-                "end",
+                END,
                 "{:>12}".format(toSI(compo.getLBR(p), unit="m/s", dec=3))
                 + " @ {:>12}\n".format(toSI(p, unit="Pa", dec=3)),
             )
 
-        self.specs.insert(
-            "end",
-            "-" * width + "\n",
-        )
+        self.specs.insert(END, "-" * width + "\n")
         for line in compo.desc.split(","):
-            self.specs.insert("end", line + "\n")
+            self.specs.insert(END, line + "\n")
         self.specs.config(state="disabled")
         # this updates the specification description
 
@@ -2454,14 +2486,7 @@ class InteriorBallisticsFrame(Frame):
                     [i * 0.5 for i in range(ceil(max(ys) / 0.5) + 1)]
                 )
 
-            # self.geomFig.set_layout_engine("constrained")
             self.geomCanvas.draw_idle()
-
-    def updateError(self):
-        self.errorText.delete("1.0", "end")
-        for line in self.errorLst:
-            self.errorText.insert("end", line + "\n")
-        self.errorLst = []
 
     def updateTable(self):
         gun = self.gun
@@ -2559,19 +2584,19 @@ class InteriorBallisticsFrame(Frame):
         for i, (row, erow) in enumerate(zip(locTableData, errorData)):
             self.tv.insert(
                 "",
-                "end",
+                END,
                 str(i + 1),
                 values=row,
                 tags=(row[0].strip(), "monospace"),
             )
             self.tv.insert(
                 str(i + 1),
-                "end",
+                END,
                 str(-i - 1),
                 values=tuple("±" + e if "." in e else e for e in erow),
                 tags="error",
             )
-            self.tv.move(str(-i - 1), str(i + 1), "end")
+            self.tv.move(str(-i - 1), str(i + 1), END)
 
     def callback(self, *args):
         """
@@ -2599,15 +2624,15 @@ class InteriorBallisticsFrame(Frame):
             exc_type, exc_value, exc_traceback = sys.exc_info()
             self.prop = None
             if self.DEBUG.get():
-                self.errorLst.append(
+                self.logQueue.put(
                     "".join(
                         traceback.format_exception(exc_type, exc_value, exc_traceback)
                     )
                 )
             else:
-                self.errorLst.append(str(e))
+                self.logQueue.put(str(e))
 
-        self.updateError()
+        # self.updateError()
 
     def typeCallback(self, *args):
         gunType = self.typeOptn.getObj()
@@ -2849,7 +2874,8 @@ class InteriorBallisticsFrame(Frame):
         self.update_idletasks()
 
 
-def calculate(jobQueue, progressQueue, kwargs):
+def calculate(jobQueue, progressQueue, logQueue, kwargs):
+
     gunType = kwargs["typ"]
     constrain = kwargs["con"]
     optimize = kwargs["opt"]
@@ -2904,26 +2930,30 @@ def calculate(jobQueue, progressQueue, kwargs):
             gun = Highlow(**kwargs)
 
         gunResult = gun.integrate(**kwargs, progressQueue=progressQueue)
-        errorReport = []
 
-    except Exception as e:
+    except Exception:
         gun = None
         gunResult = None
 
-        errorReport = ["Exception while calculating:"]
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        if debug:
-            errorReport.append(
-                "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
-            )
-        else:
-            errorReport.append(str(e))
+        logging.error("Exception while calculating:")
+        logging.error(
+            "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+        )
 
-    jobQueue.put((kwargs, gun, gunResult, errorReport))
+    jobQueue.put((kwargs, gun, gunResult))
 
 
 def main():
     freeze_support()
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler(sys.stderr)],
+    )
+
+    logging.info("Initializing")
 
     # if check avoids hackery when not profiling
     # Optional; hackery *seems* to work fine even when not profiling, it's just wasteful
@@ -2979,6 +3009,7 @@ def main():
     # root.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
     # root.resizable(False, False)
     # root.iconify()
+
     InteriorBallisticsFrame(
         root, menubar, dpi, defaultLang="English" if loc != "zh_CN" else "中文"
     )

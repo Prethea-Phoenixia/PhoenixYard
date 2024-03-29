@@ -211,7 +211,7 @@ class Loc2Input:
             padx=2,
             pady=2,
         )
-        en.bind("<FocusOut>", formatter)
+        en.bind("<FocusOut>", lambda event: formatter(event, e))
 
         self.labelWidget = lb
         self.inputVar = e

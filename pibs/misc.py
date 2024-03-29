@@ -152,9 +152,7 @@ def validateNN(inp):
         return False
 
 
-def validatePI(
-    inp,
-):  # validate an input such that the result is a positive integer
+def validatePI(inp):  # validate an input such that the result is a positive integer
     if inp == "":
         return True  # we will catch this by filling the default value
     try:
@@ -181,24 +179,22 @@ def validateFLT(inp):  # validate an input such that the result is a float.
         return False
 
 
-def formatFloatInput(event):
-    v = event.widget.get()
+def formatFloatInput(event, var):
+    # v = event.widget.get()
+    v = var.get()
     if v == "" or v == ".":
-        event.widget.delete(0, "end")
-        event.widget.insert(0, event.widget.default)
-
+        var.set(event.widget.default)
     else:
-        event.widget.delete(0, "end")
-        event.widget.insert(0, float(v))
+        var.set(float(v))
 
 
-def formatIntInput(event):
-    v = event.widget.get()
+def formatIntInput(event, var):
+    # v = event.widget.get()
+    v = var.get()
     if v == "":
-        event.widget.insert(0, event.widget.default)
+        var.set(event.widget.default)
     else:
-        event.widget.delete(0, "end")
-        event.widget.insert(0, int(v))
+        var.set(float(v))
 
 
 def dot_aligned(matrix, units, useSN, stripWS=True):
