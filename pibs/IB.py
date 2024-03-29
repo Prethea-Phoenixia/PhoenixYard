@@ -34,8 +34,8 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from labellines import labelLines
 
-
-from multiprocessing import Process, Queue, freeze_support
+import multiprocessing
+from multiprocessing import Process, Queue
 from queue import Empty
 
 import csv
@@ -55,6 +55,7 @@ from ballistics import MATERIALS
 import locale
 
 import logging
+from logging.handlers import QueueHandler, QueueListener
 
 RECOILESS = "RECOILESS"
 CONVENTIONAL = "CONVENTIONAL"
@@ -131,20 +132,18 @@ class TextHandler(logging.Handler):
         self.setFormatter(
             logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         )
+        self.setLevel(logging.INFO)
         # Store a reference to the Text it will log to
         self.text = text
-
-        # self.text.tag_configure(logging.DEBUG, foreground="tan")
-        self.text.tag_configure(logging.WARNING, foreground="orange")
-        self.text.tag_configure(logging.ERROR, foreground="red")
+        self.text.config(state="disabled")
 
     def emit(self, record):
         msg = self.format(record)
 
         def append():
-            # self.text.configure(state="normal")
-            self.text.insert(END, msg + "\n", record.levelno)
-            # self.text.configure(state="disabled")
+            self.text.configure(state="normal")
+            self.text.insert(END, msg.strip("\n") + "\n", record.levelno)
+            self.text.configure(state="disabled")
             # Autoscroll to the bottom
             self.text.yview(END)
 
@@ -289,11 +288,35 @@ class InteriorBallisticsFrame(Frame):
         logger = logging.getLogger()
         logger.addHandler(textHandler)
 
-        logging.info("Attaching tk text logger")
+        logging.info("text handler attached to root logger.")
+
+        self.listener = QueueListener(self.logQueue, textHandler)
+        self.listener.start()
+
+        logger.info("text handler attached to subprocess log queue listener.")
 
         self.timedLoop()
 
-        # self.event_generate("<Normal>", when="tail")
+    def timedLoop(self):
+        # polling function for the calculation subprocess
+        if self.process is not None:
+            self.getValue()
+
+        self.tLid = self.after(25, self.timedLoop)
+
+    def quit(self):
+
+        if self.process is not None:
+            self.process.terminate()
+            self.process.kill()
+        self.listener.stop()
+
+        # root = self.parent
+        if self.tLid is not None:
+            self.after_cancel(self.tLid)
+            # root.after_cancel(self.tLid)
+        # root.quit()
+        super().quit()
 
     def getDescriptive(self):
         if self.gun is None:
@@ -1114,7 +1137,7 @@ class InteriorBallisticsFrame(Frame):
             self.gun = None
             exc_type, exc_value, exc_traceback = sys.exc_info()
 
-            logging.error("Exception when dispatching calculation:")
+            logging.error("exception when dispatching calculation:")
             logging.error(
                 "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
             )
@@ -1242,11 +1265,12 @@ class InteriorBallisticsFrame(Frame):
             breech_nozzle_mass = self.gunResult.breechMass
             self.bm.set(formatMass(breech_nozzle_mass))
 
-            if self.tabParent.index(self.tabParent.select()) == 2:
-                self.tabParent.select(self.plotTab)
+            # if self.tabParent.index(self.tabParent.select()) == 2:
+            #     self.tabParent.select(self.plotTab)
 
         else:
-            self.tabParent.select(self.errorTab)
+            # self.tabParent.select(self.errorTab)
+            pass
 
         self.updateTable()
         self.updateFigPlot()
@@ -1723,8 +1747,13 @@ class InteriorBallisticsFrame(Frame):
             height=6,
             width=0,
             font=(FONTNAME, FONTSIZE),
+            state="disabled",
         )
         self.errorText.grid(row=0, column=0, sticky="nsew")
+
+        # self.text.tag_configure(logging.DEBUG, foreground="tan")
+        self.errorText.tag_configure(logging.WARNING, foreground="orange")
+        self.errorText.tag_configure(logging.ERROR, foreground="red")
 
     def addPlotFrm(self):
         plotFrm = LocLabelFrame(
@@ -1924,8 +1953,6 @@ class InteriorBallisticsFrame(Frame):
 
         auxPlaceFrm = Frame(auxFrm)
         auxPlaceFrm.grid(row=0, column=0, padx=2, pady=2, sticky="nsew", columnspan=2)
-        # auxPlaceFrm.grid_propagate(False)
-        # auxFrm.grid_propagate(False)
 
         with mpl.rc_context(FIG_CONTEXT):
             fig = Figure(dpi=96, layout="constrained")
@@ -1941,21 +1968,6 @@ class InteriorBallisticsFrame(Frame):
             self.auxCanvas = FigureCanvasTkAgg(fig, master=auxPlaceFrm)
             self.auxCanvas.draw_idle()
             self.auxCanvas.get_tk_widget().place(relwidth=1, relheight=1)
-
-    def timedLoop(self):
-        # polling function for the calculation subprocess
-        if self.process is not None:
-            self.getValue()
-
-        # self.updateError()
-
-        self.tLid = self.after(25, self.timedLoop)
-
-    def quit(self):
-        root = self.parent
-        if self.tLid is not None:
-            root.after_cancel(self.tLid)
-        root.quit()
 
     def updateFigPlot(self, *args):
         gun = self.gun
@@ -2602,9 +2614,6 @@ class InteriorBallisticsFrame(Frame):
         """
         updates the propellant object on write to the ratio entry fields
         and, on changing the propellant or geometrical specification.
-
-        Double calling is due to value validation, no workaround has been
-        found at this time!
         """
 
         geom = self.dropGeom.getObj()
@@ -2620,19 +2629,13 @@ class InteriorBallisticsFrame(Frame):
             )
             self.updateGeomPlot()
 
-        except Exception as e:
+        except Exception:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             self.prop = None
-            if self.DEBUG.get():
-                self.logQueue.put(
-                    "".join(
-                        traceback.format_exception(exc_type, exc_value, exc_traceback)
-                    )
-                )
-            else:
-                self.logQueue.put(str(e))
-
-        # self.updateError()
+            logging.error("exception in propellant callback:")
+            logging.error(
+                "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+            )
 
     def typeCallback(self, *args):
         gunType = self.typeOptn.getObj()
@@ -2875,6 +2878,12 @@ class InteriorBallisticsFrame(Frame):
 
 
 def calculate(jobQueue, progressQueue, logQueue, kwargs):
+    h = QueueHandler(logQueue)
+    root = logging.getLogger()
+    root.addHandler(h)
+    root.setLevel(logging.INFO)
+
+    logging.info("calculation started.")
 
     gunType = kwargs["typ"]
     constrain = kwargs["con"]
@@ -2930,22 +2939,24 @@ def calculate(jobQueue, progressQueue, logQueue, kwargs):
             gun = Highlow(**kwargs)
 
         gunResult = gun.integrate(**kwargs, progressQueue=progressQueue)
+        logging.info("calculation concluded successfully.")
 
     except Exception:
         gun = None
         gunResult = None
 
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        logging.error("Exception while calculating:")
+        logging.error("exception while calculating:")
         logging.error(
             "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
         )
-
-    jobQueue.put((kwargs, gun, gunResult))
+    finally:
+        jobQueue.put((kwargs, gun, gunResult))
 
 
 def main():
-    freeze_support()
+    multiprocessing.freeze_support()
+    # multiprocessing.log_to_stderr(logging.INFO)
 
     logging.basicConfig(
         level=logging.INFO,
