@@ -16,6 +16,9 @@ from .gun import (
 from .gun import Gun
 from .gun import GenericEntry, GenericResult
 from .gun import PressureTraceEntry, PressureProbePoint, OutlineEntry
+import traceback, sys, logging
+
+logger = logging.getLogger("recoiless")
 
 POINT_PEAK_STAG = "PEAK_STAG_P"
 
@@ -79,6 +82,7 @@ class Recoiless:
         autofrettage=True,
         **_,
     ):
+        logger.info("initializing recoiless object.")
         if any(
             (
                 caliber <= 0,
@@ -185,6 +189,8 @@ class Recoiless:
             * (2 / (gamma + 1)) ** (0.5 * (gamma + 1) / self.theta)
             * phi_2
         )  # flow rate value
+
+        logger.info("recoiless successfully initialized.")
 
     def __getattr__(self, attrName):
         if "propellant" in vars(self) and not (
@@ -318,6 +324,7 @@ class Recoiless:
         progressQueue=None,
         **_,
     ):
+        logger = logging.getLogger("recoiless.integrate")
         """
         Runs a full numerical solution for the gun in the specified domain sampled
         evenly at specified number of steps, using a scaled numerical tolerance as
@@ -334,6 +341,7 @@ class Recoiless:
 
         if progressQueue is not None:
             progressQueue.put(1)
+        logger.info("commencing integration for characteristic points.")
 
         record = []
         if any((step < 0, tol < 0)):
@@ -551,13 +559,7 @@ class Recoiless:
                         )
                     )  # this will catch any case where t, l, p are negative
 
-                (
-                    t_bar_i,
-                    l_bar_i,
-                    v_bar_i,
-                    eta_i,
-                    tau_i,
-                ) = (
+                (t_bar_i, l_bar_i, v_bar_i, eta_i, tau_i) = (
                     t_bar_j,
                     l_bar_j,
                     v_bar_j,
@@ -600,6 +602,11 @@ class Recoiless:
 
         if progressQueue is not None:
             progressQueue.put(10)
+
+        if isBurnOutContained:
+            logger.info("integrated to burnout point.")
+        else:
+            logger.warning("shot exited barrel before burnout.")
 
         """
         Subscript e indicate exit condition.
@@ -661,6 +668,8 @@ class Recoiless:
         if progressQueue is not None:
             progressQueue.put(20)
 
+        logger.info("integrated and determined conditions at exit point.")
+
         t_bar_f = None
         if Z_b > 1.0 and Z_e >= 1.0:  # fracture point exist and is contained
             """
@@ -694,6 +703,10 @@ class Recoiless:
                 v_bar_err=v_bar_err_f,
                 eta_err=eta_err_f,
                 tau_err=tau_err_f,
+            )
+
+            logger.info(
+                "integrated and determined conditions at propellant frature point."
             )
 
         t_bar_b = None
@@ -732,6 +745,9 @@ class Recoiless:
                 v_bar_err=v_bar_err_b,
                 eta_err=eta_err_b,
                 tau_err=tau_err_b,
+            )
+            logger.info(
+                "integrated and determined conditions at propellant burnout point."
             )
 
         if progressQueue is not None:
@@ -828,119 +844,117 @@ class Recoiless:
             ]
         ):
             findPeak(lambda x: g(x, peak), peak)
+            logger.info(f"found peak conditions {peak}.")
             if progressQueue is not None:
                 progressQueue.put(30 + (i + 1) * 12.5)  # 42.5, 55, 67.5, 80
 
         """
         populate data for output purposes
         """
-        try:
-            if dom == DOMAIN_TIME:
-                # fmt:off
-                (Z_j, l_bar_j, v_bar_j, t_bar_j, eta_j, tau_j) = (
-                    Z_0, 0, 0, 0, 0, 1
-                )
-                # fmt: on
-                for j in range(step):
-                    t_bar_k = t_bar_e / (step + 1) * (j + 1)
-                    (
-                        _,
-                        (Z_j, l_bar_j, v_bar_j, eta_j, tau_j),
-                        (Z_err, l_bar_err, v_bar_err, eta_err, tau_err),
-                    ) = RKF78(
-                        self._ode_t,
-                        (Z_j, l_bar_j, v_bar_j, eta_j, tau_j),
-                        t_bar_j,
-                        t_bar_k,
-                        relTol=tol,
-                        absTol=tol**2,
-                    )
-                    t_bar_j = t_bar_k
-
-                    updBarData(
-                        tag="",
-                        t_bar=t_bar_j,
-                        l_bar=l_bar_j,
-                        Z=Z_j,
-                        v_bar=v_bar_j,
-                        eta=eta_j,
-                        tau=tau_j,
-                        t_bar_err=0,
-                        l_bar_err=l_bar_err,
-                        Z_err=Z_err,
-                        v_bar_err=v_bar_err,
-                        eta_err=eta_err,
-                        tau_err=tau_err,
-                    )
-
-            elif dom == DOMAIN_LENG:
-                """
-                Due to two issues, i.e. 1.the length domain ODE
-                cannot be integrated from the origin point, and 2.the
-                correct behaviour can only be expected when starting from
-                a point with active burning else dZ flat lines.
-                we do another Z domain integration to seed the initial values
-                to a point where ongoing burning is guaranteed.
-                (in the case of gun barrel length >= burn length, the group
-                 of value by subscipt i will not guarantee burning is still
-                 ongoing).
-                """
-                t_bar_j = 0.5 * t_bar_i
-                Z_j, l_bar_j, v_bar_j, eta_j, tau_j = RKF78(
+        logger.info(f"sampling for {step} points.")
+        if dom == DOMAIN_TIME:
+            # fmt:off
+            (Z_j, l_bar_j, v_bar_j, t_bar_j, eta_j, tau_j) = (
+                Z_0, 0, 0, 0, 0, 1
+            )
+            # fmt: on
+            for j in range(step):
+                t_bar_k = t_bar_e / (step + 1) * (j + 1)
+                (
+                    _,
+                    (Z_j, l_bar_j, v_bar_j, eta_j, tau_j),
+                    (Z_err, l_bar_err, v_bar_err, eta_err, tau_err),
+                ) = RKF78(
                     self._ode_t,
-                    (Z_0, 0, 0, 0, 1),
-                    0,
+                    (Z_j, l_bar_j, v_bar_j, eta_j, tau_j),
                     t_bar_j,
+                    t_bar_k,
                     relTol=tol,
                     absTol=tol**2,
-                )[1]
+                )
+                t_bar_j = t_bar_k
 
-                for j in range(step):
-                    l_bar_k = l_g_bar / (step + 1) * (j + 1)
+                updBarData(
+                    tag="",
+                    t_bar=t_bar_j,
+                    l_bar=l_bar_j,
+                    Z=Z_j,
+                    v_bar=v_bar_j,
+                    eta=eta_j,
+                    tau=tau_j,
+                    t_bar_err=0,
+                    l_bar_err=l_bar_err,
+                    Z_err=Z_err,
+                    v_bar_err=v_bar_err,
+                    eta_err=eta_err,
+                    tau_err=tau_err,
+                )
 
+        elif dom == DOMAIN_LENG:
+            """
+            Due to two issues, i.e. 1.the length domain ODE
+            cannot be integrated from the origin point, and 2.the
+            correct behaviour can only be expected when starting from
+            a point with active burning else dZ flat lines.
+            we do another Z domain integration to seed the initial values
+            to a point where ongoing burning is guaranteed.
+            (in the case of gun barrel length >= burn length, the group
+             of value by subscipt i will not guarantee burning is still
+             ongoing).
+            """
+            t_bar_j = 0.5 * t_bar_i
+            Z_j, l_bar_j, v_bar_j, eta_j, tau_j = RKF78(
+                self._ode_t,
+                (Z_0, 0, 0, 0, 1),
+                0,
+                t_bar_j,
+                relTol=tol,
+                absTol=tol**2,
+            )[1]
+
+            for j in range(step):
+                l_bar_k = l_g_bar / (step + 1) * (j + 1)
+
+                (
+                    _,
+                    (t_bar_j, Z_j, v_bar_j, eta_j, tau_j),
                     (
-                        _,
-                        (t_bar_j, Z_j, v_bar_j, eta_j, tau_j),
-                        (
-                            t_bar_err,
-                            Z_err,
-                            v_bar_err,
-                            eta_err,
-                            tau_err,
-                        ),
-                    ) = RKF78(
-                        self._ode_l,
-                        (t_bar_j, Z_j, v_bar_j, eta_j, tau_j),
-                        l_bar_j,
-                        l_bar_k,
-                        relTol=tol,
-                        absTol=tol**2,
-                    )
+                        t_bar_err,
+                        Z_err,
+                        v_bar_err,
+                        eta_err,
+                        tau_err,
+                    ),
+                ) = RKF78(
+                    self._ode_l,
+                    (t_bar_j, Z_j, v_bar_j, eta_j, tau_j),
+                    l_bar_j,
+                    l_bar_k,
+                    relTol=tol,
+                    absTol=tol**2,
+                )
 
-                    l_bar_j = l_bar_k
+                l_bar_j = l_bar_k
 
-                    updBarData(
-                        tag="",
-                        t_bar=t_bar_j,
-                        l_bar=l_bar_j,
-                        Z=Z_j,
-                        v_bar=v_bar_j,
-                        eta=eta_j,
-                        tau=tau_j,
-                        t_bar_err=t_bar_err,
-                        l_bar_err=0,
-                        Z_err=Z_err,
-                        v_bar_err=v_bar_err,
-                        eta_err=eta_err,
-                        tau_err=tau_err,
-                    )
-            else:
-                raise ValueError("Unknown domain")
+                updBarData(
+                    tag="",
+                    t_bar=t_bar_j,
+                    l_bar=l_bar_j,
+                    Z=Z_j,
+                    v_bar=v_bar_j,
+                    eta=eta_j,
+                    tau=tau_j,
+                    t_bar_err=t_bar_err,
+                    l_bar_err=0,
+                    Z_err=Z_err,
+                    v_bar_err=v_bar_err,
+                    eta_err=eta_err,
+                    tau_err=tau_err,
+                )
+        else:
+            raise ValueError("Unknown domain")
 
-        except ValueError as e:
-            raise e
-        finally:
-            pass
+        logger.info("sampling completed.")
 
         if progressQueue is not None:
             progressQueue.put(100)
@@ -1048,23 +1062,29 @@ class Recoiless:
             )
         )
 
+        logger.info("scaled intermediate results to SI.")
+
         recoilessResult = RecoilessResult(self, data, error, p_trace)
 
-        try:
-            if self.material is None:
-                raise ValueError("Structural material not specified")
-
-            self._getStructural(recoilessResult, step, tol)
-
-        except Exception:
-            import sys, traceback
-
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-
-            errMsg = "".join(
-                traceback.format_exception(exc_type, exc_value, exc_traceback)
+        if self.material is None:
+            logger.warning(
+                "material is not specified, skipping structural calculation."
             )
-            print(errMsg)
+
+        else:
+            try:
+                self._getStructural(recoilessResult, step, tol)
+            except Exception:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                logger.error("exception occured during structural calculation:")
+                logger.error(
+                    "".join(
+                        traceback.format_exception(exc_type, exc_value, exc_traceback)
+                    )
+                )
+                logger.info("structural calculation skipped.")
+
+        logger.info("integration concluded.")
 
         return recoilessResult
 
@@ -1174,6 +1194,8 @@ class Recoiless:
         return Cf
 
     def _getStructural(self, recoilessResult: RecoilessResult, step: int, tol: float):
+        logger = logging.getLogger("recoiless.structure")
+        logger.info("commencing structural calculation")
         l_c = self.l_c
         l_g = self.l_g
         chi_k = self.chi_k
@@ -1290,6 +1312,7 @@ class Recoiless:
             hull.append(OutlineEntry(x, r, r * rho))
 
         nozzle_mass = V_n * self.material.rho
+        logger.info("structural calculation of nozzle section complete.")
 
         rho_probes = []
         V = 0
@@ -1350,7 +1373,7 @@ class Recoiless:
                 if y > 3**-0.5:
                     raise ValueError(
                         f"Limit to conventional construction ({sigma * 3*1e-6:.3f} MPa)"
-                        + " exceeded in section."
+                        + " exceeded in tube section."
                     )
                 rho = ((1 + y * (4 - 3 * y**2) ** 0.5) / (1 - 3 * y**2)) ** 0.5
                 rho_probes.append(rho)
@@ -1367,6 +1390,7 @@ class Recoiless:
                     V += dV
 
         tube_mass = V * self.material.rho
+        logger.info("structural calculation of tube section complete.")
 
         for x, rho in zip(x_probes, rho_probes):
             if x < l_c:
@@ -1377,6 +1401,8 @@ class Recoiless:
         recoilessResult.outline = hull
         recoilessResult.tubeMass = tube_mass
         recoilessResult.breechMass = nozzle_mass
+
+        logger.info("structural calculation results attached.")
 
     @staticmethod
     def _getAr(gamma, Pr):

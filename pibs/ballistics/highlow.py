@@ -14,6 +14,9 @@ from .gun import (
 )
 from .gun import GenericEntry, GenericResult
 from .gun import PressureTraceEntry, PressureProbePoint, OutlineEntry
+import traceback, sys, logging
+
+logger = logging.getLogger("highlow")
 
 POINT_PEAK_HIGH = "PEAK_HIGH_P"
 POINT_PEAK_BLEED = "PEAK_BLEED_P"
@@ -81,6 +84,7 @@ class Highlow:
         autofrettage=True,
         **_,
     ):
+        logger.info("initializing highlow object.")
         if any(
             (
                 caliber <= 0,
@@ -179,6 +183,8 @@ class Highlow:
 
         self.cfpr = (2 / (gamma + 1)) ** (gamma / self.theta)
         self.K_0 = gamma**0.5 * (2 / (gamma + 1)) ** ((gamma + 1) / (2 * self.theta))
+
+        logger.info("highlow object successfully initialized.")
 
     def __getattr__(self, attrName):
         if "propellant" in vars(self) and not (
@@ -451,21 +457,11 @@ class Highlow:
         progressQueue=None,
         **_,
     ):
+        logger = logging.getLogger("highlow.integrate")
         if progressQueue is not None:
             progressQueue.put(1)
-        """
-        Runs a full numerical solution for the gun in the specified domain sampled
-        evenly at specified number of steps, using a scaled numerical tolerance as
-        specified.
+        logger.info("commencing integration for characteristic points.")
 
-        tolerance is meant to be interpreted as the maximum relative deviation each
-        component is allowed to have, at each step of integration point.
-
-        Through significant trials and errors, it was determined that for this particular
-        system, the error due to compounding does not appear to be significant,
-        usually on the order of 1e-16 - 1e-14 as compared to much larger for component
-        errors.
-        """
         record = []
 
         if any((step < 0, tol < 0)):
@@ -531,7 +527,6 @@ class Highlow:
 
         def f(Z):
             i = tett_record.index([v for v in tett_record if v[0] <= Z][-1])
-
             x = tett_record[i][0]
             ys = tett_record[i][1]
 
@@ -620,6 +615,7 @@ class Highlow:
 
         if progressQueue is not None:
             progressQueue.put(5)
+        logger.info("integrated and determined condition at shot start point.")
 
         Z_i = Z_1
         Z_j = Z_b
@@ -754,6 +750,11 @@ class Highlow:
         if progressQueue is not None:
             progressQueue.put(10)
 
+        if isBurnOutContained:
+            logger.info("integrated to burnout point.")
+        else:
+            logger.warning("shot exited barrel before burnout.")
+
         """
         Subscript e indicate exit condition.
         At this point, since its guaranteed that point i will be further
@@ -796,6 +797,7 @@ class Highlow:
 
         if progressQueue is not None:
             progressQueue.put(20)
+        logger.info("integrated and determined conditions at exit point.")
 
         t_f = None  # TODO: fix this when Z_b happens in _ode_Zs
         if Z_b > 1.0 and Z_e >= 1.0:  # fracture point exist and is contained
@@ -840,6 +842,9 @@ class Highlow:
                 tau_1_err=tau_1_err, tau_2_err=tau_2_err,
             )
             # fmt: on
+            logger.info(
+                "integrated and determined conditions at propellant frature point."
+            )
 
         t_b = None
         if isBurnOutContained:
@@ -867,6 +872,9 @@ class Highlow:
                 v_err=v_err, eta_err=eta_err, tau_1_err=tau_1_err, tau_2_err=tau_2_err
             )
             # fmt: on
+            logger.info(
+                "integrated and determined conditions at propellant burnout point."
+            )
 
         if progressQueue is not None:
             progressQueue.put(30)
@@ -965,135 +973,134 @@ class Highlow:
 
         for i, peak in enumerate(peaks):
             findPeak(lambda x: g(x, peak), peak)
+            logger.info(f"found peak conditions {peak}.")
             if progressQueue is not None:
                 progressQueue.put(30 + i / (len(peaks) - 1) * 50)
 
         """
         populate data for output purposes
         """
-        try:
-            if dom == DOMAIN_TIME:
-                # fmt: off
-                (
-                    t_j, Z_j, eta_j, tau_1_j, tau_2_j
-                ) = (
-                    t_0, Z_0, eta_0, tau_1_0, tau_2_0
-                )
-                # fmt: on
-                l_j, v_j = 0, 0
-                l_err, v_err = 0, 0
 
-                hasStarted = False
-                for j in range(step):
-                    t_k = t_e / (step + 1) * (j + 1)
+        logger.info(f"sampling for {step} points.")
 
-                    if t_k < t_1:
-                        (
-                            _,
-                            (Z_j, eta_j, tau_1_j, tau_2_j),
-                            (Z_err, eta_err, tau_1_err, tau_2_err),
-                        ) = RKF78(
-                            self._ode_ts,
-                            (Z_j, eta_j, tau_1_j, tau_2_j),
-                            t_j,
-                            t_k,
-                            relTol=tol,
-                            absTol=tol**2,
-                        )
+        if dom == DOMAIN_TIME:
+            # fmt: off
+            (
+                t_j, Z_j, eta_j, tau_1_j, tau_2_j
+            ) = (
+                t_0, Z_0, eta_0, tau_1_0, tau_2_0
+            )
+            # fmt: on
+            l_j, v_j = 0, 0
+            l_err, v_err = 0, 0
 
-                    else:
-                        if not hasStarted:
-                            # fmt: off
-                            (
-                                t_j, Z_j, eta_j, tau_1_j, tau_2_j
-                            ) = (
-                                t_1, Z_1, eta_1, tau_1_1, tau_2_1
-                            )
-                            hasStarted = True
-                            # fmt: on
+            hasStarted = False
+            for j in range(step):
+                t_k = t_e / (step + 1) * (j + 1)
 
-                        (
-                            _,
-                            (Z_j, l_j, v_j, eta_j, tau_1_j, tau_2_j),
-                            (Z_err, l_err, v_err, eta_err, tau_1_err, tau_2_err),
-                        ) = RKF78(
-                            self._ode_t,
-                            (Z_j, l_j, v_j, eta_j, tau_1_j, tau_2_j),
-                            t_j,
-                            t_k,
-                            relTol=tol,
-                            absTol=tol**2,
-                        )
-
-                    t_j = t_k
-
-                    # fmt: off
-                    updBarData(
-                        tag="", t=t_j, l=l_j, Z=Z_j, v=v_j, eta=eta_j, tau_1=tau_1_j,
-                        tau_2=tau_2_j, t_err=t_err, l_err=0, Z_err=Z_err, v_err=v_err,
-                        eta_err=eta_err, tau_1_err=tau_1_err, tau_2_err=tau_2_err
+                if t_k < t_1:
+                    (
+                        _,
+                        (Z_j, eta_j, tau_1_j, tau_2_j),
+                        (Z_err, eta_err, tau_1_err, tau_2_err),
+                    ) = RKF78(
+                        self._ode_ts,
+                        (Z_j, eta_j, tau_1_j, tau_2_j),
+                        t_j,
+                        t_k,
+                        relTol=tol,
+                        absTol=tol**2,
                     )
-                    # fmt: on
 
-            elif dom == DOMAIN_LENG:
-                """
-                Due to two issues, i.e. 1.the length domain ODE
-                cannot be integrated from the origin point, and 2.the
-                correct behaviour can only be expected when starting from
-                a point with active burning else dZ flat lines.
-                we do another Z domain integration to seed the initial values
-                to a point where ongoing burning is guaranteed.
-                (in the case of gun barrel length >= burn length, the group
-                 of value by subscipt i will not guarantee burning is still
-                 ongoing).
-                """
-
-                t_j = 0.5 * (t_i - t_1) + t_1
-                Z_j, l_j, v_j, eta_j, tau_1_j, tau_2_j = RKF78(
-                    self._ode_t,
-                    (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1),
-                    t_1,
-                    t_j,
-                    relTol=tol,
-                    absTol=tol**2,
-                )[1]
-
-                for j in range(step):
-                    l_k = l_g / (step + 1) * (j + 1)
+                else:
+                    if not hasStarted:
+                        # fmt: off
+                        (
+                            t_j, Z_j, eta_j, tau_1_j, tau_2_j
+                        ) = (
+                            t_1, Z_1, eta_1, tau_1_1, tau_2_1
+                        )
+                        hasStarted = True
+                        # fmt: on
 
                     (
                         _,
-                        (t_j, Z_j, v_j, eta_j, tau_1_j, tau_2_j),
-                        (t_err, Z_err, v_err, eta_err, tau_1_err, tau_2_err),
+                        (Z_j, l_j, v_j, eta_j, tau_1_j, tau_2_j),
+                        (Z_err, l_err, v_err, eta_err, tau_1_err, tau_2_err),
                     ) = RKF78(
-                        self._ode_l,
-                        (t_j, Z_j, v_j, eta_j, tau_1_j, tau_2_j),
-                        l_j,
-                        l_k,
+                        self._ode_t,
+                        (Z_j, l_j, v_j, eta_j, tau_1_j, tau_2_j),
+                        t_j,
+                        t_k,
                         relTol=tol,
                         absTol=tol**2,
-                        record=[],
                     )
 
-                    l_j = l_k
+                t_j = t_k
 
-                    # fmt: off
-                    updBarData(
-                        tag="", t=t_j, l=l_j, Z=Z_j, v=v_j, eta=eta_j, tau_1=tau_1_j,
-                        tau_2=tau_2_j, t_err=t_err, l_err=0, Z_err=Z_err, v_err=v_err,
-                        eta_err=eta_err, tau_1_err=tau_1_err, tau_2_err=tau_2_err
-                    )
-                    # fmt: on
-            else:
-                raise ValueError("Unknown domain")
+                # fmt: off
+                updBarData(
+                    tag="", t=t_j, l=l_j, Z=Z_j, v=v_j, eta=eta_j, tau_1=tau_1_j,
+                    tau_2=tau_2_j, t_err=t_err, l_err=0, Z_err=Z_err, v_err=v_err,
+                    eta_err=eta_err, tau_1_err=tau_1_err, tau_2_err=tau_2_err
+                )
+                # fmt: on
 
-        except ValueError as e:
-            raise e
-        finally:
-            pass
+        elif dom == DOMAIN_LENG:
+            """
+            Due to two issues, i.e. 1.the length domain ODE
+            cannot be integrated from the origin point, and 2.the
+            correct behaviour can only be expected when starting from
+            a point with active burning else dZ flat lines.
+            we do another Z domain integration to seed the initial values
+            to a point where ongoing burning is guaranteed.
+            (in the case of gun barrel length >= burn length, the group
+             of value by subscipt i will not guarantee burning is still
+             ongoing).
+            """
+
+            t_j = 0.5 * (t_i - t_1) + t_1
+            Z_j, l_j, v_j, eta_j, tau_1_j, tau_2_j = RKF78(
+                self._ode_t,
+                (Z_1, 0, 0, eta_1, tau_1_1, tau_2_1),
+                t_1,
+                t_j,
+                relTol=tol,
+                absTol=tol**2,
+            )[1]
+
+            for j in range(step):
+                l_k = l_g / (step + 1) * (j + 1)
+
+                (
+                    _,
+                    (t_j, Z_j, v_j, eta_j, tau_1_j, tau_2_j),
+                    (t_err, Z_err, v_err, eta_err, tau_1_err, tau_2_err),
+                ) = RKF78(
+                    self._ode_l,
+                    (t_j, Z_j, v_j, eta_j, tau_1_j, tau_2_j),
+                    l_j,
+                    l_k,
+                    relTol=tol,
+                    absTol=tol**2,
+                    record=[],
+                )
+
+                l_j = l_k
+
+                # fmt: off
+                updBarData(
+                    tag="", t=t_j, l=l_j, Z=Z_j, v=v_j, eta=eta_j, tau_1=tau_1_j,
+                    tau_2=tau_2_j, t_err=t_err, l_err=0, Z_err=Z_err, v_err=v_err,
+                    eta_err=eta_err, tau_1_err=tau_1_err, tau_2_err=tau_2_err
+                )
+                # fmt: on
+        else:
+            raise ValueError("Unknown domain")
 
         if progressQueue is not None:
             progressQueue.put(100)
+        logger.info("sampling completed.")
 
         """
         sort the data points
@@ -1196,24 +1203,29 @@ class Highlow:
             )
         )
 
+        logger.info("scaled intermediate results to SI.")
+
         highlowResult = HighlowResult(self, data, error, p_trace_low + p_trace_high)
 
-        try:
-            if self.material is None:
-                raise ValueError("Structural material not specified")
+        if self.material is None:
+            logger.warning(
+                "material is not specified, skipping structural calculation."
+            )
+        else:
+            try:
+                self._getStructural(highlowResult, step, tol)
 
-            self._getStructural(highlowResult, step, tol)
+            except Exception:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                logger.error("exception occured during structural calculation:")
+                logger.error(
+                    "".join(
+                        traceback.format_exception(exc_type, exc_value, exc_traceback)
+                    )
+                )
+                logger.info("structural calculation skipped.")
 
-        except Exception:
-            pass
-            # import sys, traceback
-
-            # exc_type, exc_value, exc_traceback = sys.exc_info()
-            # errMsg = "".join(
-            #     traceback.format_exception(exc_type, exc_value, exc_traceback)
-            # )
-            # print(errMsg)
-
+        logger.info("integration concluded.")
         return highlowResult
 
     def _toPsPb(self, l, p, eta):
@@ -1260,6 +1272,8 @@ class Highlow:
         return p_x
 
     def _getStructural(self, highlowResult: HighlowResult, step: int, tol: float):
+        logger = logging.getLogger("highlow.structure")
+        logger.info("commencing structural calculation")
         l_g = self.l_g
         chi_k = self.chi_k
         l_h = self.l_0 / chi_k  # physical length of high chamber
@@ -1348,6 +1362,8 @@ class Highlow:
                 else:
                     V += dV
 
+        logger.info("structural calculation of tube section complete.")
+
         # gun breech design:
         P__sigma = p_probes[0] / sigma
         R2__rb = rho_probes[0]
@@ -1361,6 +1377,8 @@ class Highlow:
         )
         L_rear = max(L__rb * r_b, 2 * R1)  # the "rear", or the actual breech
 
+        logger.info("structural calculation of rear breech complete.")
+
         R0__R2 = 1 / R2__rb
         R0__rb = 1
         Lf__rb = 0.5 * (
@@ -1369,6 +1387,8 @@ class Highlow:
         L_front = (
             Lf__rb * r_b
         )  # the "forward breech", or the plate between high and low
+
+        logger.info("structural calculation of front breech complete.")
 
         tube_mass = (
             V + (R2__rb**2 - R1__rb**2) * S_b * L_rear + S_b * L_front
@@ -1397,3 +1417,5 @@ class Highlow:
             for pressureProbePoint in pressureTraceEntry.pressureTrace:
                 if pressureProbePoint.x >= l_h:
                     pressureProbePoint.x += L_front
+
+        logger.info("structural calculation results attached.")

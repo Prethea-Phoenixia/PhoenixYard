@@ -194,7 +194,7 @@ def formatIntInput(event, var):
     if v == "":
         var.set(event.widget.default)
     else:
-        var.set(float(v))
+        var.set(int(v))
 
 
 def dot_aligned(matrix, units, useSN, stripWS=True):

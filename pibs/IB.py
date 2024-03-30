@@ -290,10 +290,15 @@ class InteriorBallisticsFrame(Frame):
 
         logging.info("text handler attached to root logger.")
 
-        self.listener = QueueListener(self.logQueue, textHandler)
+        console = logging.StreamHandler(sys.stderr)
+        console.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
+
+        self.listener = QueueListener(self.logQueue, textHandler, console)
         self.listener.start()
 
-        logger.info("text handler attached to subprocess log queue listener.")
+        logging.info("text handler attached to subprocess log queue listener.")
 
         self.timedLoop()
 
@@ -518,9 +523,7 @@ class InteriorBallisticsFrame(Frame):
 
         nameFrm.columnconfigure(0, weight=1)
         nameFrm.rowconfigure(0, weight=1)
-
         name = StringVar(self)
-
         namePlate = ttk.Entry(
             nameFrm,
             textvariable=name,
@@ -1449,8 +1452,8 @@ class InteriorBallisticsFrame(Frame):
             grainFrm,
             locKey="σ(Z)",
             style="SubLabelFrame.TLabelframe",
-            locFunc=self.getLocStr,
             tooltipLocKey="geomPlotText",
+            locFunc=self.getLocStr,
             allLLF=self.locs,
         )
 
@@ -1753,7 +1756,8 @@ class InteriorBallisticsFrame(Frame):
 
         # self.text.tag_configure(logging.DEBUG, foreground="tan")
         self.errorText.tag_configure(logging.WARNING, foreground="orange")
-        self.errorText.tag_configure(logging.ERROR, foreground="red")
+        self.errorText.tag_configure(logging.ERROR, foreground="orangered")
+        self.errorText.tag_configure(logging.CRITICAL, foreground="red")
 
     def addPlotFrm(self):
         plotFrm = LocLabelFrame(
@@ -1879,23 +1883,18 @@ class InteriorBallisticsFrame(Frame):
             ax = axes
             axP = ax.twinx()
             axv = ax.twinx()
-            # axF = ax.twinx()
 
             ax.yaxis.tick_right()
-            # axF.yaxis.tick_left()
+
             axv.yaxis.tick_left()
 
             ax.set_xlabel(" ")
             axP.spines.right.set_position(("data", 0.5))
-            # axF.spines.left.set_position(("data", 0.5))
-
             axP.yaxis.set_ticks(axP.get_yticks()[1:-1:])
-            # axF.yaxis.set_ticks(axF.get_yticks()[1:-1:])
 
             self.ax = ax
             self.axP = axP
             self.axv = axv
-            # self.axF = axF
             self.fig = fig
 
             self.pltCanvas = FigureCanvasTkAgg(fig, master=plotPlaceFrm)
@@ -1976,7 +1975,6 @@ class InteriorBallisticsFrame(Frame):
                 self.ax.cla()
                 self.axP.cla()
                 self.axv.cla()
-                # self.axF.cla()
                 self.pltCanvas.draw_idle()
             return
 
@@ -1984,7 +1982,6 @@ class InteriorBallisticsFrame(Frame):
             self.ax.cla()
             self.axP.cla()
             self.axv.cla()
-            # self.axF.cla()
 
             vTgt = self.kwargs["designVelocity"]
             gunType = self.kwargs["typ"]
@@ -1993,7 +1990,6 @@ class InteriorBallisticsFrame(Frame):
             xs, vs = [], []
 
             Pas, Pss, Pbs, P0s = [], [], [], []
-            # Frs = []
             psis, etas = [], []
             vxs = []
 
@@ -2010,12 +2006,10 @@ class InteriorBallisticsFrame(Frame):
                     elif dom == DOMAIN_LENG:
                         xs.append(l)
 
-                    # Fr = P * gun.S
                     vs.append(v)
                     Pas.append(P / 1e6)
                     Pss.append(Ps / 1e6)
                     Pbs.append(Pb / 1e6)
-                    # Frs.append(Fr / 1e6)
                     psis.append(psi)
 
             elif gunType == RECOILESS:
@@ -2178,32 +2172,9 @@ class InteriorBallisticsFrame(Frame):
             if self.plotBurnup.get():
                 self.ax.plot(xs, psis, c="tab:red", label=self.getLocStr("figPsi"))
 
-            # if self.plotRecoil.get():
-            #     if gunType == CONVENTIONAL or gunType == HIGHLOW:
-            #         self.axF.plot(
-            #             xs,
-            #             Frs,
-            #             c="tab:green",
-            #             label=self.getLocStr("figRecoil"),
-            #             linestyle="dotted",
-            #         )
-            #     elif gunType == RECOILESS:
-            #         self.axF.plot(
-            #             xs,
-            #             tuple(-v for v in Frs),
-            #             c="tab:green",
-            #             label="-" + self.getLocStr("figRecoil"),
-            #             linestyle="dotted",
-            #         )
-
             linesLabeled = []
             for lines, xvals in zip(
-                (
-                    self.axP.get_lines(),
-                    self.ax.get_lines(),
-                    self.axv.get_lines(),
-                    # self.axF.get_lines(),
-                ),
+                (self.axP.get_lines(), self.ax.get_lines(), self.axv.get_lines()),
                 (
                     (0.2 * xs[-1] + 0.8 * xPeak, xs[-1]),
                     (0, xs[-1]),
@@ -2217,7 +2188,6 @@ class InteriorBallisticsFrame(Frame):
             self.ax.set_xlim(left=0, right=xs[-1])
             pmax = max(Pas + Pbs + Pss + P0s)
             self.axP.set(ylim=(0, pmax * 1.1))
-            # self.axF.set(ylim=(0, pmax * gun.S * 1.1))
             self.axv.set(ylim=(0, max(vs + vxs) * 1.15))
             self.ax.set_ylim(bottom=0, top=1.05)
 
@@ -2234,7 +2204,6 @@ class InteriorBallisticsFrame(Frame):
             self.ax.tick_params(axis="y", colors="tab:red", **tkw)
             self.axv.tick_params(axis="y", colors="tab:blue", **tkw)
             self.axP.tick_params(axis="y", colors="tab:green", **tkw)
-            # self.axF.tick_params(axis="y", colors="tab:green", **tkw)
             self.ax.tick_params(axis="x", **tkw)
 
             if dom == DOMAIN_TIME:
@@ -2305,10 +2274,6 @@ class InteriorBallisticsFrame(Frame):
             self.auxAx.set_xlim(left=0, right=x_max)
             self.auxAx.set_ylim(bottom=0, top=y_max * 1.15)
 
-            # self.auxAx.plot(
-            #     (l_c, l_c), (0, y_max * 1.15), c="grey", ls="dotted", zorder=1.5
-            # )
-
             tkw = dict(size=4, width=1.5)
             self.auxAx.tick_params(axis="y", colors="tab:green", **tkw)
             self.auxAx.tick_params(axis="x", **tkw)
@@ -2342,8 +2307,6 @@ class InteriorBallisticsFrame(Frame):
                 self.auxAx.set_xlim(left=min(xHull))
 
             self.auxAxH.set_ylim(bottom=0)
-
-            # self.auxFig.set_layout_engine("constrained")
             self.auxCanvas.draw_idle()
 
     def addTblFrm(self):
@@ -2536,8 +2499,7 @@ class InteriorBallisticsFrame(Frame):
                 False, True, True
             )
             units = (
-                None, "s", "m", None, "m/s", "m/s", "Pa", "Pa", "Pa", "Pa", "K",
-                None
+                None, "s", "m", None, "m/s", "m/s", "Pa", "Pa", "Pa", "Pa", "K", None
             )
             # fmt: on
 
@@ -2857,7 +2819,6 @@ class InteriorBallisticsFrame(Frame):
                 self.axv,
                 self.axP,
                 self.geomAx,
-                # self.axF,
                 self.auxAx,
                 self.auxAxH,
             ):
@@ -2956,13 +2917,12 @@ def calculate(jobQueue, progressQueue, logQueue, kwargs):
 
 def main():
     multiprocessing.freeze_support()
-    # multiprocessing.log_to_stderr(logging.INFO)
 
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[logging.StreamHandler(sys.stderr)],
-    )
+    )  # configure the root-logger.
 
     logging.info("Initializing")
 
@@ -3013,7 +2973,7 @@ def main():
     root.tk.call("lappend", "auto_path", resolvepath("ui/tksvg0.12"))
 
     root.option_add("*tearOff", False)
-    root.title("PIBS v0.4.9")
+    root.title("PIBS v0.5.0")
     menubar = Menu(root)
     root.config(menu=menubar)
 
