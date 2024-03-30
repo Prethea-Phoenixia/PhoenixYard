@@ -1437,24 +1437,24 @@ class Recoiless:
 
         if Ar == 1:
             return Pr_c, Pr_c
+        else:
+            Pr_sup, _ = dekker(
+                lambda Pr: Recoiless._getAr(gamma, Pr),
+                0,
+                Pr_c,
+                y=Ar,
+                y_rel_tol=tol,
+            )
 
-        Pr_sup, _ = dekker(
-            lambda Pr: Recoiless._getAr(gamma, Pr),
-            0,
-            Pr_c,
-            y=Ar,
-            y_rel_tol=tol,
-        )
+            Pr_sub, _ = dekker(
+                lambda Pr: Recoiless._getAr(gamma, Pr),
+                Pr_c,
+                1,
+                y=Ar,
+                y_rel_tol=tol,
+            )
 
-        Pr_sub, _ = dekker(
-            lambda Pr: Recoiless._getAr(gamma, Pr),
-            Pr_c,
-            1,
-            y=Ar,
-            y_rel_tol=tol,
-        )
-
-        return Pr_sub, Pr_sup
+            return Pr_sub, Pr_sup
 
 
 if __name__ == "__main__":
