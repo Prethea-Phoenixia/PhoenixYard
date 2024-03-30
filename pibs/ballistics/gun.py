@@ -3,7 +3,9 @@ from .num import gss, RKF78, cubic, intg, secant, dekker
 from .prop import GrainComp, Propellant
 from dataclasses import dataclass, asdict
 from typing import List
-import traceback, sys, logging
+import traceback
+import sys
+import logging
 
 logger = logging.getLogger("gun")
 DOMAIN_TIME = "DOMAIN_TIME"

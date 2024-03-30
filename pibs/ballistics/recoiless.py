@@ -1431,8 +1431,12 @@ class Recoiless:
             Pr_sup: supersonic solution
 
         """
+
         # pressure ratio of nozzle throat over the upstream pressure
         Pr_c = (2 / (gamma + 1)) ** (gamma / (gamma - 1))
+
+        if Ar == 1:
+            return Pr_c, Pr_c
 
         Pr_sup, _ = dekker(
             lambda Pr: Recoiless._getAr(gamma, Pr),

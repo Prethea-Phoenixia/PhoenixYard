@@ -130,7 +130,10 @@ class TextHandler(logging.Handler):
         # run the regular Handler __init__
         logging.Handler.__init__(self)
         self.setFormatter(
-            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                "%H:%M:%S",
+            )
         )
         self.setLevel(logging.INFO)
         # Store a reference to the Text it will log to
@@ -142,7 +145,9 @@ class TextHandler(logging.Handler):
 
         def append():
             self.text.configure(state="normal")
-            self.text.insert(END, msg.strip("\n") + "\n", record.levelno)
+
+            tags = record.name.split(".")
+            self.text.insert(END, msg.strip("\n") + "\n", [record.levelno, *tags])
             self.text.configure(state="disabled")
             # Autoscroll to the bottom
             self.text.yview(END)
@@ -292,7 +297,10 @@ class InteriorBallisticsFrame(Frame):
 
         console = logging.StreamHandler(sys.stderr)
         console.setFormatter(
-            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                "%H:%M:%S",
+            )
         )
 
         self.listener = QueueListener(self.logQueue, textHandler, console)
@@ -1759,6 +1767,8 @@ class InteriorBallisticsFrame(Frame):
         self.errorText.tag_configure(logging.ERROR, foreground="orangered")
         self.errorText.tag_configure(logging.CRITICAL, foreground="red")
 
+        errScroll.config(command=self.errorText.yview)
+
     def addPlotFrm(self):
         plotFrm = LocLabelFrame(
             self.plotTab,
@@ -2772,7 +2782,6 @@ class InteriorBallisticsFrame(Frame):
             "SubLabelFrame.TLabelframe.Label", font=(FONTNAME, FONTSIZE + 2)
         )
         style.configure("TCheckbutton", font=(FONTNAME, FONTSIZE))
-
         style.configure("TNotebook.Tab", font=(FONTNAME, FONTSIZE + 1, "bold"))
 
         bgc = str(style.lookup("TFrame", "background"))
@@ -2802,6 +2811,17 @@ class InteriorBallisticsFrame(Frame):
                 "ytick.color": fgc,
             }
         )
+
+        grays = (
+            [f"gray{i}" for i in [90, 80, 70]]
+            if self.themeRadio.get()
+            else [f"gray{i}" for i in [16, 23, 30]]
+        )
+
+        self.errorText.tag_configure("integrate", background=grays[0])
+        self.errorText.tag_configure("structure", background=grays[0])
+        self.errorText.tag_configure("solve", background=grays[1])
+        self.errorText.tag_configure("minimize", background=grays[2])
 
         # some widgets also needs to be manually updated
         for w in self.forceUpdOnThemeWidget:

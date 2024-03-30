@@ -5,10 +5,7 @@ from . import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_PEAK_BLEED
 from .optGun import MAX_GUESSES
 from time import time
 
-# import sys, traceback
-
-
-import logging
+import traceback, sys, logging
 
 # logging.basicConfig(
 #     format="%(levelname)s:%(message)s",
@@ -18,7 +15,6 @@ import logging
 #     level=5,
 #     # filemode="w+",  # overwrite existing file
 # )
-logger = logging.getLogger("optimize_highlow")
 
 
 class LPCPMaxBelowStartError(ValueError):

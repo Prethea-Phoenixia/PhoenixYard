@@ -7,6 +7,12 @@ from .optGun import MAX_GUESSES
 from .gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
 from .recoiless import POINT_PEAK_STAG
 
+import traceback
+import sys
+import logging
+
+logger = logging.getLogger("opt")
+
 
 class ConstrainedRecoiless:
     def __init__(
@@ -31,6 +37,9 @@ class ConstrainedRecoiless:
         **_,
     ):
         # constants for constrained designs
+
+        logger = logging.getLogger("opt.recoiless")
+        logger.info("initializing constrained recoiless gun object.")
 
         if any(
             (
@@ -79,6 +88,8 @@ class ConstrainedRecoiless:
         self.ambientGamma = ambientGamma
         self.control = control
 
+        logger.info("constraints successfully initialized.")
+
     def __getattr__(self, attrName):
         if "propellant" in vars(self) and not (
             attrName.startswith("__") and attrName.endswith("__")
@@ -103,6 +114,8 @@ class ConstrainedRecoiless:
         progressQueue=None,
         **_,
     ):
+        logger = logging.getLogger("opt.recoiless.solve")
+        logger.info("solving constraint at specified load fraction")
         if any((chargeMassRatio <= 0, loadFraction <= 0, loadFraction > 1)):
             raise ValueError("Invalid parameters to solve constrained design problem")
         """
@@ -206,6 +219,8 @@ class ConstrainedRecoiless:
                 + " start pressure, or has burnt to post fracture."
             )
         Z_0 = Zs[0]
+
+        logger.info("solved shot start burnup for current constraint.")
 
         # p_bar_0 = p_0 / (f * Delta)
 
@@ -451,6 +466,8 @@ class ConstrainedRecoiless:
             """
             Z_i = Z_b + tol
 
+        logger.info("solved web satisfying pressure constraint.")
+
         if knownBore:
             if progressQueue is not None:
                 progressQueue.put(100)
@@ -461,10 +478,18 @@ class ConstrainedRecoiless:
         """
         v_bar_d = v_d / v_j
 
-        if v_bar_i > v_bar_d and not suppress:
-            raise ValueError(
-                f"Design velocity exceeded before peak pressure point (V = {v_bar_i * v_j:.4g} m/s)."
-            )
+        if v_bar_i > v_bar_d:
+            if suppress:
+                logger.warning(
+                    "velocity target point occured before peak pressure point."
+                )
+                logger.warning(
+                    "this is currently being suppressed due to program control."
+                )
+            else:
+                raise ValueError(
+                    f"Design velocity exceeded before peak pressure point (V = {v_bar_i * v_j:.4g} m/s)."
+                )
 
         # TODO: find some way of making this cross constraint less troublesome.
         B = (
@@ -575,6 +600,7 @@ class ConstrainedRecoiless:
 
         if progressQueue is not None:
             progressQueue.put(100)
+        logger.info("solved tube length to satisfy design velocity.")
 
         return e_1, l_bar_g * l_0
 
@@ -582,8 +608,11 @@ class ConstrainedRecoiless:
         """
         find the minimum volume solution.
         """
+        logger = logging.getLogger("opt.recoiless.minimize")
         if progressQueue is not None:
             progressQueue.put(1)
+
+        logger.info("solving minimum chamber volume for constraint.")
 
         """
         Step 1, find a valid range of values for load fraction,
@@ -599,6 +628,7 @@ class ConstrainedRecoiless:
         tol = self.tol
 
         def f(lf):
+            logger.info(f"dispatching calculation at load factor = {lf:.3%}")
             V_0 = omega / (rho_p * lf)
             l_0 = V_0 / S
 
@@ -610,8 +640,11 @@ class ConstrainedRecoiless:
             )
             return e_1, (l_g + l_0), l_g
 
-        records = []
+        logger.info(
+            f"attempting to find valid load fraction with {MAX_GUESSES} guesses."
+        )
 
+        records = []
         for i in range(MAX_GUESSES):
             startProbe = uniform(tol, 1 - tol)
             try:
@@ -621,8 +654,6 @@ class ConstrainedRecoiless:
             except ValueError:
                 if progressQueue is not None:
                     progressQueue.put(round(i / MAX_GUESSES * 33))
-
-        # if i == MAX_GUESSES - 1:
         else:
             raise ValueError(
                 "Unable to find any valid load"
@@ -631,6 +662,9 @@ class ConstrainedRecoiless:
 
         if progressQueue is not None:
             progressQueue.put(33)
+
+        logger.info(f"found valid load fraction at {startProbe:.3%}.")
+        logger.info("attempting to find minimum valid load fraction.")
 
         low = tol
         probe = startProbe
@@ -653,6 +687,9 @@ class ConstrainedRecoiless:
 
         low = probe
 
+        logger.info(f"found minimum valid load fraction at {low:.3%}.")
+        logger.info("attempting to find maximum valid load fraction.")
+
         high = 1 - tol
         probe = startProbe
         delta_high = high - probe
@@ -673,6 +710,8 @@ class ConstrainedRecoiless:
                 new_high = probe + delta_high
 
         high = probe
+
+        logger.info(f"found maximum valid load fraction at {high:.3%}.")
 
         if abs(high - low) < tol:
             raise ValueError("No range of values satisfying constraint.")
@@ -696,6 +735,7 @@ class ConstrainedRecoiless:
         """
         Step 2, gss to min.
         """
+        logger.info(f"found maximum valid load fraction at {high:.3%}.")
 
         def fr(x):
             progressQueue.put(round(x * 33) + 66)
@@ -710,11 +750,12 @@ class ConstrainedRecoiless:
         )
 
         lf = 0.5 * (lf_high + lf_low)
+        logger.info(f"validating found optimal at {lf:.3%}")
         e_1, l_t, l_g = f(lf)
 
         if progressQueue is not None:
             progressQueue.put(100)
-
+        logger.info("minimum chamber solution found.")
         return lf, e_1, l_g
 
 

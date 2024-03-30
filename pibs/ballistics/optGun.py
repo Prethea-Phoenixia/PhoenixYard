@@ -5,6 +5,9 @@ from math import pi, log, floor
 from .gun import pidduck
 from .gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
 from .gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
+import traceback
+import sys
+import logging
 
 """
 Machine-accuracy factor, determines that, if a numerical method
@@ -17,6 +20,9 @@ appearance of outlier, at the cost of increased computation times.
 MAX_GUESSES = 100
 # maximum iteration to correct for chamberage effects.
 MAX_ITER = 10
+
+
+logger = logging.getLogger("opt")
 
 
 class Constrained:
@@ -41,6 +47,9 @@ class Constrained:
         **_,
     ):
         # constants for constrained designs
+
+        logger = logging.getLogger("opt.gun")
+        logger.info("initializing constrained gun object.")
 
         if any(
             (
@@ -84,6 +93,8 @@ class Constrained:
 
         self.tol = tol
 
+        logger.info("constraints successfully initialized.")
+
     def __getattr__(self, attrName):
         if "propellant" in vars(self) and not (
             attrName.startswith("__") and attrName.endswith("__")
@@ -112,6 +123,10 @@ class Constrained:
         progressQueue=None,
         **_,
     ):
+        logger = logging.getLogger("opt.gun.solve")
+        logger.info(
+            f"solving constraint at specified load fraction, cycle {it}/{MAX_ITER}."
+        )
         if any((chargeMassRatio <= 0, loadFraction <= 0, loadFraction > 1)):
             raise ValueError("Invalid parameters to solve constrained design problem")
 
@@ -202,6 +217,8 @@ class Constrained:
                 + "overcome start pressure, or has burnt to post fracture."
             )
         Z_0 = Zs[0]
+
+        logger.info("solved shot start burnup for current constraint.")
 
         def _f_p_bar(Z, l_bar, v_bar):
             psi = f_psi_Z(Z)
@@ -365,7 +382,7 @@ class Constrained:
 
         if dp_bar_probe < 0:
             raise ValueError(
-                "Design pressure cannot be achieved by varying" + " web down to minimum"
+                "Design pressure cannot be achieved by varying web down to minimum"
             )
 
         while dp_bar_probe > 0:
@@ -398,15 +415,25 @@ class Constrained:
                 f"Design pressure is not met, delta = {p_bar_dev * f * Delta * 1e-6:.6f} MPa"
             )
 
+        logger.info("solved web satisfying pressure constraint.")
+
         if knownBore:
             if progressQueue is not None:
                 progressQueue.put(100)
             return e_1, lengthGun
 
-        if v_j * v_bar_i > v_d and not suppress:
-            raise ValueError(
-                f"Design velocity exceeded before peak pressure point (V = {v_bar_i * v_j:.4g} m/s)."
-            )
+        if v_j * v_bar_i > v_d:
+            if suppress:
+                logger.warning(
+                    "velocity target point occured before peak pressure point."
+                )
+                logger.warning(
+                    "this is currently being suppressed due to program control."
+                )
+            else:
+                raise ValueError(
+                    f"Design velocity exceeded before peak pressure point (V = {v_bar_i * v_j:.4g} m/s)."
+                )
 
         """
         step 2, find the requisite muzzle length to achieve design velocity
@@ -495,6 +522,8 @@ class Constrained:
                 )
             )
 
+        logger.info("solved tube length to satisfy design velocity.")
+
         # calculate the averaged chambrage correction factor
         # implied by this solution
 
@@ -511,6 +540,9 @@ class Constrained:
             # successive better approximations will eventually
             # result in value within tolerance.
 
+            logger.info(
+                "recursively approaching stable solution under chambrage specification."
+            )
             return self.solve(
                 loadFraction=loadFraction,
                 chargeMassRatio=chargeMassRatio,
@@ -528,14 +560,17 @@ class Constrained:
         else:
             # if it == MAX_ITER:
             #    print("Return on maximum iteration.", abs(cc_n - cc))
+            logger.info("solution satisfying chambrage found.")
             return e_1, l_bar_g * l_0
 
     def findMinV(self, chargeMassRatio, progressQueue=None, **_):
         """
         find the minimum volume solution.
         """
+        logger = logging.getLogger("opt.gun.minimize")
         if progressQueue is not None:
             progressQueue.put(1)
+        logger.info("solving minimum chamber volume for constraint.")
 
         """
         Step 1, find a valid range of values for load fraction,
@@ -563,7 +598,10 @@ class Constrained:
         else:
             raise ValueError("Unknown Solution")
 
+        logger.info(f"solved parameters for gas distribution {self.sol}")
+
         def f(lf):
+            logger.info(f"dispatching calculation at load factor = {lf:.3%}")
             V_0 = omega / (rho_p * lf)
             l_0 = V_0 / S
 
@@ -578,10 +616,13 @@ class Constrained:
 
             return e_1, (l_g + l_0), l_g
 
+        logger.info(
+            f"attempting to find valid load fraction with {MAX_GUESSES} guesses."
+        )
+
         records = []
         for i in range(MAX_GUESSES):
             startProbe = uniform(tol, 1 - tol)
-
             try:
                 _, lt_i, lg_i = f(startProbe)
                 records.append((startProbe, lt_i))
@@ -589,9 +630,7 @@ class Constrained:
             except ValueError:
                 if progressQueue is not None:
                     progressQueue.put(round(i / MAX_GUESSES * 33))
-
         else:
-            # if i == MAX_GUESSES - 1:
             raise ValueError(
                 "Unable to find any valid load fraction"
                 + " with {:d} random samples.".format(MAX_GUESSES)
@@ -599,6 +638,8 @@ class Constrained:
 
         if progressQueue is not None:
             progressQueue.put(33)
+        logger.info(f"found valid load fraction at {startProbe:.3%}.")
+        logger.info("attempting to find minimum valid load fraction.")
 
         low = tol
         probe = startProbe
@@ -621,6 +662,9 @@ class Constrained:
 
         low = probe
 
+        logger.info(f"found minimum valid load fraction at {low:.3%}.")
+        logger.info("attempting to find maximum valid load fraction.")
+
         high = 1 - tol
         probe = startProbe
         delta_high = high - probe
@@ -641,6 +685,8 @@ class Constrained:
                 new_high = probe + delta_high
 
         high = probe
+
+        logger.info(f"found maximum valid load fraction at {high:.3%}.")
 
         if abs(high - low) < tol:
             raise ValueError("No range of values satisfying constraint.")
@@ -666,6 +712,8 @@ class Constrained:
         values.
         """
 
+        logger.info(f"finding minimum volume solution between {low:.3%} and {high:.3%}")
+
         def fr(x):
             progressQueue.put(round(x * 33) + 66)
 
@@ -679,11 +727,12 @@ class Constrained:
         )
 
         lf = 0.5 * (lf_high + lf_low)
+        logger.info(f"validating found optimal at {lf:.3%}")
         e_1, l_t, l_g = f(lf)
 
         if progressQueue is not None:
             progressQueue.put(100)
-
+        logger.info("minimum chamber solution found.")
         return lf, e_1, l_g
 
 
