@@ -20,24 +20,13 @@ class Loc12Disp:
         allDisps=None,
     ):
         lb = ttk.Label(parent, text=locFunc(labelLocKey))
-        lb.grid(
-            row=row,
-            column=col,
-            columnspan=2,
-            sticky="nsew",
-            padx=2,
-            pady=2,
-        )
+        lb.grid(row=row, column=col, columnspan=2, sticky="nsew", padx=2, pady=2)
         e = StringVar(parent)
         e.default = default
         e.set(default)
         parent.rowconfigure(row, weight=0)
         en = ttk.Entry(
-            parent,
-            textvariable=e,
-            width=entryWidth,
-            state="disabled",
-            justify=justify,
+            parent, textvariable=e, width=entryWidth, state="disabled", justify=justify
         )
         en.grid(
             row=row + 1,
@@ -426,13 +415,7 @@ class LocDropdown:
 
 class LocLabelFrame(ttk.LabelFrame):
     def __init__(
-        self,
-        *args,
-        locKey="",
-        tooltipLocKey=None,
-        locFunc=None,
-        allLLF=None,
-        **kwargs,
+        self, *args, locKey="", tooltipLocKey=None, locFunc=None, allLLF=None, **kwargs
     ):
         self.locKey = locKey
         self.locFunc = locFunc

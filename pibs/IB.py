@@ -130,10 +130,7 @@ class TextHandler(logging.Handler):
         # run the regular Handler __init__
         logging.Handler.__init__(self)
         self.setFormatter(
-            logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                "%H:%M:%S",
-            )
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         )
         self.setLevel(logging.INFO)
         # Store a reference to the Text it will log to
@@ -299,7 +296,6 @@ class InteriorBallisticsFrame(Frame):
         console.setFormatter(
             logging.Formatter(
                 "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                "%H:%M:%S",
             )
         )
 

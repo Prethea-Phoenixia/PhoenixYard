@@ -5,8 +5,6 @@ from math import pi, log, floor
 from .gun import pidduck
 from .gun import SOL_LAGRANGE, SOL_PIDDUCK, SOL_MAMONTOV
 from .gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
-import traceback
-import sys
 import logging
 
 """
@@ -20,9 +18,6 @@ appearance of outlier, at the cost of increased computation times.
 MAX_GUESSES = 100
 # maximum iteration to correct for chamberage effects.
 MAX_ITER = 10
-
-
-logger = logging.getLogger("opt")
 
 
 class Constrained:

@@ -7,8 +7,7 @@ from .optGun import MAX_GUESSES
 from .gun import POINT_PEAK_AVG, POINT_PEAK_BREECH, POINT_PEAK_SHOT
 from .recoiless import POINT_PEAK_STAG
 
-import traceback
-import sys
+
 import logging
 
 logger = logging.getLogger("opt")
@@ -277,10 +276,8 @@ class ConstrainedRecoiless:
             l_bar < l_bar_d,
             p_bar < 2 * p_bar_d.
             """
-            # print("e_1", e_1)
             B = (
-                S**2
-                * e_1**2
+                (S**2 * e_1**2)
                 / (f * phi * omega * m * u_1**2)
                 * (f * Delta) ** (2 * (1 - n))
             )

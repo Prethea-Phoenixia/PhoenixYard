@@ -5,16 +5,9 @@ from . import POINT_PEAK_AVG, POINT_PEAK_SHOT, POINT_PEAK_BLEED
 from .optGun import MAX_GUESSES
 from time import time
 
-import traceback, sys, logging
-
-# logging.basicConfig(
-#     format="%(levelname)s:%(message)s",
-#     # filename="highlow_opt.log",
-#     # encoding="utf-8", #Python 3.9+
-#     # level=logging.DEBUG,
-#     level=5,
-#     # filemode="w+",  # overwrite existing file
-# )
+import logging
+import sys
+import traceback
 
 
 class LPCPMaxBelowStartError(ValueError):
@@ -44,34 +37,10 @@ class ConstrainedHighlow:
         control=POINT_PEAK_AVG,
         **_,
     ):
-        logger.log(
-            9,
-            "Object initiated with kwargs:\n"
-            + "\n\t".join(
-                (
-                    f"kwargs = {{ ",
-                    f"caliber = {caliber},",
-                    f"propellant = {propellant},",
-                    f"shotMass = {shotMass},",
-                    f"burstPressure = {burstPressure},",
-                    f"startPressure = {startPressure},",
-                    f"dragCoefficient = {dragCoefficient},",
-                    f"chambrage = {chambrage},",
-                    f"tol = {tol},",
-                    f"designHighPressure = {designHighPressure},",
-                    f"designLowPressure = {designLowPressure},",
-                    f"designVelocity = {designVelocity},",
-                    f"minWeb= {minWeb},",
-                    f"maxLength = {maxLength},",
-                    f"maxEV={maxEV},",
-                    f"ambientRho = {ambientRho},",
-                    f"ambientP = {ambientP},",
-                    f"ambientGamma = {ambientGamma},",
-                    f"control = {control},",
-                )
-            )
-            + "\n}",
-        )
+
+        logger = logging.getLogger("opt.highlow")
+        logger.info("initializing constrained highlow object.")
+
         # cache the constants:
         self.S = (0.5 * caliber) ** 2 * pi
         self.propellant = propellant
@@ -130,23 +99,8 @@ class ConstrainedHighlow:
         progressQueue=None,
         **_,
     ):
-        logger.log(
-            9,
-            "Solve called with kwargs:\n"
-            + "\n\t".join(
-                (
-                    f"kwargs = {{ ",
-                    f"loadFraction = {loadFraction},",
-                    f"chargeMassRatio = {chargeMassRatio},",
-                    f"portArea = {portArea},",
-                    f"lengthGun = {lengthGun},",
-                    f"knownBore = {knownBore},",
-                    f"suppress = {suppress},",
-                )
-            )
-            + "\n}",
-        )
-        time_start = time()
+        logger = logging.getLogger("opt.highlow.solve")
+        logger.info("solving constraint at specified load fraction.")
         if any((chargeMassRatio <= 0, loadFraction <= 0, loadFraction > 1)):
             raise ValueError("Invalid parameters to solve constrained design problem")
 
@@ -196,8 +150,7 @@ class ConstrainedHighlow:
         omega = m * chargeMassRatio
         V_0 = omega / (rho_p * loadFraction)
 
-        labda_1 = 1 / 2
-        labda_2 = 1 / 3
+        labda_1, labda_2 = 1 / 2, 1 / 3
 
         psi_0 = (
             p_0_e
@@ -221,6 +174,8 @@ class ConstrainedHighlow:
                 + " port open pressure, or has burnt to post fracture."
             )
 
+        logger.info("solved shot start burnup for current constraint.")
+
         def _f_p_1(Z, eta, tau_1, psi=None):
             psi = psi if psi else f_psi_Z(Z)
             V_psi = V_0 - omega / rho_p * (1 - psi) - alpha * omega * (psi - eta)
@@ -229,7 +184,12 @@ class ConstrainedHighlow:
         S_j = portArea
         phi = phi_1 + labda_2 * omega / m
 
+        logger_e_1 = logging.getLogger("opt.highlow.solve.highchamber")
+
         def f_e_1(e_1):
+            logger_e_1.info(
+                f"independent high chamber condition calculated at web of {e_1*1e3:.3f} mm"
+            )
             Z_0, t_0, eta_0, tau_1_0 = Zs[0], 0, 0, 1
 
             def _ode_Zi(Z, t, eta, tau_1, _):
@@ -247,8 +207,6 @@ class ConstrainedHighlow:
             def abort_Zi(x, ys, record):
                 Z, _, eta, tau_1 = x, *ys
                 p_1 = _f_p_1(Z, eta, tau_1)
-                if len(record) < 1:
-                    return False
                 o_x, o_ys = record[-1]
                 oZ, _, oeta, otau_1 = o_x, *o_ys
                 op_1 = _f_p_1(oZ, oeta, otau_1)
@@ -257,12 +215,9 @@ class ConstrainedHighlow:
 
             def g(Z):
                 i = record_0.index([v for v in record_0 if v[0] <= Z][-1])
-
                 x = record_0[i][0]
                 ys = record_0[i][1]
-
-                r = []
-
+                r = [(x, ys)]
                 Z, (t, eta, tau_1), _ = RKF78(
                     _ode_Zi,
                     ys,
@@ -273,61 +228,51 @@ class ConstrainedHighlow:
                     abortFunc=abort_Zi,
                     record=r,
                 )
-
                 p_1 = _f_p_1(Z, eta, tau_1)
                 if p_1 > p_max:
-                    return p_1
-
+                    raise ValueError
                 if Z not in [line[0] for line in r]:
                     r.append([Z, (t, eta, tau_1)])
 
                 xs = [v[0] for v in record_0]
                 record_0.extend(v for v in r if v[0] not in xs)
                 record_0.sort()
-
                 return p_1
 
-            Z_p_i = (
-                sum(gss(lambda Z: g(Z), Z_0, Z_b, y_rel_tol=0.5 * tol, findMin=False))
-                * 0.5
+            try:
+                Z_p_i = sum(gss(g, Z_0, Z_b, y_rel_tol=0.5 * tol, findMin=False)) * 0.5
+            except ValueError:
+                return p_max
+
+            p = g(Z_p_i)
+            logger_e_1.info(
+                f"peak pressure developed is greater or equal to {p*1e-6:.3f} MPa."
             )
+            return p
 
-            return g(Z_p_i)
-
-        logger.log(9, "Determining web size to achieve high chamber P. specification")
-        logger.log(9, f"Probing from minimum web {self.minWeb * 1e3:} mm")
+        logger.info(
+            f"probing web to satisfy peak high chamber pressure from {self.minWeb * 1e3:.3f} mm"
+        )
         p_probe = f_e_1(self.minWeb)
         probeWeb = self.minWeb
-        logger.log(
-            9,
-            f"High pressure function f_e_1({self.minWeb * 1e3:} mm) = {p_probe * 1e-6:} MPa",
-        )
-
         if p_probe < p_d_h:
             raise ValueError(
-                "Design pressure cannot be achieved by varying web down to minimum"
+                "design pressure cannot be achieved by varying web down to minimum"
             )
-        logger.log(
-            9, "High chamber pressure can be achieved with web greater than minimum"
-        )
-        logger.log(9, "Going into probing loop")
+        else:
+            logger.info(
+                "high chamber pressure can be achieved with web greater than minimum, "
+                + "proceeding to probe."
+            )
+
         while p_probe > p_d_h:
             probeWeb *= 2
-            logger.log(8, f"\tProbing for web of {probeWeb * 1e3:} mm")
             p_probe = f_e_1(probeWeb)
-            logger.log(
-                8,
-                f"\tHigh pressure function f_e_1({probeWeb * 1e3:} mm) = {p_probe * 1e-6:} MPa",
-            )
-        logger.log(9, "Exiting probing loop")
 
         def fr(x):
             progressQueue.put(round(x * 33))
 
-        logger.log(
-            9,
-            f"Dekker method called between {probeWeb * 1e3} mm and {0.5 * probeWeb * 1e3} mm",
-        )
+        logger.info("probing loop found valid range.")
         e_1, _ = dekker(
             f_e_1,
             probeWeb,  # >0
@@ -336,24 +281,21 @@ class ConstrainedHighlow:
             y_abs_tol=tol * p_d_h,
             f_report=fr if progressQueue is not None else None,
         )  # this is the e_1 that satisifies the pressure specification.
-        logger.log(
-            9,
-            f"Solved web to be {e_1 * 1e3:} mm to achieve high chamber design pressure.",
-        )
+
+        logger.info("solved web satisfying pressure constraint.")
+        ################################################################################
+        ################################################################################
         f_ev_records = dict()
+        logger_ev = logging.getLogger("opt.highlow.solve.lowchamber")
 
         def f_ev(expansionVolume):
-            # try:
-            #     i = [v[0] for v in f_ev_records].index(expansionVolume)
-            #     return f_ev_records[i][1], f_ev_records[i][2]
-            # except ValueError:
-            #     pass
-
             if expansionVolume in f_ev_records:
                 return f_ev_records[expansionVolume]
+            logger_ev.info(
+                "coupled low chamber condition calculated at expansion volume of"
+                + f" {expansionVolume*1e3:.6f} L."
+            )
 
-            logger.log(7, f"\t\tf_ev called with ev = {expansionVolume*1e3:} L")
-            ev_start_time = time()
             V_1 = expansionVolume
 
             def _f_p_2(l, eta, tau_2, point=control):
@@ -422,7 +364,7 @@ class ConstrainedHighlow:
 
                 return p_2 > p_0_s or (p_2 - op_2) < p_2 * tol
 
-            Z_sm, (t, eta, tau_1, tau_2), _ = RKF78(
+            Z_k, (t, eta, tau_1, tau_2), _ = RKF78(
                 _ode_Zs,
                 record_Zs[0][1],
                 record_Zs[0][0],
@@ -432,17 +374,6 @@ class ConstrainedHighlow:
                 abortFunc=abort_Zs,
                 record=record_Zs,
             )
-            p_2_sm = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
-
-            if p_2_sm < p_0_s:
-                logger.log(
-                    7,
-                    f"\t\tmaximum low pressure chamber not enough to start shot, {p_2_sm * 1e-6} MPa",
-                )
-                raise LPCPMaxBelowStartError(
-                    f"Maximum pressure developed in low-chamber ({p_2_sm * 1e-6:.6f} MPa) "
-                    + "not enough to start the shot."
-                )
 
             def g(Z):
                 i = record_Zs.index([v for v in record_Zs if v[0] <= Z][-1])
@@ -457,10 +388,32 @@ class ConstrainedHighlow:
                 p_2 = _f_p_2(0, eta, tau_2, POINT_PEAK_AVG)
                 return p_2, (t, eta, tau_1, tau_2)
 
-            Z_k = record_Zs[-1][0]
-            logger.log(7, f"\t\tDekker to find shot start Z between {Z_k} and {Z_sm}")
-            Z_1, _ = dekker(lambda x: g(x)[0] - p_0_s, Z_k, Z_sm, y_abs_tol=p_0_s * tol)
-            logger.log(7, f"\t\tZ_1 found to be {Z_1:}")
+            Z_j = record_Zs[-1][0]
+            Z_p = (
+                sum(
+                    gss(
+                        lambda x: g(x)[0],
+                        Z_j,
+                        Z_k,
+                        y_abs_tol=p_0_s * tol,
+                        findMin=False,
+                    )
+                )
+                * 0.5
+            )
+            p_p_avg, (t, eta, tau_1, tau_2) = g(Z_p)
+            # p_p = _f_p_2(0, eta, tau_2)
+            if p_p_avg < p_0_s:
+                logger_ev.warning(
+                    f"maximum low chamber pressure not enough to start shot, "
+                    + f"{p_p_avg * 1e-6:.3f} MPa",
+                )
+                raise LPCPMaxBelowStartError(
+                    f"Maximum pressure developed in low-chamber ({p_p_avg * 1e-6:.3f} MPa) "
+                    + "not enough to start the shot."
+                )
+
+            Z_1, _ = dekker(lambda x: g(x)[0] - p_0_s, Z_j, Z_p, y_abs_tol=p_0_s * tol)
 
             _, (t_1, eta_1, tau_1_1, tau_2_1) = g(Z_1)
 
@@ -523,6 +476,7 @@ class ConstrainedHighlow:
 
             t_probe, t_j = t_1, t_1
             while t_probe == t_j:  # has not aborted
+                logger_ev.info("extended time of integration")
                 t_probe = t_j * 2
                 t_j, (Z_j, l_j, v_j, eta_j, tau_1_j, tau_2_j), _ = RKF78(
                     _ode_t,
@@ -534,8 +488,6 @@ class ConstrainedHighlow:
                     abortFunc=abort_t,
                     record=record_t,
                 )
-
-            logger.log(7, f"\t\tintegrated to pressure decrement at t < {t_j:}")
 
             def _f_p_2_t(t):
                 i = record_t.index([v for v in record_t if v[0] <= t][-1])
@@ -586,16 +538,13 @@ class ConstrainedHighlow:
                 * 0.5
             )
 
-            logger.log(7, f"\t\tpeak pressure point gss'ed to {t_p_2}")
+            p_p_l_t, vals = _f_p_2_t(t_p_2)
 
-            p_p_l_t, vals_2_t = _f_p_2_t(t_p_2)
-
-            ev_end_time = time()
-
-            logger.log(7, f"\t\tf_ev returned in {ev_end_time - ev_start_time}")
-
-            f_ev_records.update({expansionVolume: (p_p_l_t, vals_2_t)})
-            return p_p_l_t, vals_2_t
+            f_ev_records.update({expansionVolume: (p_p_l_t, vals)})
+            logger_ev.info(
+                f"peak low chamber pressure calculated is {p_p_l_t*1e-6:.3f}MPa."
+            )
+            return p_p_l_t, vals
 
         def findBound(func, x_probe, x_bound, tol, record=None, exception=ValueError):
             if record is None:
@@ -604,6 +553,13 @@ class ConstrainedHighlow:
                 record.append((x_bound, func(x_bound)))
                 return x_bound
             except exception:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                logger.warning("exception raised in bound finding outer bound")
+                logger.warning(
+                    "".join(
+                        traceback.format_exception(exc_type, exc_value, exc_traceback)
+                    )
+                )
                 x_valid = x_probe
 
                 delta = x_bound - x_probe
@@ -616,6 +572,15 @@ class ConstrainedHighlow:
                         record.append((x_probe, func(x_probe)))
                         x_valid = x_probe
                     except exception:
+                        exc_type, exc_value, exc_traceback = sys.exc_info()
+                        logger.warning("exception raised in bound finding loop")
+                        logger.warning(
+                            "".join(
+                                traceback.format_exception(
+                                    exc_type, exc_value, exc_traceback
+                                )
+                            )
+                        )
                         delta *= 0.5
                     finally:
                         x_probe = x_valid + delta
@@ -625,20 +590,15 @@ class ConstrainedHighlow:
         probeEV = 2 * tol * V_0
         lastEV = tol * V_0
 
-        logger.log(9, "Expansion volume lower bound probe loop entered")
+        logger.info("probing for expansion volume lower bound.")
         while True:
             try:
                 p = f_ev(probeEV)[0]
-                logger.log(
-                    8,
-                    f"\tLow chamber peak pressure function f_ev({probeEV * 1e3:} L) = {p * 1e-6:} MPa",
-                )
                 break
 
             except LPCPMaxBelowStartError:  # overshoot
-                logger.log(
-                    8,
-                    "\tException raised: Low Pressure Chamber Pressure Max Below Start Error",
+                logger.warning(
+                    "exception raised: Low Pressure Chamber Pressure Max Below Start Error",
                 )
                 delta = probeEV - lastEV
                 if delta < tol * V_0:
@@ -649,16 +609,21 @@ class ConstrainedHighlow:
                     )
                 probeEV = lastEV + 0.5 * delta
             except ValueError:
-                logger.log(8, "\tException raised: ValueError")
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                logger.warning("exception raised: ValueError")
+                logger.warning(
+                    "".join(
+                        traceback.format_exception(exc_type, exc_value, exc_traceback)
+                    )
+                )
                 lastEV = probeEV
                 probeEV *= 2
 
-        logger.log(
-            9,
-            f"finding lower bound for f_ev between {probeEV * 1e3} L and {lastEV * 1e3} L",
+        logger.info(
+            f"finding lower bound for f_ev between {probeEV * 1e3:.6f} L and {lastEV * 1e3:.6f} L",
         )
         evLowerBound = findBound(f_ev, probeEV, lastEV, tol * V_0)
-        logger.log(9, f"expansion volume lower bound found as {evLowerBound * 1e3} L")
+        logger.info(f"expansion volume lower bound found as {evLowerBound * 1e3:.6f} L")
 
         if progressQueue is not None:
             progressQueue.put(50)
@@ -666,25 +631,20 @@ class ConstrainedHighlow:
         probeEV = evLowerBound * 2
         lastEV = evLowerBound
 
-        logger.log(9, "Expansion volume upper bound probe loop entered")
+        logger.info("probing for expansion volume upper bound.")
         while True:
             try:
-                p = f_ev(probeEV)[0]
-                logger.log(
-                    8,
-                    f"\tLow chamber peak pressure function f_ev({probeEV * 1e3:} L) = {p * 1e-6:} MPa",
-                )
+                f_ev(probeEV)[0]
                 lastEV = probeEV
                 probeEV *= 2
             except ValueError:
                 break
 
-        logger.log(
-            9,
-            f"Finding upper bound for f_ev between {probeEV * 1e3} L and {lastEV * 1e3} L",
+        logger.info(
+            f"finding upper bound for f_ev between {probeEV * 1e3:.3f} L and {lastEV * 1e3:.3f} L",
         )
         evUpperBound = findBound(f_ev, lastEV, probeEV, tol * V_0)
-        logger.log(9, f"Expansion volume lower upper found as {evUpperBound * 1e3} L")
+        logger.info(f"expansion volume upper bound found as {evUpperBound * 1e3:.3f} L")
 
         if progressQueue is not None:
             progressQueue.put(66)
@@ -700,18 +660,12 @@ class ConstrainedHighlow:
                 + f"and V < {evUpperBound * 1e3:.3f} L, P > {p_l_min * 1e-6:.3f} MPa."
             )
 
-        logger.log(9, "Expansion volume range found to be valid")
-
         def fr(x):
             progressQueue.put(round(x * 34) + 66)
 
-        time_bound = time()
-        logger.log(9, f"Spent {time_bound - time_start:}s finding bound.")
-        logger.log(
-            9,
-            f"Dekker method called on f_ev between {evLowerBound * 1e3} L and {evUpperBound*1e3} L",
+        logger.info(
+            f"dekker method called on f_ev between {evLowerBound * 1e3:.3f} L and {evUpperBound*1e3:.3f} L",
         )
-
         # ascending volume, descending pressure
         f_ev_evs, f_ev_results = zip(*sorted(f_ev_records.items(), key=lambda v: v[0]))
 
@@ -726,11 +680,11 @@ class ConstrainedHighlow:
             y_rel_tol=tol,
             f_report=fr if progressQueue is not None else None,
         )
-        logger.log(
-            9, f"Expansion volume to match low chamber pressure solved at {V_1 * 1e3} L"
+        logger.info(
+            f"expansion volume to match low chamber pressure solved at {V_1 * 1e3:.3f} L"
         )
         p_l_act, (t_i, Z_i, l_i, v_i, eta_i, tau_1_i, tau_2_i) = f_ev(V_1)
-        logger.log(9, f"Check: actual low chamber pressure {p_l_act * 1e-6} MPa")
+        logger.info(f"check: actual low chamber pressure {p_l_act * 1e-6:.3f} MPa")
 
         if knownBore:
             if progressQueue is not None:
@@ -805,14 +759,17 @@ class ConstrainedHighlow:
 
         v_d = self.v_d
         if v_i > v_d and not suppress:
-            raise ValueError(
-                f"Design velocity exceeded before peak pressure point (V = {v_i:.4g} m/s)."
-            )
-
-        logger.log(
-            9,
-            f"Velocity at peak low chamber pressure point {v_i} m/s checked to be below design",
-        )
+            if suppress:
+                logger.warning(
+                    "velocity target point occured before peak pressure point."
+                )
+                logger.warning(
+                    "this is currently being suppressed due to program control."
+                )
+            else:
+                raise ValueError(
+                    f"Design velocity exceeded before peak pressure point (V = {v_i:.4g} m/s)."
+                )
 
         def abort_v(x, ys, record):
             _, _, l, _, _, _ = ys
@@ -861,8 +818,7 @@ class ConstrainedHighlow:
         if progressQueue is not None:
             progressQueue.put(100)
 
-        time_end = time()
-        logger.log(9, f"Solve returned with elapsed time {time_end - time_start} s")
+        logger.info("solution satisfying constraint found.")
 
         return e_1, V_1, l_g
 
